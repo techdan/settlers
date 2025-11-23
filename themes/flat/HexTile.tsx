@@ -11,6 +11,7 @@ interface HexTileProps {
     numberToken: number | null;
     hasRobber: boolean;
     size: number;
+    onClick?: () => void;
 }
 
 const RESOURCE_COLORS: Record<ResourceType, string> = {
@@ -31,7 +32,7 @@ const RESOURCE_ICONS: Record<ResourceType, React.ElementType> = {
     desert: Sun,
 };
 
-export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size }) => {
+export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick }) => {
     const { x, y } = hexToPixel(hex, size);
 
     // Calculate points for pointy-topped hex
@@ -46,7 +47,7 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, ha
     const Icon = RESOURCE_ICONS[resource];
 
     return (
-        <g transform={`translate(${x}, ${y})`}>
+        <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
             <polygon
                 points={pointsStr}
                 fill={RESOURCE_COLORS[resource]}

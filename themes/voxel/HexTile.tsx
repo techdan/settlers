@@ -11,6 +11,7 @@ interface HexTileProps {
     numberToken: number | null;
     hasRobber: boolean;
     size: number;
+    onClick?: () => void;
 }
 
 const RESOURCE_COLORS: Record<ResourceType, string> = {
@@ -31,7 +32,7 @@ const RESOURCE_COMPONENTS: Record<ResourceType, React.ElementType> = {
     desert: VoxelDesert,
 };
 
-export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size }) => {
+export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick }) => {
     const { x, y } = hexToPixel(hex, size);
     const DEPTH = 15;
 
@@ -67,7 +68,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToke
     const baseColor = RESOURCE_COLORS[resource];
 
     return (
-        <g transform={`translate(${x}, ${y})`}>
+        <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
             {/* Defs for gradients/patterns could go here or globally, but for simplicity we use simple fills/filters */}
 
             {/* Sides (rendered first so they are behind top) */}

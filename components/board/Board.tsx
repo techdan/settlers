@@ -12,7 +12,7 @@ import { GameState } from '@/lib/game-types';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { useTransition } from 'react';
-import { placeSettlement, placeRoad } from '@/app/actions';
+import { placeSettlement, placeRoad, moveRobber } from '@/app/actions';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/lib/game-logic';
 
 interface BoardProps {
@@ -78,6 +78,20 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId }) => {
         });
     };
 
+    const handleHexClick = (hexId: string) => {
+        if (isPending) return;
+        if (gameState.currentTurn !== playerId) return;
+        if (gameState.phase !== 'robber_placement') return;
+
+        startTransition(async () => {
+            try {
+                await moveRobber(gameState.roomId, playerId, hexId);
+            } catch (e) {
+                console.error("Failed to move robber", e);
+            }
+        });
+    };
+
     return (
         <div className="w-full h-screen bg-slate-900 overflow-hidden relative">
             <TransformWrapper
@@ -119,8 +133,9 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId }) => {
                                                 hex={tile.hex}
                                                 resource={tile.resource}
                                                 numberToken={tile.numberToken}
-                                                hasRobber={false} // TODO: Add robber logic from gameState
+                                                hasRobber={gameState.robberHexId === tile.id}
                                                 size={HEX_SIZE}
+                                                onClick={() => handleHexClick(tile.id)}
                                             />
                                         ))}
 

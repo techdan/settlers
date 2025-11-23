@@ -12,6 +12,7 @@ export interface PlayerState {
     citiesRemaining: number;
     roadsRemaining: number;
     victoryPoints: number;
+    discardedThisTurn?: boolean;
 }
 
 export interface Vertex {
@@ -37,8 +38,11 @@ export type GamePhase =
     | 'setup_round_1_road'
     | 'setup_round_2_settlement'
     | 'setup_round_2_road'
-    | 'main_game'
-    | 'main_game'
+    | 'waiting_for_roll'
+    | 'main_phase'
+    | 'discarding'
+    | 'robber_placement'
+    | 'stealing'
     | 'game_over';
 
 export interface GameLogEntry {
@@ -62,5 +66,11 @@ export interface GameState {
     phase: GamePhase;
     winner: string | null;
     lastPlacedSettlementId: string | null; // For setup phase road validation
+    robberHexId: string | null; // ID of the hex where the robber is
+    diceRoll?: {
+        d1: number;
+        d2: number;
+        total: number;
+    };
     logs: GameLogEntry[];
 }

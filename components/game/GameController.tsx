@@ -8,6 +8,8 @@ import { PlayerHand } from './PlayerHand';
 import { GameLog } from './GameLog';
 
 import { GameStatus } from './GameStatus';
+import { TurnControls } from './TurnControls';
+import { DiscardModal } from './DiscardModal';
 
 interface GameControllerProps {
     roomId: string;
@@ -44,6 +46,8 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
         <div className="relative h-screen w-screen overflow-hidden">
             <Board gameState={gameState} playerId={playerId} />
 
+            <DiscardModal gameState={gameState} playerId={playerId} />
+
             {/* UI Overlay */}
             <div className="absolute inset-0 pointer-events-none p-4">
 
@@ -58,6 +62,11 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
                 {/* Bottom Left: Player Hand */}
                 <div className="absolute bottom-4 left-4 pointer-events-auto">
                     {currentPlayer && <PlayerHand player={currentPlayer} />}
+                </div>
+
+                {/* Bottom Center: Turn Controls */}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
+                    <TurnControls gameState={gameState} playerId={playerId} />
                 </div>
             </div>
         </div>
