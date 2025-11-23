@@ -149,6 +149,11 @@ export async function startGame(roomId: string) {
         phase: 'setup_round_1_settlement',
         winner: null,
         lastPlacedSettlementId: null,
+        logs: [{
+            id: randomUUID(),
+            timestamp: Date.now(),
+            message: 'Game started!',
+        }],
     };
 
     // 6. Save to DB
@@ -205,6 +210,14 @@ export async function placeSettlement(roomId: string, playerId: string, vertexId
         gameState.phase = 'setup_round_2_road';
     }
 
+    // Add Log
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${gameState.players[playerIndex].name} placed a settlement.`,
+        playerId: playerId
+    });
+
     // 4. Save
     await db.update(games)
         .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
@@ -240,6 +253,14 @@ export async function placeRoad(roomId: string, playerId: string, edgeId: string
     const playerIndex = gameState.players.findIndex(p => p.id === playerId);
     gameState.players[playerIndex].roadsRemaining--;
 
+    // Add Log
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${gameState.players[playerIndex].name} placed a road.`,
+        playerId: playerId
+    });
+
     // 4. Handle Turn Rotation (Snake Order)
     const currentTurnIndex = gameState.turnOrder.indexOf(playerId);
     const numPlayers = gameState.players.length;
@@ -271,6 +292,14 @@ export async function placeRoad(roomId: string, playerId: string, edgeId: string
                 if (boardHex && boardHex.resource && boardHex.resource !== 'desert') {
                     const resource = boardHex.resource as keyof typeof player.resources;
                     player.resources[resource]++;
+
+                    // Log resource gain
+                    gameState.logs.push({
+                        id: randomUUID(),
+                        timestamp: Date.now(),
+                        message: `${player.name} received ${resource}.`,
+                        playerId: playerId
+                    });
                 }
             }
         }

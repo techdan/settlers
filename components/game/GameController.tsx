@@ -4,6 +4,10 @@ import React, { useEffect, useState } from 'react';
 import { Board } from '@/components/board/Board';
 import { GameState } from '@/lib/game-types';
 import { useRouter } from 'next/navigation';
+import { PlayerHand } from './PlayerHand';
+import { GameLog } from './GameLog';
+
+import { GameStatus } from './GameStatus';
 
 interface GameControllerProps {
     roomId: string;
@@ -34,17 +38,27 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
 
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
+    const currentPlayer = gameState.players.find(p => p.id === playerId);
+
     return (
-        <div className="relative">
+        <div className="relative h-screen w-screen overflow-hidden">
             <Board gameState={gameState} playerId={playerId} />
 
-            {/* HUD Overlay */}
-            <div className="absolute top-4 left-4 bg-black/50 p-4 rounded text-white pointer-events-none">
-                <h2 className="text-xl font-bold">Phase: {gameState.phase}</h2>
-                <div>Current Turn: {gameState.players.find(p => p.id === gameState.currentTurn)?.name}</div>
-                {gameState.currentTurn === playerId && (
-                    <div className="text-green-400 font-bold animate-pulse">YOUR TURN</div>
-                )}
+            {/* UI Overlay */}
+            <div className="absolute inset-0 pointer-events-none p-4">
+
+                {/* Right Sidebar: Status & Log */}
+                <div className="absolute top-4 right-4 bottom-4 w-80 flex flex-col gap-4 pointer-events-auto">
+                    <GameStatus gameState={gameState} currentPlayerId={playerId} />
+                    <div className="flex-1 min-h-0">
+                        <GameLog logs={gameState.logs || []} />
+                    </div>
+                </div>
+
+                {/* Bottom Left: Player Hand */}
+                <div className="absolute bottom-4 left-4 pointer-events-auto">
+                    {currentPlayer && <PlayerHand player={currentPlayer} />}
+                </div>
             </div>
         </div>
     );

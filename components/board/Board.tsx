@@ -90,7 +90,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId }) => {
             >
                 {({ zoomIn, zoomOut, resetTransform }) => (
                     <>
-                        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 items-start">
                             <div className="flex gap-2">
                                 <button onClick={() => zoomIn()} className="bg-white/90 p-2 rounded shadow hover:bg-white text-black font-bold w-10">+</button>
                                 <button onClick={() => zoomOut()} className="bg-white/90 p-2 rounded shadow hover:bg-white text-black font-bold w-10">-</button>

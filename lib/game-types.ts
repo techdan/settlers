@@ -38,7 +38,15 @@ export type GamePhase =
     | 'setup_round_2_settlement'
     | 'setup_round_2_road'
     | 'main_game'
+    | 'main_game'
     | 'game_over';
+
+export interface GameLogEntry {
+    id: string;
+    timestamp: number;
+    message: string;
+    playerId?: string; // Optional: associate log with a player
+}
 
 export interface GameState {
     id: string;
@@ -54,4 +62,5 @@ export interface GameState {
     phase: GamePhase;
     winner: string | null;
     lastPlacedSettlementId: string | null; // For setup phase road validation
+    logs: GameLogEntry[];
 }
