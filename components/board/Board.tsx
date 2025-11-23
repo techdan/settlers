@@ -6,23 +6,31 @@ import { HexTile as FlatHexTile } from '@/themes/flat/HexTile';
 import { VoxelHexTile } from '@/themes/voxel/HexTile';
 import { FlatPort } from '@/themes/flat/Port';
 import { VoxelPort } from '@/themes/voxel/Port';
-import { generateStandardBoard, HexTileData } from '@/lib/board-data';
 import { useThemeStore } from '@/lib/theme-store';
 import { generatePorts } from '@/engine/generatePorts';
+import { GameState } from '@/lib/game-types';
+import { VertexRenderer } from './VertexRenderer';
+import { EdgeRenderer } from './EdgeRenderer';
+import { useTransition } from 'react';
+import { placeSettlement, placeRoad } from '@/app/actions';
+import { isValidSetupSettlement, isValidSetupRoad } from '@/lib/game-logic';
 
-export const Board: React.FC = () => {
-    const [tiles] = useState<HexTileData[]>(generateStandardBoard());
-    const [robberHexId, setRobberHexId] = useState<string | null>(
-        tiles.find(t => t.resource === 'desert')?.id || null
-    );
+interface BoardProps {
+    gameState: GameState;
+    playerId: string;
+}
+
+export const Board: React.FC<BoardProps> = ({ gameState, playerId }) => {
     const { theme, toggleTheme } = useThemeStore();
-
     const HEX_SIZE = 90;
 
     const ports = useMemo(() => generatePorts(HEX_SIZE), [HEX_SIZE]);
 
+    const tiles = gameState.board.hexes;
+    const vertices = Object.values(gameState.board.vertices);
+    const edges = Object.values(gameState.board.edges);
+
     // Sort tiles for Voxel rendering (Painter's Algorithm: Top -> Bottom)
-    // Sort by r (row), then q (col)
     const sortedTiles = [...tiles].sort((a, b) => {
         if (a.hex.r !== b.hex.r) return a.hex.r - b.hex.r;
         return a.hex.q - b.hex.q;
@@ -30,6 +38,45 @@ export const Board: React.FC = () => {
 
     const TileComponent = theme === 'flat' ? FlatHexTile : VoxelHexTile;
     const PortComponent = theme === 'flat' ? FlatPort : VoxelPort;
+
+    const [isPending, startTransition] = useTransition();
+
+    const handleVertexClick = (vertexId: string) => {
+        if (isPending) return;
+        if (gameState.currentTurn !== playerId) return;
+
+        // Client-side validation
+        if (!isValidSetupSettlement(gameState, vertexId, playerId)) {
+            console.log("Invalid settlement placement");
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                await placeSettlement(gameState.roomId, playerId, vertexId);
+            } catch (e) {
+                console.error("Failed to place settlement", e);
+            }
+        });
+    };
+
+    const handleEdgeClick = (edgeId: string) => {
+        if (isPending) return;
+        if (gameState.currentTurn !== playerId) return;
+
+        if (!isValidSetupRoad(gameState, edgeId, playerId)) {
+            console.log("Invalid road placement");
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                await placeRoad(gameState.roomId, playerId, edgeId);
+            } catch (e) {
+                console.error("Failed to place road", e);
+            }
+        });
+    };
 
     return (
         <div className="w-full h-screen bg-slate-900 overflow-hidden relative">
@@ -62,11 +109,6 @@ export const Board: React.FC = () => {
                             <div className="w-full h-full flex items-center justify-center">
                                 <svg width="1000" height="1000" viewBox="-500 -500 1000 1000" className="overflow-visible">
                                     <g>
-                                        {/* Render Ports first so they are behind tiles if overlapping, or after? 
-                        Ports are on the edge. Usually under tiles looks better if they tuck in.
-                        But for Voxel, maybe on top?
-                        Let's render Ports UNDER tiles for Flat, but maybe check for Voxel.
-                    */}
                                         {ports.map(port => (
                                             <PortComponent key={port.id} port={port} />
                                         ))}
@@ -77,8 +119,32 @@ export const Board: React.FC = () => {
                                                 hex={tile.hex}
                                                 resource={tile.resource}
                                                 numberToken={tile.numberToken}
-                                                hasRobber={tile.id === robberHexId}
+                                                hasRobber={false} // TODO: Add robber logic from gameState
                                                 size={HEX_SIZE}
+                                            />
+                                        ))}
+
+                                        {edges.map(edge => (
+                                            <EdgeRenderer
+                                                key={edge.id}
+                                                edge={edge}
+                                                size={HEX_SIZE}
+                                                color={gameState.players.find(p => p.id === edge.owner)?.color}
+                                                onClick={handleEdgeClick}
+                                                isValid={isValidSetupRoad(gameState, edge.id, playerId)}
+                                                theme={theme}
+                                            />
+                                        ))}
+
+                                        {vertices.map(vertex => (
+                                            <VertexRenderer
+                                                key={vertex.id}
+                                                vertex={vertex}
+                                                size={HEX_SIZE}
+                                                color={gameState.players.find(p => p.id === vertex.owner)?.color}
+                                                onClick={handleVertexClick}
+                                                isValid={isValidSetupSettlement(gameState, vertex.id, playerId)}
+                                                theme={theme}
                                             />
                                         ))}
                                     </g>
