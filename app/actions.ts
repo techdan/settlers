@@ -57,6 +57,7 @@ import { ResourceType } from '@/lib/board-data';
 import { getHexesForVertex, getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
 import * as gameService from '@/lib/services/game-service';
 import * as buildingService from '@/lib/services/building-service';
+import * as tradingService from '@/lib/services/trading-service';
 import { games } from '@/lib/db/schema';
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
@@ -399,187 +400,19 @@ export async function discardCards(roomId: string, playerId: string, resources: 
 import { getPortForVertex } from '@/lib/board-data';
 
 export async function tradeWithBank(roomId: string, playerId: string, giveResource: ResourceType, getResource: ResourceType) {
-    const game = await db.query.games.findFirst({
-        where: eq(games.roomId, roomId),
-    });
-
-    if (!game) throw new Error('Game not found');
-
-    const gameState = JSON.parse(game.state) as GameState;
-
-    // 1. Validate Turn & Phase
-    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
-    if (gameState.phase !== 'main_phase') {
-        throw new Error('Cannot trade in current phase');
-    }
-
-    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
-    const player = gameState.players[playerIndex];
-
-    // 2. Determine Trade Ratio
-    let ratio = 4; // Default 4:1
-
-    // Check all player's settlements/cities for ports
-    for (const vertexId in gameState.board.vertices) {
-        const vertex = gameState.board.vertices[vertexId];
-        if (vertex.owner === playerId && vertex.structure) {
-            const portType = getPortForVertex(vertexId);
-            if (portType) {
-                if (portType === giveResource) {
-                    ratio = 2; // Specific port for this resource
-                    break; // Best possible ratio found
-                } else if (portType === 'generic') {
-                    ratio = Math.min(ratio, 3); // Generic port (3:1)
-                }
-            }
-        }
-    }
-
-    // 3. Validate Resources
-    if (player.resources[giveResource] < ratio) {
-        throw new Error(`Not enough ${giveResource}. Need ${ratio} to trade.`);
-    }
-
-    // 4. Execute Trade
-    player.resources[giveResource] -= ratio;
-    player.resources[getResource]++;
-
-    // 5. Log
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `${player.name} traded ${ratio} ${giveResource} for 1 ${getResource}.`,
-        playerId
-    });
-
-    // 6. Save
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return tradingService.tradeWithBank(roomId, playerId, giveResource, getResource);
 }
 
 export async function offerTrade(roomId: string, playerId: string, give: Record<ResourceType, number>, get: Record<ResourceType, number>) {
-    const game = await db.query.games.findFirst({
-        where: eq(games.roomId, roomId),
-    });
-
-    if (!game) throw new Error('Game not found');
-
-    const gameState = JSON.parse(game.state) as GameState;
-
-    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
-    if (gameState.phase !== 'main_phase') throw new Error('Cannot trade now');
-
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
-    // Validate resources
-    for (const [res, amount] of Object.entries(give)) {
-        if ((player.resources[res as ResourceType] || 0) < amount) {
-            throw new Error(`Not enough ${res} to offer`);
-        }
-    }
-
-    gameState.tradeOffer = {
-        id: randomUUID(),
-        initiator: playerId,
-        give,
-        get,
-        status: 'open'
-    };
-
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `${player.name} offered a trade.`,
-        playerId
-    });
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return tradingService.offerTrade(roomId, playerId, give, get);
 }
 
 export async function acceptTrade(roomId: string, playerId: string) {
-    const game = await db.query.games.findFirst({
-        where: eq(games.roomId, roomId),
-    });
-
-    if (!game) throw new Error('Game not found');
-
-    const gameState = JSON.parse(game.state) as GameState;
-
-    if (!gameState.tradeOffer || gameState.tradeOffer.status !== 'open') {
-        throw new Error('No active trade offer');
-    }
-
-    if (gameState.tradeOffer.initiator === playerId) {
-        throw new Error('Cannot accept your own trade');
-    }
-
-    const initiator = gameState.players.find(p => p.id === gameState.tradeOffer!.initiator);
-    const acceptor = gameState.players.find(p => p.id === playerId);
-
-    if (!initiator || !acceptor) throw new Error('Player not found');
-
-    // Validate acceptor resources
-    for (const [res, amount] of Object.entries(gameState.tradeOffer.get)) {
-        if ((acceptor.resources[res as ResourceType] || 0) < amount) {
-            throw new Error(`Not enough ${res} to accept trade`);
-        }
-    }
-
-    // Execute Trade
-    // Initiator gives 'give', gets 'get'
-    // Acceptor gives 'get', gets 'give'
-    for (const [res, amount] of Object.entries(gameState.tradeOffer.give)) {
-        initiator.resources[res as ResourceType] -= amount;
-        acceptor.resources[res as ResourceType] += amount;
-    }
-
-    for (const [res, amount] of Object.entries(gameState.tradeOffer.get)) {
-        acceptor.resources[res as ResourceType] -= amount;
-        initiator.resources[res as ResourceType] += amount;
-    }
-
-    gameState.tradeOffer = null;
-
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `${acceptor.name} accepted the trade.`,
-        playerId
-    });
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return tradingService.acceptTrade(roomId, playerId);
 }
 
 export async function cancelTrade(roomId: string, playerId: string) {
-    const game = await db.query.games.findFirst({
-        where: eq(games.roomId, roomId),
-    });
-
-    if (!game) throw new Error('Game not found');
-
-    const gameState = JSON.parse(game.state) as GameState;
-
-    if (!gameState.tradeOffer) throw new Error('No active trade offer');
-    if (gameState.tradeOffer.initiator !== playerId) throw new Error('Only initiator can cancel');
-
-    gameState.tradeOffer = null;
-
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `Trade offer cancelled.`,
-        playerId
-    });
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return tradingService.cancelTrade(roomId, playerId);
 }
 
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity, calculateLongestRoad } from '@/lib/game-logic';
