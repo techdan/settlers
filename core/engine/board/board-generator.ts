@@ -1,10 +1,18 @@
 import { createHex, Hex } from '@/lib/hex';
 
-export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore' | 'desert';
+/**
+ * Resources that players can collect and trade
+ */
+export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
+
+/**
+ * Tile types on the board (resources + desert)
+ */
+export type TileType = ResourceType | 'desert';
 
 export interface HexTileData {
     hex: Hex;
-    resource: ResourceType;
+    resource: TileType;
     numberToken: number | null;
     id: string;
 }
@@ -43,7 +51,7 @@ const TILE_LAYOUT = [
 export function generateStandardBoard(): HexTileData[] {
     return TILE_LAYOUT.map(t => ({
         hex: createHex(t.q, t.r),
-        resource: t.res as ResourceType,
+        resource: t.res as TileType,
         numberToken: t.num,
         id: `${t.q},${t.r}`
     }));

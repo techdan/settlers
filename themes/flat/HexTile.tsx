@@ -1,20 +1,20 @@
 import React from 'react';
 import { Hex, hexToPixel } from '@/lib/hex';
-import { ResourceType } from '@/lib/board-data';
+import { TileType } from '@/lib/board-data';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
 import { TreePine, Square, Cloud, Wheat, Mountain, Sun } from 'lucide-react';
 
 interface HexTileProps {
     hex: Hex;
-    resource: ResourceType;
+    resource: TileType;
     numberToken: number | null;
     hasRobber: boolean;
     size: number;
     onClick?: () => void;
 }
 
-const RESOURCE_COLORS: Record<ResourceType, string> = {
+const RESOURCE_COLORS: Record<TileType, string> = {
     wood: '#228B22', // ForestGreen
     brick: '#B22222', // FireBrick
     sheep: '#90EE90', // LightGreen
@@ -23,7 +23,7 @@ const RESOURCE_COLORS: Record<ResourceType, string> = {
     desert: '#F4A460', // SandyBrown
 };
 
-const RESOURCE_ICONS: Record<ResourceType, React.ElementType> = {
+const RESOURCE_ICONS: Record<TileType, React.ElementType> = {
     wood: TreePine,
     brick: Square, // Placeholder for brick
     sheep: Cloud, // Placeholder for sheep

@@ -13,14 +13,13 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
     brick: '🧱',
     sheep: '🐑',
     wheat: '🌾',
-    ore: '🪨',
-    desert: '🌵',
+    ore: '🪨'
 };
 
 export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
     const [selected, setSelected] = useState<Record<ResourceType, number>>({
-        wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0
+        wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0
     });
     const [isPending, startTransition] = useTransition();
 
@@ -78,7 +77,6 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
 
                 <div className="grid grid-cols-3 gap-4 mb-6">
                     {(Object.keys(player.resources) as ResourceType[]).map(res => {
-                        if (res === 'desert') return null;
                         const max = player.resources[res];
                         if (max === 0) return null;
 

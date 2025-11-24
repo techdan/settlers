@@ -1,20 +1,20 @@
 import React from 'react';
 import { Hex, hexToPixel } from '@/lib/hex';
-import { ResourceType } from '@/lib/board-data';
+import { TileType } from '@/lib/board-data';
 import { VoxelNumberToken } from './NumberToken';
 import { VoxelRobber } from './Robber';
 import { VoxelTree, VoxelMountain, VoxelWheat, VoxelBrick, VoxelSheep, VoxelDesert } from './Resources';
 
 interface HexTileProps {
     hex: Hex;
-    resource: ResourceType;
+    resource: TileType;
     numberToken: number | null;
     hasRobber: boolean;
     size: number;
     onClick?: () => void;
 }
 
-const RESOURCE_COLORS: Record<ResourceType, string> = {
+const RESOURCE_COLORS: Record<TileType, string> = {
     wood: '#4CAF50', // Brighter Green
     brick: '#D84315', // Deep Orange
     sheep: '#8BC34A', // Light Green
@@ -23,7 +23,7 @@ const RESOURCE_COLORS: Record<ResourceType, string> = {
     desert: '#FDD835', // Yellow
 };
 
-const RESOURCE_COMPONENTS: Record<ResourceType, React.ElementType> = {
+const RESOURCE_COMPONENTS: Record<TileType, React.ElementType> = {
     wood: VoxelTree,
     brick: VoxelBrick,
     sheep: VoxelSheep,

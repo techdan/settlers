@@ -14,8 +14,7 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
     brick: '🧱',
     sheep: '🐑',
     wheat: '🌾',
-    ore: '🪨',
-    desert: '🌵',
+    ore: '🪨'
 };
 
 export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onClose }) => {
@@ -28,8 +27,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const [getRes, setGetRes] = useState<ResourceType>('brick');
 
     // Domestic State
-    const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0 });
-    const [offerGet, setOfferGet] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0 });
+    const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
+    const [offerGet, setOfferGet] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
 
     if (!player) return null;
 

@@ -13,8 +13,7 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
     brick: '🧱',
     sheep: '🐑',
     wheat: '🌾',
-    ore: '🪨',
-    desert: '🌵',
+    ore: '🪨'
 };
 
 export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId }) => {

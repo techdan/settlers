@@ -44,8 +44,7 @@ export async function buyDevCard(
         wheat: 1,
         ore: 1,
         wood: 0,
-        brick: 0,
-        desert: 0
+        brick: 0
     };
 
     if (!canAfford(player.resources, devCardCost)) {

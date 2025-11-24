@@ -23,7 +23,7 @@ export const TurnControls: React.FC<TurnControlsProps> = ({
     const [isPending, startTransition] = useTransition();
 
     const player = gameState.players.find(p => p.id === playerId);
-    const resources = player?.resources || { brick: 0, wood: 0, sheep: 0, wheat: 0, ore: 0, desert: 0 };
+    const resources = player?.resources || { brick: 0, wood: 0, sheep: 0, wheat: 0, ore: 0 };
 
     const canAffordRoad = resources.brick >= 1 && resources.wood >= 1;
     const canAffordSettlement = resources.brick >= 1 && resources.wood >= 1 && resources.sheep >= 1 && resources.wheat >= 1;

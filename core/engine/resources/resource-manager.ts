@@ -25,8 +25,10 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
 
     // For each matching hex, give resources to adjacent settlements/cities
     for (const hex of matchingHexes) {
+        // Skip desert tiles (they don't produce resources)
+        if (hex.resource === 'desert') continue;
+
         const resource = hex.resource as ResourceType;
-        if (resource === 'desert') continue;
 
         // Get all 6 vertices for this hex
         const [q, r] = hex.id.split(',').map(Number);

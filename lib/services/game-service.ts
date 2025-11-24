@@ -36,7 +36,7 @@ export async function startGame(roomId: string): Promise<GameState> {
         id: p.id,
         name: p.name,
         color: ['red', 'blue', 'white', 'orange'][i % 4] as any,
-        resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0 },
+        resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
         devCards: { knight: 0, victory_point: 0, road_building: 0, year_of_plenty: 0, monopoly: 0 },
         settlementsRemaining: 5,
         citiesRemaining: 4,
