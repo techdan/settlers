@@ -77,6 +77,293 @@ The design system uses CSS variables for theming. Light and dark color schemes a
 
 The dev server runs on http://localhost:3000 with hot module replacement.
 
+## Architecture
+
+This codebase follows a **layered architecture** established through a multi-phase refactoring (Phases 1-4, completed 2025-11-24). All future development MUST respect these architectural boundaries and patterns.
+
+### Layer Overview
+
+```
+┌─────────────────────────────────────────┐
+│   Actions Layer (app/actions.ts)        │
+│   - Next.js Server Actions              │
+│   - Thin wrappers (2-3 lines each)     │
+│   - Parameter passing only              │
+│   - NO business logic                   │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│   Service Layer (lib/services/)         │
+│   - Business logic orchestration        │
+│   - Transaction boundaries              │
+│   - Coordinates managers/validators     │
+│   - Returns updated game state          │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│   Core Layer (core/)                    │
+│   - Managers: Domain operations         │
+│   - Validators: Pure validation funcs   │
+│   - Rules: Pure rule functions          │
+│   - Engine: Game mechanics              │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│   Repository Layer (lib/repositories/)  │
+│   - Data access abstraction             │
+│   - Database operations only            │
+│   - NO business logic                   │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│   Database (lib/db/)                    │
+│   - PostgreSQL via Drizzle ORM          │
+│   - Schema definitions                  │
+└─────────────────────────────────────────┘
+```
+
+### Directory Structure
+
+```
+app/
+  actions.ts              # Server actions (thin wrappers only)
+
+lib/
+  services/               # Business logic orchestration
+    building-service.ts   # Building operations (roads, settlements, cities)
+    game-service.ts       # Game flow (start, dice, turns)
+    trading-service.ts    # Bank and player trading
+    robber-service.ts     # Robber and discard mechanics
+    devcard-service.ts    # Development card operations
+    index.ts              # Barrel exports
+
+  repositories/           # Data access layer
+    game-repository.ts    # Game state CRUD
+    room-repository.ts    # Room CRUD
+    player-repository.ts  # Player CRUD
+    index.ts              # Barrel exports
+
+  types/                  # Type definitions
+    game.ts               # GameState and related types
+    player.ts             # PlayerState, DevCardType
+    board.ts              # Board structure types
+
+  db/                     # Database layer
+    schema.ts             # Drizzle schema
+    index.ts              # DB client
+
+core/
+  engine/                 # Game mechanics (pure functions)
+    board/                # Board generation, ports
+    resources/            # Resource distribution
+    scoring/              # Victory points, longest road
+    devcard/              # Dev card deck generation
+
+  rules/                  # Game rules (pure functions)
+    building-costs.ts     # Building costs and affordability
+    constants.ts          # Game constants
+    victory-conditions.ts # Win condition checks
+
+  validation/             # Validation logic (pure functions)
+    building-validator.ts # Main phase placement rules
+    setup-validator.ts    # Setup phase placement rules
+```
+
+### Key Principles
+
+#### 1. **Actions Are Thin Wrappers**
+Actions MUST be 2-3 lines max. They only call service methods:
+
+```typescript
+// ✅ CORRECT - Action delegates to service
+export async function buildRoad(roomId: string, playerId: string, edgeId: string) {
+    return buildingService.buildRoad(roomId, playerId, edgeId);
+}
+
+// ❌ WRONG - Business logic in action
+export async function buildRoad(roomId: string, playerId: string, edgeId: string) {
+    const game = await db.query.games.findFirst(...);
+    // 50 lines of validation and logic...
+}
+```
+
+#### 2. **Services Orchestrate Business Logic**
+Services coordinate between repositories, validators, rules, and managers:
+
+```typescript
+// Service method structure
+export async function buildRoad(
+    roomId: string,
+    playerId: string,
+    edgeId: string
+): Promise<GameState> {
+    // 1. Get game state from repository
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // 2. Validate turn and phase
+    if (gameState.currentTurn !== playerId) {
+        throw new Error('Not your turn');
+    }
+
+    // 3. Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // 4. Validate using validators
+    if (!isValidMainPhaseRoad(gameState, edgeId, playerId)) {
+        throw new Error('Invalid road placement');
+    }
+
+    // 5. Check affordability using rules
+    if (!canAfford(player.resources, BUILDING_COSTS.road)) {
+        throw new Error('Insufficient resources');
+    }
+
+    // 6. Execute operation
+    deductCost(player.resources, BUILDING_COSTS.road);
+    player.roadsRemaining--;
+    gameState.board.edges[edgeId].owner = playerId;
+    gameState.board.edges[edgeId].structure = 'road';
+
+    // 7. Update side effects (using managers)
+    updateLongestRoad(gameState);
+
+    // 8. Check victory
+    const winnerId = checkVictoryCondition(gameState);
+    if (winnerId) {
+        gameState.winner = winnerId;
+        gameState.phase = 'game_over';
+    }
+
+    // 9. Add log
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} built a road`,
+        playerId
+    });
+
+    // 10. Save to database via repository
+    await updateGameState(gameState);
+
+    return gameState;
+}
+```
+
+#### 3. **Validators and Rules Are Pure Functions**
+NO side effects, NO mutations, NO async:
+
+```typescript
+// ✅ CORRECT - Pure validator
+export function isValidMainPhaseRoad(
+    gameState: GameState,
+    edgeId: string,
+    playerId: string
+): boolean {
+    const edge = gameState.board.edges[edgeId];
+    if (!edge || edge.owner !== null) return false;
+
+    // Check adjacency to player's structures...
+    return hasAdjacentStructure;
+}
+
+// ✅ CORRECT - Pure rule
+export function canAfford(
+    resources: Record<ResourceType, number>,
+    cost: Record<ResourceType, number>
+): boolean {
+    return Object.entries(cost).every(
+        ([res, amount]) => (resources[res as ResourceType] || 0) >= amount
+    );
+}
+```
+
+#### 4. **Repositories Abstract Database Operations**
+Repositories ONLY talk to the database. NO business logic:
+
+```typescript
+// ✅ CORRECT - Repository fetches data
+export async function getGameStateByRoomId(roomId: string): Promise<GameState | null> {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId)
+    });
+
+    if (!game) return null;
+    return JSON.parse(game.state) as GameState;
+}
+
+// ❌ WRONG - Business logic in repository
+export async function getGameStateByRoomId(roomId: string): Promise<GameState | null> {
+    const game = await db.query.games.findFirst(...);
+
+    // Don't validate, transform, or apply business rules here!
+    if (game.currentTurn !== playerId) throw new Error('Not your turn');
+
+    return game;
+}
+```
+
+### Service Responsibilities
+
+| Service | Domain | Methods |
+|---------|--------|---------|
+| **BuildingService** | Building placement | buildRoad, buildSettlement, buildCity, placeInitialSettlement, placeInitialRoad |
+| **GameService** | Game flow | startGame, rollDice, endTurn |
+| **TradingService** | Trading | tradeWithBank, offerTrade, acceptTrade, cancelTrade |
+| **RobberService** | Robber mechanics | moveRobber, discardCards |
+| **DevCardService** | Dev cards | buyDevCard, playDevCard, placeBonusRoad |
+
+### Adding New Features
+
+#### New Action
+1. Add service method first (lib/services/)
+2. Add thin wrapper in app/actions.ts
+3. Never put business logic in actions
+
+#### New Game Rule
+1. Add pure function to core/rules/
+2. Use from service layer
+3. Add unit tests
+
+#### New Validation
+1. Add pure function to core/validation/
+2. Use from service layer
+3. Add unit tests
+
+#### New Database Operation
+1. Add method to appropriate repository
+2. Use from service layer
+3. Never query database from services directly
+
+### Testing Strategy
+
+- **Actions**: Integration tests (call service)
+- **Services**: Integration tests (mock repositories)
+- **Validators/Rules**: Unit tests (pure functions)
+- **Repositories**: Integration tests (real database)
+
+### Migration Notes
+
+This architecture was established in Phase 4 (completed 2025-11-24):
+- **actions.ts reduced from 1345 → 160 lines (88% reduction)**
+- All 19 game actions refactored
+- 1185 lines moved to service layer
+- Zero duplicated business logic
+
+See `docs/phase4-refactoring-summary.md` for complete details.
+
+### Known Issues
+
+#### ResourceType vs TileType (Phase 5)
+- **Current**: `ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore' | 'desert'`
+- **Issue**: Desert is not a resource, it's a tile type
+- **Impact**: Player resources have unused `desert: 0` field
+- **Plan**: Phase 5 will split into proper types:
+  - `ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore'`
+  - `TileType = ResourceType | 'desert'`
+- **Files affected**: ~20 files, 115 occurrences
+
 ## Issue Tracking with bd (beads)
 
 **IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
