@@ -1,0 +1,38 @@
+import { GameState } from '@/lib/types';
+import { getAdjacentVertexIds } from '@/lib/hex';
+
+/**
+ * Validate settlement placement during setup phase
+ * 
+ * Rules:
+ * 1. Vertex must exist and be empty
+ * 2. Must be at least 2 edges away from any other settlement (distance rule)
+ * 
+ * @param gameState - Current game state
+ * @param vertexId - Vertex ID to place settlement
+ * @param playerId - Player attempting to place
+ * @returns true if valid placement
+ */
+export function isValidSetupSettlement(
+    gameState: GameState,
+    vertexId: string,
+    playerId: string
+): boolean {
+    // 1. Check if vertex exists and is empty
+    const vertex = gameState.board.vertices[vertexId];
+    if (!vertex) return false; // Invalid vertex ID
+    if (vertex.owner !== null) return false; // Already occupied
+
+    // 2. Distance Rule: Check adjacent vertices
+    const [q, r, d] = vertexId.split(',').map(Number);
+    const adjacentIds = getAdjacentVertexIds(q, r, d);
+
+    for (const adjId of adjacentIds) {
+        const adjVertex = gameState.board.vertices[adjId];
+        if (adjVertex && adjVertex.owner !== null) {
+            return false; // Too close to another building
+        }
+    }
+
+    return true;
+}
