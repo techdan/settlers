@@ -36,3 +36,41 @@ export function isValidSetupSettlement(
 
     return true;
 }
+
+/**
+ * Validate road placement during setup phase
+ *
+ * Rules:
+ * 1. Edge must exist and be empty
+ * 2. Must be adjacent to the last placed settlement
+ *
+ * @param gameState - Current game state
+ * @param edgeId - Edge ID to place road
+ * @param playerId - Player attempting to place
+ * @returns true if valid placement
+ */
+export function isValidSetupRoad(
+    gameState: GameState,
+    edgeId: string,
+    playerId: string
+): boolean {
+    // 1. Check if edge exists and is empty
+    const edge = gameState.board.edges[edgeId];
+    if (!edge) return false; // Invalid edge ID
+    if (edge.owner !== null) return false; // Already occupied
+
+    // 2. Must be adjacent to last placed settlement
+    if (!gameState.lastPlacedSettlementId) return false;
+
+    // Check if edge is adjacent to the settlement
+    const [settQ, settR, settD] = gameState.lastPlacedSettlementId.split(',').map(Number);
+    const [edgeQ, edgeR, edgeD] = edgeId.split(',').map(Number);
+
+    // An edge is adjacent to a vertex if they share coordinates and directions match
+    // Vertex (q,r,d) is adjacent to edges (q,r,d) and (q,r,(d+5)%6)
+    const isAdjacent = (
+        (edgeQ === settQ && edgeR === settR && (edgeD === settD || edgeD === (settD + 5) % 6))
+    );
+
+    return isAdjacent;
+}

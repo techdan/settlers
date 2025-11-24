@@ -5,10 +5,12 @@ import {
     isValidMainPhaseSettlement,
     isValidMainPhaseCity
 } from '@/core/validation/building-validator';
+import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
 import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { checkVictoryCondition } from '@/core/rules/victory-conditions';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
+import { getHexesForVertex } from '@/lib/hex';
 
 /**
  * Building Service
@@ -17,7 +19,7 @@ import { GAME_CONSTANTS } from '@/core/rules/constants';
 
 /**
  * Build a road during main phase
- * 
+ *
  * @param roomId - Room ID
  * @param playerId - Player ID
  * @param edgeId - Edge ID to place road
@@ -94,7 +96,7 @@ export async function buildRoad(
 
 /**
  * Build a settlement during main phase
- * 
+ *
  * @param roomId - Room ID
  * @param playerId - Player ID
  * @param vertexId - Vertex ID to place settlement
@@ -169,7 +171,7 @@ export async function buildSettlement(
 
 /**
  * Upgrade a settlement to a city
- * 
+ *
  * @param roomId - Room ID
  * @param playerId - Player ID
  * @param vertexId - Vertex ID to upgrade
@@ -235,6 +237,172 @@ export async function buildCity(
         message: `${player.name} upgraded to a city`,
         playerId
     });
+
+    // Save to database
+    await updateGameState(gameState);
+
+    return gameState;
+}
+
+/**
+ * Place settlement during setup phase
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID
+ * @param vertexId - Vertex ID to place settlement
+ * @returns Updated game state
+ */
+export async function placeInitialSettlement(
+    roomId: string,
+    playerId: string,
+    vertexId: string
+): Promise<GameState> {
+    // Get game state
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // Validate turn
+    if (gameState.currentTurn !== playerId) {
+        throw new Error('Not your turn');
+    }
+
+    // Validate phase
+    if (gameState.phase !== 'setup_round_1_settlement' && gameState.phase !== 'setup_round_2_settlement') {
+        throw new Error('Invalid phase for settlement placement');
+    }
+
+    // Validate placement
+    if (!isValidSetupSettlement(gameState, vertexId, playerId)) {
+        throw new Error('Invalid settlement placement');
+    }
+
+    // Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Place settlement
+    gameState.board.vertices[vertexId].owner = playerId;
+    gameState.board.vertices[vertexId].structure = 'settlement';
+    player.settlementsRemaining--;
+    player.victoryPoints++;
+
+    // Store settlement ID for road validation
+    gameState.lastPlacedSettlementId = vertexId;
+
+    // In round 2, give resources for placement
+    if (gameState.phase === 'setup_round_2_settlement') {
+        const [q, r, d] = vertexId.split(',').map(Number);
+        const hexes = getHexesForVertex(q, r, d);
+        hexes.forEach(hexCoords => {
+            const hex = gameState.board.hexes.find(
+                h => h.hex.q === hexCoords.q && h.hex.r === hexCoords.r
+            );
+            if (hex && hex.resource !== 'desert') {
+                const resource = hex.resource as keyof typeof player.resources;
+                player.resources[resource]++;
+            }
+        });
+    }
+
+    // Update phase
+    if (gameState.phase === 'setup_round_1_settlement') {
+        gameState.phase = 'setup_round_1_road';
+    } else {
+        gameState.phase = 'setup_round_2_road';
+    }
+
+    // Add log
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} placed a settlement`,
+        playerId
+    });
+
+    // Save to database
+    await updateGameState(gameState);
+
+    return gameState;
+}
+
+/**
+ * Place road during setup phase
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID
+ * @param edgeId - Edge ID to place road
+ * @returns Updated game state
+ */
+export async function placeInitialRoad(
+    roomId: string,
+    playerId: string,
+    edgeId: string
+): Promise<GameState> {
+    // Get game state
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // Validate turn
+    if (gameState.currentTurn !== playerId) {
+        throw new Error('Not your turn');
+    }
+
+    // Validate phase
+    if (gameState.phase !== 'setup_round_1_road' && gameState.phase !== 'setup_round_2_road') {
+        throw new Error('Invalid phase for road placement');
+    }
+
+    // Validate placement
+    if (!isValidSetupRoad(gameState, edgeId, playerId)) {
+        throw new Error('Invalid road placement');
+    }
+
+    // Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Place road
+    gameState.board.edges[edgeId].owner = playerId;
+    gameState.board.edges[edgeId].structure = 'road';
+    player.roadsRemaining--;
+
+    // Add log
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} placed a road`,
+        playerId
+    });
+
+    // Update phase and turn
+    const currentPlayerIndex = gameState.turnOrder.indexOf(playerId);
+
+    if (gameState.phase === 'setup_round_1_road') {
+        // Round 1: Move to next player
+        if (currentPlayerIndex === gameState.turnOrder.length - 1) {
+            // Last player, start round 2 with same player
+            gameState.phase = 'setup_round_2_settlement';
+        } else {
+            // Next player's turn
+            gameState.currentTurn = gameState.turnOrder[currentPlayerIndex + 1];
+            gameState.phase = 'setup_round_1_settlement';
+        }
+    } else {
+        // Round 2: Move backwards
+        if (currentPlayerIndex === 0) {
+            // First player, start main game
+            gameState.phase = 'waiting_for_roll';
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `Setup complete! ${player.name} starts the game.`
+            });
+        } else {
+            // Previous player's turn
+            gameState.currentTurn = gameState.turnOrder[currentPlayerIndex - 1];
+            gameState.phase = 'setup_round_2_settlement';
+        }
+    }
 
     // Save to database
     await updateGameState(gameState);
