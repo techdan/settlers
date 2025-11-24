@@ -222,12 +222,188 @@ import { BUILDING_COSTS } from '@/core/rules/building-costs';
 BUILDING_COSTS. // → IDE suggests: road, settlement, city, devCard
 ```
 
+## Using Repositories (Phase 3)
+
+### ✅ New Way
+```typescript
+import { gameRepository, roomRepository, playerRepository } from '@/lib/repositories';
+
+// Get game state
+const gameState = await gameRepository.getGameStateByRoomId(roomId);
+
+// Create a new room
+const room = await roomRepository.createRoom('ABCD');
+
+// Find players in a room
+const players = await playerRepository.findPlayersByRoomId(roomId);
+
+// Update game state
+await gameRepository.updateGameState(updatedState);
+```
+
+### ❌ Old Way
+```typescript
+// Direct database queries in actions
+const game = await db.query.games.findFirst({
+    where: eq(games.roomId, roomId)
+});
+const gameState = JSON.parse(game.state);
+```
+
+## Using Services (Phase 3)
+
+### ✅ New Way
+```typescript
+import { buildingService, gameService } from '@/lib/services';
+
+// Actions become thin wrappers
+export async function buildSettlement(roomId: string, playerId: string, vertexId: string) {
+    return buildingService.buildSettlement(roomId, playerId, vertexId);
+}
+
+export async function rollDice(roomId: string) {
+    return gameService.rollDice(roomId);
+}
+```
+
+### ❌ Old Way
+```typescript
+export async function buildSettlement(roomId: string, playerId: string, vertexId: string) {
+    // 150+ lines of mixed concerns:
+    // - Database queries
+    // - Validation logic
+    // - Business rules
+    // - Resource management
+    // - Victory checking
+}
+```
+
+## Architecture Overview (Phase 3)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Actions Layer (app/actions/)                            │
+│ - API surface                                            │
+│ - Authentication/Authorization                           │
+│ - Thin wrappers around services                          │
+└────────────────────┬────────────────────────────────────┘
+                     │ calls
+┌────────────────────▼────────────────────────────────────┐
+│ Service Layer (lib/services/)                            │
+│ - BuildingService, GameService                           │
+│ - Orchestrates business logic                            │
+│ - Coordinates between managers and repositories          │
+└────────┬───────────────────────┬────────────────────────┘
+         │ uses                  │ uses
+┌────────▼─────────────┐ ┌───────▼────────────────────────┐
+│ Managers             │ │ Repositories                    │
+│ (core/engine/)       │ │ (lib/repositories/)             │
+│ - Domain operations  │ │ - Data access layer             │
+│ - Pure functions     │ │ - Database queries              │
+└────────┬─────────────┘ └────────────────────────────────┘
+         │ uses
+┌────────▼─────────────────────────────────────────────────┐
+│ Rules & Validators (core/rules/, core/validation/)       │
+│ - Game constants and rules                                │
+│ - Validation logic                                        │
+│ - Pure, testable functions                                │
+└──────────────────────────────────────────────────────────┘
+```
+
+## Complete Example: Building a Settlement (Phase 3)
+
+### Action Layer
+```typescript
+// app/actions/buildings.ts
+import { buildingService } from '@/lib/services';
+
+export async function buildSettlement(roomId: string, playerId: string, vertexId: string) {
+    return buildingService.buildSettlement(roomId, playerId, vertexId);
+}
+```
+
+### Service Layer
+```typescript
+// lib/services/building-service.ts
+import { isValidMainPhaseSettlement } from '@/core/validation/building-validator';
+import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
+import { checkVictoryCondition } from '@/core/rules/victory-conditions';
+import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
+import * as gameRepository from '@/lib/repositories/game-repository';
+
+export class BuildingService {
+    async buildSettlement(roomId: string, playerId: string, vertexId: string) {
+        // 1. Get game state (Repository)
+        const game = await gameRepository.getGameStateByRoomId(roomId);
+        if (!game) throw new Error('Game not found');
+
+        // 2. Validate (Validator)
+        if (!isValidMainPhaseSettlement(game, vertexId, playerId)) {
+            throw new Error('Invalid settlement placement');
+        }
+
+        // 3. Check resources (Rules)
+        const player = game.players.find(p => p.id === playerId);
+        if (!player || !canAfford(player.resources, BUILDING_COSTS.settlement)) {
+            throw new Error('Insufficient resources');
+        }
+
+        // 4. Deduct resources (Rules)
+        deductCost(player.resources, BUILDING_COSTS.settlement);
+
+        // 5. Place settlement
+        game.board.vertices[vertexId].owner = playerId;
+        game.board.vertices[vertexId].structure = 'settlement';
+        player.settlementsRemaining--;
+        player.victoryPoints++;
+
+        // 6. Update game state (Manager)
+        updateLongestRoad(game);
+
+        // 7. Check victory (Rules)
+        const winnerId = checkVictoryCondition(game);
+        if (winnerId) {
+            game.winner = winnerId;
+            game.phase = 'game_over';
+        }
+
+        // 8. Save to database (Repository)
+        await gameRepository.updateGameState(game);
+        return game;
+    }
+}
+```
+
+## Migration Checklist
+
+### Phase 1: Foundation ✅
+- [x] Extract types to `lib/types/`
+- [x] Extract rules to `core/rules/`
+- [x] Extract longest road to `core/engine/scoring/`
+
+### Phase 2: Core Engine ✅
+- [x] Extract validators to `core/validation/`
+- [x] Extract board logic to `core/engine/board/`
+- [x] Extract resource manager to `core/engine/resources/`
+- [x] Extract dev card manager to `core/engine/development/`
+
+### Phase 3: Service Layer ✅
+- [x] Create repository layer in `lib/repositories/`
+- [x] Create service layer in `lib/services/`
+- [x] Establish layered architecture
+
+### Phase 4: Action Refactoring (Next)
+- [ ] Refactor building actions to use services
+- [ ] Refactor game actions to use services
+- [ ] Add missing services (Trading, Robber, DevCard)
+- [ ] Add unit tests
+
 ## Next Steps
 
-As we continue refactoring:
-- Validators will move to `@/core/validation/`
-- Managers will be in `@/core/engine/{domain}/`
-- Services will be in `@/lib/services/`
-- Repositories will be in `@/lib/repositories/`
+Phase 3 is complete! The architecture is now:
+- Repositories handle data access
+- Services orchestrate business logic
+- Managers execute domain operations
+- Rules and validators provide pure logic
 
-Stay tuned for Phase 2!
+Stay tuned for Phase 4: Action Refactoring!
