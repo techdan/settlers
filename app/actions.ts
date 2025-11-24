@@ -72,7 +72,7 @@ export async function joinRoom(formData: FormData) {
 
 import { games } from '@/lib/db/schema';
 import { generateStandardBoard, ResourceType } from '@/lib/board-data';
-import { GameState, PlayerState, Vertex, Edge } from '@/lib/game-types';
+import { GameState, PlayerState, Vertex, Edge, DevCardType } from '@/lib/game-types';
 import { getCanonicalVertexId, getCanonicalEdgeId, getHexesForVertex, getAdjacentEdgesForVertex } from '@/lib/hex';
 
 export async function startGame(roomId: string) {
@@ -93,7 +93,7 @@ export async function startGame(roomId: string) {
         name: p.name,
         color: ['red', 'blue', 'white', 'orange'][i % 4] as any,
         resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0 },
-        devCards: {},
+        devCards: { knight: 0, victory_point: 0, road_building: 0, year_of_plenty: 0, monopoly: 0 },
         settlementsRemaining: 5,
         citiesRemaining: 4,
         roadsRemaining: 15,
@@ -134,7 +134,16 @@ export async function startGame(roomId: string) {
         }
     });
 
-    // 5. Create Game State
+    // 5. Create Dev Card Deck
+    const devCardDeck: DevCardType[] = [
+        ...Array(14).fill('knight'),
+        ...Array(5).fill('victory_point'),
+        ...Array(2).fill('road_building'),
+        ...Array(2).fill('year_of_plenty'),
+        ...Array(2).fill('monopoly'),
+    ].sort(() => Math.random() - 0.5) as DevCardType[];
+
+    // 6. Create Game State
     const gameState: GameState = {
         id: randomUUID(),
         roomId,
@@ -149,12 +158,15 @@ export async function startGame(roomId: string) {
         phase: 'setup_round_1_settlement',
         winner: null,
         lastPlacedSettlementId: null,
-        robberHexId: hexes.find(h => h.resource === 'desert')?.id || null,
+        robberHexId: '0,0', // Default to center or desert if found
+        devCardDeck,
+        longestRoadOwner: null,
+        longestRoadLength: 0,
         logs: [{
             id: randomUUID(),
             timestamp: Date.now(),
-            message: 'Game started!',
-        }],
+            message: 'Game started!'
+        }]
     };
 
     // 6. Save to DB
@@ -571,6 +583,151 @@ export async function moveRobber(roomId: string, playerId: string, hexId: string
         .where(eq(games.id, gameState.id));
 }
 
+export async function buyDevCard(roomId: string, playerId: string) {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId),
+    });
+
+    if (!game) throw new Error('Game not found');
+
+    const gameState = JSON.parse(game.state) as GameState;
+
+    // 1. Validate Turn & Phase
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') {
+        throw new Error('Cannot buy dev card in current phase');
+    }
+
+    // 2. Validate Resources (Sheep, Wheat, Ore)
+    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
+    const player = gameState.players[playerIndex];
+
+    if (player.resources.sheep < 1 || player.resources.wheat < 1 || player.resources.ore < 1) {
+        throw new Error('Not enough resources');
+    }
+
+    // 3. Validate Deck
+    if (gameState.devCardDeck.length === 0) {
+        throw new Error('No development cards left');
+    }
+
+    // 4. Deduct Resources
+    player.resources.sheep--;
+    player.resources.wheat--;
+    player.resources.ore--;
+
+    // 5. Draw Card
+    const card = gameState.devCardDeck.pop();
+    if (!card) throw new Error('Deck error'); // Should not happen due to check above
+
+    if (!player.devCards[card]) player.devCards[card] = 0;
+    player.devCards[card]++;
+
+    // 6. Log
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} bought a development card.`,
+        playerId
+    });
+
+    // 7. Save
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function playDevCard(roomId: string, playerId: string, cardType: DevCardType, options?: { resource1?: ResourceType, resource2?: ResourceType, monopolyResource?: ResourceType }) {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId),
+    });
+
+    if (!game) throw new Error('Game not found');
+
+    const gameState = JSON.parse(game.state) as GameState;
+
+    // 1. Validate Turn & Phase
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') {
+        throw new Error('Cannot play dev card in current phase');
+    }
+
+    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
+    const player = gameState.players[playerIndex];
+
+    // 2. Validate Card Ownership
+    if (!player.devCards[cardType] || player.devCards[cardType] <= 0) {
+        throw new Error(`You do not have a ${cardType} card`);
+    }
+
+    // 3. Execute Card Effect
+    let logMessage = `${player.name} played a ${cardType.replace(/_/g, ' ')} card.`;
+
+    switch (cardType) {
+        case 'knight':
+            gameState.phase = 'robber_placement';
+            logMessage += ' Move the robber.';
+            break;
+
+        case 'victory_point':
+            player.victoryPoints++;
+            logMessage += ' +1 Victory Point!';
+            break;
+
+        case 'road_building':
+            gameState.phase = 'road_building_1';
+            logMessage += ' Place your first road.';
+            break;
+
+        case 'year_of_plenty':
+            if (!options?.resource1 || !options?.resource2) throw new Error('Must select 2 resources');
+            player.resources[options.resource1]++;
+            player.resources[options.resource2]++;
+            logMessage += ` Received ${options.resource1} and ${options.resource2}.`;
+            break;
+
+        case 'monopoly':
+            if (!options?.monopolyResource) throw new Error('Must select a resource to monopolize');
+            const targetRes = options.monopolyResource;
+            let stolenCount = 0;
+
+            gameState.players.forEach(p => {
+                if (p.id !== playerId) {
+                    const amount = p.resources[targetRes];
+                    if (amount > 0) {
+                        p.resources[targetRes] = 0;
+                        stolenCount += amount;
+                    }
+                }
+            });
+
+            player.resources[targetRes] += stolenCount;
+            logMessage += ` Stole ${stolenCount} ${targetRes} from other players.`;
+            break;
+    }
+
+    // 4. Decrement Card Count
+    // Note: VP cards are usually not "played" until the end, but if we treat them as played, we remove them.
+    // Standard rules: You don't "play" VP cards, they just count. But for this implementation, let's assume explicit play for simplicity or handle them separately.
+    // Actually, let's NOT remove VP cards if they are just revealed? 
+    // If we add VP to the count, we should remove the card so it's not counted twice if we iterate.
+    // Let's remove it.
+    player.devCards[cardType]--;
+
+    // 5. Log
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: logMessage,
+        playerId
+    });
+
+    // 6. Save
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
 export async function discardCards(roomId: string, playerId: string, resources: Record<ResourceType, number>) {
     const game = await db.query.games.findFirst({
         where: eq(games.roomId, roomId),
@@ -641,6 +798,547 @@ export async function discardCards(roomId: string, playerId: string, resources: 
     }
 
     // Save
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+import { getPortForVertex } from '@/lib/board-data';
+
+export async function tradeWithBank(roomId: string, playerId: string, giveResource: ResourceType, getResource: ResourceType) {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId),
+    });
+
+    if (!game) throw new Error('Game not found');
+
+    const gameState = JSON.parse(game.state) as GameState;
+
+    // 1. Validate Turn & Phase
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') {
+        throw new Error('Cannot trade in current phase');
+    }
+
+    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
+    const player = gameState.players[playerIndex];
+
+    // 2. Determine Trade Ratio
+    let ratio = 4; // Default 4:1
+
+    // Check all player's settlements/cities for ports
+    for (const vertexId in gameState.board.vertices) {
+        const vertex = gameState.board.vertices[vertexId];
+        if (vertex.owner === playerId && vertex.structure) {
+            const portType = getPortForVertex(vertexId);
+            if (portType) {
+                if (portType === giveResource) {
+                    ratio = 2; // Specific port for this resource
+                    break; // Best possible ratio found
+                } else if (portType === 'generic') {
+                    ratio = Math.min(ratio, 3); // Generic port (3:1)
+                }
+            }
+        }
+    }
+
+    // 3. Validate Resources
+    if (player.resources[giveResource] < ratio) {
+        throw new Error(`Not enough ${giveResource}. Need ${ratio} to trade.`);
+    }
+
+    // 4. Execute Trade
+    player.resources[giveResource] -= ratio;
+    player.resources[getResource]++;
+
+    // 5. Log
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} traded ${ratio} ${giveResource} for 1 ${getResource}.`,
+        playerId
+    });
+
+    // 6. Save
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function offerTrade(roomId: string, playerId: string, give: Record<ResourceType, number>, get: Record<ResourceType, number>) {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId),
+    });
+
+    if (!game) throw new Error('Game not found');
+
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') throw new Error('Cannot trade now');
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Validate resources
+    for (const [res, amount] of Object.entries(give)) {
+        if ((player.resources[res as ResourceType] || 0) < amount) {
+            throw new Error(`Not enough ${res} to offer`);
+        }
+    }
+
+    gameState.tradeOffer = {
+        id: randomUUID(),
+        initiator: playerId,
+        give,
+        get,
+        status: 'open'
+    };
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} offered a trade.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function acceptTrade(roomId: string, playerId: string) {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId),
+    });
+
+    if (!game) throw new Error('Game not found');
+
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (!gameState.tradeOffer || gameState.tradeOffer.status !== 'open') {
+        throw new Error('No active trade offer');
+    }
+
+    if (gameState.tradeOffer.initiator === playerId) {
+        throw new Error('Cannot accept your own trade');
+    }
+
+    const initiator = gameState.players.find(p => p.id === gameState.tradeOffer!.initiator);
+    const acceptor = gameState.players.find(p => p.id === playerId);
+
+    if (!initiator || !acceptor) throw new Error('Player not found');
+
+    // Validate acceptor resources
+    for (const [res, amount] of Object.entries(gameState.tradeOffer.get)) {
+        if ((acceptor.resources[res as ResourceType] || 0) < amount) {
+            throw new Error(`Not enough ${res} to accept trade`);
+        }
+    }
+
+    // Execute Trade
+    // Initiator gives 'give', gets 'get'
+    // Acceptor gives 'get', gets 'give'
+    for (const [res, amount] of Object.entries(gameState.tradeOffer.give)) {
+        initiator.resources[res as ResourceType] -= amount;
+        acceptor.resources[res as ResourceType] += amount;
+    }
+
+    for (const [res, amount] of Object.entries(gameState.tradeOffer.get)) {
+        acceptor.resources[res as ResourceType] -= amount;
+        initiator.resources[res as ResourceType] += amount;
+    }
+
+    gameState.tradeOffer = null;
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${acceptor.name} accepted the trade.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function cancelTrade(roomId: string, playerId: string) {
+    const game = await db.query.games.findFirst({
+        where: eq(games.roomId, roomId),
+    });
+
+    if (!game) throw new Error('Game not found');
+
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (!gameState.tradeOffer) throw new Error('No active trade offer');
+    if (gameState.tradeOffer.initiator !== playerId) throw new Error('Only initiator can cancel');
+
+    gameState.tradeOffer = null;
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `Trade offer cancelled.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity, calculateLongestRoad } from '@/lib/game-logic';
+
+export async function buildRoad(roomId: string, playerId: string, edgeId: string) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') throw new Error('Cannot build now');
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Cost: 1 Brick, 1 Wood
+    if (player.resources.brick < 1 || player.resources.wood < 1) {
+        throw new Error('Not enough resources (1 Brick, 1 Wood)');
+    }
+
+    if (!isValidMainPhaseRoad(gameState, edgeId, playerId)) {
+        throw new Error('Invalid road placement');
+    }
+
+    // Execute
+    player.resources.brick--;
+    player.resources.wood--;
+    player.roadsRemaining--;
+
+    gameState.board.edges[edgeId].owner = playerId;
+    gameState.board.edges[edgeId].structure = 'road';
+
+    // Longest Road Logic
+    const newLength = calculateLongestRoad(gameState, playerId);
+
+    if (newLength >= 5) {
+        if (gameState.longestRoadOwner === null) {
+            gameState.longestRoadOwner = playerId;
+            gameState.longestRoadLength = newLength;
+            player.victoryPoints += 2;
+            gameState.logs.push({
+                id: randomUUID(),
+                timestamp: Date.now(),
+                message: `${player.name} took the Longest Road (${newLength} segments) and gained 2 VPs!`,
+                playerId
+            });
+        } else if (gameState.longestRoadOwner === playerId) {
+            gameState.longestRoadLength = Math.max(gameState.longestRoadLength, newLength);
+        } else {
+            // Someone else has it
+            if (newLength > gameState.longestRoadLength) {
+                // Steal it!
+                const oldOwnerId = gameState.longestRoadOwner;
+                const oldOwner = gameState.players.find(p => p.id === oldOwnerId);
+                if (oldOwner) oldOwner.victoryPoints -= 2;
+
+                gameState.longestRoadOwner = playerId;
+                gameState.longestRoadLength = newLength;
+                player.victoryPoints += 2;
+
+                gameState.logs.push({
+                    id: randomUUID(),
+                    timestamp: Date.now(),
+                    message: `${player.name} stole the Longest Road (${newLength} segments) from ${oldOwner?.name} and gained 2 VPs!`,
+                    playerId
+                });
+            }
+        }
+    }
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} built a road.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function buildSettlement(roomId: string, playerId: string, vertexId: string) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') throw new Error('Cannot build now');
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Cost: 1 Brick, 1 Wood, 1 Sheep, 1 Wheat
+    if (player.resources.brick < 1 || player.resources.wood < 1 || player.resources.sheep < 1 || player.resources.wheat < 1) {
+        throw new Error('Not enough resources (1 Brick, 1 Wood, 1 Sheep, 1 Wheat)');
+    }
+
+    if (!isValidMainPhaseSettlement(gameState, vertexId, playerId)) {
+        throw new Error('Invalid settlement placement');
+    }
+
+    // Execute
+    player.resources.brick--;
+    player.resources.wood--;
+    player.resources.sheep--;
+    player.resources.wheat--;
+    player.settlementsRemaining--;
+    player.victoryPoints++;
+
+    gameState.board.vertices[vertexId].owner = playerId;
+    gameState.board.vertices[vertexId].structure = 'settlement';
+
+    // Longest Road Recalculation (Settlement might break roads)
+    const lengths = gameState.players.map(p => ({
+        id: p.id,
+        len: calculateLongestRoad(gameState, p.id)
+    }));
+    lengths.sort((a, b) => b.len - a.len);
+
+    const max = lengths[0];
+    const runnerUp = lengths[1];
+
+    const currentOwnerId = gameState.longestRoadOwner;
+
+    if (currentOwnerId) {
+        const currentOwnerStats = lengths.find(l => l.id === currentOwnerId);
+        // If current owner is still best (or tied for best), they keep it
+        if (currentOwnerStats && currentOwnerStats.len >= 5 && currentOwnerStats.len >= max.len) {
+            gameState.longestRoadLength = currentOwnerStats.len;
+        } else {
+            // Current owner lost it
+            const oldOwner = gameState.players.find(p => p.id === currentOwnerId);
+            if (oldOwner) oldOwner.victoryPoints -= 2;
+
+            // Determine new owner
+            if (max.len >= 5) {
+                if (runnerUp && runnerUp.len === max.len) {
+                    // Tie at top -> No one owns it
+                    gameState.longestRoadOwner = null;
+                    gameState.longestRoadLength = max.len;
+                    gameState.logs.push({
+                        id: randomUUID(),
+                        timestamp: Date.now(),
+                        message: `Longest Road is tied at ${max.len}. No one owns it.`,
+                    });
+                } else {
+                    // New Winner
+                    gameState.longestRoadOwner = max.id;
+                    gameState.longestRoadLength = max.len;
+                    const newOwner = gameState.players.find(p => p.id === max.id);
+                    if (newOwner) newOwner.victoryPoints += 2;
+                    gameState.logs.push({
+                        id: randomUUID(),
+                        timestamp: Date.now(),
+                        message: `${newOwner?.name} took the Longest Road (${max.len}).`,
+                    });
+                }
+            } else {
+                // No one qualifies
+                gameState.longestRoadOwner = null;
+                gameState.longestRoadLength = 0;
+                gameState.logs.push({
+                    id: randomUUID(),
+                    timestamp: Date.now(),
+                    message: `Longest Road lost. No one has 5 segments.`,
+                });
+            }
+        }
+    } else {
+        // No current owner, check if someone claims it (unlikely from settlement build, but possible if tie broken?)
+        if (max.len >= 5) {
+            if (!runnerUp || runnerUp.len < max.len) {
+                gameState.longestRoadOwner = max.id;
+                gameState.longestRoadLength = max.len;
+                const newOwner = gameState.players.find(p => p.id === max.id);
+                if (newOwner) newOwner.victoryPoints += 2;
+                gameState.logs.push({
+                    id: randomUUID(),
+                    timestamp: Date.now(),
+                    message: `${newOwner?.name} took the Longest Road (${max.len}).`,
+                });
+            }
+        }
+    }
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} built a settlement.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function buildCity(roomId: string, playerId: string, vertexId: string) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'main_phase') throw new Error('Cannot build now');
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Cost: 3 Ore, 2 Wheat
+    if (player.resources.ore < 3 || player.resources.wheat < 2) {
+        throw new Error('Not enough resources (3 Ore, 2 Wheat)');
+    }
+
+    if (!isValidMainPhaseCity(gameState, vertexId, playerId)) {
+        throw new Error('Invalid city placement');
+    }
+
+    // Execute
+    player.resources.ore -= 3;
+    player.resources.wheat -= 2;
+    player.citiesRemaining--;
+    player.settlementsRemaining++; // Get settlement back
+    player.victoryPoints++; // +1 net VP (City is 2, Settlement was 1)
+
+    gameState.board.vertices[vertexId].structure = 'city';
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} upgraded to a city.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function debugGiveResource(roomId: string, playerId: string, resource: ResourceType) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    player.resources[resource]++;
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `DEBUG: ${player.name} gave themselves 1 ${resource}.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function placeBonusRoad(roomId: string, playerId: string, edgeId: string) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    if (gameState.currentTurn !== playerId) throw new Error('Not your turn');
+    if (gameState.phase !== 'road_building_1' && gameState.phase !== 'road_building_2') {
+        throw new Error('Not in road building phase');
+    }
+
+    // Reuse main phase validation logic (it's the same, just free)
+    if (!isValidMainPhaseRoad(gameState, edgeId, playerId)) {
+        throw new Error('Invalid road placement');
+    }
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    if (player.roadsRemaining <= 0) {
+        throw new Error('No roads remaining');
+    }
+
+    // Place Road
+    player.roadsRemaining--;
+    gameState.board.edges[edgeId].owner = playerId;
+    gameState.board.edges[edgeId].structure = 'road';
+
+    // Longest Road Logic
+    const newLength = calculateLongestRoad(gameState, playerId);
+    if (newLength >= 5) {
+        if (gameState.longestRoadOwner === null) {
+            gameState.longestRoadOwner = playerId;
+            gameState.longestRoadLength = newLength;
+            player.victoryPoints += 2;
+            gameState.logs.push({
+                id: randomUUID(),
+                timestamp: Date.now(),
+                message: `${player.name} took the Longest Road (${newLength} segments) and gained 2 VPs!`,
+                playerId
+            });
+        } else if (gameState.longestRoadOwner === playerId) {
+            gameState.longestRoadLength = Math.max(gameState.longestRoadLength, newLength);
+        } else {
+            if (newLength > gameState.longestRoadLength) {
+                const oldOwnerId = gameState.longestRoadOwner;
+                const oldOwner = gameState.players.find(p => p.id === oldOwnerId);
+                if (oldOwner) oldOwner.victoryPoints -= 2;
+
+                gameState.longestRoadOwner = playerId;
+                gameState.longestRoadLength = newLength;
+                player.victoryPoints += 2;
+                gameState.logs.push({
+                    id: randomUUID(),
+                    timestamp: Date.now(),
+                    message: `${player.name} stole the Longest Road (${newLength} segments) from ${oldOwner?.name} and gained 2 VPs!`,
+                    playerId
+                });
+            }
+        }
+    }
+
+    // Update Phase
+    if (gameState.phase === 'road_building_1') {
+        // Check if player has more roads
+        if (player.roadsRemaining > 0) {
+            gameState.phase = 'road_building_2';
+            gameState.logs.push({
+                id: randomUUID(),
+                timestamp: Date.now(),
+                message: `${player.name} placed first bonus road.`,
+                playerId
+            });
+        } else {
+            gameState.phase = 'main_phase';
+            gameState.logs.push({
+                id: randomUUID(),
+                timestamp: Date.now(),
+                message: `${player.name} finished road building (no roads left).`,
+                playerId
+            });
+        }
+    } else {
+        gameState.phase = 'main_phase';
+        gameState.logs.push({
+            id: randomUUID(),
+            timestamp: Date.now(),
+            message: `${player.name} finished road building.`,
+            playerId
+        });
+    }
+
     await db.update(games)
         .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
         .where(eq(games.id, gameState.id));

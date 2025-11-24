@@ -198,11 +198,11 @@ export const getAdjacentEdgesForVertex = (q: number, r: number, d: number): stri
   return [
     getCanonicalEdgeId(q, r, d),
     getCanonicalEdgeId(q, r, (d + 1) % 6),
-    // 3rd edge: Edge (d+1)%6 of Neighbor (6-d)%6
+    // 3rd edge: Edge (d+2)%6 of Neighbor (6-d)%6
     getCanonicalEdgeId(
       q + DIRECTIONS[nDir].q,
       r + DIRECTIONS[nDir].r,
-      (d + 1) % 6
+      (d + 2) % 6
     )
   ];
 };

@@ -223,16 +223,15 @@ visual themes render correctly.
 
 ## Tasks
 
--   [ ] Implement `rollDice` with resource distribution.
--   [ ] Implement Robber logic:
-    -   Discard enforcement (half cards if > 7).
-    -   Move Robber validation (must move to new hex).
-    -   Steal resource (random from target).
--   [ ] Implement `endTurn` rotation.
+- [x] Implement `rollDice` server action (RNG, resource distribution)
+- [x] Implement `endTurn` rotation
+- [x] Implement Robber logic (discarding, moving, stealing)
+- [x] Wire up UI for Dice Roll and Turn Controls
+- [x] Implement `PlayerHand` and `GameLog` UI
 
 ------------------------------------------------------------------------
 
-# PHASE 6 --- BUILDING SYSTEM
+# PHASE 6 --- BUILDING SYSTEM (Completed)
 
 **Goal:** Allow players to build roads, settlements, and cities during the main phase.
 
@@ -255,47 +254,46 @@ visual themes render correctly.
 
 ## Tasks
 
--   [ ] Implement resource cost deduction.
--   [ ] Implement `isValidBuildPlacement` for Main Phase.
--   [ ] Implement City upgrade logic.
--   [ ] Implement Longest Road algorithm.
+-   [x] Implement resource cost deduction.
+-   [x] Implement `isValidBuildPlacement` for Main Phase.
+-   [x] Implement City upgrade logic.
+-   [x] Implement Longest Road algorithm.
 
 ------------------------------------------------------------------------
 
-# PHASE 7 --- TRADE SYSTEM
+# PHASE 7 --- TRADE SYSTEM (Completed)
 
 **Goal:** Enable resource exchange between players and with the bank.
 
 ## Architecture
 
 -   **Bank Trade:**
-    -   Action: `tradeBank(give: Resource[], get: Resource)`.
+    -   Action: `tradeWithBank(give: Resource, get: Resource)`.
     -   Logic: Checks for 2:1 or 3:1 ports. Default 4:1.
 
 -   **Player Trade:**
-    -   State: `gameState.activeTradeOffer` (nullable).
+    -   State: `gameState.tradeOffer` (nullable).
     -   Actions:
-        -   `proposeTrade(offer, request)`: Broadcasts to room.
+        -   `offerTrade(offer, request)`: Broadcasts to room.
         -   `acceptTrade(tradeId)`: Executes transfer.
-        -   `rejectTrade(tradeId)`: Closes offer.
-        -   `counterTrade`: Creates new proposal.
+        -   `cancelTrade(tradeId)`: Closes offer.
 
 ## Tasks
 
--   [ ] Implement Port detection for Bank Trades.
--   [ ] Implement Player Trade UI (Offer/Request selector).
--   [ ] Implement atomic resource swap transaction.
+-   [x] Implement Port detection for Bank Trades.
+-   [x] Implement Player Trade UI (Offer/Request selector).
+-   [x] Implement atomic resource swap transaction.
 
 ------------------------------------------------------------------------
 
-# PHASE 8 --- DEVELOPMENT CARDS
+# PHASE 8 --- DEVELOPMENT CARDS (Completed)
 
 **Goal:** Implement the Development Card deck and effects.
 
 ## Architecture
 
 -   **State:**
-    -   `gameState.devDeck`: Array of card types (shuffled).
+    -   `gameState.devCardDeck`: Array of card types (shuffled).
     -   `player.devCards`: Hidden from others.
     -   `player.playedDevCards`: Visible (Knights, etc.).
 
@@ -312,8 +310,8 @@ visual themes render correctly.
 
 ## Tasks
 
--   [ ] Implement `buyDevCard` action.
--   [ ] Implement `playDevCard` action with specific logic for each type.
+-   [x] Implement `buyDevCard` action.
+-   [x] Implement `playDevCard` action with specific logic for each type.
 -   [ ] Implement Largest Army tracking (>2 knights).
 
 ------------------------------------------------------------------------

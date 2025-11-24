@@ -2,12 +2,14 @@ import { ResourceType } from './board-data';
 
 export type PlayerColor = 'red' | 'blue' | 'white' | 'orange';
 
+export type DevCardType = 'knight' | 'victory_point' | 'road_building' | 'year_of_plenty' | 'monopoly';
+
 export interface PlayerState {
     id: string;
     name: string;
     color: PlayerColor;
     resources: Record<ResourceType, number>;
-    devCards: Record<string, number>; // To be defined later
+    devCards: Record<DevCardType, number>;
     settlementsRemaining: number;
     citiesRemaining: number;
     roadsRemaining: number;
@@ -43,6 +45,8 @@ export type GamePhase =
     | 'discarding'
     | 'robber_placement'
     | 'stealing'
+    | 'road_building_1'
+    | 'road_building_2'
     | 'game_over';
 
 export interface GameLogEntry {
@@ -50,6 +54,15 @@ export interface GameLogEntry {
     timestamp: number;
     message: string;
     playerId?: string; // Optional: associate log with a player
+}
+
+export interface TradeOffer {
+    id: string;
+    initiator: string;
+    give: Record<ResourceType, number>;
+    get: Record<ResourceType, number>;
+    status: 'open' | 'accepted' | 'cancelled';
+    acceptedBy?: string;
 }
 
 export interface GameState {
@@ -72,5 +85,9 @@ export interface GameState {
         d2: number;
         total: number;
     };
+    devCardDeck: DevCardType[];
+    tradeOffer?: TradeOffer | null;
+    longestRoadOwner: string | null;
+    longestRoadLength: number;
     logs: GameLogEntry[];
 }
