@@ -14,6 +14,43 @@ export function checkVictoryCondition(gameState: GameState): string | null {
 }
 
 /**
+ * Calculate a player's total victory points
+ * (including all sources)
+ */
+export function calculateTotalVictoryPoints(
+    gameState: GameState,
+    playerId: string
+): number {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return 0;
+
+    let points = 0;
+
+    // Settlements
+    const settlementsBuilt = GAME_CONSTANTS.STARTING_PIECES.settlements - player.settlementsRemaining;
+    points += settlementsBuilt * GAME_CONSTANTS.VP_FROM_SETTLEMENT;
+
+    // Cities
+    const citiesBuilt = GAME_CONSTANTS.STARTING_PIECES.cities - player.citiesRemaining;
+    points += citiesBuilt * GAME_CONSTANTS.VP_FROM_CITY;
+
+    // Victory Point Dev Cards
+    points += player.devCards.victory_point || 0;
+
+    // Longest Road
+    if (gameState.longestRoadOwner === playerId) {
+        points += GAME_CONSTANTS.VP_FROM_LONGEST_ROAD;
+    }
+
+    // Largest Army
+    if (gameState.largestArmyOwner === playerId) {
+        points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
+    }
+
+    return points;
+}
+
+/**
  * Calculate a player's public victory points
  * (excluding hidden VP dev cards)
  */
@@ -30,7 +67,7 @@ export function calculatePublicVictoryPoints(
     const settlementsBuilt = GAME_CONSTANTS.STARTING_PIECES.settlements - player.settlementsRemaining;
     points += settlementsBuilt * GAME_CONSTANTS.VP_FROM_SETTLEMENT;
 
-    // Cities  
+    // Cities
     const citiesBuilt = GAME_CONSTANTS.STARTING_PIECES.cities - player.citiesRemaining;
     points += citiesBuilt * GAME_CONSTANTS.VP_FROM_CITY;
 
@@ -39,10 +76,23 @@ export function calculatePublicVictoryPoints(
         points += GAME_CONSTANTS.VP_FROM_LONGEST_ROAD;
     }
 
-    // Largest Army (TODO: track this)
-    // if (gameState.largestArmyOwner === playerId) {
-    //     points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
-    // }
+    // Largest Army
+    if (gameState.largestArmyOwner === playerId) {
+        points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
+    }
 
     return points;
+}
+
+/**
+ * Update all players' victory points based on current game state
+ * This should be called whenever victory points might change:
+ * - After building/upgrading
+ * - After playing dev cards
+ * - After longest road/largest army changes
+ */
+export function updateAllVictoryPoints(gameState: GameState): void {
+    for (const player of gameState.players) {
+        player.victoryPoints = calculateTotalVictoryPoints(gameState, player.id);
+    }
 }

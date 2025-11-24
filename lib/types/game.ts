@@ -69,5 +69,6 @@ export interface GameState {
     tradeOffer?: TradeOffer | null;
     longestRoadOwner: string | null;
     longestRoadLength: number;
+    largestArmyOwner: string | null;
     logs: GameLogEntry[];
 }

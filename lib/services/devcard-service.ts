@@ -3,6 +3,9 @@ import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
 import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
+import { updateLargestArmy } from '@/core/engine/scoring/largest-army';
+import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
+import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { isValidMainPhaseRoad } from '@/core/validation/building-validator';
 
 /**
@@ -126,12 +129,13 @@ export async function playDevCard(
 
     switch (cardType) {
         case 'knight':
+            player.knightsPlayed++;
+            updateLargestArmy(gameState);
             gameState.phase = 'robber_placement';
             logMessage += '. Move the robber.';
             break;
 
         case 'victory_point':
-            player.victoryPoints++;
             logMessage += '. +1 Victory Point!';
             break;
 
@@ -173,6 +177,12 @@ export async function playDevCard(
 
     // Decrement card count
     player.devCards[cardType]--;
+
+    // Recalculate all victory points (covers victory_point cards and largest army changes)
+    updateAllVictoryPoints(gameState);
+
+    // Check victory
+    checkAndUpdateVictory(gameState);
 
     // Add log
     gameState.logs.push({
@@ -234,8 +244,14 @@ export async function placeBonusRoad(
     gameState.board.edges[edgeId].owner = playerId;
     gameState.board.edges[edgeId].structure = 'road';
 
-    // Update longest road
+    // Update longest road (might change VP)
     updateLongestRoad(gameState);
+
+    // Recalculate all victory points
+    updateAllVictoryPoints(gameState);
+
+    // Check victory
+    checkAndUpdateVictory(gameState);
 
     // Update phase
     if (gameState.phase === 'road_building_1') {

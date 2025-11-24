@@ -4,7 +4,7 @@ import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
-import { checkVictoryCondition } from '@/core/rules/victory-conditions';
+import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board-generator';
 import { createDevCardDeck } from '@/core/engine/development/dev-card-manager';
 import { getCanonicalVertexId, getCanonicalEdgeId } from '@/lib/hex';
@@ -42,6 +42,7 @@ export async function startGame(roomId: string): Promise<GameState> {
         citiesRemaining: 4,
         roadsRemaining: 15,
         victoryPoints: 0,
+        knightsPlayed: 0,
     }));
 
     // 4. Generate Board
@@ -103,6 +104,7 @@ export async function startGame(roomId: string): Promise<GameState> {
         devCardDeck,
         longestRoadOwner: null,
         longestRoadLength: 0,
+        largestArmyOwner: null,
         logs: [{
             id: randomUUID(),
             timestamp: Date.now(),
@@ -223,6 +225,18 @@ export async function endTurn(
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
+
+    // Recalculate victory points (in case something changed during the turn)
+    updateAllVictoryPoints(gameState);
+
+    // Check for victory before ending turn
+    checkAndUpdateVictory(gameState);
+
+    // If someone won, don't proceed to next turn
+    if (gameState.winner) {
+        await updateGameState(gameState);
+        return gameState;
+    }
 
     // Move to next player
     const currentIndex = gameState.turnOrder.indexOf(playerId);

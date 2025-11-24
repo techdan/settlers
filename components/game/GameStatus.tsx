@@ -61,15 +61,17 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     <span className="text-white font-bold">{4 - player.citiesRemaining}</span>
                                     <span>Cit</span>
                                 </div>
-                                <div className="flex flex-col items-center" title="Longest Road (2 VP)">
-                                    <span className={`font-bold ${gameState.longestRoadOwner === player.id ? 'text-orange-400' : 'text-slate-600'}`}>
-                                        {gameState.longestRoadOwner === player.id ? '2' : '-'}
+                                <div className="flex flex-col items-center" title={`Roads: ${15 - player.roadsRemaining}${gameState.longestRoadOwner === player.id ? ' (Longest Road: 2 VP)' : ''}`}>
+                                    <span className={`font-bold ${gameState.longestRoadOwner === player.id ? 'text-orange-400' : 'text-white'}`}>
+                                        {15 - player.roadsRemaining}
                                     </span>
                                     <span className={gameState.longestRoadOwner === player.id ? 'text-orange-400' : ''}>LR</span>
                                 </div>
-                                <div className="flex flex-col items-center" title="Largest Army (2 VP)">
-                                    <span className="text-slate-600">-</span>
-                                    <span>LA</span>
+                                <div className="flex flex-col items-center" title={`Knights: ${player.knightsPlayed}${gameState.largestArmyOwner === player.id ? ' (Largest Army: 2 VP)' : ''}`}>
+                                    <span className={`font-bold ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : 'text-white'}`}>
+                                        {player.knightsPlayed}
+                                    </span>
+                                    <span className={gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}>LA</span>
                                 </div>
                                 <div className="flex flex-col items-center" title="Dev Cards / Resources">
                                     <span className="text-white font-bold">{stats.devCardCount}/{stats.resourceCount}</span>

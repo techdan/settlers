@@ -8,7 +8,8 @@ import {
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
 import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
-import { checkVictoryCondition } from '@/core/rules/victory-conditions';
+import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
+import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { getHexesForVertex } from '@/lib/hex';
 
@@ -70,15 +71,14 @@ export async function buildRoad(
     gameState.board.edges[edgeId].owner = playerId;
     gameState.board.edges[edgeId].structure = 'road';
 
-    // Update longest road
+    // Update longest road (might change VP)
     updateLongestRoad(gameState);
 
+    // Recalculate all victory points
+    updateAllVictoryPoints(gameState);
+
     // Check victory
-    const winnerId = checkVictoryCondition(gameState);
-    if (winnerId) {
-        gameState.winner = winnerId;
-        gameState.phase = 'game_over';
-    }
+    checkAndUpdateVictory(gameState);
 
     // Add log
     gameState.logs.push({
@@ -144,16 +144,14 @@ export async function buildSettlement(
 
     // Place settlement
     player.settlementsRemaining--;
-    player.victoryPoints += GAME_CONSTANTS.VP_FROM_SETTLEMENT;
     gameState.board.vertices[vertexId].owner = playerId;
     gameState.board.vertices[vertexId].structure = 'settlement';
 
+    // Recalculate all victory points
+    updateAllVictoryPoints(gameState);
+
     // Check victory
-    const winnerId = checkVictoryCondition(gameState);
-    if (winnerId) {
-        gameState.winner = winnerId;
-        gameState.phase = 'game_over';
-    }
+    checkAndUpdateVictory(gameState);
 
     // Add log
     gameState.logs.push({
@@ -220,15 +218,13 @@ export async function buildCity(
     // Upgrade to city
     player.citiesRemaining--;
     player.settlementsRemaining++; // Return settlement to pool
-    player.victoryPoints += 1; // City worth 2, settlement was 1, so +1
     gameState.board.vertices[vertexId].structure = 'city';
 
+    // Recalculate all victory points
+    updateAllVictoryPoints(gameState);
+
     // Check victory
-    const winnerId = checkVictoryCondition(gameState);
-    if (winnerId) {
-        gameState.winner = winnerId;
-        gameState.phase = 'game_over';
-    }
+    checkAndUpdateVictory(gameState);
 
     // Add log
     gameState.logs.push({
@@ -284,10 +280,12 @@ export async function placeInitialSettlement(
     gameState.board.vertices[vertexId].owner = playerId;
     gameState.board.vertices[vertexId].structure = 'settlement';
     player.settlementsRemaining--;
-    player.victoryPoints++;
 
     // Store settlement ID for road validation
     gameState.lastPlacedSettlementId = vertexId;
+
+    // Recalculate all victory points
+    updateAllVictoryPoints(gameState);
 
     // In round 2, give resources for placement
     if (gameState.phase === 'setup_round_2_settlement') {

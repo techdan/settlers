@@ -16,6 +16,7 @@ export interface PlayerState {
     citiesRemaining: number;
     roadsRemaining: number;
     victoryPoints: number;
+    knightsPlayed: number;
     discardedThisTurn?: boolean;
 }
 
