@@ -1,6 +1,17 @@
+/**
+ * @deprecated This file is being refactored.
+ * Import validators from '@/core/validation' instead.
+ * Import algorithms from '@/core/engine/scoring' instead.
+ * This file remains for backward compatibility during migration.
+ */
+
 import { GameState } from './game-types';
 import { getAdjacentVertexIds, getEdgeEndpoints, getAdjacentEdgesForVertex } from './hex';
 
+// Re-export from new location
+export { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
+
+// Keep validators here temporarily
 export const isValidSetupSettlement = (gameState: GameState, vertexId: string, playerId: string): boolean => {
     // 1. Check if vertex exists and is empty
     const vertex = gameState.board.vertices[vertexId];
@@ -111,65 +122,4 @@ export const isValidMainPhaseCity = (gameState: GameState, vertexId: string, pla
 
     // Must be own settlement
     return vertex.owner === playerId && vertex.structure === 'settlement';
-};
-
-export const calculateLongestRoad = (gameState: GameState, playerId: string): number => {
-    // 1. Get all edges owned by player
-    const playerEdges = Object.values(gameState.board.edges).filter(e => e.owner === playerId);
-    if (playerEdges.length === 0) return 0;
-
-    // 2. Build adjacency graph (edgeId -> list of connected edgeIds)
-    // Two edges are connected if they share a vertex AND that vertex is NOT blocked by an opponent
-    const adj: Record<string, string[]> = {};
-    playerEdges.forEach(e => adj[e.id] = []);
-
-    for (const edge of playerEdges) {
-        const [q, r, d] = edge.id.split(',').map(Number);
-        const endpoints = getEdgeEndpoints(q, r, d);
-
-        for (const vId of endpoints) {
-            // Check if vertex is blocked by opponent
-            const vertex = gameState.board.vertices[vId];
-            if (vertex.owner !== null && vertex.owner !== playerId) {
-                continue; // Blocked
-            }
-
-            // Find other edges connected to this vertex
-            const [vq, vr, vd] = vId.split(',').map(Number);
-            const neighborEdgeIds = getAdjacentEdgesForVertex(vq, vr, vd);
-
-            for (const nId of neighborEdgeIds) {
-                if (nId !== edge.id && adj[nId]) { // If it's a player edge
-                    adj[edge.id].push(nId);
-                }
-            }
-        }
-    }
-
-    // 3. DFS to find longest path
-    let maxLen = 0;
-
-    const dfs = (currentEdgeId: string, visited: Set<string>, currentLen: number) => {
-        maxLen = Math.max(maxLen, currentLen);
-
-        const neighbors = adj[currentEdgeId];
-        for (const nId of neighbors) {
-            if (!visited.has(nId)) {
-                visited.add(nId);
-                dfs(nId, visited, currentLen + 1);
-                visited.delete(nId);
-            }
-        }
-    };
-
-    // Try starting from each edge (endpoints)
-    // Actually, we can just start DFS from each edge.
-    // Optimization: Only start from edges that have degree 1 or are part of a cycle?
-    // Brute force is fine for < 15 roads.
-
-    for (const edge of playerEdges) {
-        dfs(edge.id, new Set([edge.id]), 1);
-    }
-
-    return maxLen;
 };
