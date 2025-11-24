@@ -48,10 +48,10 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId }) => {
                 </div>
             </div>
             <div className="flex gap-4">
-                {(Object.keys(player.resources) as ResourceType[]).map(res => (
+                {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
                     <div key={res} className="flex flex-col items-center">
                         <div className="text-2xl mb-1">{RESOURCE_ICONS[res]}</div>
-                        <div className="font-bold text-lg">{player.resources[res]}</div>
+                        <div className="font-bold text-lg">{player.resources[res] || 0}</div>
                         <div className="text-xs text-slate-400 capitalize">{res}</div>
                     </div>
                 ))}

@@ -76,8 +76,8 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                    {(Object.keys(player.resources) as ResourceType[]).map(res => {
-                        const max = player.resources[res];
+                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
+                        const max = player.resources[res] || 0;
                         if (max === 0) return null;
 
                         return (

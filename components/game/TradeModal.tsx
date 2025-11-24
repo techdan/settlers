@@ -117,8 +117,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                     onChange={e => setGiveRes(e.target.value as ResourceType)}
                                     className="bg-slate-700 text-white rounded p-2 w-full mb-2 text-center appearance-none cursor-pointer hover:bg-slate-600"
                                 >
-                                    {Object.keys(RESOURCE_ICONS).filter(r => r !== 'desert').map(r => (
-                                        <option key={r} value={r}>{RESOURCE_ICONS[r as ResourceType]} {r}</option>
+                                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(r => (
+                                        <option key={r} value={r}>{RESOURCE_ICONS[r]} {r}</option>
                                     ))}
                                 </select>
                                 <div className="text-sm text-slate-500">Have: {player.resources[giveRes]}</div>
@@ -134,8 +134,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                     onChange={e => setGetRes(e.target.value as ResourceType)}
                                     className="bg-slate-700 text-white rounded p-2 w-full mb-2 text-center appearance-none cursor-pointer hover:bg-slate-600"
                                 >
-                                    {Object.keys(RESOURCE_ICONS).filter(r => r !== 'desert').map(r => (
-                                        <option key={r} value={r}>{RESOURCE_ICONS[r as ResourceType]} {r}</option>
+                                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(r => (
+                                        <option key={r} value={r}>{RESOURCE_ICONS[r]} {r}</option>
                                     ))}
                                 </select>
                                 <div className="text-sm text-slate-500">Have: {player.resources[getRes]}</div>
@@ -165,8 +165,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                                 <h3 className="text-center text-slate-300 mb-4 font-bold">You Give</h3>
                                 <div className="space-y-2">
-                                    {Object.keys(RESOURCE_ICONS).filter(r => r !== 'desert').map(r => {
-                                        const res = r as ResourceType;
+                                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
                                         return (
                                             <div key={res} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
@@ -188,8 +187,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                                 <h3 className="text-center text-slate-300 mb-4 font-bold">You Get</h3>
                                 <div className="space-y-2">
-                                    {Object.keys(RESOURCE_ICONS).filter(r => r !== 'desert').map(r => {
-                                        const res = r as ResourceType;
+                                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
                                         return (
                                             <div key={res} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
