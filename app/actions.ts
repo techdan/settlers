@@ -1,10 +1,9 @@
 'use server';
 
-import { db } from '@/lib/db';
-import { rooms, players } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { randomUUID, randomInt } from 'crypto';
+import * as roomRepository from '@/lib/repositories/room-repository';
+import * as playerRepository from '@/lib/repositories/player-repository';
 
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -22,20 +21,11 @@ export async function createRoom(formData: FormData) {
     const roomId = generateRoomCode();
     const playerId = randomUUID();
 
-    // Create room
-    await db.insert(rooms).values({
-        id: roomId,
-        status: 'waiting',
-    });
+    // Create room using repository
+    await roomRepository.createRoom(roomId);
 
-    // Create host player
-    await db.insert(players).values({
-        id: playerId,
-        roomId: roomId,
-        name: playerName,
-        isHost: true,
-        // clerkUserId: 'stub_clerk_id', // Optional stub
-    });
+    // Create host player using repository
+    await playerRepository.createPlayer(playerId, roomId, playerName, true);
 
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
@@ -47,141 +37,33 @@ export async function joinRoom(formData: FormData) {
     if (!playerName) throw new Error('Player name is required');
     if (!roomId) throw new Error('Room ID is required');
 
-    // Check if room exists
-    const room = await db.query.rooms.findFirst({
-        where: eq(rooms.id, roomId),
-    });
+    // Check if room exists using repository
+    const room = await roomRepository.findRoomById(roomId);
 
     if (!room) {
-        // In a real app, we'd return an error to the form.
-        // For now, just throw or redirect to error.
         throw new Error('Room not found');
     }
 
     const playerId = randomUUID();
 
-    await db.insert(players).values({
-        id: playerId,
-        roomId: roomId,
-        name: playerName,
-        isHost: false,
-    });
+    // Create player using repository
+    await playerRepository.createPlayer(playerId, roomId, playerName);
 
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
 
+import { DevCardType, GameState } from '@/lib/game-types';
+import { ResourceType } from '@/lib/board-data';
+import { getHexesForVertex, getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
+import * as gameService from '@/lib/services/game-service';
 import { games } from '@/lib/db/schema';
-import { generateStandardBoard, ResourceType } from '@/lib/board-data';
-import { GameState, PlayerState, Vertex, Edge, DevCardType } from '@/lib/game-types';
-import { getCanonicalVertexId, getCanonicalEdgeId, getHexesForVertex, getAdjacentEdgesForVertex } from '@/lib/hex';
+import { db } from '@/lib/db';
+import { eq } from 'drizzle-orm';
+import { isValidSetupSettlement, isValidSetupRoad } from '@/lib/game-logic';
 
 export async function startGame(roomId: string) {
-    // 1. Get players
-    const roomPlayers = await db.query.players.findMany({
-        where: eq(players.roomId, roomId),
-    });
-
-    if (roomPlayers.length < 1) throw new Error('Not enough players');
-
-    // 2. Shuffle players
-    const shuffledPlayers = [...roomPlayers].sort(() => Math.random() - 0.5);
-    const turnOrder = shuffledPlayers.map(p => p.id);
-
-    // 3. Initialize Player States
-    const playerStates: PlayerState[] = shuffledPlayers.map((p, i) => ({
-        id: p.id,
-        name: p.name,
-        color: ['red', 'blue', 'white', 'orange'][i % 4] as any,
-        resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0, desert: 0 },
-        devCards: { knight: 0, victory_point: 0, road_building: 0, year_of_plenty: 0, monopoly: 0 },
-        settlementsRemaining: 5,
-        citiesRemaining: 4,
-        roadsRemaining: 15,
-        victoryPoints: 0,
-    }));
-
-    // 4. Generate Board
-    const hexes = generateStandardBoard();
-    const vertices: Record<string, Vertex> = {};
-    const edges: Record<string, Edge> = {};
-
-    hexes.forEach(hex => {
-        // Vertices (0-5)
-        for (let d = 0; d < 6; d++) {
-            const vId = getCanonicalVertexId(hex.hex.q, hex.hex.r, d);
-            if (!vertices[vId]) {
-                const [q, r, dir] = vId.split(',').map(Number);
-                vertices[vId] = {
-                    id: vId,
-                    q, r, d: dir,
-                    owner: null,
-                    structure: null
-                };
-            }
-        }
-        // Edges (0-5)
-        for (let d = 0; d < 6; d++) {
-            const eId = getCanonicalEdgeId(hex.hex.q, hex.hex.r, d);
-            if (!edges[eId]) {
-                const [q, r, dir] = eId.split(',').map(Number);
-                edges[eId] = {
-                    id: eId,
-                    q, r, d: dir,
-                    owner: null,
-                    structure: null
-                };
-            }
-        }
-    });
-
-    // 5. Create Dev Card Deck
-    const devCardDeck: DevCardType[] = [
-        ...Array(14).fill('knight'),
-        ...Array(5).fill('victory_point'),
-        ...Array(2).fill('road_building'),
-        ...Array(2).fill('year_of_plenty'),
-        ...Array(2).fill('monopoly'),
-    ].sort(() => Math.random() - 0.5) as DevCardType[];
-
-    // 6. Create Game State
-    const gameState: GameState = {
-        id: randomUUID(),
-        roomId,
-        players: playerStates,
-        board: {
-            hexes,
-            vertices,
-            edges
-        },
-        currentTurn: turnOrder[0],
-        turnOrder,
-        phase: 'setup_round_1_settlement',
-        winner: null,
-        lastPlacedSettlementId: null,
-        robberHexId: '0,0', // Default to center or desert if found
-        devCardDeck,
-        longestRoadOwner: null,
-        longestRoadLength: 0,
-        logs: [{
-            id: randomUUID(),
-            timestamp: Date.now(),
-            message: 'Game started!'
-        }]
-    };
-
-    // 6. Save to DB
-    await db.insert(games).values({
-        id: gameState.id,
-        roomId,
-        state: JSON.stringify(gameState),
-    });
-
-    await db.update(rooms)
-        .set({ status: 'playing' })
-        .where(eq(rooms.id, roomId));
+    return gameService.startGame(roomId);
 }
-
-import { isValidSetupSettlement, isValidSetupRoad } from '@/lib/game-logic';
 
 export async function placeSettlement(roomId: string, playerId: string, vertexId: string) {
     const game = await db.query.games.findFirst({

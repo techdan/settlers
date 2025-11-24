@@ -41,14 +41,16 @@ export async function findPlayersByRoomId(roomId: string) {
  * @param id - Player ID (UUID)
  * @param roomId - Room ID
  * @param name - Player name
+ * @param isHost - Whether player is host (default: false)
  * @returns Created player record
  */
-export async function createPlayer(id: string, roomId: string, name: string) {
+export async function createPlayer(id: string, roomId: string, name: string, isHost: boolean = false) {
     const created = await db.insert(players)
         .values({
             id,
             roomId,
             name,
+            isHost,
             joinedAt: new Date()
         })
         .returning();

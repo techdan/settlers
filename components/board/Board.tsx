@@ -282,7 +282,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                             key={tile.id}
                                             hex={tile.hex}
                                             resource={tile.resource}
-                                            numberToken={tile.number}
+                                            numberToken={tile.numberToken}
                                             hasRobber={gameState.robberHexId === tile.id}
                                             size={HEX_SIZE}
                                             onClick={() => handleHexClick(tile.id)}
