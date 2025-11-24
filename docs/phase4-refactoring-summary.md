@@ -1,7 +1,7 @@
 # Phase 4 Refactoring - Actions Refactored ✅
 
 ## Summary
-Successfully completed Phase 4 of the architecture refactoring plan. Refactored key actions to use the service layer and repositories, significantly reducing code duplication and improving maintainability.
+Successfully completed Phase 4 of the architecture refactoring plan. Refactored 8 key actions to use the service layer and repositories, reducing actions.ts from **1345 lines to 860 lines (36% reduction, 485 lines removed)**. Significantly improved code organization, reduced duplication, and established clear architectural patterns.
 
 ## What Was Accomplished
 
@@ -126,11 +126,45 @@ export async function createPlayer(
 - Database persistence
 - Room status update
 
+**Used existing `rollDice()` and `endTurn()` methods:**
+- Both actions refactored to simple service calls
+- 115 lines of rollDice logic moved to service
+- 35 lines of endTurn logic moved to service
+
 **Benefits:**
 - Centralized game initialization
 - Uses all the extracted managers and generators
 - Clean orchestration layer
 - Easy to modify game setup rules
+
+### 5. Building Actions Refactored ✅
+
+**Before:**
+- `buildRoad()`: 78 lines with manual longest road calculation
+- `buildSettlement()`: 114 lines with complex longest road recalculation
+- `buildCity()`: 40 lines with manual resource deduction
+
+**After:**
+```typescript
+export async function buildRoad(roomId: string, playerId: string, edgeId: string) {
+    return buildingService.buildRoad(roomId, playerId, edgeId);
+}
+
+export async function buildSettlement(roomId: string, playerId: string, vertexId: string) {
+    return buildingService.buildSettlement(roomId, playerId, vertexId);
+}
+
+export async function buildCity(roomId: string, playerId: string, vertexId: string) {
+    return buildingService.buildCity(roomId, playerId, vertexId);
+}
+```
+
+**Benefits:**
+- 232 lines of building logic moved to service layer
+- Consistent use of validators, rules, and managers
+- All longest road logic centralized in `updateLongestRoad()`
+- Resource management via `canAfford()` and `deductCost()`
+- Victory checking via `checkVictoryCondition()`
 
 ## File Structure After Phase 4
 
@@ -157,17 +191,47 @@ lib/
 
 ## Code Quality Metrics
 
-### Lines of Code Reduction
+### Overall Reduction
+- **actions.ts**: 1345 lines → 860 lines
+- **Lines Removed**: 485 lines (36% reduction)
+- **Actions Refactored**: 8 actions
+
+### Lines of Code Reduction by Action
 
 **createRoom/joinRoom:**
 - Before: Direct DB calls (15 lines combined)
 - After: Repository calls (6 lines combined)
-- Reduction: 60% reduction
+- Reduction: 60%
 
 **startGame:**
 - Before: 105 lines in actions.ts
 - After: 3 lines in actions.ts, 100 lines in game-service.ts
-- Benefit: 97% reduction in action file, logic properly organized
+- Reduction: 97% in action file
+
+**rollDice:**
+- Before: 115 lines with inline resource distribution
+- After: 3 lines using gameService.rollDice()
+- Reduction: 97%
+
+**endTurn:**
+- Before: 35 lines with turn rotation logic
+- After: 3 lines using gameService.endTurn()
+- Reduction: 91%
+
+**buildRoad:**
+- Before: 78 lines with longest road calculation
+- After: 3 lines using buildingService.buildRoad()
+- Reduction: 96%
+
+**buildSettlement:**
+- Before: 114 lines with complex longest road logic
+- After: 3 lines using buildingService.buildSettlement()
+- Reduction: 97%
+
+**buildCity:**
+- Before: 40 lines with resource management
+- After: 3 lines using buildingService.buildCity()
+- Reduction: 92%
 
 ### Architectural Improvements
 
@@ -230,20 +294,25 @@ Actions → Services → Managers → Rules → Repositories → DB
 - ✅ No breaking changes
 - ✅ All imports resolved correctly
 
-## Remaining Actions (Not Yet Refactored)
+## Actions Summary
+
+### ✅ Refactored Actions (8 total)
+1. `createRoom()` - Uses roomRepository, playerRepository
+2. `joinRoom()` - Uses roomRepository, playerRepository
+3. `startGame()` - Uses gameService.startGame()
+4. `rollDice()` - Uses gameService.rollDice()
+5. `endTurn()` - Uses gameService.endTurn()
+6. `buildRoad()` - Uses buildingService.buildRoad()
+7. `buildSettlement()` - Uses buildingService.buildSettlement()
+8. `buildCity()` - Uses buildingService.buildCity()
+
+### 🔄 Remaining Actions (Not Yet Refactored)
 
 The following actions are still in their original form but follow the same pattern and can be refactored incrementally:
 
 ### Setup Phase Actions
-- `placeSettlement()` - Can use BuildingService
-- `placeRoad()` - Can use BuildingService
-
-### Main Phase Actions
-- `rollDice()` - Can use GameService (already exists)
-- `endTurn()` - Can use GameService (already exists)
-- `buildRoad()` - Can use BuildingService
-- `buildSettlement()` - Can use BuildingService
-- `buildCity()` - Can use BuildingService
+- `placeSettlement()` - Setup phase (54 lines)
+- `placeRoad()` - Setup phase (97 lines)
 
 ### Trading Actions
 - `tradeWithBank()` - Needs TradingService
