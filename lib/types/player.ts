@@ -18,6 +18,8 @@ export interface PlayerState {
     victoryPoints: number;
     knightsPlayed: number;
     discardedThisTurn?: boolean;
+    hasPlayedDevCard: boolean;
+    devCardsBoughtThisTurn: DevCardType[];
 }
 
 /**

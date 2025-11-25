@@ -11,7 +11,7 @@ interface GameStatusProps {
 export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayerId }) => {
     const getPlayerStats = (player: PlayerState) => {
         const resourceCount = Object.values(player.resources).reduce((a, b) => a + b, 0);
-        const devCardCount = Object.values(player.devCards).reduce((a, b) => a + b, 0);
+        const devCardCount = Object.values(player.devCards).reduce((a, b) => a + b, 0) + (player.devCardsBoughtThisTurn?.length || 0);
         const longestRoad = calculateLongestRoad(gameState, player.id);
         return { resourceCount, devCardCount, longestRoad };
     };

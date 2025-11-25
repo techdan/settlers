@@ -23,6 +23,9 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
         hex => hex.numberToken === diceTotal && hex.id !== gameState.robberHexId
     );
 
+    // Track resources given to each player
+    const distribution: Record<string, Partial<Record<ResourceType, number>>> = {};
+
     // For each matching hex, give resources to adjacent settlements/cities
     for (const hex of matchingHexes) {
         // Skip desert tiles (they don't produce resources)
@@ -43,14 +46,41 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
             const player = gameState.players.find(p => p.id === vertex.owner);
             if (!player) continue;
 
+            // Initialize tracking if needed
+            if (!distribution[player.id]) {
+                distribution[player.id] = {};
+            }
+
             // Give resources based on structure type
+            let amount = 0;
             if (vertex.structure === 'settlement') {
-                player.resources[resource] = (player.resources[resource] || 0) + 1;
+                amount = 1;
             } else if (vertex.structure === 'city') {
-                player.resources[resource] = (player.resources[resource] || 0) + 2;
+                amount = 2;
+            }
+
+            if (amount > 0) {
+                player.resources[resource] = (player.resources[resource] || 0) + amount;
+                distribution[player.id][resource] = (distribution[player.id][resource] || 0) + amount;
             }
         }
     }
+
+    // Log distribution
+    Object.entries(distribution).forEach(([playerId, resources]) => {
+        const player = gameState.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        const resourceParts = Object.entries(resources).map(([res, count]) => `${count} ${res}`);
+        if (resourceParts.length > 0) {
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${player.name} received ${resourceParts.join(', ')}`,
+                playerId
+            });
+        }
+    });
 }
 
 /**

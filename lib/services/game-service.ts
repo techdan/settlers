@@ -43,6 +43,8 @@ export async function startGame(roomId: string): Promise<GameState> {
         roadsRemaining: 15,
         victoryPoints: 0,
         knightsPlayed: 0,
+        hasPlayedDevCard: false,
+        devCardsBoughtThisTurn: [],
     }));
 
     // 4. Generate Board
@@ -249,6 +251,16 @@ export async function endTurn(
 
     // Clear trade offer
     gameState.tradeOffer = null;
+
+    // Reset dev card flags and move bought cards to hand
+    player.hasPlayedDevCard = false;
+    if (!player.devCardsBoughtThisTurn) {
+        player.devCardsBoughtThisTurn = [];
+    }
+    player.devCardsBoughtThisTurn.forEach(card => {
+        player.devCards[card] = (player.devCards[card] || 0) + 1;
+    });
+    player.devCardsBoughtThisTurn = [];
 
     // Add log
     const nextPlayer = gameState.players.find(p => p.id === gameState.currentTurn);

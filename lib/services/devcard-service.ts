@@ -66,8 +66,12 @@ export async function buyDevCard(
     const card = gameState.devCardDeck.pop();
     if (!card) throw new Error('Deck error');
 
-    if (!player.devCards[card]) player.devCards[card] = 0;
-    player.devCards[card]++;
+    if (!card) throw new Error('Deck error');
+
+    if (!player.devCardsBoughtThisTurn) {
+        player.devCardsBoughtThisTurn = [];
+    }
+    player.devCardsBoughtThisTurn.push(card);
 
     // Add log
     gameState.logs.push({
@@ -111,7 +115,7 @@ export async function playDevCard(
         throw new Error('Not your turn');
     }
 
-    if (gameState.phase !== 'main_phase') {
+    if (gameState.phase !== 'main_phase' && gameState.phase !== 'waiting_for_roll') {
         throw new Error('Cannot play dev card in current phase');
     }
 
@@ -119,7 +123,13 @@ export async function playDevCard(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
+    // Validate one card per turn rule (except VP cards)
+    if (cardType !== 'victory_point' && player.hasPlayedDevCard) {
+        throw new Error('You can only play one development card per turn');
+    }
+
     // Validate card ownership
+    // Note: Cards bought this turn are in devCardsBoughtThisTurn, so this check implicitly prevents playing them
     if (!player.devCards[cardType] || player.devCards[cardType] <= 0) {
         throw new Error(`You do not have a ${cardType} card`);
     }
@@ -177,6 +187,11 @@ export async function playDevCard(
 
     // Decrement card count
     player.devCards[cardType]--;
+
+    // Mark card as played for this turn (except VP cards)
+    if (cardType !== 'victory_point') {
+        player.hasPlayedDevCard = true;
+    }
 
     // Recalculate all victory points (covers victory_point cards and largest army changes)
     updateAllVictoryPoints(gameState);

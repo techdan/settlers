@@ -12,6 +12,7 @@ interface HexTileProps {
     hasRobber: boolean;
     size: number;
     onClick?: () => void;
+    isRolled?: boolean;
 }
 
 const RESOURCE_COLORS: Record<TileType, string> = {
@@ -32,7 +33,7 @@ const RESOURCE_COMPONENTS: Record<TileType, React.ElementType> = {
     desert: VoxelDesert,
 };
 
-export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick }) => {
+export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick, isRolled }) => {
     const { x, y } = hexToPixel(hex, size);
     const DEPTH = 15;
 
@@ -70,6 +71,18 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToke
     return (
         <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
             {/* Defs for gradients/patterns could go here or globally, but for simplicity we use simple fills/filters */}
+            <style>
+                {`
+                    @keyframes flash {
+                        0% { filter: brightness(1); }
+                        50% { filter: brightness(1.5); }
+                        100% { filter: brightness(1); }
+                    }
+                    .animate-flash {
+                        animation: flash 1s ease-in-out 3;
+                    }
+                `}
+            </style>
 
             {/* Sides (rendered first so they are behind top) */}
             <polygon points={side0Str} fill={baseColor} filter="brightness(0.6)" stroke="none" />
@@ -85,7 +98,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToke
                     stroke="#fff"
                     strokeWidth="1"
                     strokeOpacity="0.3"
-                    className="transition-colors hover:brightness-110"
+                    className={`transition-colors hover:brightness-110 ${isRolled ? 'animate-flash' : ''}`}
                 />
                 {/* Simple texture overlay (noise or pattern could be added here) */}
                 <polygon points={topPointsStr} fill="url(#noise)" opacity="0.1" style={{ pointerEvents: 'none' }} />

@@ -301,17 +301,21 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                             <div className="relative w-full h-full flex items-center justify-center">
                                 <svg id="board-svg" className="overflow-visible" width="100%" height="100%" viewBox="-500 -500 1000 1000">
                                     {/* Hex Grid */}
-                                    {sortedTiles.map((tile) => (
-                                        <TileComponent
-                                            key={tile.id}
-                                            hex={tile.hex}
-                                            resource={tile.resource}
-                                            numberToken={tile.numberToken}
-                                            hasRobber={gameState.robberHexId === tile.id}
-                                            size={HEX_SIZE}
-                                            onClick={() => handleHexClick(tile.id)}
-                                        />
-                                    ))}
+                                    {sortedTiles.map((tile) => {
+                                        const isRolled = gameState.diceRoll && tile.numberToken === gameState.diceRoll.total;
+                                        return (
+                                            <TileComponent
+                                                key={tile.id}
+                                                hex={tile.hex}
+                                                resource={tile.resource}
+                                                numberToken={tile.numberToken}
+                                                hasRobber={gameState.robberHexId === tile.id}
+                                                size={HEX_SIZE}
+                                                onClick={() => handleHexClick(tile.id)}
+                                                isRolled={isRolled}
+                                            />
+                                        );
+                                    })}
 
                                     {/* Ports */}
                                     {ports.map((port, i) => (

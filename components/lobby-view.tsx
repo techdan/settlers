@@ -41,7 +41,7 @@ export function LobbyView({
                 setPlayers(data.players);
                 setRoom(data.room);
 
-                if (data.room.status === 'playing') {
+                if (data.room.status === 'in_progress') {
                     router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
                 }
             }

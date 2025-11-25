@@ -12,6 +12,7 @@ interface HexTileProps {
     hasRobber: boolean;
     size: number;
     onClick?: () => void;
+    isRolled?: boolean;
 }
 
 const RESOURCE_COLORS: Record<TileType, string> = {
@@ -32,7 +33,7 @@ const RESOURCE_ICONS: Record<TileType, React.ElementType> = {
     desert: Sun,
 };
 
-export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick }) => {
+export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick, isRolled }) => {
     const { x, y } = hexToPixel(hex, size);
 
     // Calculate points for pointy-topped hex
@@ -48,12 +49,24 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, ha
 
     return (
         <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
+            <style>
+                {`
+                    @keyframes flash {
+                        0% { filter: brightness(1); }
+                        50% { filter: brightness(1.5); }
+                        100% { filter: brightness(1); }
+                    }
+                    .animate-flash {
+                        animation: flash 1s ease-in-out 3;
+                    }
+                `}
+            </style>
             <polygon
                 points={pointsStr}
                 fill={RESOURCE_COLORS[resource]}
                 stroke="#e5e7eb"
                 strokeWidth="4"
-                className="transition-colors hover:brightness-110"
+                className={`transition-colors hover:brightness-110 ${isRolled ? 'animate-flash' : ''}`}
             />
 
             {/* Resource Icon */}

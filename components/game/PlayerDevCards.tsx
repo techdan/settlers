@@ -60,6 +60,8 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                 {(Object.keys(player.devCards) as DevCardType[]).map(type => {
                     const count = player.devCards[type];
                     if (count === 0) return null;
+                    const canPlay = type === 'victory_point' || !player.hasPlayedDevCard;
+
                     return (
                         <div key={type} className="bg-slate-700/50 p-2 rounded border border-slate-600">
                             <div
@@ -96,8 +98,9 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
 
                                     <button
                                         onClick={handlePlay}
-                                        disabled={isPending || gameState.currentTurn !== playerId}
+                                        disabled={isPending || gameState.currentTurn !== playerId || !canPlay}
                                         className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-600 disabled:text-slate-400 text-white font-bold py-1 px-2 rounded transition-colors"
+                                        title={!canPlay ? "You can only play one development card per turn" : ""}
                                     >
                                         {isPending ? 'Playing...' : 'Play'}
                                     </button>
@@ -106,7 +109,22 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                         </div>
                     );
                 })}
-                {Object.values(player.devCards).every(c => c === 0) && (
+
+                {/* New Cards Section */}
+                {player.devCardsBoughtThisTurn && player.devCardsBoughtThisTurn.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-700">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">New (Wait 1 Turn)</h4>
+                        <div className="space-y-1">
+                            {player.devCardsBoughtThisTurn.map((type, i) => (
+                                <div key={i} className="bg-slate-800/50 p-2 rounded border border-slate-700 text-slate-400 flex justify-between items-center">
+                                    <span className="text-sm">{DEV_CARD_LABELS[type]}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {Object.values(player.devCards).every(c => c === 0) && (!player.devCardsBoughtThisTurn || player.devCardsBoughtThisTurn.length === 0) && (
                     <div className="text-slate-500 text-xs italic">No cards</div>
                 )}
             </div>
