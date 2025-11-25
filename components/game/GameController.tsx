@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Board } from '@/components/board/Board';
-import { GameState } from '@/lib/game-types';
+import { GameState } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { PlayerHand } from './PlayerHand';
 import { GameLog } from './GameLog';

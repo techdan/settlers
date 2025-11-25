@@ -1,5 +1,5 @@
 import React from 'react';
-import { Vertex } from '@/lib/game-types';
+import { Vertex } from '@/lib/types';
 import { createHex, hexCornerToPixel } from '@/lib/hex';
 
 interface VertexRendererProps {

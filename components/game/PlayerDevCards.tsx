@@ -1,5 +1,5 @@
 import React, { useState, useTransition } from 'react';
-import { GameState, PlayerState, DevCardType } from '@/lib/game-types';
+import { GameState, PlayerState, DevCardType } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { playDevCard } from '@/app/actions';
 

@@ -1,5 +1,5 @@
 import React, { useTransition } from 'react';
-import { GameState } from '@/lib/game-types';
+import { GameState } from '@/lib/types';
 import { endTurn, rollDice } from '@/app/actions';
 
 interface ActionControlsProps {

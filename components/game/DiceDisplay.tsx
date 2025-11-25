@@ -1,5 +1,5 @@
 import React from 'react';
-import { GameState } from '@/lib/game-types';
+import { GameState } from '@/lib/types';
 
 interface DiceDisplayProps {
     diceRoll: GameState['diceRoll'];

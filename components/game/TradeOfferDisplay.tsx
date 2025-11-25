@@ -1,5 +1,5 @@
 import React, { useTransition } from 'react';
-import { GameState, TradeOffer } from '@/lib/game-types';
+import { GameState, TradeOffer } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { acceptTrade, cancelTrade } from '@/app/actions';
 

@@ -52,7 +52,7 @@ export async function joinRoom(formData: FormData) {
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
 
-import { DevCardType, GameState } from '@/lib/game-types';
+import { DevCardType, GameState } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { getHexesForVertex, getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
 import * as gameService from '@/lib/services/game-service';
@@ -63,7 +63,7 @@ import * as devCardService from '@/lib/services/devcard-service';
 import { games } from '@/lib/db/schema';
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
-import { isValidSetupSettlement, isValidSetupRoad } from '@/lib/game-logic';
+import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 
 export async function startGame(roomId: string) {
     return gameService.startGame(roomId);
@@ -119,7 +119,8 @@ export async function cancelTrade(roomId: string, playerId: string) {
     return tradingService.cancelTrade(roomId, playerId);
 }
 
-import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity, calculateLongestRoad } from '@/lib/game-logic';
+import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
+import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 
 export async function buildRoad(roomId: string, playerId: string, edgeId: string) {
     return buildingService.buildRoad(roomId, playerId, edgeId);

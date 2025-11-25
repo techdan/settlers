@@ -1,5 +1,5 @@
 import React from 'react';
-import { GameState, PlayerState } from '@/lib/game-types';
+import { GameState, PlayerState } from '@/lib/types';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 

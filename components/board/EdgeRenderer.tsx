@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edge } from '@/lib/game-types';
+import { Edge } from '@/lib/types';
 import { createHex, hexEdgeToPixel } from '@/lib/hex';
 
 interface EdgeRendererProps {

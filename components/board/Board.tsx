@@ -8,12 +8,13 @@ import { FlatPort } from '@/themes/flat/Port';
 import { VoxelPort } from '@/themes/voxel/Port';
 import { useThemeStore } from '@/lib/theme-store';
 import { generatePorts } from '@/engine/generatePorts';
-import { GameState } from '@/lib/game-types';
+import { GameState } from '@/lib/types';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { useTransition } from 'react';
 import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad } from '@/app/actions';
-import { isValidSetupSettlement, isValidSetupRoad, isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/lib/game-logic';
+import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
+import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
 
 interface BoardProps {
     gameState: GameState;

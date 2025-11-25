@@ -1,5 +1,5 @@
 import React, { useState, useTransition } from 'react';
-import { GameState, PlayerState } from '@/lib/game-types';
+import { GameState, PlayerState } from '@/lib/types';
 import { ResourceType, getPortForVertex } from '@/lib/board-data';
 import { tradeWithBank, offerTrade } from '@/app/actions';
 
