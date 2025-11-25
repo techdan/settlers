@@ -72,10 +72,11 @@ export function calculateLongestRoad(gameState: GameState, playerId: string): nu
 }
 
 /**
- * Update longest road ownership
- * 
+ * Update longest road ownership (LEGACY - calculates for all players)
+ *
  * @param gameState - Current game state
  * @returns Updated game state (mutated)
+ * @deprecated Use updateLongestRoadIncremental for better performance
  */
 export function updateLongestRoad(gameState: GameState): void {
     const roadLengths = gameState.players.map(p => ({
@@ -108,4 +109,36 @@ export function updateLongestRoad(gameState: GameState): void {
     // Award to longest (or take away if no longer qualifies)
     gameState.longestRoadOwner = longest.playerId;
     gameState.longestRoadLength = longest.length;
+}
+
+/**
+ * Update longest road ownership incrementally (OPTIMIZED)
+ * Only recalculates for the affected player, then checks if global state changed
+ *
+ * @param gameState - Current game state
+ * @param affectedPlayerId - Player who just built a road/settlement
+ * @returns Updated game state (mutated)
+ */
+export function updateLongestRoadIncremental(gameState: GameState, affectedPlayerId: string): void {
+    // Calculate road length only for affected player
+    const affectedLength = calculateLongestRoad(gameState, affectedPlayerId);
+
+    // Quick exit if affected player can't possibly win longest road
+    if (affectedLength < 5 && gameState.longestRoadLength < 5) {
+        // No one has 5+ roads, no update needed
+        return;
+    }
+
+    // If affected player's road is shorter than current longest, no change possible
+    if (affectedLength < gameState.longestRoadLength && gameState.longestRoadOwner !== affectedPlayerId) {
+        // Current longest owner is someone else with a longer road, no change
+        return;
+    }
+
+    // Potential change detected - need to check all players
+    // This only happens when:
+    // 1. Affected player has 5+ roads (potential new leader)
+    // 2. Affected player equals/exceeds current longest (potential tie or takeover)
+    // 3. Current owner's road was blocked by affected player's settlement
+    updateLongestRoad(gameState);
 }

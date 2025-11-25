@@ -2,7 +2,7 @@ import { GameState, DevCardType } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
-import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
+import { updateLongestRoadIncremental } from '@/core/engine/scoring/longest-road';
 import { updateLargestArmy } from '@/core/engine/scoring/largest-army';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
@@ -259,8 +259,8 @@ export async function placeBonusRoad(
     gameState.board.edges[edgeId].owner = playerId;
     gameState.board.edges[edgeId].structure = 'road';
 
-    // Update longest road (might change VP)
-    updateLongestRoad(gameState);
+    // Update longest road incrementally (only checks affected player)
+    updateLongestRoadIncremental(gameState, playerId);
 
     // Recalculate all victory points
     updateAllVictoryPoints(gameState);

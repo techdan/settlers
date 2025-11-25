@@ -7,7 +7,7 @@ import {
 } from '@/core/validation/building-validator';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
-import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
+import { updateLongestRoadIncremental } from '@/core/engine/scoring/longest-road';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
@@ -71,8 +71,8 @@ export async function buildRoad(
     gameState.board.edges[edgeId].owner = playerId;
     gameState.board.edges[edgeId].structure = 'road';
 
-    // Update longest road (might change VP)
-    updateLongestRoad(gameState);
+    // Update longest road incrementally (only checks affected player)
+    updateLongestRoadIncremental(gameState, playerId);
 
     // Recalculate all victory points
     updateAllVictoryPoints(gameState);
