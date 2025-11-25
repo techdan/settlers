@@ -15,18 +15,20 @@ import { DiceDisplay } from './DiceDisplay';
 import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
+import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
 
 interface GameControllerProps {
     roomId: string;
     playerId: string;
 }
 
-export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
-    const [gameState, setGameState] = useState<GameState | null>(null);
+const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
+    const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | null>(null);
     const [etag, setEtag] = useState<string | null>(null);
     const router = useRouter();
+    const { getOptimisticState } = useOptimisticGameState();
 
     useEffect(() => {
         const fetchState = async () => {
@@ -46,7 +48,7 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
 
                 if (res.ok) {
                     const data = await res.json();
-                    setGameState(data);
+                    setBaseGameState(data);
 
                     // Store ETag for next request
                     const newEtag = res.headers.get('etag');
@@ -64,7 +66,10 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
         return () => clearInterval(interval);
     }, [roomId, etag]);
 
-    if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
+    if (!baseGameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
+
+    // Apply optimistic updates on top of base state
+    const gameState = getOptimisticState(baseGameState);
 
     const currentPlayer = gameState.players.find(p => p.id === playerId);
 
@@ -133,5 +138,14 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
                 </div>
             </div>
         </div>
+    );
+};
+
+// Export wrapped with OptimisticGameStateProvider
+export const GameController: React.FC<GameControllerProps> = (props) => {
+    return (
+        <OptimisticGameStateProvider>
+            <GameControllerInner {...props} />
+        </OptimisticGameStateProvider>
     );
 };

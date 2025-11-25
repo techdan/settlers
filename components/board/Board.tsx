@@ -15,6 +15,7 @@ import { useTransition } from 'react';
 import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad } from '@/app/actions';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
+import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
 
 interface BoardProps {
     gameState: GameState;
@@ -43,6 +44,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
     const PortComponent = theme === 'flat' ? FlatPort : VoxelPort;
 
     const [isPending, startTransition] = useTransition();
+    const performOptimisticAction = useOptimisticAction();
 
     // Calculate valid placements for highlighting
     const validVertices = useMemo(() => {
@@ -121,25 +123,42 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
         else if (gameState.phase === 'main_phase') {
             if (buildMode === 'settlement') {
                 if (isValidMainPhaseSettlement(gameState, vertexId, playerId)) {
-                    startTransition(async () => {
-                        try {
+                    // Optimistic update for instant feedback
+                    performOptimisticAction(
+                        `build-settlement-${vertexId}`,
+                        (state) => {
+                            const newState = { ...state };
+                            newState.board.vertices[vertexId].owner = playerId;
+                            newState.board.vertices[vertexId].structure = 'settlement';
+                            return newState;
+                        },
+                        async () => {
                             await buildSettlement(gameState.roomId, playerId, vertexId);
                             onCancelBuild();
-                        } catch (e) {
-                            console.error("Failed to build settlement", e);
+                        },
+                        (error) => {
+                            console.error("Failed to build settlement", error);
                         }
-                    });
+                    );
                 }
             } else if (buildMode === 'city') {
                 if (isValidMainPhaseCity(gameState, vertexId, playerId)) {
-                    startTransition(async () => {
-                        try {
+                    // Optimistic update for instant feedback
+                    performOptimisticAction(
+                        `build-city-${vertexId}`,
+                        (state) => {
+                            const newState = { ...state };
+                            newState.board.vertices[vertexId].structure = 'city';
+                            return newState;
+                        },
+                        async () => {
                             await buildCity(gameState.roomId, playerId, vertexId);
                             onCancelBuild();
-                        } catch (e) {
-                            console.error("Failed to build city", e);
+                        },
+                        (error) => {
+                            console.error("Failed to build city", error);
                         }
-                    });
+                    );
                 }
             }
         }
@@ -167,14 +186,24 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
         else if (gameState.phase === 'main_phase') {
             if (buildMode === 'road') {
                 if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
-                    startTransition(async () => {
-                        try {
+                    // Optimistic update for instant feedback
+                    performOptimisticAction(
+                        `build-road-${edgeId}`,
+                        (state) => {
+                            // Apply optimistic update
+                            const newState = { ...state };
+                            newState.board.edges[edgeId].owner = playerId;
+                            newState.board.edges[edgeId].structure = 'road';
+                            return newState;
+                        },
+                        async () => {
                             await buildRoad(gameState.roomId, playerId, edgeId);
                             onCancelBuild();
-                        } catch (e) {
-                            console.error("Failed to build road", e);
+                        },
+                        (error) => {
+                            console.error("Failed to build road", error);
                         }
-                    });
+                    );
                 }
             }
         }
