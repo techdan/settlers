@@ -30,7 +30,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId }) => {
     };
 
     return (
-        <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
+        <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto h-full flex flex-col justify-between">
             <div className="flex justify-between items-center mb-2">
                 <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Your Resources</h3>
                 <div className="flex gap-1">

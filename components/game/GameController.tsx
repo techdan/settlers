@@ -9,9 +9,10 @@ import { GameLog } from './GameLog';
 import { PlayerDevCards } from './PlayerDevCards';
 
 import { GameStatus } from './GameStatus';
-import { TurnControls } from './TurnControls';
+import { BuildControls } from './BuildControls';
+import { ActionControls } from './ActionControls';
+import { DiceDisplay } from './DiceDisplay';
 import { DiscardModal } from './DiscardModal';
-import { DevCardModal } from './DevCardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 
@@ -22,7 +23,6 @@ interface GameControllerProps {
 
 export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
     const [gameState, setGameState] = useState<GameState | null>(null);
-    const [showDevCards, setShowDevCards] = useState(false);
     const [showTrade, setShowTrade] = useState(false);
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | null>(null);
     const router = useRouter();
@@ -60,14 +60,6 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
 
             <DiscardModal gameState={gameState} playerId={playerId} />
 
-            {showDevCards && (
-                <DevCardModal
-                    gameState={gameState}
-                    playerId={playerId}
-                    onClose={() => setShowDevCards(false)}
-                />
-            )}
-
             {showTrade && (
                 <TradeModal
                     gameState={gameState}
@@ -81,29 +73,43 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
             {/* UI Overlay */}
             <div className="absolute inset-0 pointer-events-none p-4">
 
-                {/* Right Sidebar: Status & Log */}
-                <div className="absolute top-4 right-4 bottom-4 w-80 flex flex-col gap-4 pointer-events-auto">
-                    <GameStatus gameState={gameState} currentPlayerId={playerId} />
-                    <div className="flex-1 min-h-0">
+                {/* Left Sidebar: Game Log */}
+                {/* Positioned below Map Controls (approx top-20) */}
+                <div className="absolute top-24 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
                         <GameLog logs={gameState.logs || []} />
                     </div>
                 </div>
 
-                {/* Bottom Left: Player Hand & Dev Cards */}
-                <div className="absolute bottom-4 left-4 pointer-events-auto flex gap-4 items-end">
-                    {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} />}
-                    <PlayerDevCards gameState={gameState} playerId={playerId} />
+                {/* Right Sidebar: Status */}
+                <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto">
+                    <GameStatus gameState={gameState} currentPlayerId={playerId} />
                 </div>
 
-                {/* Bottom Center: Turn Controls */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 pointer-events-auto">
-                    <TurnControls
+                {/* Bottom Center: Build Controls & Resources */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 pointer-events-auto max-w-[90vw]">
+                    {/* Build Controls */}
+                    <BuildControls
                         gameState={gameState}
                         playerId={playerId}
-                        onOpenDevCards={() => setShowDevCards(true)}
-                        onOpenTrade={() => setShowTrade(true)}
                         buildMode={buildMode}
                         onSetBuildMode={setBuildMode}
+                    />
+
+                    {/* Resources & Dev Cards */}
+                    <div className="flex gap-4 items-stretch h-48">
+                        {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} />}
+                        <PlayerDevCards gameState={gameState} playerId={playerId} />
+                    </div>
+                </div>
+
+                {/* Bottom Right: Dice & Actions */}
+                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-4 pointer-events-auto">
+                    <DiceDisplay diceRoll={gameState.diceRoll} />
+                    <ActionControls
+                        gameState={gameState}
+                        playerId={playerId}
+                        onOpenTrade={() => setShowTrade(true)}
                     />
                 </div>
             </div>

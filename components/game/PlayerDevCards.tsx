@@ -28,7 +28,6 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
     const [selectedCard, setSelectedCard] = useState<DevCardType | null>(null);
-    const [expanded, setExpanded] = useState(false);
 
     // Options for YoP / Monopoly
     const [resource1, setResource1] = useState<ResourceType>('wood');
@@ -36,8 +35,6 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
     const [monopolyRes, setMonopolyRes] = useState<ResourceType>('ore');
 
     if (!player) return null;
-
-    const hasCards = Object.values(player.devCards).some(count => count > 0);
 
     const handlePlay = () => {
         if (!selectedCard) return;
@@ -55,73 +52,64 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
         });
     };
 
-    // if (!hasCards) return null; // Always show panel
-
     return (
-        <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto">
-            <div className="flex justify-between items-center mb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Dev Cards</h3>
-                <span className="text-xs text-slate-400">{expanded ? '▼' : '▶'}</span>
-            </div>
+        <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto flex flex-col h-full">
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
 
-            {expanded && (
-                <div className="space-y-2">
-                    {(Object.keys(player.devCards) as DevCardType[]).map(type => {
-                        const count = player.devCards[type];
-                        if (count === 0) return null;
-                        return (
-                            <div key={type} className="bg-slate-700/50 p-2 rounded border border-slate-600">
-                                <div
-                                    className={`flex justify-between items-center cursor-pointer ${selectedCard === type ? 'text-blue-400' : ''}`}
-                                    onClick={() => setSelectedCard(selectedCard === type ? null : type)}
-                                >
-                                    <span className="font-bold text-sm">{DEV_CARD_LABELS[type]}</span>
-                                    <span className="font-bold">x{count}</span>
-                                </div>
-
-                                {selectedCard === type && (
-                                    <div className="mt-2 text-xs">
-                                        <p className="text-slate-400 mb-2">{DEV_CARD_DESCRIPTIONS[type]}</p>
-
-                                        {/* Contextual Options */}
-                                        {type === 'year_of_plenty' && (
-                                            <div className="mb-2 space-y-1">
-                                                <select value={resource1} onChange={e => setResource1(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full">
-                                                    {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
-                                                </select>
-                                                <select value={resource2} onChange={e => setResource2(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full">
-                                                    {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
-                                                </select>
-                                            </div>
-                                        )}
-
-                                        {type === 'monopoly' && (
-                                            <div className="mb-2">
-                                                <select value={monopolyRes} onChange={e => setMonopolyRes(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full">
-                                                    {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
-                                                </select>
-                                            </div>
-                                        )}
-
-                                        <button
-                                            onClick={handlePlay}
-                                            disabled={isPending || gameState.currentTurn !== playerId}
-                                            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-600 disabled:text-slate-400 text-white font-bold py-1 px-2 rounded transition-colors"
-                                        >
-                                            {isPending ? 'Playing...' : 'Play'}
-                                        </button>
-                                    </div>
-                                )}
+            <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px]">
+                {(Object.keys(player.devCards) as DevCardType[]).map(type => {
+                    const count = player.devCards[type];
+                    if (count === 0) return null;
+                    return (
+                        <div key={type} className="bg-slate-700/50 p-2 rounded border border-slate-600">
+                            <div
+                                className={`flex justify-between items-center cursor-pointer ${selectedCard === type ? 'text-blue-400' : ''}`}
+                                onClick={() => setSelectedCard(selectedCard === type ? null : type)}
+                            >
+                                <span className="font-bold text-sm">{DEV_CARD_LABELS[type]}</span>
+                                <span className="font-bold">x{count}</span>
                             </div>
-                        );
-                    })}
-                </div>
-            )}
-            {!expanded && (
-                <div className="text-xs text-slate-400">
-                    {Object.entries(player.devCards).filter(([_, c]) => c > 0).length} types available
-                </div>
-            )}
+
+                            {selectedCard === type && (
+                                <div className="mt-2 text-xs">
+                                    <p className="text-slate-400 mb-2">{DEV_CARD_DESCRIPTIONS[type]}</p>
+
+                                    {/* Contextual Options */}
+                                    {type === 'year_of_plenty' && (
+                                        <div className="mb-2 space-y-1">
+                                            <select value={resource1} onChange={e => setResource1(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full">
+                                                {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
+                                            </select>
+                                            <select value={resource2} onChange={e => setResource2(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full">
+                                                {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {type === 'monopoly' && (
+                                        <div className="mb-2">
+                                            <select value={monopolyRes} onChange={e => setMonopolyRes(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full">
+                                                {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handlePlay}
+                                        disabled={isPending || gameState.currentTurn !== playerId}
+                                        className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-600 disabled:text-slate-400 text-white font-bold py-1 px-2 rounded transition-colors"
+                                    >
+                                        {isPending ? 'Playing...' : 'Play'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                {Object.values(player.devCards).every(c => c === 0) && (
+                    <div className="text-slate-500 text-xs italic">No cards</div>
+                )}
+            </div>
         </div>
     );
 };

@@ -211,9 +211,9 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
     return (
         <div className="relative w-full h-full bg-slate-900 overflow-hidden">
             <TransformWrapper
-                initialScale={0.8}
-                minScale={0.4}
-                maxScale={2}
+                initialScale={1}
+                minScale={0.5}
+                maxScale={4}
                 centerOnInit
                 limitToBounds={false}
                 onTransformed={(ref) => {
@@ -223,54 +223,67 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                 {({ zoomIn, zoomOut, resetTransform, setTransform }) => (
                     <>
                         {/* Theme Toggle & Zoom Controls */}
-                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => zoomOut()}
-                                    className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-10"
-                                >
-                                    −
-                                </button>
-                                <input
-                                    type="range"
-                                    min={0.4}
-                                    max={2}
-                                    step={0.05}
-                                    value={zoomLevel}
-                                    onChange={(e) => {
-                                        const newScale = parseFloat(e.target.value);
-                                        setZoomLevel(newScale);
-                                        setTransform(0, 0, newScale);
-                                    }}
-                                    className="w-32 accent-blue-500"
-                                />
-                                <button
-                                    onClick={() => zoomIn()}
-                                    className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-10"
-                                >
-                                    +
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        resetTransform();
-                                        setZoomLevel(0.8);
-                                    }}
-                                    className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
-                                >
-                                    Reset
-                                </button>
-                            </div>
-                            <button
-                                onClick={toggleTheme}
-                                className="bg-slate-800 text-white px-4 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
-                            >
-                                {theme === 'flat' ? 'Switch to 3D' : 'Switch to 2D'}
-                            </button>
+                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-auto">
+                            <details className="group" open>
+                                <summary className="list-none cursor-pointer bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold flex items-center gap-2 w-fit">
+                                    <span>Map Controls</span>
+                                    <span className="group-open:rotate-180 transition-transform">▼</span>
+                                </summary>
+                                <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => zoomOut()}
+                                            className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-10"
+                                        >
+                                            −
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min={0.5}
+                                            max={4}
+                                            step={0.1}
+                                            value={zoomLevel}
+                                            onChange={(e) => {
+                                                const newScale = parseFloat(e.target.value);
+                                                setZoomLevel(newScale);
+                                                setTransform(0, 0, newScale);
+                                            }}
+                                            className="w-32 accent-blue-500"
+                                        />
+                                        <button
+                                            onClick={() => zoomIn()}
+                                            className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-10"
+                                        >
+                                            +
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                resetTransform();
+                                                setZoomLevel(1);
+                                            }}
+                                            className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
+                                        >
+                                            Reset
+                                        </button>
+                                    </div>
+                                    <button
+                                        onClick={toggleTheme}
+                                        className="bg-slate-800 text-white px-4 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
+                                    >
+                                        {theme === 'flat' ? 'Switch to 3D' : 'Switch to 2D'}
+                                    </button>
+                                </div>
+                            </details>
                         </div>
 
-                        <TransformComponent wrapperClass="w-full h-full" contentClass="w-full h-full">
+                        <TransformComponent
+                            wrapperClass="w-full h-full"
+                            contentClass="w-full h-full"
+                            wrapperStyle={{ width: "100%", height: "100%" }}
+                            contentStyle={{ width: "100%", height: "100%" }}
+                        >
                             <div className="relative w-full h-full flex items-center justify-center">
-                                <svg id="board-svg" className="overflow-visible" width={1000} height={1000} viewBox="-500 -500 1000 1000">
+                                <svg id="board-svg" className="overflow-visible" width="100%" height="100%" viewBox="-500 -500 1000 1000">
                                     {/* Ports */}
                                     {ports.map((port, i) => (
                                         <PortComponent key={i} port={port} />
