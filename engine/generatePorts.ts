@@ -70,26 +70,30 @@ export const generatePorts = (hexSize: number): Port[] => {
         const angleDeg = EDGE_ANGLES[edgeDef.edgeIndex];
         const angleRad = angleDeg * Math.PI / 180;
 
-        const x = center.x + dist * Math.cos(angleRad);
-        const y = center.y + dist * Math.sin(angleRad);
+        // Push the port center out further so it sits "off shore"
+        // dist is the distance to the edge midpoint. We want to go a bit further.
+        const portOffset = 60; // Pixels to push out
+        const x = center.x + (dist + portOffset) * Math.cos(angleRad);
+        const y = center.y + (dist + portOffset) * Math.sin(angleRad);
 
         // Port angle should point INWARD to the hex center
         const portAngle = (angleDeg + 180) % 360;
 
         // Calculate vertices for the port (for visualization lines)
-        // Vertices are at +/- size/2 along the tangent vector
-        // Tangent is angleRad + 90 deg
-        const tangentRad = angleRad + Math.PI / 2;
-        const vDist = hexSize / 2;
+        // We want the corners of the hex edge that this port is attached to.
+        // For pointy top hexes, if the edge normal is at angleDeg, the corners are at angleDeg - 30 and angleDeg + 30.
+        const corner1Rad = (angleDeg - 30) * Math.PI / 180;
+        const corner2Rad = (angleDeg + 30) * Math.PI / 180;
 
+        // Corners are at distance = hexSize from center
         const v1 = {
-            x: x + vDist * Math.cos(tangentRad),
-            y: y + vDist * Math.sin(tangentRad)
+            x: center.x + hexSize * Math.cos(corner1Rad),
+            y: center.y + hexSize * Math.sin(corner1Rad)
         };
 
         const v2 = {
-            x: x - vDist * Math.cos(tangentRad),
-            y: y - vDist * Math.sin(tangentRad)
+            x: center.x + hexSize * Math.cos(corner2Rad),
+            y: center.y + hexSize * Math.sin(corner2Rad)
         };
 
         return {

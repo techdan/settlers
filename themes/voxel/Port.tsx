@@ -30,48 +30,38 @@ export const VoxelPort: React.FC<PortProps> = ({ port }) => {
 
     // Calculate local coordinates for vertices relative to port position (0,0)
     const v1Local = port.vertices ? {
-        x: round((port.vertices[0].x - port.position.x) * Math.cos(-port.angle * Math.PI / 180) - (port.vertices[0].y - port.position.y) * Math.sin(-port.angle * Math.PI / 180)),
-        y: round((port.vertices[0].x - port.position.x) * Math.sin(-port.angle * Math.PI / 180) + (port.vertices[0].y - port.position.y) * Math.cos(-port.angle * Math.PI / 180))
-    } : { x: 40, y: -25 }; // Fallback
+        x: round(port.vertices[0].x - port.position.x),
+        y: round(port.vertices[0].y - port.position.y)
+    } : { x: 0, y: 0 };
 
     const v2Local = port.vertices ? {
-        x: round((port.vertices[1].x - port.position.x) * Math.cos(-port.angle * Math.PI / 180) - (port.vertices[1].y - port.position.y) * Math.sin(-port.angle * Math.PI / 180)),
-        y: round((port.vertices[1].x - port.position.x) * Math.sin(-port.angle * Math.PI / 180) + (port.vertices[1].y - port.position.y) * Math.cos(-port.angle * Math.PI / 180))
-    } : { x: 40, y: 25 }; // Fallback
+        x: round(port.vertices[1].x - port.position.x),
+        y: round(port.vertices[1].y - port.position.y)
+    } : { x: 0, y: 0 };
 
     return (
-        <g transform={`translate(${port.position.x}, ${port.position.y}) rotate(${port.angle})`}>
-            {/* 
-         Port Angle points INWARD (Right).
-         We want the dock to be OUTSIDE (Left).
-      */}
+        <g transform={`translate(${port.position.x}, ${port.position.y})`}>
+            {/* Connection Lines (Ropes) */}
+            {/* Connect to the "top" of the hex (y - 15) to simulate height (DEPTH=15) */}
+            <line x1="0" y1="0" x2={v1Local.x} y2={v1Local.y - 15} stroke="#8D6E63" strokeWidth="2" />
+            <line x1="0" y1="0" x2={v2Local.x} y2={v2Local.y - 15} stroke="#8D6E63" strokeWidth="2" />
 
-            <g transform="translate(-40, 0)">
-                {/* Connection Lines (Ropes) */}
-                <line x1="0" y1="0" x2={v1Local.x + 40} y2={v1Local.y} stroke="#8D6E63" strokeWidth="2" />
-                <line x1="0" y1="0" x2={v2Local.x + 40} y2={v2Local.y} stroke="#8D6E63" strokeWidth="2" />
-
-                {/* 3D Dock - Triangular Prism */}
-                {/* Pointing Right (Inward) */}
-
-                {/* Bottom Face (Shadow) */}
-                <path d="M0,0 L-10,-15 L-10,15 Z" fill="#000" opacity="0.2" />
-
-                {/* Side Face (Darker) */}
-                <path d="M-10,15 L30,0 L30,-5 L-10,10 Z" fill="#8D6E63" filter="brightness(0.7)" />
+            {/* 3D Platform/Crate */}
+            <g transform="translate(-24, -24)">
+                {/* Shadow/Side */}
+                <path d="M0,48 L48,48 L48,10 L0,10 Z" fill="#5D4037" />
+                <path d="M48,48 L53,43 L53,5 L48,10 Z" fill="#3E2723" />
 
                 {/* Top Face */}
-                <path d="M30,-5 L-10,-20 L-10,10 L30,-5 Z" fill="#D7CCC8" stroke="#5D4037" strokeWidth="1" />
+                <rect x="0" y="0" width="48" height="48" fill="#D7CCC8" stroke="#5D4037" strokeWidth="1" />
 
-                {/* Resource Icon Standing on Dock */}
-                <g transform="translate(0, -5) rotate(90)">
-                    <g transform={`rotate(${-port.angle})`}>
-                        <ResourceComponent />
-                    </g>
+                {/* Resource Icon */}
+                <g transform="translate(24, 24)">
+                    <ResourceComponent />
                 </g>
 
-                {/* Ratio Text on the dock surface */}
-                <text x="5" y="0" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#FFF" transform="rotate(-90 5 0)">
+                {/* Ratio Text */}
+                <text x="24" y="42" fontSize="14" fontWeight="bold" textAnchor="middle" fill="#3E2723">
                     {port.type === 'generic' ? '3:1' : '2:1'}
                 </text>
             </g>

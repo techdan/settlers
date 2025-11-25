@@ -213,7 +213,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             <TransformWrapper
                 initialScale={1}
                 minScale={0.5}
-                maxScale={4}
+                maxScale={1.3}
                 centerOnInit
                 limitToBounds={false}
                 onTransformed={(ref) => {
@@ -230,41 +230,61 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                     <span className="group-open:rotate-180 transition-transform">▼</span>
                                 </summary>
                                 <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => zoomOut()}
-                                            className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-10"
-                                        >
-                                            −
-                                        </button>
-                                        <input
-                                            type="range"
-                                            min={0.5}
-                                            max={4}
-                                            step={0.1}
-                                            value={zoomLevel}
-                                            onChange={(e) => {
-                                                const newScale = parseFloat(e.target.value);
-                                                setZoomLevel(newScale);
-                                                setTransform(0, 0, newScale);
-                                            }}
-                                            className="w-32 accent-blue-500"
-                                        />
-                                        <button
-                                            onClick={() => zoomIn()}
-                                            className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-10"
-                                        >
-                                            +
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                resetTransform();
-                                                setZoomLevel(1);
-                                            }}
-                                            className="bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
-                                        >
-                                            Reset
-                                        </button>
+                                    <div className="flex flex-col gap-1 w-full">
+                                        <div className="flex justify-between items-center px-1">
+                                            <span className="text-xs text-slate-400">Zoom</span>
+                                            <input
+                                                type="number"
+                                                min={0.5}
+                                                max={1.3}
+                                                step={0.1}
+                                                value={Math.round(zoomLevel * 10) / 10}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    if (!isNaN(val) && val >= 0.5 && val <= 1.3) {
+                                                        setZoomLevel(val);
+                                                        setTransform(0, 0, val);
+                                                    }
+                                                }}
+                                                className="w-16 bg-slate-800 text-white text-xs px-1 py-0.5 rounded border border-slate-600 text-right"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <button
+                                                onClick={() => zoomOut()}
+                                                className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
+                                            >
+                                                −
+                                            </button>
+                                            <input
+                                                type="range"
+                                                min={0.5}
+                                                max={1.3}
+                                                step={0.1}
+                                                value={zoomLevel}
+                                                onChange={(e) => {
+                                                    const newScale = parseFloat(e.target.value);
+                                                    setZoomLevel(newScale);
+                                                    setTransform(0, 0, newScale);
+                                                }}
+                                                className="flex-1 accent-blue-500 h-2"
+                                            />
+                                            <button
+                                                onClick={() => zoomIn()}
+                                                className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
+                                            >
+                                                +
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    resetTransform();
+                                                    setZoomLevel(1);
+                                                }}
+                                                className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-xs"
+                                            >
+                                                Reset
+                                            </button>
+                                        </div>
                                     </div>
                                     <button
                                         onClick={toggleTheme}
@@ -284,11 +304,6 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                         >
                             <div className="relative w-full h-full flex items-center justify-center">
                                 <svg id="board-svg" className="overflow-visible" width="100%" height="100%" viewBox="-500 -500 1000 1000">
-                                    {/* Ports */}
-                                    {ports.map((port, i) => (
-                                        <PortComponent key={i} port={port} />
-                                    ))}
-
                                     {/* Hex Grid */}
                                     {sortedTiles.map((tile) => (
                                         <TileComponent
@@ -300,6 +315,11 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                             size={HEX_SIZE}
                                             onClick={() => handleHexClick(tile.id)}
                                         />
+                                    ))}
+
+                                    {/* Ports */}
+                                    {ports.map((port, i) => (
+                                        <PortComponent key={i} port={port} />
                                     ))}
 
                                     {/* Edges (Roads) */}

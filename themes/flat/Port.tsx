@@ -33,38 +33,36 @@ export const FlatPort: React.FC<PortProps> = ({ port }) => {
     const round = (n: number) => Math.round(n * 10000) / 10000;
 
     const v1Local = port.vertices ? {
-        x: round((port.vertices[0].x - port.position.x) * Math.cos(-port.angle * Math.PI / 180) - (port.vertices[0].y - port.position.y) * Math.sin(-port.angle * Math.PI / 180)),
-        y: round((port.vertices[0].x - port.position.x) * Math.sin(-port.angle * Math.PI / 180) + (port.vertices[0].y - port.position.y) * Math.cos(-port.angle * Math.PI / 180))
-    } : { x: 30, y: -25 }; // Fallback
+        x: round(port.vertices[0].x - port.position.x),
+        y: round(port.vertices[0].y - port.position.y)
+    } : { x: 0, y: 0 };
 
     const v2Local = port.vertices ? {
-        x: round((port.vertices[1].x - port.position.x) * Math.cos(-port.angle * Math.PI / 180) - (port.vertices[1].y - port.position.y) * Math.sin(-port.angle * Math.PI / 180)),
-        y: round((port.vertices[1].x - port.position.x) * Math.sin(-port.angle * Math.PI / 180) + (port.vertices[1].y - port.position.y) * Math.cos(-port.angle * Math.PI / 180))
-    } : { x: 30, y: 25 }; // Fallback
+        x: round(port.vertices[1].x - port.position.x),
+        y: round(port.vertices[1].y - port.position.y)
+    } : { x: 0, y: 0 };
 
     return (
-        <g transform={`translate(${port.position.x}, ${port.position.y}) rotate(${port.angle})`}>
-            <g transform="translate(-30, 0)">
-                {/* Connection Lines to Vertices (using local coords relative to the rotated group) */}
-                <line x1="0" y1="0" x2={v1Local.x + 30} y2={v1Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
-                <line x1="0" y1="0" x2={v2Local.x + 30} y2={v2Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
+        <g transform={`translate(${port.position.x}, ${port.position.y})`}>
+            {/* Connection Lines to Vertices */}
+            <line x1="0" y1="0" x2={v1Local.x} y2={v1Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="0" y1="0" x2={v2Local.x} y2={v2Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
 
-                {/* Wedge pointing inward (Right) */}
-                <path d="M0,-15 L20,0 L0,15 Z" fill="#F5F5DC" stroke="#333" strokeWidth="2" />
+            {/* Background Circle */}
+            <circle cx="0" cy="0" r="25" fill="#F5F5DC" stroke="#333" strokeWidth="2" />
 
-                {/* Icon Circle */}
-                <circle cx="0" cy="0" r="14" fill={color} stroke="#333" strokeWidth="1" />
+            {/* Icon Circle */}
+            <circle cx="0" cy="-6" r="13" fill={color} stroke="#333" strokeWidth="1" />
 
-                {/* Icon */}
-                <g transform="translate(-8, -8)">
-                    <Icon size={16} color={port.type === 'generic' ? '#000' : '#fff'} />
-                </g>
-
-                {/* Ratio Text */}
-                <text x="-18" y="4" fontSize="10" fontWeight="bold" textAnchor="middle" fill="#FFF">
-                    {port.type === 'generic' ? '3:1' : '2:1'}
-                </text>
+            {/* Icon */}
+            <g transform="translate(-8, -14)">
+                <Icon size={16} color={port.type === 'generic' ? '#000' : '#fff'} />
             </g>
+
+            {/* Ratio Text */}
+            <text x="0" y="16" fontSize="10" fontWeight="bold" textAnchor="middle" fill="#333">
+                {port.type === 'generic' ? '3:1' : '2:1'}
+            </text>
         </g>
     );
 };

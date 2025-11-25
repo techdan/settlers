@@ -99,7 +99,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToke
                 </g>
 
                 {numberToken && (
-                    <g transform="translate(0, 10)">
+                    <g transform={`translate(0, ${size * 0.3})`}>
                         <VoxelNumberToken number={numberToken} />
                     </g>
                 )}

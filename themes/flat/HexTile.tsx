@@ -62,7 +62,9 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, ha
             </g>
 
             {numberToken && (
-                <NumberToken number={numberToken} />
+                <g transform={`translate(0, ${size * 0.3})`}>
+                    <NumberToken number={numberToken} />
+                </g>
             )}
 
             {hasRobber && <Robber />}
