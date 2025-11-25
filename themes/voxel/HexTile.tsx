@@ -1,13 +1,13 @@
 import React from 'react';
 import { Hex, hexToPixel } from '@/lib/hex';
-import { TileType } from '@/lib/board-data';
+import { TerrainType } from '@/core/rules/board-constants';
 import { VoxelNumberToken } from './NumberToken';
 import { VoxelRobber } from './Robber';
 import { VoxelTree, VoxelMountain, VoxelWheat, VoxelBrick, VoxelSheep, VoxelDesert } from './Resources';
 
 interface HexTileProps {
     hex: Hex;
-    resource: TileType;
+    terrain: TerrainType;
     numberToken: number | null;
     hasRobber: boolean;
     size: number;
@@ -15,25 +15,25 @@ interface HexTileProps {
     isRolled?: boolean;
 }
 
-const RESOURCE_COLORS: Record<TileType, string> = {
-    wood: '#4CAF50', // Brighter Green
-    brick: '#D84315', // Deep Orange
-    sheep: '#8BC34A', // Light Green
-    wheat: '#FFCA28', // Amber
-    ore: '#78909C', // Blue Grey
+const TERRAIN_COLORS: Record<TerrainType, string> = {
+    forest: '#4CAF50', // Brighter Green
+    hill: '#D84315', // Deep Orange
+    pasture: '#8BC34A', // Light Green
+    field: '#FFCA28', // Amber
+    mountain: '#78909C', // Blue Grey
     desert: '#FDD835', // Yellow
 };
 
-const RESOURCE_COMPONENTS: Record<TileType, React.ElementType> = {
-    wood: VoxelTree,
-    brick: VoxelBrick,
-    sheep: VoxelSheep,
-    wheat: VoxelWheat,
-    ore: VoxelMountain,
+const TERRAIN_COMPONENTS: Record<TerrainType, React.ElementType> = {
+    forest: VoxelTree,
+    hill: VoxelBrick,
+    pasture: VoxelSheep,
+    field: VoxelWheat,
+    mountain: VoxelMountain,
     desert: VoxelDesert,
 };
 
-export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick, isRolled }) => {
+export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled }) => {
     const { x, y } = hexToPixel(hex, size);
     const DEPTH = 15;
 
@@ -65,8 +65,8 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, resource, numberToke
     const side3 = [topPoints[2], topPoints[3], points[3], points[2]];
     const side3Str = side3.map(p => `${p.x},${p.y}`).join(' ');
 
-    const ResourceComponent = RESOURCE_COMPONENTS[resource];
-    const baseColor = RESOURCE_COLORS[resource];
+    const ResourceComponent = TERRAIN_COMPONENTS[terrain];
+    const baseColor = TERRAIN_COLORS[terrain];
 
     return (
         <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>

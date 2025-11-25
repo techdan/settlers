@@ -1,13 +1,13 @@
 import React from 'react';
 import { Hex, hexToPixel } from '@/lib/hex';
-import { TileType } from '@/lib/board-data';
+import { TerrainType } from '@/core/rules/board-constants';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
 import { TreePine, Square, Cloud, Wheat, Mountain, Sun } from 'lucide-react';
 
 interface HexTileProps {
     hex: Hex;
-    resource: TileType;
+    terrain: TerrainType;
     numberToken: number | null;
     hasRobber: boolean;
     size: number;
@@ -15,25 +15,25 @@ interface HexTileProps {
     isRolled?: boolean;
 }
 
-const RESOURCE_COLORS: Record<TileType, string> = {
-    wood: '#228B22', // ForestGreen
-    brick: '#B22222', // FireBrick
-    sheep: '#90EE90', // LightGreen
-    wheat: '#DAA520', // GoldenRod
-    ore: '#708090', // SlateGray
+const TERRAIN_COLORS: Record<TerrainType, string> = {
+    forest: '#228B22', // ForestGreen
+    hill: '#B22222', // FireBrick
+    pasture: '#90EE90', // LightGreen
+    field: '#DAA520', // GoldenRod
+    mountain: '#708090', // SlateGray
     desert: '#F4A460', // SandyBrown
 };
 
-const RESOURCE_ICONS: Record<TileType, React.ElementType> = {
-    wood: TreePine,
-    brick: Square, // Placeholder for brick
-    sheep: Cloud, // Placeholder for sheep
-    wheat: Wheat,
-    ore: Mountain,
+const TERRAIN_ICONS: Record<TerrainType, React.ElementType> = {
+    forest: TreePine,
+    hill: Square, // Placeholder for brick
+    pasture: Cloud, // Placeholder for sheep
+    field: Wheat,
+    mountain: Mountain,
     desert: Sun,
 };
 
-export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, hasRobber, size, onClick, isRolled }) => {
+export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled }) => {
     const { x, y } = hexToPixel(hex, size);
 
     // Calculate points for pointy-topped hex
@@ -45,7 +45,7 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, ha
     }
     const pointsStr = points.join(' ');
 
-    const Icon = RESOURCE_ICONS[resource];
+    const Icon = TERRAIN_ICONS[terrain];
 
     return (
         <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
@@ -63,7 +63,7 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, resource, numberToken, ha
             </style>
             <polygon
                 points={pointsStr}
-                fill={RESOURCE_COLORS[resource]}
+                fill={TERRAIN_COLORS[terrain]}
                 stroke="#e5e7eb"
                 strokeWidth="4"
                 className={`transition-colors hover:brightness-110 ${isRolled ? 'animate-flash' : ''}`}

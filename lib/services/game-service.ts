@@ -48,7 +48,17 @@ export async function startGame(roomId: string): Promise<GameState> {
     }));
 
     // 4. Generate Board
-    const hexes = generateStandardBoard();
+    // Check if lobby has a generated board
+    const { LobbyService } = await import('@/lib/services/lobby-service');
+    const lobbyState = await LobbyService.getLobbyState(roomId);
+
+    let hexes;
+    if (lobbyState && lobbyState.boardPreview && lobbyState.boardPreview.length > 0) {
+        hexes = lobbyState.boardPreview;
+    } else {
+        // Fallback to standard board if nothing generated
+        hexes = generateStandardBoard();
+    }
     const vertices: Record<string, any> = {};
     const edges: Record<string, any> = {};
 
@@ -85,7 +95,7 @@ export async function startGame(roomId: string): Promise<GameState> {
     const devCardDeck = createDevCardDeck();
 
     // 6. Find desert hex for robber
-    const desertHexId = getDesertHexId();
+    const desertHexId = getDesertHexId(hexes);
 
     // 7. Create Game State
     const gameState: GameState = {

@@ -337,7 +337,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                             <TileComponent
                                                 key={tile.id}
                                                 hex={tile.hex}
-                                                resource={tile.resource}
+                                                terrain={tile.terrain}
                                                 numberToken={tile.numberToken}
                                                 hasRobber={gameState.robberHexId === tile.id}
                                                 size={HEX_SIZE}

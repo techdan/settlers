@@ -159,3 +159,30 @@ export async function debugGiveResource(roomId: string, playerId: string, resour
 export async function placeBonusRoad(roomId: string, playerId: string, edgeId: string) {
     return devCardService.placeBonusRoad(roomId, playerId, edgeId);
 }
+
+import { LobbyService } from '@/lib/services/lobby-service';
+import { revalidatePath } from 'next/cache';
+
+export async function generateLobbyBoard(roomId: string, hostId: string, fairMode: boolean) {
+    const result = await LobbyService.generateBoard(roomId, hostId, fairMode);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function requestNewLobbyBoard(roomId: string, playerId: string) {
+    const result = await LobbyService.requestNewBoard(roomId, playerId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function toggleLobbyFairMode(roomId: string, hostId: string, fairMode: boolean) {
+    const result = await LobbyService.toggleFairMode(roomId, hostId, fairMode);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function setLobbyStandardBoard(roomId: string, hostId: string) {
+    const result = await LobbyService.setStandardBoard(roomId, hostId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
