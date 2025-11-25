@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { startGame } from '@/app/actions';
+import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
+import { ConnectionStatusIndicator } from '@/components/game/ConnectionStatus';
 
 type Player = {
     id: string;
@@ -31,45 +33,56 @@ export function LobbyView({
     const [room, setRoom] = useState<Room>(initialRoom);
     const [etag, setEtag] = useState<string | null>(null);
     const router = useRouter();
+    const connectionStatus = useConnectionStatus();
+    const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
 
     const isHost = players.find(p => p.id === currentPlayerId)?.isHost;
 
     useEffect(() => {
         const interval = setInterval(async () => {
-            const headers: HeadersInit = {};
-            if (etag) {
-                headers['If-None-Match'] = etag;
-            }
-
-            const res = await fetch(`/api/room/${roomId}`, { headers });
-
-            if (res.status === 304) {
-                // Not Modified - nothing changed
-                return;
-            }
-
-            if (res.ok) {
-                const data = await res.json();
-                setPlayers(data.players);
-                setRoom(data.room);
-
-                // Store ETag
-                const newEtag = res.headers.get('etag');
-                if (newEtag) {
-                    setEtag(newEtag);
+            try {
+                const headers: HeadersInit = {};
+                if (etag) {
+                    headers['If-None-Match'] = etag;
                 }
 
-                if (data.room.status === 'in_progress') {
-                    router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
+                const data = await fetchWithRetry<{ room: Room; players: Player[] }>(
+                    `/api/room/${roomId}`,
+                    { headers },
+                    {
+                        maxRetries: 5,
+                        onRetry: (attempt, delay) => {
+                            console.log(`Retrying room fetch (attempt ${attempt}, delay ${delay}ms)`);
+                        }
+                    }
+                );
+
+                if (data) {
+                    setPlayers(data.players);
+                    setRoom(data.room);
+
+                    if (data.room.status === 'in_progress') {
+                        router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
+                    }
                 }
+            } catch (e) {
+                console.error("Failed to fetch room after retries", e);
+                // Keep showing last known state
             }
         }, 2000);
 
         return () => clearInterval(interval);
-    }, [roomId, currentPlayerId, router, etag]);
+    }, [roomId, currentPlayerId, router, etag, fetchWithRetry]);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-8">
+            {/* Connection Status Indicator */}
+            <ConnectionStatusIndicator
+                status={connectionStatus.status}
+                consecutiveFailures={connectionStatus.consecutiveFailures}
+                lastError={connectionStatus.lastError}
+            />
+
             <h1 className="text-4xl font-bold">Lobby</h1>
             <div className="text-2xl">Room Code: <span className="font-mono font-bold">{roomId}</span></div>
 

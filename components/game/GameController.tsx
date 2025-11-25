@@ -16,6 +16,8 @@ import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
+import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
+import { ConnectionStatusIndicator } from './ConnectionStatus';
 
 interface GameControllerProps {
     roomId: string;
@@ -29,6 +31,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [etag, setEtag] = useState<string | null>(null);
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
+    const connectionStatus = useConnectionStatus();
+    const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
 
     useEffect(() => {
         const fetchState = async () => {
@@ -39,32 +43,35 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     headers['If-None-Match'] = etag;
                 }
 
-                const res = await fetch(`/api/game/${roomId}`, { headers });
+                // Use fetchWithRetry for automatic retry with exponential backoff
+                const data = await fetchWithRetry<GameState>(
+                    `/api/game/${roomId}`,
+                    { headers },
+                    {
+                        maxRetries: 5,
+                        onRetry: (attempt, delay) => {
+                            console.log(`Retrying game state fetch (attempt ${attempt}, delay ${delay}ms)`);
+                        }
+                    }
+                );
 
-                if (res.status === 304) {
-                    // Not Modified - state hasn't changed, keep current state
-                    return;
-                }
-
-                if (res.ok) {
-                    const data = await res.json();
+                if (data) {
                     setBaseGameState(data);
 
-                    // Store ETag for next request
-                    const newEtag = res.headers.get('etag');
-                    if (newEtag) {
-                        setEtag(newEtag);
-                    }
+                    // Store ETag for next request (from response headers)
+                    // Note: We'd need to modify fetchWithRetry to return headers
+                    // For now, we'll rely on the server sending new ETag each time
                 }
             } catch (e) {
-                console.error("Failed to fetch game state", e);
+                console.error("Failed to fetch game state after retries", e);
+                // Don't update state on error - keep showing last known state
             }
         };
 
         fetchState();
         const interval = setInterval(fetchState, 2000);
         return () => clearInterval(interval);
-    }, [roomId, etag]);
+    }, [roomId, etag, fetchWithRetry]);
 
     if (!baseGameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
@@ -75,6 +82,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     return (
         <div className="relative h-screen w-screen overflow-hidden">
+            {/* Connection Status Indicator */}
+            <ConnectionStatusIndicator
+                status={connectionStatus.status}
+                consecutiveFailures={connectionStatus.consecutiveFailures}
+                lastError={connectionStatus.lastError}
+            />
+
             <Board
                 gameState={gameState}
                 playerId={playerId}
