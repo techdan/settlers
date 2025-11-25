@@ -25,15 +25,34 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | null>(null);
+    const [etag, setEtag] = useState<string | null>(null);
     const router = useRouter();
 
     useEffect(() => {
         const fetchState = async () => {
             try {
-                const res = await fetch(`/api/game/${roomId}`);
+                // Send ETag if we have one for cache validation
+                const headers: HeadersInit = {};
+                if (etag) {
+                    headers['If-None-Match'] = etag;
+                }
+
+                const res = await fetch(`/api/game/${roomId}`, { headers });
+
+                if (res.status === 304) {
+                    // Not Modified - state hasn't changed, keep current state
+                    return;
+                }
+
                 if (res.ok) {
                     const data = await res.json();
                     setGameState(data);
+
+                    // Store ETag for next request
+                    const newEtag = res.headers.get('etag');
+                    if (newEtag) {
+                        setEtag(newEtag);
+                    }
                 }
             } catch (e) {
                 console.error("Failed to fetch game state", e);
@@ -43,7 +62,7 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
         fetchState();
         const interval = setInterval(fetchState, 2000);
         return () => clearInterval(interval);
-    }, [roomId]);
+    }, [roomId, etag]);
 
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 

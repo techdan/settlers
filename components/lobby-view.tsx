@@ -29,17 +29,35 @@ export function LobbyView({
 }) {
     const [players, setPlayers] = useState<Player[]>(initialPlayers);
     const [room, setRoom] = useState<Room>(initialRoom);
+    const [etag, setEtag] = useState<string | null>(null);
     const router = useRouter();
 
     const isHost = players.find(p => p.id === currentPlayerId)?.isHost;
 
     useEffect(() => {
         const interval = setInterval(async () => {
-            const res = await fetch(`/api/room/${roomId}`);
+            const headers: HeadersInit = {};
+            if (etag) {
+                headers['If-None-Match'] = etag;
+            }
+
+            const res = await fetch(`/api/room/${roomId}`, { headers });
+
+            if (res.status === 304) {
+                // Not Modified - nothing changed
+                return;
+            }
+
             if (res.ok) {
                 const data = await res.json();
                 setPlayers(data.players);
                 setRoom(data.room);
+
+                // Store ETag
+                const newEtag = res.headers.get('etag');
+                if (newEtag) {
+                    setEtag(newEtag);
+                }
 
                 if (data.room.status === 'in_progress') {
                     router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
@@ -48,7 +66,7 @@ export function LobbyView({
         }, 2000);
 
         return () => clearInterval(interval);
-    }, [roomId, currentPlayerId, router]);
+    }, [roomId, currentPlayerId, router, etag]);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-8">
