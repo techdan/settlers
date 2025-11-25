@@ -75,7 +75,7 @@ export const GameController: React.FC<GameControllerProps> = ({ roomId, playerId
 
                 {/* Left Sidebar: Game Log */}
                 {/* Positioned below Map Controls (approx top-20) */}
-                <div className="absolute top-24 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto">
+                <div className="absolute top-48 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto">
                     <div className="flex-1 min-h-0 overflow-y-auto">
                         <GameLog logs={gameState.logs || []} />
                     </div>

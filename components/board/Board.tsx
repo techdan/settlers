@@ -230,61 +230,57 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                     <span className="group-open:rotate-180 transition-transform">▼</span>
                                 </summary>
                                 <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
-                                    <div className="flex flex-col gap-1 w-full">
-                                        <div className="flex justify-between items-center px-1">
-                                            <span className="text-xs text-slate-400">Zoom</span>
-                                            <input
-                                                type="number"
-                                                min={0.5}
-                                                max={1.3}
-                                                step={0.1}
-                                                value={Math.round(zoomLevel * 10) / 10}
-                                                onChange={(e) => {
-                                                    const val = parseFloat(e.target.value);
-                                                    if (!isNaN(val) && val >= 0.5 && val <= 1.3) {
-                                                        setZoomLevel(val);
-                                                        setTransform(0, 0, val);
-                                                    }
-                                                }}
-                                                className="w-16 bg-slate-800 text-white text-xs px-1 py-0.5 rounded border border-slate-600 text-right"
-                                            />
-                                        </div>
-                                        <div className="flex gap-2 items-center">
-                                            <button
-                                                onClick={() => zoomOut()}
-                                                className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
-                                            >
-                                                −
-                                            </button>
-                                            <input
-                                                type="range"
-                                                min={0.5}
-                                                max={1.3}
-                                                step={0.1}
-                                                value={zoomLevel}
-                                                onChange={(e) => {
-                                                    const newScale = parseFloat(e.target.value);
-                                                    setZoomLevel(newScale);
-                                                    setTransform(0, 0, newScale);
-                                                }}
-                                                className="flex-1 accent-blue-500 h-2"
-                                            />
-                                            <button
-                                                onClick={() => zoomIn()}
-                                                className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
-                                            >
-                                                +
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    resetTransform();
-                                                    setZoomLevel(1);
-                                                }}
-                                                className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-xs"
-                                            >
-                                                Reset
-                                            </button>
-                                        </div>
+                                    <div className="flex items-center gap-2 justify-between w-full">
+                                        <style>{`
+                                            input[type=number]::-webkit-inner-spin-button, 
+                                            input[type=number]::-webkit-outer-spin-button { 
+                                                -webkit-appearance: none; 
+                                                margin: 0; 
+                                            }
+                                            input[type=number] {
+                                                -moz-appearance: textfield;
+                                            }
+                                        `}</style>
+                                        <button
+                                            onClick={() => zoomOut(0.1)}
+                                            className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
+                                            title="Zoom Out"
+                                        >
+                                            −
+                                        </button>
+                                        <input
+                                            type="number"
+                                            min={0.5}
+                                            max={1.3}
+                                            step={0.1}
+                                            value={Math.round(zoomLevel * 10) / 10}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value);
+                                                if (!isNaN(val) && val >= 0.5 && val <= 1.3) {
+                                                    setZoomLevel(val);
+                                                    setTransform(0, 0, val);
+                                                }
+                                            }}
+                                            className="w-16 bg-slate-800 text-white text-center px-1 py-1 rounded border border-slate-600 text-sm appearance-none"
+                                            title="Zoom Level"
+                                        />
+                                        <button
+                                            onClick={() => zoomIn(0.1)}
+                                            className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
+                                            title="Zoom In"
+                                        >
+                                            +
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                resetTransform();
+                                                setZoomLevel(1);
+                                            }}
+                                            className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-xs ml-1"
+                                            title="Reset View"
+                                        >
+                                            Reset
+                                        </button>
                                     </div>
                                     <button
                                         onClick={toggleTheme}

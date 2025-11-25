@@ -129,7 +129,7 @@ export async function playDevCard(
 
     switch (cardType) {
         case 'knight':
-            player.knightsPlayed++;
+            player.knightsPlayed = (player.knightsPlayed || 0) + 1;
             updateLargestArmy(gameState);
             gameState.phase = 'robber_placement';
             logMessage += '. Move the robber.';

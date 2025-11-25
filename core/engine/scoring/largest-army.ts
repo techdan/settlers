@@ -10,7 +10,7 @@ import { GAME_CONSTANTS } from '@/core/rules/constants';
 export function updateLargestArmy(gameState: GameState): void {
     const armyCounts = gameState.players.map(p => ({
         playerId: p.id,
-        count: p.knightsPlayed
+        count: p.knightsPlayed || 0
     }));
 
     // Sort by count descending
