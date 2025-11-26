@@ -21,9 +21,10 @@ import { randomUUID } from 'crypto';
  * Create and initialize a new game
  *
  * @param roomId - Room ID
+ * @param gameMode - Game mode ('base' or 'cities_and_knights')
  * @returns Created game state
  */
-export async function startGame(roomId: string): Promise<GameState> {
+export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_knights' = 'base'): Promise<GameState> {
     // 1. Get players
     const roomPlayers = await findPlayersByRoomId(roomId);
 
@@ -34,20 +35,37 @@ export async function startGame(roomId: string): Promise<GameState> {
     const turnOrder = shuffledPlayers.map(p => p.id);
 
     // 3. Initialize Player States
-    const playerStates: PlayerState[] = shuffledPlayers.map((p, i) => ({
-        id: p.id,
-        name: p.name,
-        color: ['red', 'blue', 'white', 'orange'][i % 4] as any,
-        resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
-        devCards: { knight: 0, victory_point: 0, road_building: 0, year_of_plenty: 0, monopoly: 0 },
-        settlementsRemaining: 5,
-        citiesRemaining: 4,
-        roadsRemaining: 15,
-        victoryPoints: 0,
-        knightsPlayed: 0,
-        hasPlayedDevCard: false,
-        devCardsBoughtThisTurn: [],
-    }));
+    const playerStates: PlayerState[] = shuffledPlayers.map((p, i) => {
+        const basePlayer = {
+            id: p.id,
+            name: p.name,
+            color: ['red', 'blue', 'white', 'orange'][i % 4] as any,
+            resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+            devCards: { knight: 0, victory_point: 0, road_building: 0, year_of_plenty: 0, monopoly: 0 },
+            settlementsRemaining: 5,
+            citiesRemaining: 4,
+            roadsRemaining: 15,
+            victoryPoints: 0,
+            knightsPlayed: 0,
+            hasPlayedDevCard: false,
+            devCardsBoughtThisTurn: [],
+        };
+
+        // Add Cities & Knights fields if in C&K mode
+        if (gameMode === 'cities_and_knights') {
+            return {
+                ...basePlayer,
+                commodities: { paper: 0, cloth: 0, coin: 0 },
+                improvements: { science: 0, trade: 0, politics: 0 },
+                progressCards: [],
+                knights: [],
+                metropolisOwned: [],
+                activeKnightCount: 0,
+            };
+        }
+
+        return basePlayer;
+    });
 
     // 4. Generate Board
     // Check if lobby has a generated board
@@ -96,6 +114,13 @@ export async function startGame(roomId: string): Promise<GameState> {
     // 5. Create Dev Card Deck
     const devCardDeck = createDevCardDeck();
 
+    // 5.1. Create Progress Card Decks (C&K mode only)
+    let progressDecks = undefined;
+    if (gameMode === 'cities_and_knights') {
+        const { createProgressDecks } = await import('@/core/engine/progress/progress-card-definitions');
+        progressDecks = createProgressDecks();
+    }
+
     // 6. Find desert hex for robber
     const desertHexId = getDesertHexId(hexes);
 
@@ -122,8 +147,18 @@ export async function startGame(roomId: string): Promise<GameState> {
         logs: [{
             id: randomUUID(),
             timestamp: Date.now(),
-            message: 'Game started!'
-        }]
+            message: `Game started!${gameMode === 'cities_and_knights' ? ' (Cities & Knights mode)' : ''}`
+        }],
+        // Cities & Knights fields
+        gameMode,
+        barbarianPosition: gameMode === 'cities_and_knights' ? 0 : undefined,
+        metropolises: gameMode === 'cities_and_knights' ? [
+            { type: 'science', owner: null, vertexId: null },
+            { type: 'trade', owner: null, vertexId: null },
+            { type: 'politics', owner: null, vertexId: null },
+        ] : undefined,
+        progressDecks,
+        eventDieRoll: undefined,
     };
 
     // 8. Save to database

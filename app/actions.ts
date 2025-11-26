@@ -65,8 +65,8 @@ import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 
-export async function startGame(roomId: string) {
-    return gameService.startGame(roomId);
+export async function startGame(roomId: string, gameMode?: 'base' | 'cities_and_knights') {
+    return gameService.startGame(roomId, gameMode);
 }
 
 export async function placeSettlement(roomId: string, playerId: string, vertexId: string) {

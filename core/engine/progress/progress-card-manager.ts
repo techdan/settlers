@@ -147,6 +147,18 @@ function executeProgressCardEffect(
             executeSmith(gameState, player, options);
             break;
 
+        case 'inventor':
+            executeInventor(gameState, player, options);
+            break;
+
+        case 'irrigation':
+            executeIrrigation(gameState, player, options);
+            break;
+
+        case 'mining':
+            executeMining(gameState, player, options);
+            break;
+
         case 'medicine':
         case 'printer':
             // Victory point cards - no effect on play
@@ -165,6 +177,10 @@ function executeProgressCardEffect(
             executeResourceMonopoly(gameState, player, options);
             break;
 
+        case 'trade_monopoly':
+            executeTradeMonopoly(gameState, player, options);
+            break;
+
         case 'commercial_harbor':
         case 'master_merchant':
             // Victory point cards - no effect on play
@@ -177,6 +193,22 @@ function executeProgressCardEffect(
 
         case 'spy':
             executeSpy(gameState, player, options);
+            break;
+
+        case 'deserter':
+            executeDeserter(gameState, player, options);
+            break;
+
+        case 'intrigue':
+            executeIntrigue(gameState, player, options);
+            break;
+
+        case 'saboteur':
+            executeSaboteur(gameState, player, options);
+            break;
+
+        case 'warlord':
+            executeWarlord(gameState, player);
             break;
 
         case 'bishop':
@@ -265,6 +297,83 @@ function executeSmith(gameState: GameState, player: PlayerState, options?: any):
     });
 }
 
+function executeInventor(gameState: GameState, player: PlayerState, options?: any): void {
+    // Swap number tokens of any 2 terrain hexes
+    const { hex1Id, hex2Id } = options || {};
+    if (!hex1Id || !hex2Id) {
+        throw new Error('Inventor requires hex1Id and hex2Id');
+    }
+
+    const hex1 = gameState.board.hexes.find(h => h.id === hex1Id);
+    const hex2 = gameState.board.hexes.find(h => h.id === hex2Id);
+
+    if (!hex1 || !hex2) {
+        throw new Error('Invalid hex IDs');
+    }
+
+    if (!hex1.number || !hex2.number) {
+        throw new Error('Cannot swap desert or ocean hexes');
+    }
+
+    // Swap the number tokens
+    const tempNumber = hex1.number;
+    hex1.number = hex2.number;
+    hex2.number = tempNumber;
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} swapped number tokens between two hexes`,
+        playerId: player.id
+    });
+}
+
+function executeIrrigation(gameState: GameState, player: PlayerState, options?: any): void {
+    // Get resources from 1 field hex regardless of roll
+    const { hexId } = options || {};
+    if (!hexId) {
+        throw new Error('Irrigation requires hexId');
+    }
+
+    const hex = gameState.board.hexes.find(h => h.id === hexId);
+    if (!hex || hex.terrain !== 'field') {
+        throw new Error('Must choose a field hex');
+    }
+
+    // Give wheat from the chosen hex
+    addResources(player, { wheat: 1 });
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} received wheat from irrigation`,
+        playerId: player.id
+    });
+}
+
+function executeMining(gameState: GameState, player: PlayerState, options?: any): void {
+    // Get resources from 1 mountain hex regardless of roll
+    const { hexId } = options || {};
+    if (!hexId) {
+        throw new Error('Mining requires hexId');
+    }
+
+    const hex = gameState.board.hexes.find(h => h.id === hexId);
+    if (!hex || hex.terrain !== 'mountain') {
+        throw new Error('Must choose a mountain hex');
+    }
+
+    // Give ore from the chosen hex
+    addResources(player, { ore: 1 });
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} received ore from mining`,
+        playerId: player.id
+    });
+}
+
 // ===== TRADE CARD EFFECTS =====
 
 function executeMerchant(gameState: GameState, player: PlayerState, options?: any): void {
@@ -322,6 +431,41 @@ function executeResourceMonopoly(gameState: GameState, player: PlayerState, opti
     });
 }
 
+function executeTradeMonopoly(gameState: GameState, player: PlayerState, options?: any): void {
+    // Take all of chosen commodity from all other players
+    const { commodity } = options || {};
+    if (!commodity) {
+        throw new Error('Trade Monopoly requires commodity selection');
+    }
+
+    let totalTaken = 0;
+    for (const otherPlayer of gameState.players) {
+        if (otherPlayer.id === player.id) continue;
+
+        if (!otherPlayer.commodities) continue;
+
+        const amount = otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] || 0;
+        if (amount > 0) {
+            otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] -= amount;
+            totalTaken += amount;
+        }
+    }
+
+    if (totalTaken > 0) {
+        if (!player.commodities) {
+            player.commodities = { paper: 0, cloth: 0, coin: 0 };
+        }
+        player.commodities[commodity as 'paper' | 'cloth' | 'coin'] += totalTaken;
+    }
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} took ${totalTaken} ${commodity} from other players`,
+        playerId: player.id
+    });
+}
+
 // ===== POLITICS CARD EFFECTS =====
 
 function executeDiplomat(gameState: GameState, player: PlayerState, options?: any): void {
@@ -366,6 +510,145 @@ function executeSpy(gameState: GameState, player: PlayerState, options?: any): v
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
         message: `${player.name} stole ${cardMeta.name} from ${opponent.name}`,
+        playerId: player.id
+    });
+}
+
+function executeDeserter(gameState: GameState, player: PlayerState, options?: any): void {
+    // Deactivate 1 of opponent's knights
+    const { opponentId, knightId } = options || {};
+    if (!opponentId || !knightId) {
+        throw new Error('Deserter requires opponentId and knightId');
+    }
+
+    const opponent = gameState.players.find(p => p.id === opponentId);
+    if (!opponent) throw new Error('Opponent not found');
+
+    if (!opponent.knights) throw new Error('Opponent has no knights');
+
+    const knight = opponent.knights.find(k => k.id === knightId);
+    if (!knight) throw new Error('Knight not found');
+
+    if (!knight.active) {
+        throw new Error('Knight is already inactive');
+    }
+
+    // Deactivate the knight
+    knight.active = false;
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} deactivated ${opponent.name}'s knight`,
+        playerId: player.id
+    });
+}
+
+function executeIntrigue(gameState: GameState, player: PlayerState, options?: any): void {
+    // Move 1 of opponent's knights to any location
+    const { opponentId, knightId, targetVertexId } = options || {};
+    if (!opponentId || !knightId || !targetVertexId) {
+        throw new Error('Intrigue requires opponentId, knightId, and targetVertexId');
+    }
+
+    const opponent = gameState.players.find(p => p.id === opponentId);
+    if (!opponent) throw new Error('Opponent not found');
+
+    if (!opponent.knights) throw new Error('Opponent has no knights');
+
+    const knight = opponent.knights.find(k => k.id === knightId);
+    if (!knight) throw new Error('Knight not found');
+
+    // Validate target vertex exists
+    const vertex = gameState.board.vertices[targetVertexId];
+    if (!vertex) throw new Error('Invalid target vertex');
+
+    // Move the knight
+    knight.vertexId = targetVertexId;
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} moved ${opponent.name}'s knight with intrigue`,
+        playerId: player.id
+    });
+}
+
+function executeSaboteur(gameState: GameState, player: PlayerState, options?: any): void {
+    // Choose opponent with at least 4 resources, they discard half
+    const { opponentId } = options || {};
+    if (!opponentId) {
+        throw new Error('Saboteur requires opponentId');
+    }
+
+    const opponent = gameState.players.find(p => p.id === opponentId);
+    if (!opponent) throw new Error('Opponent not found');
+
+    // Count total resources
+    const totalResources = Object.values(opponent.resources).reduce((sum, count) => sum + count, 0);
+
+    if (totalResources < 4) {
+        throw new Error('Opponent must have at least 4 resource cards');
+    }
+
+    // Calculate how many to discard (half, rounded down)
+    const discardCount = Math.floor(totalResources / 2);
+
+    // For simplicity, discard proportionally from each resource type
+    // In the real game, the opponent would choose which cards to discard
+    const resourcesToDiscard: Partial<Record<ResourceType, number>> = {};
+    let remaining = discardCount;
+
+    const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
+    for (const resourceType of resourceTypes) {
+        const count = opponent.resources[resourceType];
+        const proportion = count / totalResources;
+        const toDiscard = Math.min(Math.floor(proportion * discardCount), remaining);
+
+        if (toDiscard > 0) {
+            resourcesToDiscard[resourceType] = toDiscard;
+            remaining -= toDiscard;
+        }
+    }
+
+    // If we haven't discarded enough due to rounding, discard more
+    while (remaining > 0) {
+        for (const resourceType of resourceTypes) {
+            if (opponent.resources[resourceType] > 0 && remaining > 0) {
+                resourcesToDiscard[resourceType] = (resourcesToDiscard[resourceType] || 0) + 1;
+                remaining--;
+            }
+        }
+    }
+
+    removeResources(opponent, resourcesToDiscard);
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} forced ${opponent.name} to discard ${discardCount} resources`,
+        playerId: player.id
+    });
+}
+
+function executeWarlord(gameState: GameState, player: PlayerState): void {
+    // Activate all of your knights for free
+    if (!player.knights || player.knights.length === 0) {
+        throw new Error('You have no knights to activate');
+    }
+
+    let activatedCount = 0;
+    for (const knight of player.knights) {
+        if (!knight.active) {
+            knight.active = true;
+            activatedCount++;
+        }
+    }
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} activated ${activatedCount} knights with Warlord`,
         playerId: player.id
     });
 }

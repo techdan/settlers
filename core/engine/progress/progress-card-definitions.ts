@@ -57,7 +57,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Inventor',
         description: 'Swap the number tokens of any 2 terrain hexes.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     irrigation: {
         type: 'irrigation',
@@ -65,7 +65,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Irrigation',
         description: 'When you roll the dice, you may also receive resources from 1 field hex regardless of the roll.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     medicine: {
         type: 'medicine',
@@ -81,7 +81,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Mining',
         description: 'When you roll the dice, you may also receive resources from 1 mountain hex regardless of the roll.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     printer: {
         type: 'printer',
@@ -155,7 +155,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Trade Monopoly',
         description: 'Choose 1 commodity type. All other players must give you all their commodities of that type.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
 
     // POLITICS CARDS (8)
@@ -181,7 +181,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Deserter',
         description: 'Deactivate 1 of an opponent\'s knights. That knight must be reactivated.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     diplomat: {
         type: 'diplomat',
@@ -197,7 +197,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Intrigue',
         description: 'Move 1 of an opponent\'s knights to any location. That knight remains active/inactive as it was.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     saboteur: {
         type: 'saboteur',
@@ -205,7 +205,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Saboteur',
         description: 'Choose an opponent with at least 4 resource cards. That player must discard half of them.',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     spy: {
         type: 'spy',
@@ -221,7 +221,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         name: 'Warlord',
         description: 'Activate all of your knights for free (no wheat cost).',
         isVictoryPoint: false,
-        implemented: false
+        implemented: true
     },
     wedding: {
         type: 'wedding',

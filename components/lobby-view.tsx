@@ -37,6 +37,7 @@ export function LobbyView({
     const [players, setPlayers] = useState<Player[]>(initialPlayers);
     const [room, setRoom] = useState<Room>(initialRoom);
     const [etag, setEtag] = useState<string | null>(null);
+    const [gameMode, setGameMode] = useState<'base' | 'cities_and_knights'>('base');
     const router = useRouter();
     const connectionStatus = useConnectionStatus();
     const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
@@ -127,10 +128,31 @@ export function LobbyView({
                     </ul>
                 </div>
 
-                <div className="p-6 border-t bg-slate-50 dark:bg-slate-950">
+                <div className="p-6 border-t bg-slate-50 dark:bg-slate-950 space-y-4">
+                    {isHost && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Game Mode
+                            </label>
+                            <select
+                                value={gameMode}
+                                onChange={(e) => setGameMode(e.target.value as 'base' | 'cities_and_knights')}
+                                className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            >
+                                <option value="base">Base Game (10 VP)</option>
+                                <option value="cities_and_knights">Cities & Knights (13 VP)</option>
+                            </select>
+                            {gameMode === 'cities_and_knights' && (
+                                <p className="text-xs text-slate-600 dark:text-slate-400">
+                                    Adds commodities, city improvements, knights, barbarian attacks, progress cards, and metropolises.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     {isHost ? (
                         <button
-                            onClick={() => startGame(roomId)}
+                            onClick={() => startGame(roomId, gameMode)}
                             className="w-full bg-green-600 text-white px-6 py-4 rounded-xl text-lg font-bold hover:bg-green-700 transition-all shadow-lg hover:shadow-green-500/20 active:scale-95"
                         >
                             Start Game

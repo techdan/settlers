@@ -15,6 +15,14 @@ import { DiceDisplay } from './DiceDisplay';
 import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
+
+// Cities & Knights components
+import { CommodityHand } from './CommodityHand';
+import { CityImprovements } from './CityImprovements';
+import { KnightControls } from './KnightControls';
+import { BarbarianTrack } from './BarbarianTrack';
+import { EventDieDisplay } from './EventDieDisplay';
+import { ProgressCardHand } from './ProgressCardHand';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
 import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
 import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
@@ -32,6 +40,77 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
+
+    // C&K action handlers (placeholder implementations)
+    const handleUpgradeImprovement = async (improvement: 'science' | 'trade' | 'politics') => {
+        try {
+            const res = await fetch(`/api/game/${roomId}/improvement`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, action: 'upgrade', improvement })
+            });
+            if (!res.ok) throw new Error('Failed to upgrade improvement');
+        } catch (e) {
+            console.error('Error upgrading improvement:', e);
+        }
+    };
+
+    const handleBuildKnight = async () => {
+        try {
+            // This would need vertex selection logic similar to buildMode
+            console.log('Build knight - vertex selection needed');
+        } catch (e) {
+            console.error('Error building knight:', e);
+        }
+    };
+
+    const handleActivateKnight = async (knightId: string) => {
+        try {
+            const res = await fetch(`/api/game/${roomId}/knight`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, action: 'activate', knightId })
+            });
+            if (!res.ok) throw new Error('Failed to activate knight');
+        } catch (e) {
+            console.error('Error activating knight:', e);
+        }
+    };
+
+    const handleMoveKnight = async (knightId: string) => {
+        try {
+            // This would need target vertex selection logic
+            console.log('Move knight - target selection needed', knightId);
+        } catch (e) {
+            console.error('Error moving knight:', e);
+        }
+    };
+
+    const handleUpgradeKnight = async (knightId: string) => {
+        try {
+            const res = await fetch(`/api/game/${roomId}/knight`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, action: 'upgrade', knightId })
+            });
+            if (!res.ok) throw new Error('Failed to upgrade knight');
+        } catch (e) {
+            console.error('Error upgrading knight:', e);
+        }
+    };
+
+    const handlePlayProgressCard = async (cardType: any) => {
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, cardType, options: {} })
+            });
+            if (!res.ok) throw new Error('Failed to play progress card');
+        } catch (e) {
+            console.error('Error playing progress card:', e);
+        }
+    };
 
     // Initial fetch to ensure we have data before subscription kicks in
     useEffect(() => {
@@ -65,6 +144,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const gameState = getOptimisticState(baseGameState);
 
     const currentPlayer = gameState.players.find(p => p.id === playerId);
+    const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
 
     return (
         <div className="relative h-screen w-screen overflow-hidden">
@@ -105,9 +185,22 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     </div>
                 </div>
 
-                {/* Right Sidebar: Status */}
-                <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto">
+                {/* Right Sidebar: Status + C&K Components */}
+                <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
                     <GameStatus gameState={gameState} currentPlayerId={playerId} />
+                    {isCitiesAndKnights && (
+                        <>
+                            <EventDieDisplay gameState={gameState} />
+                            <BarbarianTrack gameState={gameState} />
+                            {currentPlayer && (
+                                <CityImprovements
+                                    player={currentPlayer}
+                                    roomId={roomId}
+                                    onUpgrade={handleUpgradeImprovement}
+                                />
+                            )}
+                        </>
+                    )}
                 </div>
 
                 {/* Bottom Center: Build Controls & Resources */}
@@ -120,10 +213,30 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         onSetBuildMode={setBuildMode}
                     />
 
-                    {/* Resources & Dev Cards */}
-                    <div className="flex gap-4 items-stretch h-48">
+                    {/* Resources, Commodities & Dev Cards / Progress Cards */}
+                    <div className="flex gap-4 items-stretch max-w-full overflow-x-auto">
                         {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} />}
-                        <PlayerDevCards gameState={gameState} playerId={playerId} />
+                        {isCitiesAndKnights && currentPlayer && (
+                            <>
+                                <CommodityHand player={currentPlayer} />
+                                <ProgressCardHand
+                                    player={currentPlayer}
+                                    roomId={roomId}
+                                    onPlayCard={handlePlayProgressCard}
+                                />
+                            </>
+                        )}
+                        {!isCitiesAndKnights && <PlayerDevCards gameState={gameState} playerId={playerId} />}
+                        {isCitiesAndKnights && currentPlayer && (
+                            <KnightControls
+                                player={currentPlayer}
+                                roomId={roomId}
+                                onBuildKnight={handleBuildKnight}
+                                onActivateKnight={handleActivateKnight}
+                                onMoveKnight={handleMoveKnight}
+                                onUpgradeKnight={handleUpgradeKnight}
+                            />
+                        )}
                     </div>
                 </div>
 
