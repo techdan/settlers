@@ -4,6 +4,7 @@ import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities } from '@/core/engine/resources/commodity-manager';
+import { rollEventDie, processEventDieRoll } from '@/core/engine/dice/event-die-manager';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board-generator';
@@ -206,7 +207,17 @@ export async function rollDice(
         // Distribute commodities (C&K expansion only)
         distributeCommodities(gameState, total);
 
-        gameState.phase = 'main_phase';
+        // Roll and process event die (C&K expansion only)
+        if (gameState.gameMode === 'cities_and_knights') {
+            const eventDieResult = rollEventDie();
+            processEventDieRoll(gameState, eventDieResult);
+            // Note: processEventDieRoll may change phase to 'barbarian_attack'
+        }
+
+        // Set to main phase if not changed by event die processing
+        if (gameState.phase === 'waiting_for_roll') {
+            gameState.phase = 'main_phase';
+        }
     }
 
     // Save to database
