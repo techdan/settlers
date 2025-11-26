@@ -1,4 +1,4 @@
-import { getCanonicalVertexId } from '@/lib/hex';
+import { getEdgeEndpoints } from '@/lib/hex';
 import { ResourceType } from './board-generator';
 
 export type PortType = ResourceType | 'generic';
@@ -51,15 +51,15 @@ const COASTLINE_EDGES: EdgeDef[] = [
  * Spacing pattern: 3-2-2-3-2-2-3-2-2 (edges between ports)
  */
 const PORT_INDICES = [
-    { index: 1, type: 'sheep' },     // P0
-    { index: 5, type: 'generic' },   // P1
-    { index: 8, type: 'generic' },   // P2
-    { index: 11, type: 'brick' },    // P3
-    { index: 15, type: 'wood' },     // P4
-    { index: 18, type: 'generic' },  // P5
-    { index: 21, type: 'wheat' },    // P6
-    { index: 25, type: 'ore' },      // P7
-    { index: 28, type: 'generic' },  // P8
+    { index: 29, type: 'sheep' },
+    { index: 3, type: 'generic' },
+    { index: 6, type: 'generic' },
+    { index: 9, type: 'brick' },
+    { index: 13, type: 'wood' },
+    { index: 16, type: 'generic' },
+    { index: 19, type: 'wheat' },
+    { index: 23, type: 'ore' },
+    { index: 26, type: 'generic' },
 ];
 
 /**
@@ -71,9 +71,8 @@ function initializePortMapping(): Record<string, PortType> {
 
     PORT_INDICES.forEach(config => {
         const edgeDef = COASTLINE_EDGES[config.index];
-        // Edge connects vertex d and (d+1)%6
-        const v1 = getCanonicalVertexId(edgeDef.q, edgeDef.r, edgeDef.edgeIndex);
-        const v2 = getCanonicalVertexId(edgeDef.q, edgeDef.r, (edgeDef.edgeIndex + 1) % 6);
+        // Edge connects two vertices. We need to get the canonical IDs of these vertices.
+        const [v1, v2] = getEdgeEndpoints(edgeDef.q, edgeDef.r, edgeDef.edgeIndex);
 
         mapping[v1] = config.type as PortType;
         mapping[v2] = config.type as PortType;

@@ -1,5 +1,5 @@
 import { GameState } from '@/lib/types';
-import { getEdgeEndpoints, getAdjacentEdgesForVertex } from '@/lib/hex';
+import { getEdgeEndpoints } from '@/lib/hex';
 
 /**
  * Calculate the longest continuous road for a player
@@ -18,57 +18,61 @@ export function calculateLongestRoad(gameState: GameState, playerId: string): nu
     const playerEdges = Object.values(gameState.board.edges).filter(e => e.owner === playerId);
     if (playerEdges.length === 0) return 0;
 
-    // 2. Build adjacency graph (edgeId -> list of connected edgeIds)
-    // Two edges are connected if they share a vertex AND that vertex is NOT blocked by an opponent
-    const adj: Record<string, string[]> = {};
-    playerEdges.forEach(e => adj[e.id] = []);
+    // 2. Build adjacency graph (Vertex -> Connected Edges)
+    // Map<VertexId, Array<{ edgeId: string, neighborVertexId: string }>>
+    const adj: Record<string, Array<{ edgeId: string, neighborVertexId: string }>> = {};
+    const candidateNodes = new Set<string>();
 
     for (const edge of playerEdges) {
         const [q, r, d] = edge.id.split(',').map(Number);
-        const endpoints = getEdgeEndpoints(q, r, d);
+        const [v1, v2] = getEdgeEndpoints(q, r, d);
 
-        for (const vId of endpoints) {
-            // Check if vertex is blocked by opponent
-            const vertex = gameState.board.vertices[vId];
-            if (vertex.owner !== null && vertex.owner !== playerId) {
-                continue; // Blocked
-            }
+        if (!adj[v1]) adj[v1] = [];
+        if (!adj[v2]) adj[v2] = [];
 
-            // Find other edges connected to this vertex
-            const [vq, vr, vd] = vId.split(',').map(Number);
-            const neighborEdgeIds = getAdjacentEdgesForVertex(vq, vr, vd);
+        adj[v1].push({ edgeId: edge.id, neighborVertexId: v2 });
+        adj[v2].push({ edgeId: edge.id, neighborVertexId: v1 });
 
-            for (const nId of neighborEdgeIds) {
-                if (nId !== edge.id && adj[nId]) { // If it's a player edge
-                    adj[edge.id].push(nId);
+        candidateNodes.add(v1);
+        candidateNodes.add(v2);
+    }
+
+    // 3. DFS Function
+    // Returns the max length of a path starting from currentVertex
+    const dfs = (currentVertexId: string, visitedEdgeIds: Set<string>): number => {
+        let maxLength = 0;
+        const neighbors = adj[currentVertexId] || [];
+
+        for (const { edgeId, neighborVertexId } of neighbors) {
+            if (!visitedEdgeIds.has(edgeId)) {
+                // Check if neighbor is blocked by opponent
+                // Note: We check the TARGET vertex. If it is blocked, we cannot continue THROUGH it.
+                // But we can still count the edge leading TO it (unless we are blocked from entering? No, Catan rules allow building TO a settlement).
+                // However, the user's specification says: "if neighbor is not blocked ... DFS".
+                // This implies if it IS blocked, we don't recurse.
+                // By not recursing, we return 0 for this branch.
+                // The caller adds 1 + 0 = 1. So the edge is counted, but the path stops.
+
+                const neighborVertex = gameState.board.vertices[neighborVertexId];
+                const isBlocked = neighborVertex && neighborVertex.owner && neighborVertex.owner !== playerId;
+
+                if (!isBlocked) {
+                    visitedEdgeIds.add(edgeId);
+                    maxLength = Math.max(maxLength, 1 + dfs(neighborVertexId, visitedEdgeIds));
+                    visitedEdgeIds.delete(edgeId);
                 }
             }
         }
-    }
-
-    // 3. DFS to find longest path
-    let maxLen = 0;
-
-    const dfs = (currentEdgeId: string, visited: Set<string>, currentLen: number) => {
-        maxLen = Math.max(maxLen, currentLen);
-
-        const neighbors = adj[currentEdgeId];
-        for (const nId of neighbors) {
-            if (!visited.has(nId)) {
-                visited.add(nId);
-                dfs(nId, visited, currentLen + 1);
-                visited.delete(nId);
-            }
-        }
+        return maxLength;
     };
 
-    // Try starting from each edge
-    // Brute force is fine for < 15 roads
-    for (const edge of playerEdges) {
-        dfs(edge.id, new Set([edge.id]), 1);
+    // 4. Run DFS from each candidate node
+    let globalMax = 0;
+    for (const startNode of candidateNodes) {
+        globalMax = Math.max(globalMax, dfs(startNode, new Set()));
     }
 
-    return maxLen;
+    return globalMax;
 }
 
 /**
