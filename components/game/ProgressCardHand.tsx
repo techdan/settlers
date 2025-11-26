@@ -1,11 +1,13 @@
 import React, { useState, useTransition } from 'react';
-import { PlayerState } from '@/lib/types';
+import { PlayerState, GameState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
+import { ProgressCardModal } from './ProgressCardModal';
 
 interface ProgressCardHandProps {
     player: PlayerState;
     roomId: string;
-    onPlayCard: (cardType: ProgressCardType) => Promise<void>;
+    gameState: GameState;
+    onPlayCard: (cardType: ProgressCardType, options?: any) => Promise<void>;
 }
 
 // Card descriptions for tooltip/display
@@ -54,9 +56,31 @@ const CATEGORY_ICONS = {
     politics: '🔵'
 };
 
-export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, roomId, onPlayCard }) => {
+// Cards that require parameter selection
+const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
+    'alchemist',
+    'inventor',
+    'irrigation',
+    'mining',
+    'smith',
+    'merchant',
+    'resource_monopoly',
+    'trade_monopoly',
+    'diplomat',
+    'spy',
+    'deserter',
+    'intrigue',
+    'saboteur'
+];
+
+function requiresParameters(cardType: ProgressCardType): boolean {
+    return CARDS_REQUIRING_PARAMETERS.includes(cardType);
+}
+
+export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, roomId, gameState, onPlayCard }) => {
     const [isPending, startTransition] = useTransition();
     const [expandedCard, setExpandedCard] = useState<ProgressCardType | null>(null);
+    const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
 
     // Only show in C&K mode
     if (!player.progressCards) {
@@ -64,10 +88,28 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, room
     }
 
     const handlePlayCard = (cardType: ProgressCardType) => {
+        // Check if card requires parameters
+        if (requiresParameters(cardType)) {
+            setModalCard(cardType);
+        } else {
+            // Play card directly
+            startTransition(async () => {
+                try {
+                    await onPlayCard(cardType, {});
+                    setExpandedCard(null);
+                } catch (error) {
+                    console.error('Failed to play progress card:', error);
+                }
+            });
+        }
+    };
+
+    const handlePlayWithOptions = (cardType: ProgressCardType, options: any) => {
         startTransition(async () => {
             try {
-                await onPlayCard(cardType);
+                await onPlayCard(cardType, options);
                 setExpandedCard(null);
+                setModalCard(null);
             } catch (error) {
                 console.error('Failed to play progress card:', error);
             }
@@ -97,74 +139,90 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, room
     }
 
     return (
-        <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
-            <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-                    Progress Cards
-                </h3>
-                <div className="text-xs text-slate-400">
-                    Total: <span className="text-white font-bold">{totalCards}</span>
+        <>
+            <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                        Progress Cards
+                    </h3>
+                    <div className="text-xs text-slate-400">
+                        Total: <span className="text-white font-bold">{totalCards}</span>
+                    </div>
+                </div>
+
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {(['science', 'trade', 'politics'] as const).map(category => {
+                        const cards = groupedCards[category] || [];
+                        if (cards.length === 0) return null;
+
+                        return (
+                            <div key={category} className="space-y-1">
+                                <div className="flex items-center gap-2 text-xs text-slate-400">
+                                    <span>{CATEGORY_ICONS[category]}</span>
+                                    <span className="uppercase tracking-wide">{category}</span>
+                                    <span>({cards.length})</span>
+                                </div>
+                                {cards.map((card, index) => {
+                                    const info = PROGRESS_CARD_INFO[card];
+                                    const isExpanded = expandedCard === card;
+                                    const needsParams = requiresParameters(card);
+
+                                    return (
+                                        <div
+                                            key={`${card}-${index}`}
+                                            className={`p-2 rounded border transition-colors ${isExpanded
+                                                    ? 'border-yellow-500 bg-slate-700'
+                                                    : 'border-slate-600 bg-slate-900/50'
+                                                }`}
+                                        >
+                                            <button
+                                                onClick={() => setExpandedCard(isExpanded ? null : card)}
+                                                className="w-full text-left"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-medium">{info.name}</span>
+                                                    <span className={`text-xs px-2 py-0.5 rounded ${CATEGORY_COLORS[category]} text-white`}>
+                                                        {CATEGORY_ICONS[category]}
+                                                    </span>
+                                                </div>
+                                            </button>
+
+                                            {isExpanded && (
+                                                <div className="mt-2 space-y-2">
+                                                    <p className="text-xs text-slate-300 leading-relaxed">
+                                                        {info.description}
+                                                    </p>
+                                                    {needsParams && (
+                                                        <p className="text-xs text-yellow-400">
+                                                            ⚙️ Requires parameter selection
+                                                        </p>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handlePlayCard(card)}
+                                                        disabled={isPending}
+                                                        className="w-full text-xs py-1.5 px-2 rounded bg-green-600 hover:bg-green-700 text-white font-medium transition-colors disabled:bg-slate-700 disabled:text-slate-500"
+                                                    >
+                                                        {isPending ? 'Playing...' : needsParams ? 'Select Options...' : 'Play Card'}
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-                {(['science', 'trade', 'politics'] as const).map(category => {
-                    const cards = groupedCards[category] || [];
-                    if (cards.length === 0) return null;
-
-                    return (
-                        <div key={category} className="space-y-1">
-                            <div className="flex items-center gap-2 text-xs text-slate-400">
-                                <span>{CATEGORY_ICONS[category]}</span>
-                                <span className="uppercase tracking-wide">{category}</span>
-                                <span>({cards.length})</span>
-                            </div>
-                            {cards.map((card, index) => {
-                                const info = PROGRESS_CARD_INFO[card];
-                                const isExpanded = expandedCard === card;
-
-                                return (
-                                    <div
-                                        key={`${card}-${index}`}
-                                        className={`p-2 rounded border transition-colors ${
-                                            isExpanded
-                                                ? 'border-yellow-500 bg-slate-700'
-                                                : 'border-slate-600 bg-slate-900/50'
-                                        }`}
-                                    >
-                                        <button
-                                            onClick={() => setExpandedCard(isExpanded ? null : card)}
-                                            className="w-full text-left"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm font-medium">{info.name}</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded ${CATEGORY_COLORS[category]} text-white`}>
-                                                    {CATEGORY_ICONS[category]}
-                                                </span>
-                                            </div>
-                                        </button>
-
-                                        {isExpanded && (
-                                            <div className="mt-2 space-y-2">
-                                                <p className="text-xs text-slate-300 leading-relaxed">
-                                                    {info.description}
-                                                </p>
-                                                <button
-                                                    onClick={() => handlePlayCard(card)}
-                                                    disabled={isPending}
-                                                    className="w-full text-xs py-1.5 px-2 rounded bg-green-600 hover:bg-green-700 text-white font-medium transition-colors disabled:bg-slate-700 disabled:text-slate-500"
-                                                >
-                                                    {isPending ? 'Playing...' : 'Play Card'}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
+            <ProgressCardModal
+                isOpen={modalCard !== null}
+                onClose={() => setModalCard(null)}
+                cardType={modalCard}
+                gameState={gameState}
+                currentPlayer={player}
+                onPlay={handlePlayWithOptions}
+            />
+        </>
     );
 };

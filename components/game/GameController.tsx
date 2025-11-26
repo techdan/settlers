@@ -105,12 +105,12 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setMovingKnightId(null); // Clear knight movement mode
     };
 
-    const handlePlayProgressCard = async (cardType: any) => {
+    const handlePlayProgressCard = async (cardType: any, options?: any) => {
         try {
             const res = await fetch(`/api/game/${roomId}/progress-card`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, cardType, options: {} })
+                body: JSON.stringify({ playerId, cardType, options: options || {} })
             });
             if (!res.ok) throw new Error('Failed to play progress card');
         } catch (e) {
@@ -236,6 +236,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                 <ProgressCardHand
                                     player={currentPlayer}
                                     roomId={roomId}
+                                    gameState={gameState}
                                     onPlayCard={handlePlayProgressCard}
                                 />
                             </>
