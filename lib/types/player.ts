@@ -29,6 +29,7 @@ export interface PlayerState {
     knights?: Knight[];
     metropolisOwned?: MetropolisType[]; // Which metropolises this player owns
     activeKnightCount?: number; // Cache of active knight strength for barbarian calculations
+    cityWalls?: string[]; // Array of vertex IDs with city walls
 }
 
 /**

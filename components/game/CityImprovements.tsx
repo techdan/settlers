@@ -10,7 +10,7 @@ interface CityImprovementsProps {
 
 const IMPROVEMENT_COLORS: Record<ImprovementType, string> = {
     science: 'bg-green-600',
-    trade: 'bg-yellow-600',
+    trade: 'bg-yellow-500',
     politics: 'bg-blue-600'
 };
 
@@ -18,6 +18,12 @@ const IMPROVEMENT_LABELS: Record<ImprovementType, string> = {
     science: 'Science (📜 Paper)',
     trade: 'Trade (🧵 Cloth)',
     politics: 'Politics (🪙 Coin)'
+};
+
+const IMPROVEMENT_EVENT_DIE: Record<ImprovementType, { icon: string; color: string; label: string }> = {
+    science: { icon: '🔬', color: 'bg-green-600', label: 'Green event die' },
+    trade: { icon: '💰', color: 'bg-yellow-500', label: 'Yellow event die' },
+    politics: { icon: '⚖️', color: 'bg-blue-600', label: 'Blue event die' }
 };
 
 const IMPROVEMENT_COMMODITY: Record<ImprovementType, 'paper' | 'cloth' | 'coin'> = {
@@ -57,9 +63,20 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
 
     return (
         <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
-            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">
                 City Improvements
             </h3>
+
+            {/* Dice Information */}
+            <div className="mb-3 p-2 bg-slate-900/50 rounded border border-slate-700">
+                <div className="text-xs text-slate-400 mb-1">
+                    🎲 <span className="text-red-400 font-bold">Red</span> + <span className="text-yellow-400 font-bold">Yellow</span> dice produce resources/commodities
+                </div>
+                <div className="text-xs text-slate-400">
+                    Event die (Level 3+): Draw progress cards when your color rolls
+                </div>
+            </div>
+
             <div className="space-y-3">
                 {(['science', 'trade', 'politics'] as ImprovementType[]).map(improvement => {
                     const level = player.improvements![improvement] || 0;
@@ -68,11 +85,20 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
                     const isMaxLevel = level >= CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL;
                     const commodity = IMPROVEMENT_COMMODITY[improvement];
                     const hasEnough = (player.commodities![commodity] || 0) >= cost;
+                    const eventDie = IMPROVEMENT_EVENT_DIE[improvement];
 
                     return (
                         <div key={improvement} className="space-y-1">
                             <div className="flex justify-between items-center text-xs">
-                                <span className="font-medium">{IMPROVEMENT_LABELS[improvement]}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-medium">{IMPROVEMENT_LABELS[improvement]}</span>
+                                    <div
+                                        className={`w-5 h-5 ${eventDie.color} rounded flex items-center justify-center text-xs`}
+                                        title={eventDie.label}
+                                    >
+                                        {eventDie.icon}
+                                    </div>
+                                </div>
                                 <span className="text-slate-400">
                                     Level {level}/{CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL}
                                 </span>

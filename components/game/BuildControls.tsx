@@ -5,8 +5,8 @@ import { buyDevCard } from '@/app/actions';
 interface BuildControlsProps {
     gameState: GameState;
     playerId: string;
-    buildMode: 'road' | 'settlement' | 'city' | 'knight' | null;
-    onSetBuildMode: (mode: 'road' | 'settlement' | 'city' | 'knight' | null) => void;
+    buildMode: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null;
+    onSetBuildMode: (mode: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null) => void;
 }
 
 export const BuildControls: React.FC<BuildControlsProps> = ({
@@ -27,6 +27,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const canAffordCity = resources.ore >= 3 && resources.wheat >= 2;
     const canAffordDevCard = resources.sheep >= 1 && resources.wheat >= 1 && resources.ore >= 1;
     const canAffordKnight = resources.sheep >= 1 && resources.ore >= 1;
+    const canAffordCityWall = resources.brick >= 2;
     const deckSize = gameState.devCardDeck?.length || 0;
 
     const handleBuyDevCard = () => {
@@ -111,6 +112,23 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 >
                     <span>Knight ⚔️</span>
                     <span className="text-xs font-normal opacity-80">1🐑 1🪨</span>
+                </button>
+            )}
+
+            {/* City Wall (Cities & Knights only) */}
+            {isCitiesAndKnights && (
+                <button
+                    onClick={() => onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
+                    disabled={!canAffordCityWall}
+                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                        : canAffordCityWall
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
+                >
+                    <span>City Wall 🏰</span>
+                    <span className="text-xs font-normal opacity-80">2🧱</span>
                 </button>
             )}
         </div>

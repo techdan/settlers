@@ -135,9 +135,14 @@ export async function buildCity(roomId: string, playerId: string, vertexId: stri
 }
 
 import * as knightService from '@/lib/services/knight-service';
+import * as cityWallsService from '@/lib/services/city-walls-service';
 
 export async function buildKnight(roomId: string, playerId: string, vertexId: string) {
     return knightService.buildKnightAction(roomId, playerId, vertexId);
+}
+
+export async function buildCityWall(roomId: string, playerId: string, vertexId: string) {
+    return cityWallsService.buildCityWall(roomId, playerId, vertexId);
 }
 
 export async function debugGiveResource(roomId: string, playerId: string, resource: ResourceType) {

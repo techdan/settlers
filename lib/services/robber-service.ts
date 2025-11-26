@@ -135,6 +135,9 @@ export async function discardCards(
 
     const currentTotal = getTotalResources(player);
 
+    // City walls do NOT protect against robber/7 discards
+    // They only protect against barbarian attacks
+
     // If player has <= 7 cards, they shouldn't be discarding
     if (currentTotal <= 7) {
         throw new Error('No need to discard');

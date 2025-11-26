@@ -248,14 +248,8 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
 }
 
 function executeCrane(gameState: GameState, player: PlayerState, options?: any): void {
-    // Build up to 2 city walls (not implemented in base game yet)
-    // This is a placeholder - city walls would need to be added to the game state
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `${player.name} can build up to 2 city walls (feature pending)`,
-        playerId: player.id
-    });
+    // Crane is a victory point card - no effect on play
+    // (Already counted in victory points)
 }
 
 function executeEngineer(gameState: GameState, player: PlayerState, options?: any): void {

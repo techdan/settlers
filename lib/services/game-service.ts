@@ -61,6 +61,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
                 knights: [],
                 metropolisOwned: [],
                 activeKnightCount: 0,
+                cityWalls: [],
             };
         }
 

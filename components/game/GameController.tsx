@@ -36,7 +36,7 @@ interface GameControllerProps {
 const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
     const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
-    const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | null>(null);
+    const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null>(null);
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
@@ -242,7 +242,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
                 {/* Bottom Right: Dice & Actions */}
                 <div className="absolute bottom-4 right-4 flex flex-col items-end gap-4 pointer-events-auto">
-                    <DiceDisplay diceRoll={gameState.diceRoll} />
+                    <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
                     <ActionControls
                         gameState={gameState}
                         playerId={playerId}

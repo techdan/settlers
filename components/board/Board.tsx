@@ -12,16 +12,17 @@ import { GameState } from '@/lib/types';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { useTransition } from 'react';
-import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad, buildKnight } from '@/app/actions';
+import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad, buildKnight, buildCityWall } from '@/app/actions';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
+import { isValidCityWallPlacement } from '@/core/validation/city-wall-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
 
 interface BoardProps {
     gameState: GameState;
     playerId: string;
-    buildMode: 'road' | 'settlement' | 'city' | 'knight' | null;
+    buildMode: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null;
     onCancelBuild: () => void;
 }
 
@@ -74,6 +75,12 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             } else if (buildMode === 'knight') {
                 vertices.forEach(v => {
                     if (isValidKnightPlacement(gameState, v.id, playerId)) {
+                        valid.add(v.id);
+                    }
+                });
+            } else if (buildMode === 'city_wall') {
+                vertices.forEach(v => {
+                    if (isValidCityWallPlacement(gameState, v.id, playerId)) {
                         valid.add(v.id);
                     }
                 });
@@ -193,6 +200,29 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                         },
                         (error) => {
                             console.error("Failed to build knight", error);
+                        }
+                    );
+                }
+            } else if (buildMode === 'city_wall') {
+                if (isValidCityWallPlacement(gameState, vertexId, playerId)) {
+                    // Optimistic update for instant feedback
+                    performOptimisticAction(
+                        `build-city-wall-${vertexId}`,
+                        (state) => {
+                            const newState = { ...state };
+                            const player = newState.players.find(p => p.id === playerId);
+                            if (player) {
+                                if (!player.cityWalls) player.cityWalls = [];
+                                player.cityWalls.push(vertexId);
+                            }
+                            return newState;
+                        },
+                        async () => {
+                            await buildCityWall(gameState.roomId, playerId, vertexId);
+                            onCancelBuild();
+                        },
+                        (error) => {
+                            console.error("Failed to build city wall", error);
                         }
                     );
                 }
