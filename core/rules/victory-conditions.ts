@@ -1,12 +1,27 @@
 import { GameState } from '@/lib/types';
 import { GAME_CONSTANTS } from './constants';
+import { CK_CONSTANTS } from './commodity-constants';
+import { calculateMetropolisVP } from '@/core/engine/metropolis/metropolis-manager';
+import { isVictoryPointCard } from '@/core/engine/progress/progress-card-definitions';
+
+/**
+ * Get victory point threshold based on game mode
+ */
+function getVictoryThreshold(gameState: GameState): number {
+    if (gameState.gameMode === 'cities_and_knights') {
+        return CK_CONSTANTS.VICTORY_THRESHOLD; // 13 VP
+    }
+    return GAME_CONSTANTS.VICTORY_POINTS_TO_WIN; // 10 VP
+}
 
 /**
  * Check if a player has won the game
  */
 export function checkVictoryCondition(gameState: GameState): string | null {
+    const threshold = getVictoryThreshold(gameState);
+
     for (const player of gameState.players) {
-        if (player.victoryPoints >= GAME_CONSTANTS.VICTORY_POINTS_TO_WIN) {
+        if (player.victoryPoints >= threshold) {
             return player.id;
         }
     }
@@ -47,6 +62,17 @@ export function calculateTotalVictoryPoints(
         points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
     }
 
+    // Cities & Knights: Metropolises
+    if (gameState.gameMode === 'cities_and_knights') {
+        points += calculateMetropolisVP(player);
+
+        // Cities & Knights: Progress Card VPs
+        if (player.progressCards) {
+            const vpCards = player.progressCards.filter(card => isVictoryPointCard(card));
+            points += vpCards.length;
+        }
+    }
+
     return points;
 }
 
@@ -79,6 +105,17 @@ export function calculatePublicVictoryPoints(
     // Largest Army
     if (gameState.largestArmyOwner === playerId) {
         points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
+    }
+
+    // Cities & Knights: Metropolises (public)
+    if (gameState.gameMode === 'cities_and_knights') {
+        points += calculateMetropolisVP(player);
+
+        // Cities & Knights: Progress Card VPs (also public since cards are visible)
+        if (player.progressCards) {
+            const vpCards = player.progressCards.filter(card => isVictoryPointCard(card));
+            points += vpCards.length;
+        }
     }
 
     return points;
