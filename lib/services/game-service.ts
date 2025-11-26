@@ -3,6 +3,7 @@ import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/reposit
 import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
+import { distributeCommodities } from '@/core/engine/resources/commodity-manager';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board-generator';
@@ -201,6 +202,10 @@ export async function rollDice(
     } else {
         // Distribute resources
         distributeResources(gameState, total);
+
+        // Distribute commodities (C&K expansion only)
+        distributeCommodities(gameState, total);
+
         gameState.phase = 'main_phase';
     }
 
