@@ -12,6 +12,7 @@ import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { getHexesForVertex } from '@/lib/hex';
+import { getResourceFromTerrain } from '@/core/rules/game-rules';
 
 /**
  * Building Service
@@ -295,9 +296,11 @@ export async function placeInitialSettlement(
             const hex = gameState.board.hexes.find(
                 h => h.hex.q === hexCoords.q && h.hex.r === hexCoords.r
             );
-            if (hex && hex.resource !== 'desert') {
-                const resource = hex.resource as keyof typeof player.resources;
-                player.resources[resource]++;
+            if (hex) {
+                const resource = getResourceFromTerrain(hex.terrain);
+                if (resource) {
+                    player.resources[resource]++;
+                }
             }
         });
     }

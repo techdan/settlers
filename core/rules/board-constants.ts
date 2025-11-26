@@ -15,6 +15,10 @@ export const TERRAIN_COUNTS: Record<TerrainType, number> = {
     desert: 1,
 } as const;
 
+/**
+ * @deprecated Use game rules modules instead (e.g., BASE_GAME_RULES.terrainToResource from '@/core/rules/game-rules')
+ * This static mapping will be removed in a future version to support expansions with different terrain-to-resource mappings.
+ */
 export const TERRAIN_TO_RESOURCE: Record<Exclude<TerrainType, 'desert'>, ResourceType> = {
     forest: 'wood',
     hill: 'brick',

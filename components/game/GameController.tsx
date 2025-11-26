@@ -16,7 +16,8 @@ import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
-import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
+import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
+import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
 import { ConnectionStatusIndicator } from './ConnectionStatus';
 
 interface GameControllerProps {
@@ -28,50 +29,35 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | null>(null);
-    const [etag, setEtag] = useState<string | null>(null);
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
-    const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
 
+    // Initial fetch to ensure we have data before subscription kicks in
     useEffect(() => {
-        const fetchState = async () => {
+        const fetchInitialState = async () => {
             try {
-                // Send ETag if we have one for cache validation
-                const headers: HeadersInit = {};
-                if (etag) {
-                    headers['If-None-Match'] = etag;
-                }
-
-                // Use fetchWithRetry for automatic retry with exponential backoff
-                const data = await fetchWithRetry<GameState>(
-                    `/api/game/${roomId}`,
-                    { headers },
-                    {
-                        maxRetries: 5,
-                        onRetry: (attempt, delay) => {
-                            console.log(`Retrying game state fetch (attempt ${attempt}, delay ${delay}ms)`);
-                        }
-                    }
-                );
-
-                if (data) {
+                const res = await fetch(`/api/game/${roomId}`);
+                if (res.ok) {
+                    const data = await res.json();
                     setBaseGameState(data);
-
-                    // Store ETag for next request (from response headers)
-                    // Note: We'd need to modify fetchWithRetry to return headers
-                    // For now, we'll rely on the server sending new ETag each time
                 }
             } catch (e) {
-                console.error("Failed to fetch game state after retries", e);
-                // Don't update state on error - keep showing last known state
+                console.error("Failed to fetch initial game state", e);
             }
         };
+        fetchInitialState();
+    }, [roomId]);
 
-        fetchState();
-        const interval = setInterval(fetchState, 2000);
-        return () => clearInterval(interval);
-    }, [roomId, etag, fetchWithRetry]);
+    // Realtime subscription
+    const subscribedGameState = useGameSubscription(roomId, baseGameState);
+
+    // Update local state when subscription updates
+    useEffect(() => {
+        if (subscribedGameState) {
+            setBaseGameState(subscribedGameState);
+        }
+    }, [subscribedGameState]);
 
     if (!baseGameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 

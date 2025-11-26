@@ -5,8 +5,7 @@ import {
     SPIRAL_TOKEN_ORDER,
     TOKEN_PIPS,
     TerrainType,
-    ResourceType,
-    TERRAIN_TO_RESOURCE
+    ResourceType
 } from '@/core/rules/board-constants';
 
 /**
@@ -23,7 +22,6 @@ export type TileType = ResourceType | 'desert';
 export interface HexTileData {
     hex: Hex;
     terrain: TerrainType;
-    resource: ResourceType | null; // Derived from terrain
     numberToken: number | null;
     id: string;
     pips?: number;
@@ -65,7 +63,6 @@ export function generateStandardBoard(): HexTileData[] {
     return STANDARD_LAYOUT.map(t => ({
         hex: createHex(t.q, t.r),
         terrain: t.terrain as TerrainType,
-        resource: t.terrain === 'desert' ? null : TERRAIN_TO_RESOURCE[t.terrain as Exclude<TerrainType, 'desert'>],
         numberToken: t.num,
         id: `${t.q},${t.r}`,
         pips: t.num ? TOKEN_PIPS[t.num] : 0
@@ -113,7 +110,6 @@ function tryGenerateBoard(options: BoardGenerationOptions): HexTileData[] {
         return {
             hex: createHex(coord.q, coord.r),
             terrain: terrain,
-            resource: terrain === 'desert' ? null : TERRAIN_TO_RESOURCE[terrain as Exclude<TerrainType, 'desert'>],
             numberToken: null,
             id: `${coord.q},${coord.r}`,
             pips: 0

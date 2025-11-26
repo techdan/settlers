@@ -1,12 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc:*)",
-      "Bash(npm run build:*)",
+      "Bash(bd create:*)",
+      "Bash(bd ready:*)",
+      "Bash(bd list:*)",
+      "Bash(bd update:*)",
+      "Bash(git commit:*)",
+      "Bash(bd close:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: Phase 3 - Service Layer implementation\n\nComplete Phase 3 refactoring: established layered architecture with repositories and services.\n\n## What Changed\n\n### Repository Layer\n- Created game-repository.ts: Game data access operations\n- Created room-repository.ts: Room data access operations  \n- Created player-repository.ts: Player data access operations\n- Added barrel exports for repositories\n\n### Service Layer\n- Created BuildingService: Orchestrates building operations\n- Created GameService: Orchestrates game management\n- Services coordinate between managers, validators, and repositories\n- Added barrel exports for services\n\n### Architecture\nEstablished clear layered architecture:\n- Actions → Services → Managers → Rules/Validators → Repositories → Database\n\n### Documentation\n- Created phase3-refactoring-summary.md with complete overview\n- Updated migration-guide.md with Phase 3 examples\n- Added architecture diagrams and migration checklist\n\n## Benefits\n- Clear separation of concerns across layers\n- Each layer has single, well-defined responsibility\n- Services orchestrate, managers execute, repositories access data\n- Easy to test each layer independently\n- Foundation ready for Phase 4 action refactoring\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(node -e:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: Phase 4 - Action layer refactoring\n\nComplete Phase 4 refactoring: refactored key actions to use service layer and repositories.\n\n## What Changed\n\n### Actions Refactored\n- createRoom(): Now uses roomRepository and playerRepository\n- joinRoom(): Now uses roomRepository and playerRepository\n- startGame(): Now uses gameService.startGame()\n\n### Services Enhanced\n- Added startGame() method to GameService\n- Orchestrates player fetching, board generation, and game initialization\n- Uses repositories, managers, and generators throughout\n\n### Repositories Enhanced  \n- Added isHost parameter to playerRepository.createPlayer()\n- Default value: false\n- Supports creating host players\n\n### Bug Fixes\n- Fixed Board.tsx: Changed tile.number to tile.numberToken\n- Fixed imports: ResourceType now from board-data\n- Added getCanonicalVertexId import where needed\n\n## Architecture Improvements\n\nBefore:\n- Actions with direct database queries\n- 105+ lines of game initialization in actions.ts\n\nAfter:\n- Actions as thin wrappers (3 lines)\n- Service layer orchestrates business logic\n- Repository layer handles data access\n- Clear separation of concerns\n\n## Benefits\n- createRoom reduced by 60%\n- startGame reduced from 105 lines to 3 lines (97% reduction in action)\n- All game initialization logic properly organized in service layer\n- Easy to test each layer independently\n- Pattern established for remaining actions\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(cat:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

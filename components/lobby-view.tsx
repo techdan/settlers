@@ -160,6 +160,7 @@ export function LobbyView({
                             isHost={isHost}
                             fairMode={fairMode}
                             pendingRequests={pendingRequests}
+                            players={players}
                         />
                     </div>
                 </div>

@@ -4,6 +4,11 @@ import React, { useState, useTransition } from 'react';
 import { generateLobbyBoard, requestNewLobbyBoard, toggleLobbyFairMode } from '@/app/actions';
 import { Loader2, RefreshCw, ShieldCheck, ShieldAlert, Users } from 'lucide-react';
 
+interface Player {
+    id: string;
+    name: string;
+}
+
 interface GeneratorControlsProps {
     roomId: string;
     hostId: string;
@@ -11,6 +16,7 @@ interface GeneratorControlsProps {
     isHost: boolean;
     fairMode: boolean;
     pendingRequests: string[];
+    players: Player[];
 }
 
 export function GeneratorControls({
@@ -19,10 +25,18 @@ export function GeneratorControls({
     currentPlayerId,
     isHost,
     fairMode,
-    pendingRequests
+    pendingRequests,
+    players
 }: GeneratorControlsProps) {
     const [isPending, startTransition] = useTransition();
-    const [hasRequested, setHasRequested] = useState(false);
+
+    // Derive state from props instead of local state
+    const hasRequested = pendingRequests.includes(currentPlayerId);
+
+    // Get names of players who requested
+    const requestingPlayerNames = pendingRequests
+        .map(id => players.find(p => p.id === id)?.name)
+        .filter(Boolean) as string[];
 
     const handleGenerate = () => {
         startTransition(async () => {
@@ -39,17 +53,20 @@ export function GeneratorControls({
     const handleRequest = () => {
         startTransition(async () => {
             await requestNewLobbyBoard(roomId, currentPlayerId);
-            setHasRequested(true);
         });
     };
 
     if (isHost) {
         return (
             <div className="flex flex-col gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg backdrop-blur-sm bg-opacity-90">
-                {pendingRequests.length > 0 && (
-                    <div className="flex items-center justify-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full text-xs font-medium w-fit mx-auto">
+                {requestingPlayerNames.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full text-xs font-medium w-fit mx-auto animate-pulse">
                         <Users size={14} />
-                        <span>{pendingRequests.length} request{pendingRequests.length !== 1 ? 's' : ''}</span>
+                        <span>
+                            {requestingPlayerNames.slice(0, 3).join(', ')}
+                            {requestingPlayerNames.length > 3 && ` +${requestingPlayerNames.length - 3} others`}
+                            {' '}request{requestingPlayerNames.length === 1 ? 's' : ''} a new board
+                        </span>
                     </div>
                 )}
 

@@ -1,6 +1,7 @@
 import { GameState, PlayerState } from '@/lib/types';
-import { ResourceType } from '@/core/engine/board/board-generator';
+import { ResourceType, TerrainType } from '@/core/engine/board/board-generator';
 import { getCanonicalVertexId } from '@/lib/hex';
+import { getResourceFromTerrain } from '@/core/rules/game-rules';
 
 /**
  * Resource Manager
@@ -28,10 +29,9 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
 
     // For each matching hex, give resources to adjacent settlements/cities
     for (const hex of matchingHexes) {
-        // Skip desert tiles (they don't produce resources)
-        if (hex.resource === 'desert') continue;
-
-        const resource = hex.resource as ResourceType;
+        // Get resource from terrain using game rules
+        const resource = getResourceFromTerrain(hex.terrain);
+        if (!resource) continue; // Skip desert (produces no resources)
 
         // Get all 6 vertices for this hex
         const [q, r] = hex.id.split(',').map(Number);
