@@ -213,6 +213,14 @@ export async function rollDice(
         playerId
     });
 
+    // Roll and process event die (C&K expansion only)
+    // Note: Event die is rolled even on a 7!
+    if (gameState.gameMode === 'cities_and_knights') {
+        const eventDieResult = rollEventDie();
+        processEventDieRoll(gameState, eventDieResult);
+        // Note: processEventDieRoll may change phase to 'barbarian_attack'
+    }
+
     // Handle robber (7)
     if (total === 7) {
         // Check if any players need to discard
@@ -241,13 +249,6 @@ export async function rollDice(
 
         // Distribute commodities (C&K expansion only)
         distributeCommodities(gameState, total);
-
-        // Roll and process event die (C&K expansion only)
-        if (gameState.gameMode === 'cities_and_knights') {
-            const eventDieResult = rollEventDie();
-            processEventDieRoll(gameState, eventDieResult);
-            // Note: processEventDieRoll may change phase to 'barbarian_attack'
-        }
 
         // Set to main phase if not changed by event die processing
         if (gameState.phase === 'waiting_for_roll') {

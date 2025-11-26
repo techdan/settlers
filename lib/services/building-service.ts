@@ -277,10 +277,20 @@ export async function placeInitialSettlement(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    // Place settlement
+    // In Cities & Knights, second placement is a city
+    const isSecondPlacement = gameState.phase === 'setup_round_2_settlement';
+    const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
+    const placeCity = isSecondPlacement && isCitiesAndKnights;
+
+    // Place settlement or city
     gameState.board.vertices[vertexId].owner = playerId;
-    gameState.board.vertices[vertexId].structure = 'settlement';
-    player.settlementsRemaining--;
+    gameState.board.vertices[vertexId].structure = placeCity ? 'city' : 'settlement';
+
+    if (placeCity) {
+        player.citiesRemaining--;
+    } else {
+        player.settlementsRemaining--;
+    }
 
     // Store settlement ID for road validation
     gameState.lastPlacedSettlementId = vertexId;
@@ -289,9 +299,12 @@ export async function placeInitialSettlement(
     updateAllVictoryPoints(gameState);
 
     // In round 2, give resources for placement
-    if (gameState.phase === 'setup_round_2_settlement') {
+    // Cities give 2 resources per hex, settlements give 1
+    if (isSecondPlacement) {
         const [q, r, d] = vertexId.split(',').map(Number);
         const hexes = getHexesForVertex(q, r, d);
+        const resourcesPerHex = placeCity ? 2 : 1;
+
         hexes.forEach(hexCoords => {
             const hex = gameState.board.hexes.find(
                 h => h.hex.q === hexCoords.q && h.hex.r === hexCoords.r
@@ -299,7 +312,7 @@ export async function placeInitialSettlement(
             if (hex) {
                 const resource = getResourceFromTerrain(hex.terrain);
                 if (resource) {
-                    player.resources[resource]++;
+                    player.resources[resource] += resourcesPerHex;
                 }
             }
         });
@@ -316,7 +329,7 @@ export async function placeInitialSettlement(
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} placed a settlement`,
+        message: `${player.name} placed a ${placeCity ? 'city' : 'settlement'}`,
         playerId
     });
 
