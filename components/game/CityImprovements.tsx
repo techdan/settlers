@@ -68,12 +68,25 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
             </h3>
 
             {/* Dice Information */}
-            <div className="mb-3 p-2 bg-slate-900/50 rounded border border-slate-700">
-                <div className="text-xs text-slate-400 mb-1">
+            <div className="mb-3 p-2 bg-slate-900/50 rounded border border-slate-700 space-y-1.5">
+                <div className="text-xs text-slate-400">
                     🎲 <span className="text-red-400 font-bold">Red</span> + <span className="text-yellow-400 font-bold">Yellow</span> dice produce resources/commodities
                 </div>
-                <div className="text-xs text-slate-400">
-                    Event die (Level 3+): Draw progress cards when your color rolls
+                <div className="text-xs font-semibold text-slate-300">
+                    Progress Cards (needs both):
+                </div>
+                <div className="text-xs text-slate-400 pl-2">
+                    ✓ Event die matches your improvement color
+                </div>
+                <div className="text-xs text-slate-400 pl-2">
+                    ✓ <span className="text-red-400 font-bold">Red die</span> ≤ your level + 1
+                </div>
+                <div className="text-xs text-slate-500 pl-2 mt-1 space-y-0.5">
+                    <div>Level 1: Red die 1-2</div>
+                    <div>Level 2: Red die 1-3</div>
+                    <div>Level 3: Red die 1-4</div>
+                    <div>Level 4: Red die 1-5</div>
+                    <div>Level 5: Red die 1-6 (always!)</div>
                 </div>
             </div>
 

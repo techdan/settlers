@@ -8,9 +8,14 @@ import { removeResources } from '@/core/engine/resources/resource-manager';
  * Handles building and managing city walls
  *
  * Cost: 2 brick
- * Requirement: Must be on a city
- * Effect: +2 hand size limit for barbarian attacks (not robber)
- * Max: 1 per city, 3 total
+ * Requirement: Must be on a city (not settlement)
+ * Effect: +2 hand size limit for barbarian attacks ONLY (not robber)
+ * Max: 1 per city, total limited by number of cities owned
+ *
+ * Rules:
+ * - Barbarian hand limit = 7 + (2 × number of walls)
+ * - Walls do NOT affect robber/7 discards (always 7 card limit)
+ * - Walls destroyed when city is downgraded by barbarian attack
  */
 
 /**
@@ -63,9 +68,13 @@ export async function buildCityWall(
         throw new Error('This city already has a wall');
     }
 
-    // Check max walls (3 total)
-    if (player.cityWalls.length >= 3) {
-        throw new Error('Maximum 3 city walls allowed');
+    // Check max walls (limited by number of cities owned)
+    const cityCount = Object.values(gameState.board.vertices).filter(
+        v => v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis')
+    ).length;
+
+    if (player.cityWalls.length >= cityCount) {
+        throw new Error('Cannot have more walls than cities');
     }
 
     // Check resources (2 brick)
@@ -110,14 +119,31 @@ export function hasCityWall(
 }
 
 /**
- * Get hand size increase from city walls for barbarian attacks
- * Each city wall increases hand size limit by +2 for barbarians (NOT robber)
+ * Get barbarian hand limit for a player with city walls
+ * Base limit is 7, each wall adds +2
+ * This ONLY applies to barbarian attacks, NOT robber/7 discards
  *
  * @param player - Player state
- * @returns Number of extra cards allowed for barbarian attacks
+ * @returns Hand limit for barbarian attack discards
  */
-export function getCityWallBonusHandSize(player: any): number {
-    if (!player.cityWalls) return 0;
-    // Each wall adds +2 to hand size limit for barbarian attacks
-    return player.cityWalls.length * 2;
+export function getBarbarianHandLimit(player: any): number {
+    const baseLimit = 7;
+    const wallCount = player.cityWalls ? player.cityWalls.length : 0;
+    return baseLimit + (wallCount * 2);
+}
+
+/**
+ * Remove city wall when a city is downgraded
+ * Called when barbarians sack a city
+ *
+ * @param player - Player state
+ * @param vertexId - Vertex ID where city was downgraded
+ */
+export function removeCityWall(player: any, vertexId: string): void {
+    if (!player.cityWalls) return;
+
+    const index = player.cityWalls.indexOf(vertexId);
+    if (index !== -1) {
+        player.cityWalls.splice(index, 1);
+    }
 }

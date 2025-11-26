@@ -35,11 +35,15 @@ export function isValidCityWallPlacement(
         player.cityWalls = [];
     }
 
-    // Cannot build wall if one already exists
+    // Cannot build wall if one already exists on this city
     if (player.cityWalls.includes(vertexId)) return false;
 
-    // Cannot have more than 3 walls total
-    if (player.cityWalls.length >= 3) return false;
+    // Cannot have more walls than cities owned
+    const cityCount = Object.values(gameState.board.vertices).filter(
+        v => v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis')
+    ).length;
+
+    if (player.cityWalls.length >= cityCount) return false;
 
     // Must have 2 brick
     if (player.resources.brick < 2) return false;

@@ -218,7 +218,7 @@ export async function rollDice(
     // Note: Event die is rolled even on a 7!
     if (gameState.gameMode === 'cities_and_knights') {
         const eventDieResult = rollEventDie();
-        processEventDieRoll(gameState, eventDieResult);
+        processEventDieRoll(gameState, eventDieResult, d1); // d1 is the red die
         // Note: processEventDieRoll may change phase to 'barbarian_attack'
     }
 

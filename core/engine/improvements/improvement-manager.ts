@@ -171,15 +171,36 @@ export function canBuildMetropolis(
 
 /**
  * Check if player qualifies to draw progress cards for an improvement category
- * Requires level 3 or higher
+ *
+ * Requirements:
+ * 1. Player must have improvement level ≥ 1
+ * 2. Red die value must be ≤ (improvement level + 1)
+ *
+ * Red Die Thresholds:
+ * - Level 1: Red die 1-2 (2 symbols)
+ * - Level 2: Red die 1-3 (3 symbols)
+ * - Level 3: Red die 1-4 (4 symbols)
+ * - Level 4: Red die 1-5 (5 symbols)
+ * - Level 5: Red die 1-6 (6 symbols, always qualifies)
  *
  * @param player - Player state
  * @param improvement - Improvement type
- * @returns true if player can draw progress cards
+ * @param redDieValue - Value of the red production die (1-6)
+ * @returns true if player can draw a progress card
  */
-export function canDrawProgressCard(player: PlayerState, improvement: ImprovementType): boolean {
+export function canDrawProgressCard(
+    player: PlayerState,
+    improvement: ImprovementType,
+    redDieValue: number
+): boolean {
     const level = player.improvements?.[improvement] || 0;
-    return level >= CK_CONSTANTS.MIN_LEVEL_FOR_CARD_DRAW;
+
+    // Must have at least level 1
+    if (level < 1) return false;
+
+    // Red die must be ≤ number of red-die symbols (level + 1)
+    const redDieThreshold = level + 1;
+    return redDieValue <= redDieThreshold;
 }
 
 /**
@@ -187,13 +208,15 @@ export function canDrawProgressCard(player: PlayerState, improvement: Improvemen
  *
  * @param players - All players in the game
  * @param improvement - Improvement type
+ * @param redDieValue - Value of the red production die (1-6)
  * @returns Array of player IDs who qualify
  */
 export function getPlayersEligibleForCardDraw(
     players: PlayerState[],
-    improvement: ImprovementType
+    improvement: ImprovementType,
+    redDieValue: number
 ): string[] {
     return players
-        .filter(player => canDrawProgressCard(player, improvement))
+        .filter(player => canDrawProgressCard(player, improvement, redDieValue))
         .map(player => player.id);
 }

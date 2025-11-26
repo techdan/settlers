@@ -12,8 +12,15 @@ import { canDrawProgressCard } from '@/core/engine/improvements/improvement-mana
  * - 1 face: Yellow/Trade (progress card draw)
  * - 1 face: Blue/Politics (progress card draw)
  *
- * When a color is rolled, all players with improvement level ≥3 in that
- * category draw a progress card.
+ * When a color is rolled, players with improvement level ≥1 in that category
+ * draw a progress card IF the Red Die value ≤ (improvement level + 1).
+ *
+ * Red Die Thresholds:
+ * - Level 1: Red die 1-2
+ * - Level 2: Red die 1-3
+ * - Level 3: Red die 1-4
+ * - Level 4: Red die 1-5
+ * - Level 5: Red die 1-6 (always qualifies)
  */
 
 /**
@@ -47,8 +54,9 @@ export function rollEventDie(): EventDieFace {
  *
  * @param gameState - Current game state
  * @param dieFace - Event die result
+ * @param redDieValue - Value of the red production die (1-6)
  */
-export function processEventDieRoll(gameState: GameState, dieFace: EventDieFace): void {
+export function processEventDieRoll(gameState: GameState, dieFace: EventDieFace, redDieValue: number): void {
     // Skip if not C&K mode
     if (gameState.gameMode !== 'cities_and_knights') return;
 
@@ -63,7 +71,7 @@ export function processEventDieRoll(gameState: GameState, dieFace: EventDieFace)
         processBarbarianAdvance(gameState);
     } else {
         // Progress card draw for eligible players
-        processProgressCardDraw(gameState, dieFace);
+        processProgressCardDraw(gameState, dieFace, redDieValue);
     }
 }
 
@@ -105,24 +113,26 @@ function processBarbarianAdvance(gameState: GameState): void {
 
 /**
  * Process progress card draw for a color
- * All players with improvement level ≥3 in the matching category draw a card
+ * Players with improvement level ≥1 in the matching category AND
+ * Red Die ≤ (improvement level + 1) draw a card
  *
  * @param gameState - Current game state
  * @param colorFace - Color rolled (green/yellow/blue)
+ * @param redDieValue - Value of the red production die (1-6)
  */
-function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventDieFace, 'ship'>): void {
+function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventDieFace, 'ship'>, redDieValue: number): void {
     const category = EVENT_COLOR_TO_CATEGORY[colorFace];
 
-    // Find all eligible players
+    // Find all eligible players (considers red die threshold)
     const eligiblePlayers = gameState.players.filter(player =>
-        canDrawProgressCard(player, category)
+        canDrawProgressCard(player, category, redDieValue)
     );
 
     if (eligiblePlayers.length === 0) {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `Event die: ${colorFace} (${category}). No players qualify to draw progress cards.`
+            message: `Event die: ${colorFace} (${category}), Red die: ${redDieValue}. No players qualify to draw progress cards.`
         });
         return;
     }
@@ -132,7 +142,7 @@ function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventD
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `Event die: ${colorFace} (${category}). ${playerNames} may draw progress cards.`
+        message: `Event die: ${colorFace} (${category}), Red die: ${redDieValue}. ${playerNames} may draw progress cards.`
     });
 
     // Note: Actual card drawing is handled by progress-card-manager
@@ -155,13 +165,15 @@ export function getCategoryFromColor(colorFace: Exclude<EventDieFace, 'ship'>): 
  *
  * @param gameState - Current game state
  * @param category - Progress card category
+ * @param redDieValue - Value of the red production die (1-6)
  * @returns Array of eligible player IDs
  */
 export function getEligiblePlayersForCardDraw(
     gameState: GameState,
-    category: ProgressCardCategory
+    category: ProgressCardCategory,
+    redDieValue: number
 ): string[] {
     return gameState.players
-        .filter(player => canDrawProgressCard(player, category))
+        .filter(player => canDrawProgressCard(player, category, redDieValue))
         .map(player => player.id);
 }

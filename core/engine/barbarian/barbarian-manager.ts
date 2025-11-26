@@ -1,5 +1,7 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
+import { getBarbarianHandLimit } from '@/lib/services/city-walls-service';
+import { getTotalResources } from '../resources/resource-manager';
 
 /**
  * Barbarian Manager (Cities & Knights Expansion)
@@ -19,10 +21,14 @@ import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
  * Resolve barbarian attack
  * Compares total knight strength vs total cities
  * Updates game state with attack results
+ * Handles resource/commodity discards based on city wall limits
  *
  * @param gameState - Current game state
  */
 export function resolveBarbbarianAttack(gameState: GameState): void {
+    // First: Handle discards for players exceeding hand limit
+    handleBarbarianDiscards(gameState);
+
     // Calculate totals
     const totalCities = getTotalCities(gameState);
     const totalKnightStrength = getTotalKnightStrength(gameState);
@@ -46,6 +52,38 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
 
     // Return to main phase
     gameState.phase = 'main_phase';
+}
+
+/**
+ * Handle resource/commodity discards during barbarian attack
+ * Players exceeding their hand limit (7 + 2 per wall) must discard half
+ *
+ * @param gameState - Current game state
+ */
+function handleBarbarianDiscards(gameState: GameState): void {
+    for (const player of gameState.players) {
+        const handLimit = getBarbarianHandLimit(player);
+        const totalResources = getTotalResources(player);
+        const totalCommodities = player.commodities
+            ? Object.values(player.commodities).reduce((sum, val) => sum + val, 0)
+            : 0;
+        const totalCards = totalResources + totalCommodities;
+
+        if (totalCards > handLimit) {
+            const discardCount = Math.floor(totalCards / 2);
+
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${player.name} must discard ${discardCount} cards (hand limit: ${handLimit}, has: ${totalCards})`,
+                playerId: player.id
+            });
+
+            // Note: In a full implementation, the player would choose which cards to discard
+            // For now, we just log that discarding is needed
+            // The service layer will need to handle the actual discard UI
+        }
+    }
 }
 
 /**
@@ -251,6 +289,7 @@ export function getCityCount(gameState: GameState, playerId: string): number {
 /**
  * Destroy one city belonging to a player
  * Downgrades city to settlement (skips metropolises)
+ * Also removes city wall if present
  * Returns true if a city was destroyed
  *
  * @param gameState - Current game state
@@ -268,6 +307,12 @@ export function destroyCity(gameState: GameState, player: PlayerState): boolean 
     // Destroy the first city found (downgrade to settlement)
     const city = cities[0];
     city.structure = 'settlement';
+
+    // Remove city wall if present
+    if (player.cityWalls && player.cityWalls.includes(city.id)) {
+        const wallIndex = player.cityWalls.indexOf(city.id);
+        player.cityWalls.splice(wallIndex, 1);
+    }
 
     // Update player resources (city → settlement conversion)
     // Give back 1 city piece, use 1 settlement piece
