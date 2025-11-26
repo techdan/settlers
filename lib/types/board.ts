@@ -8,7 +8,9 @@ export interface Vertex {
     r: number;
     d: number; // 0-5, corner index
     owner: string | null; // Player ID
-    structure: 'settlement' | 'city' | null;
+    structure: 'settlement' | 'city' | 'metropolis' | null;
+    // Cities & Knights: metropolis type is stored in GameState.metropolises
+    // Knights are stored in PlayerState.knights with vertexId reference
 }
 
 export interface Edge {

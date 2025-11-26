@@ -1,6 +1,12 @@
 import { ResourceType } from '../board-data';
-import { PlayerState, DevCardType } from './player';
+import { PlayerState, DevCardType, ProgressCardType } from './player';
 import { BoardState } from './board';
+import type { MetropolisType, EventDieFace } from '@/core/rules/commodity-constants';
+
+/**
+ * Game mode selection
+ */
+export type GameMode = 'base' | 'cities_and_knights';
 
 /**
  * Game phases
@@ -17,6 +23,9 @@ export type GamePhase =
     | 'stealing'
     | 'road_building_1'
     | 'road_building_2'
+    // Cities & Knights specific phases
+    | 'knight_movement'
+    | 'barbarian_attack'
     | 'game_over';
 
 /**
@@ -51,6 +60,32 @@ export interface DiceRoll {
 }
 
 /**
+ * Cities & Knights - Event die result
+ */
+export interface EventDieRoll {
+    face: EventDieFace;
+    timestamp: number;
+}
+
+/**
+ * Cities & Knights - Metropolis ownership
+ */
+export interface MetropolisState {
+    type: MetropolisType;
+    owner: string | null; // Player ID or null if unclaimed
+    vertexId: string | null; // Location on board
+}
+
+/**
+ * Cities & Knights - Progress card deck
+ */
+export interface ProgressDeck {
+    science: ProgressCardType[];
+    trade: ProgressCardType[];
+    politics: ProgressCardType[];
+}
+
+/**
  * Complete game state
  */
 export interface GameState {
@@ -71,4 +106,11 @@ export interface GameState {
     longestRoadLength: number;
     largestArmyOwner: string | null;
     logs: GameLogEntry[];
+
+    // Cities & Knights expansion fields (optional for backward compatibility)
+    gameMode?: GameMode; // Default to 'base' if not set
+    barbarianPosition?: number; // 0-7, attacks at 7
+    metropolises?: MetropolisState[]; // 3 metropolises (science, trade, politics)
+    progressDecks?: ProgressDeck; // Three decks of progress cards
+    eventDieRoll?: EventDieRoll; // Last event die roll result
 }
