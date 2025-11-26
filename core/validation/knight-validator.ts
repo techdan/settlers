@@ -1,0 +1,246 @@
+import { GameState, PlayerState } from '@/lib/types';
+import { Knight } from '@/lib/types/player';
+import { hasKnightAtVertex } from '@/core/engine/knights/knight-manager';
+import { hasResources } from '@/core/engine/resources/resource-manager';
+import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST } from '@/core/rules/commodity-constants';
+import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
+
+/**
+ * Knight Validator (Cities & Knights Expansion)
+ * Validates knight placement, activation, movement, and upgrade operations
+ */
+
+/**
+ * Validate knight placement
+ *
+ * Rules:
+ * 1. Vertex must have player's own settlement or city
+ * 2. Vertex cannot already have a knight
+ * 3. Player must have resources (1 sheep + 1 ore)
+ *
+ * @param gameState - Current game state
+ * @param vertexId - Vertex to place knight on
+ * @param playerId - Player placing the knight
+ * @returns true if valid placement
+ */
+export function isValidKnightPlacement(
+    gameState: GameState,
+    vertexId: string,
+    playerId: string
+): boolean {
+    // 1. Check vertex has player's building
+    const vertex = gameState.board.vertices[vertexId];
+    if (!vertex) return false;
+    if (vertex.owner !== playerId) return false;
+    if (!vertex.structure || vertex.structure === null) return false;
+
+    // 2. Check no existing knight
+    if (hasKnightAtVertex(gameState, vertexId)) return false;
+
+    // 3. Check resources (validated separately in service layer)
+    // This validator just checks placement rules, not affordability
+
+    return true;
+}
+
+/**
+ * Check if player can afford to place a knight
+ *
+ * @param player - Player state
+ * @returns true if player has 1 sheep + 1 ore
+ */
+export function canAffordKnight(player: PlayerState): boolean {
+    return hasResources(player, KNIGHT_COST);
+}
+
+/**
+ * Validate knight activation
+ *
+ * Rules:
+ * 1. Knight must exist and belong to player
+ * 2. Knight must not already be active
+ * 3. Player must have resources (1 wheat)
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight to activate
+ * @param playerId - Player activating the knight
+ * @returns true if valid activation
+ */
+export function isValidKnightActivation(
+    gameState: GameState,
+    knightId: string,
+    playerId: string
+): boolean {
+    // Find the knight
+    const knight = findKnight(gameState, knightId);
+    if (!knight) return false;
+
+    // Check ownership
+    if (knight.playerId !== playerId) return false;
+
+    // Check not already active
+    if (knight.active) return false;
+
+    return true;
+}
+
+/**
+ * Check if player can afford to activate a knight
+ *
+ * @param player - Player state
+ * @returns true if player has 1 wheat
+ */
+export function canAffordKnightActivation(player: PlayerState): boolean {
+    return hasResources(player, KNIGHT_ACTIVATION_COST);
+}
+
+/**
+ * Validate knight movement
+ *
+ * Rules:
+ * 1. Knight must exist and belong to player
+ * 2. Knight must be active
+ * 3. Target vertex must be adjacent to current vertex
+ * 4. Path between vertices must be along player's own road
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight to move
+ * @param targetVertexId - Target vertex
+ * @param playerId - Player moving the knight
+ * @returns true if valid movement
+ */
+export function isValidKnightMovement(
+    gameState: GameState,
+    knightId: string,
+    targetVertexId: string,
+    playerId: string
+): boolean {
+    // Find the knight
+    const knight = findKnight(gameState, knightId);
+    if (!knight) return false;
+
+    // Check ownership
+    if (knight.playerId !== playerId) return false;
+
+    // Check knight is active
+    if (!knight.active) return false;
+
+    // Check target is adjacent and connected by own road
+    return canMoveKnightToVertex(gameState, knight, targetVertexId, playerId);
+}
+
+/**
+ * Check if a knight can move to a target vertex
+ * Target must be adjacent and connected via player's road
+ *
+ * @param gameState - Current game state
+ * @param knight - Knight to move
+ * @param targetVertexId - Target vertex
+ * @param playerId - Player ID
+ * @returns true if movement is valid
+ */
+export function canMoveKnightToVertex(
+    gameState: GameState,
+    knight: Knight,
+    targetVertexId: string,
+    playerId: string
+): boolean {
+    const currentVertexId = knight.vertexId;
+    if (currentVertexId === targetVertexId) return false; // Can't move to same vertex
+
+    // Get adjacent edges for current vertex
+    const [q, r, d] = currentVertexId.split(',').map(Number);
+    const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+
+    // Check each adjacent edge
+    for (const edgeId of adjacentEdges) {
+        const edge = gameState.board.edges[edgeId];
+
+        // Must be player's road
+        if (!edge || edge.owner !== playerId) continue;
+
+        // Get the other endpoint of this edge
+        const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
+        const otherVertex = endpoints.find(v => v !== currentVertexId);
+
+        // If this other vertex is the target, movement is valid
+        if (otherVertex === targetVertexId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Validate knight upgrade
+ *
+ * Rules:
+ * 1. Knight must exist and belong to player
+ * 2. Knight must not be at maximum level (mighty)
+ * 3. Player must have resources (1 sheep + 1 ore)
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight to upgrade
+ * @param playerId - Player upgrading the knight
+ * @returns true if valid upgrade
+ */
+export function isValidKnightUpgrade(
+    gameState: GameState,
+    knightId: string,
+    playerId: string
+): boolean {
+    // Find the knight
+    const knight = findKnight(gameState, knightId);
+    if (!knight) return false;
+
+    // Check ownership
+    if (knight.playerId !== playerId) return false;
+
+    // Check not at max level
+    if (knight.level === 'mighty') return false;
+
+    return true;
+}
+
+/**
+ * Check if player can afford to upgrade a knight
+ *
+ * @param player - Player state
+ * @returns true if player has 1 sheep + 1 ore
+ */
+export function canAffordKnightUpgrade(player: PlayerState): boolean {
+    return hasResources(player, KNIGHT_UPGRADE_COST);
+}
+
+/**
+ * Find a knight by ID across all players
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight ID to find
+ * @returns Knight if found, null otherwise
+ */
+function findKnight(gameState: GameState, knightId: string): Knight | null {
+    for (const player of gameState.players) {
+        if (!player.knights) continue;
+        const knight = player.knights.find(k => k.id === knightId);
+        if (knight) return knight;
+    }
+    return null;
+}
+
+/**
+ * Get the player who owns a knight
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight ID
+ * @returns Player state if found, null otherwise
+ */
+export function getKnightOwner(gameState: GameState, knightId: string): PlayerState | null {
+    for (const player of gameState.players) {
+        if (!player.knights) continue;
+        const knight = player.knights.find(k => k.id === knightId);
+        if (knight) return player;
+    }
+    return null;
+}
