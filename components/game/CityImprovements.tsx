@@ -69,9 +69,6 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
 
             {/* Dice Information */}
             <div className="mb-3 p-2 bg-slate-900/50 rounded border border-slate-700 space-y-1.5">
-                <div className="text-xs text-slate-400">
-                    🎲 <span className="text-red-400 font-bold">Red</span> + <span className="text-yellow-400 font-bold">Yellow</span> dice produce resources/commodities
-                </div>
                 <div className="text-xs font-semibold text-slate-300">
                     Progress Cards (needs both):
                 </div>
