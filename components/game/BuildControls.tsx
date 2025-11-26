@@ -5,8 +5,8 @@ import { buyDevCard } from '@/app/actions';
 interface BuildControlsProps {
     gameState: GameState;
     playerId: string;
-    buildMode: 'road' | 'settlement' | 'city' | null;
-    onSetBuildMode: (mode: 'road' | 'settlement' | 'city' | null) => void;
+    buildMode: 'road' | 'settlement' | 'city' | 'knight' | null;
+    onSetBuildMode: (mode: 'road' | 'settlement' | 'city' | 'knight' | null) => void;
 }
 
 export const BuildControls: React.FC<BuildControlsProps> = ({
@@ -17,6 +17,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
 }) => {
     const isMyTurn = gameState.currentTurn === playerId;
     const [isPending, startTransition] = useTransition();
+    const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
 
     const player = gameState.players.find(p => p.id === playerId);
     const resources = player?.resources || { brick: 0, wood: 0, sheep: 0, wheat: 0, ore: 0 };
@@ -25,7 +26,8 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const canAffordSettlement = resources.brick >= 1 && resources.wood >= 1 && resources.sheep >= 1 && resources.wheat >= 1;
     const canAffordCity = resources.ore >= 3 && resources.wheat >= 2;
     const canAffordDevCard = resources.sheep >= 1 && resources.wheat >= 1 && resources.ore >= 1;
-    const deckSize = gameState.devCardDeck.length;
+    const canAffordKnight = resources.sheep >= 1 && resources.ore >= 1;
+    const deckSize = gameState.devCardDeck?.length || 0;
 
     const handleBuyDevCard = () => {
         startTransition(async () => {
@@ -80,17 +82,37 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 <span>City 🏙️</span>
                 <span className="text-xs font-normal opacity-80">3🪨 2🌾</span>
             </button>
-            <button
-                onClick={handleBuyDevCard}
-                disabled={!canAffordDevCard || deckSize === 0 || isPending}
-                className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
-                    ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                    : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    }`}
-            >
-                <span>Dev Card 🃏</span>
-                <span className="text-xs font-normal opacity-80">1🐑 1🌾 1🪨</span>
-            </button>
+            {/* Dev Card (Base Game only) */}
+            {!isCitiesAndKnights && (
+                <button
+                    onClick={handleBuyDevCard}
+                    disabled={!canAffordDevCard || deckSize === 0 || isPending}
+                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
+                        ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
+                >
+                    <span>Dev Card 🃏</span>
+                    <span className="text-xs font-normal opacity-80">1🐑 1🌾 1🪨</span>
+                </button>
+            )}
+
+            {/* Knight (Cities & Knights only) */}
+            {isCitiesAndKnights && (
+                <button
+                    onClick={() => onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
+                    disabled={!canAffordKnight}
+                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                        : canAffordKnight
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
+                >
+                    <span>Knight ⚔️</span>
+                    <span className="text-xs font-normal opacity-80">1🐑 1🪨</span>
+                </button>
+            )}
         </div>
     );
 };

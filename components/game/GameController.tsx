@@ -36,7 +36,7 @@ interface GameControllerProps {
 const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
     const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
-    const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | null>(null);
+    const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | null>(null);
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();

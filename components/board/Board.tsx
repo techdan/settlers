@@ -12,15 +12,16 @@ import { GameState } from '@/lib/types';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { useTransition } from 'react';
-import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad } from '@/app/actions';
+import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad, buildKnight } from '@/app/actions';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
+import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
 
 interface BoardProps {
     gameState: GameState;
     playerId: string;
-    buildMode: 'road' | 'settlement' | 'city' | null;
+    buildMode: 'road' | 'settlement' | 'city' | 'knight' | null;
     onCancelBuild: () => void;
 }
 
@@ -67,6 +68,12 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             } else if (buildMode === 'city') {
                 vertices.forEach(v => {
                     if (isValidMainPhaseCity(gameState, v.id, playerId)) {
+                        valid.add(v.id);
+                    }
+                });
+            } else if (buildMode === 'knight') {
+                vertices.forEach(v => {
+                    if (isValidKnightPlacement(gameState, v.id, playerId)) {
                         valid.add(v.id);
                     }
                 });
@@ -157,6 +164,35 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                         },
                         (error) => {
                             console.error("Failed to build city", error);
+                        }
+                    );
+                }
+            } else if (buildMode === 'knight') {
+                if (isValidKnightPlacement(gameState, vertexId, playerId)) {
+                    // Optimistic update for instant feedback
+                    performOptimisticAction(
+                        `build-knight-${vertexId}`,
+                        (state) => {
+                            const newState = { ...state };
+                            const player = newState.players.find(p => p.id === playerId);
+                            if (player && player.knights) {
+                                const knight = {
+                                    id: `knight-${Date.now()}-${Math.random()}`,
+                                    vertexId,
+                                    playerId,
+                                    level: 'basic' as const,
+                                    active: false
+                                };
+                                player.knights.push(knight);
+                            }
+                            return newState;
+                        },
+                        async () => {
+                            await buildKnight(gameState.roomId, playerId, vertexId);
+                            onCancelBuild();
+                        },
+                        (error) => {
+                            console.error("Failed to build knight", error);
                         }
                     );
                 }

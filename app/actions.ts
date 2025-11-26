@@ -134,6 +134,12 @@ export async function buildCity(roomId: string, playerId: string, vertexId: stri
     return buildingService.buildCity(roomId, playerId, vertexId);
 }
 
+import * as knightService from '@/lib/services/knight-service';
+
+export async function buildKnight(roomId: string, playerId: string, vertexId: string) {
+    return knightService.buildKnightAction(roomId, playerId, vertexId);
+}
+
 export async function debugGiveResource(roomId: string, playerId: string, resource: ResourceType) {
     const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
     if (!game) throw new Error('Game not found');
