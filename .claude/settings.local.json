@@ -12,7 +12,8 @@
       "Bash(npm run build:*)",
       "Bash(find:*)",
       "Bash(git push)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(timeout 120 npm run build)"
     ],
     "deny": [],
     "ask": []

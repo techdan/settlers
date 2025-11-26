@@ -24,9 +24,11 @@ interface BoardProps {
     playerId: string;
     buildMode: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null;
     onCancelBuild: () => void;
+    movingKnightId?: string | null;
+    buildingMetropolisType?: 'science' | 'trade' | 'politics' | null;
 }
 
-export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, onCancelBuild }) => {
+export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, onCancelBuild, movingKnightId, buildingMetropolisType }) => {
     const { theme, toggleTheme } = useThemeStore();
     const HEX_SIZE = 90;
 
@@ -52,6 +54,36 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
     const validVertices = useMemo(() => {
         const valid = new Set<string>();
         if (gameState.currentTurn !== playerId) return valid;
+
+        // Knight Movement Mode
+        if (movingKnightId) {
+            // Find the knight being moved
+            const knight = gameState.players
+                .flatMap(p => p.knights || [])
+                .find(k => k.id === movingKnightId);
+
+            if (knight && knight.playerId === playerId) {
+                // Import the validator function inline to avoid circular dependencies
+                const { canMoveKnightToVertex } = require('@/core/validation/knight-validator');
+                vertices.forEach(v => {
+                    if (canMoveKnightToVertex(gameState, knight, v.id, playerId)) {
+                        valid.add(v.id);
+                    }
+                });
+            }
+            return valid;
+        }
+
+        // Metropolis Building Mode
+        if (buildingMetropolisType) {
+            vertices.forEach(v => {
+                // Must be player's city (not settlement, not already metropolis)
+                if (v.owner === playerId && v.structure === 'city') {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
 
         if (gameState.phase.startsWith('setup')) {
             vertices.forEach(v => {
@@ -87,7 +119,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             }
         }
         return valid;
-    }, [gameState, playerId, buildMode, vertices]);
+    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType]);
 
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
@@ -118,6 +150,60 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
     const handleVertexClick = (vertexId: string) => {
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
+
+        // Knight Movement Mode
+        if (movingKnightId) {
+            const { isValidKnightMovement } = require('@/core/validation/knight-validator');
+            if (isValidKnightMovement(gameState, movingKnightId, vertexId, playerId)) {
+                startTransition(async () => {
+                    try {
+                        const res = await fetch(`/api/game/${gameState.roomId}/knight`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                playerId,
+                                action: 'move',
+                                knightId: movingKnightId,
+                                targetVertexId: vertexId
+                            })
+                        });
+                        if (!res.ok) throw new Error('Failed to move knight');
+                        // Exit movement mode
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to move knight", e);
+                    }
+                });
+            }
+            return;
+        }
+
+        // Metropolis Building Mode
+        if (buildingMetropolisType) {
+            const vertex = gameState.board.vertices[vertexId];
+            if (vertex.owner === playerId && vertex.structure === 'city') {
+                startTransition(async () => {
+                    try {
+                        const res = await fetch(`/api/game/${gameState.roomId}/metropolis`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                playerId,
+                                action: 'build',
+                                metropolisType: buildingMetropolisType,
+                                vertexId
+                            })
+                        });
+                        if (!res.ok) throw new Error('Failed to build metropolis');
+                        // Exit metropolis building mode
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build metropolis", e);
+                    }
+                });
+            }
+            return;
+        }
 
         // Setup Phase
         if (gameState.phase.startsWith('setup')) {

@@ -1,11 +1,13 @@
 import React, { useTransition } from 'react';
-import { PlayerState } from '@/lib/types';
+import { PlayerState, GameState } from '@/lib/types';
 import { ImprovementType, CK_CONSTANTS, IMPROVEMENT_UPGRADE_COSTS } from '@/core/rules/commodity-constants';
 
 interface CityImprovementsProps {
     player: PlayerState;
     roomId: string;
+    gameState: GameState;
     onUpgrade: (improvement: ImprovementType) => Promise<void>;
+    onBuildMetropolis?: (improvement: ImprovementType) => void;
 }
 
 const IMPROVEMENT_COLORS: Record<ImprovementType, string> = {
@@ -32,7 +34,7 @@ const IMPROVEMENT_COMMODITY: Record<ImprovementType, 'paper' | 'cloth' | 'coin'>
     politics: 'coin'
 };
 
-export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, roomId, onUpgrade }) => {
+export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, roomId, gameState, onUpgrade, onBuildMetropolis }) => {
     const [isPending, startTransition] = useTransition();
 
     // Only show in C&K mode
@@ -119,11 +121,10 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
                                 {Array.from({ length: CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL }, (_, i) => (
                                     <div
                                         key={i}
-                                        className={`flex-1 h-2 rounded ${
-                                            i < level
-                                                ? IMPROVEMENT_COLORS[improvement]
-                                                : 'bg-slate-700'
-                                        }`}
+                                        className={`flex-1 h-2 rounded ${i < level
+                                            ? IMPROVEMENT_COLORS[improvement]
+                                            : 'bg-slate-700'
+                                            }`}
                                     />
                                 ))}
                             </div>
@@ -133,11 +134,10 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
                                 <button
                                     onClick={() => handleUpgrade(improvement)}
                                     disabled={!canAfford || isPending}
-                                    className={`w-full text-xs py-1.5 px-2 rounded font-medium transition-colors ${
-                                        canAfford
-                                            ? 'bg-green-600 hover:bg-green-700 text-white'
-                                            : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                    }`}
+                                    className={`w-full text-xs py-1.5 px-2 rounded font-medium transition-colors ${canAfford
+                                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                                        : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                                        }`}
                                 >
                                     {isPending ? (
                                         'Upgrading...'
@@ -156,12 +156,37 @@ export const CityImprovements: React.FC<CityImprovementsProps> = ({ player, room
                             )}
 
                             {/* Metropolis Status */}
-                            {level >= CK_CONSTANTS.METROPOLIS_REQUIREMENT && (
-                                <div className="text-xs text-yellow-400 flex items-center gap-1">
-                                    <span>👑</span>
-                                    <span>Metropolis available!</span>
-                                </div>
-                            )}
+                            {level >= CK_CONSTANTS.METROPOLIS_REQUIREMENT && (() => {
+                                const metropolis = gameState.metropolises?.find(m => m.type === improvement);
+                                const ownsMetropolis = metropolis?.owner === player.id;
+                                const canBuild = !ownsMetropolis && onBuildMetropolis;
+
+                                return (
+                                    <div className="space-y-1">
+                                        {ownsMetropolis ? (
+                                            <div className="text-xs text-yellow-400 flex items-center gap-1">
+                                                <span>👑</span>
+                                                <span>You own this metropolis!</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="text-xs text-yellow-400 flex items-center gap-1">
+                                                    <span>👑</span>
+                                                    <span>Metropolis available!</span>
+                                                </div>
+                                                {canBuild && (
+                                                    <button
+                                                        onClick={() => onBuildMetropolis(improvement)}
+                                                        className="w-full text-xs py-1.5 px-2 rounded font-medium bg-yellow-600 hover:bg-yellow-700 text-white transition-colors"
+                                                    >
+                                                        Build Metropolis (select city)
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </div>
                     );
                 })}

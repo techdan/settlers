@@ -1,7 +1,5 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
-import { getBarbarianHandLimit } from '@/lib/services/city-walls-service';
-import { getTotalResources } from '../resources/resource-manager';
 
 /**
  * Barbarian Manager (Cities & Knights Expansion)
@@ -21,14 +19,11 @@ import { getTotalResources } from '../resources/resource-manager';
  * Resolve barbarian attack
  * Compares total knight strength vs total cities
  * Updates game state with attack results
- * Handles resource/commodity discards based on city wall limits
+ * Note: Barbarians do NOT cause card discards (city walls have no effect here)
  *
  * @param gameState - Current game state
  */
 export function resolveBarbbarianAttack(gameState: GameState): void {
-    // First: Handle discards for players exceeding hand limit
-    handleBarbarianDiscards(gameState);
-
     // Calculate totals
     const totalCities = getTotalCities(gameState);
     const totalKnightStrength = getTotalKnightStrength(gameState);
@@ -52,38 +47,6 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
 
     // Return to main phase
     gameState.phase = 'main_phase';
-}
-
-/**
- * Handle resource/commodity discards during barbarian attack
- * Players exceeding their hand limit (7 + 2 per wall) must discard half
- *
- * @param gameState - Current game state
- */
-function handleBarbarianDiscards(gameState: GameState): void {
-    for (const player of gameState.players) {
-        const handLimit = getBarbarianHandLimit(player);
-        const totalResources = getTotalResources(player);
-        const totalCommodities = player.commodities
-            ? Object.values(player.commodities).reduce((sum, val) => sum + val, 0)
-            : 0;
-        const totalCards = totalResources + totalCommodities;
-
-        if (totalCards > handLimit) {
-            const discardCount = Math.floor(totalCards / 2);
-
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `${player.name} must discard ${discardCount} cards (hand limit: ${handLimit}, has: ${totalCards})`,
-                playerId: player.id
-            });
-
-            // Note: In a full implementation, the player would choose which cards to discard
-            // For now, we just log that discarding is needed
-            // The service layer will need to handle the actual discard UI
-        }
-    }
 }
 
 /**

@@ -11,6 +11,7 @@ import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board
 import { createDevCardDeck } from '@/core/engine/development/dev-card-manager';
 import { getCanonicalVertexId, getCanonicalEdgeId } from '@/lib/hex';
 import { randomUUID } from 'crypto';
+import { getRobberDiscardThreshold } from './city-walls-service';
 
 /**
  * Game Service
@@ -225,16 +226,18 @@ export async function rollDice(
     // Handle robber (7)
     if (total === 7) {
         // Check if any players need to discard
-        const playersToDiscard = gameState.players.filter(
-            p => getTotalResources(p) > GAME_CONSTANTS.DISCARD_THRESHOLD
-        );
+        // City walls increase the discard threshold (7 + 2 per wall)
+        const playersToDiscard = gameState.players.filter(p => {
+            const threshold = getRobberDiscardThreshold(p);
+            return getTotalResources(p) > threshold;
+        });
 
         if (playersToDiscard.length > 0) {
             gameState.phase = 'discarding';
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
                 timestamp: Date.now(),
-                message: `Players with more than ${GAME_CONSTANTS.DISCARD_THRESHOLD} cards must discard half`
+                message: `Players exceeding their hand limit must discard half`
             });
         } else {
             gameState.phase = 'robber_placement';

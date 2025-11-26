@@ -37,6 +37,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null>(null);
+    const [movingKnightId, setMovingKnightId] = useState<string | null>(null);
+    const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
@@ -78,12 +80,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleMoveKnight = async (knightId: string) => {
-        try {
-            // This would need target vertex selection logic
-            console.log('Move knight - target selection needed', knightId);
-        } catch (e) {
-            console.error('Error moving knight:', e);
-        }
+        // Enter knight movement mode - player will click target vertex
+        setMovingKnightId(knightId);
+        setBuildMode(null); // Clear any other build mode
     };
 
     const handleUpgradeKnight = async (knightId: string) => {
@@ -97,6 +96,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         } catch (e) {
             console.error('Error upgrading knight:', e);
         }
+    };
+
+    const handleBuildMetropolis = (metropolisType: 'science' | 'trade' | 'politics') => {
+        // Enter metropolis building mode - player will click a city vertex
+        setBuildingMetropolisType(metropolisType);
+        setBuildMode(null); // Clear any other build mode
+        setMovingKnightId(null); // Clear knight movement mode
     };
 
     const handlePlayProgressCard = async (cardType: any) => {
@@ -159,7 +165,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 gameState={gameState}
                 playerId={playerId}
                 buildMode={buildMode}
-                onCancelBuild={() => setBuildMode(null)}
+                onCancelBuild={() => {
+                    setBuildMode(null);
+                    setMovingKnightId(null);
+                    setBuildingMetropolisType(null);
+                }}
+                movingKnightId={movingKnightId}
+                buildingMetropolisType={buildingMetropolisType}
             />
 
             <DiscardModal gameState={gameState} playerId={playerId} />
@@ -196,7 +208,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                 <CityImprovements
                                     player={currentPlayer}
                                     roomId={roomId}
+                                    gameState={gameState}
                                     onUpgrade={handleUpgradeImprovement}
+                                    onBuildMetropolis={handleBuildMetropolis}
                                 />
                             )}
                         </>

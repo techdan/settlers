@@ -3,6 +3,7 @@ import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { getCanonicalVertexId } from '@/lib/hex';
 import { stealRandomResource, getTotalResources } from '@/core/engine/resources/resource-manager';
+import { getRobberDiscardThreshold } from './city-walls-service';
 
 /**
  * Robber Service
@@ -135,11 +136,12 @@ export async function discardCards(
 
     const currentTotal = getTotalResources(player);
 
-    // City walls do NOT protect against robber/7 discards
-    // They only protect against barbarian attacks
+    // City walls increase the discard threshold for robber/7
+    // Base threshold is 7, each wall adds +2
+    const discardThreshold = getRobberDiscardThreshold(player);
 
-    // If player has <= 7 cards, they shouldn't be discarding
-    if (currentTotal <= 7) {
+    // If player has <= threshold cards, they shouldn't be discarding
+    if (currentTotal <= discardThreshold) {
         throw new Error('No need to discard');
     }
 
@@ -171,7 +173,8 @@ export async function discardCards(
     // Check if everyone is done
     const pendingPlayers = gameState.players.filter(p => {
         const total = getTotalResources(p);
-        if (total <= 7) return false;
+        const threshold = getRobberDiscardThreshold(p);
+        if (total <= threshold) return false;
         return !p.discardedThisTurn;
     });
 

@@ -9,12 +9,12 @@ import { removeResources } from '@/core/engine/resources/resource-manager';
  *
  * Cost: 2 brick
  * Requirement: Must be on a city (not settlement)
- * Effect: +2 hand size limit for barbarian attacks ONLY (not robber)
- * Max: 1 per city, total limited by number of cities owned
+ * Effect: +2 discard threshold for ROBBER/7 ONLY (not barbarians)
+ * Max: 1 per city, 3 total per player
  *
  * Rules:
- * - Barbarian hand limit = 7 + (2 × number of walls)
- * - Walls do NOT affect robber/7 discards (always 7 card limit)
+ * - Robber/7 discard threshold = 7 + (2 × number of walls)
+ * - Walls do NOT affect barbarian attacks (no discards, no protection)
  * - Walls destroyed when city is downgraded by barbarian attack
  */
 
@@ -68,13 +68,9 @@ export async function buildCityWall(
         throw new Error('This city already has a wall');
     }
 
-    // Check max walls (limited by number of cities owned)
-    const cityCount = Object.values(gameState.board.vertices).filter(
-        v => v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis')
-    ).length;
-
-    if (player.cityWalls.length >= cityCount) {
-        throw new Error('Cannot have more walls than cities');
+    // Check max walls (3 total per player)
+    if (player.cityWalls.length >= 3) {
+        throw new Error('Maximum 3 city walls allowed');
     }
 
     // Check resources (2 brick)
@@ -119,31 +115,15 @@ export function hasCityWall(
 }
 
 /**
- * Get barbarian hand limit for a player with city walls
- * Base limit is 7, each wall adds +2
- * This ONLY applies to barbarian attacks, NOT robber/7 discards
+ * Get robber discard threshold for a player with city walls
+ * Base threshold is 7, each wall adds +2
+ * This ONLY applies to rolling a 7, NOT barbarian attacks
  *
  * @param player - Player state
- * @returns Hand limit for barbarian attack discards
+ * @returns Card threshold above which player must discard on a 7
  */
-export function getBarbarianHandLimit(player: any): number {
-    const baseLimit = 7;
+export function getRobberDiscardThreshold(player: any): number {
+    const baseThreshold = 7;
     const wallCount = player.cityWalls ? player.cityWalls.length : 0;
-    return baseLimit + (wallCount * 2);
-}
-
-/**
- * Remove city wall when a city is downgraded
- * Called when barbarians sack a city
- *
- * @param player - Player state
- * @param vertexId - Vertex ID where city was downgraded
- */
-export function removeCityWall(player: any, vertexId: string): void {
-    if (!player.cityWalls) return;
-
-    const index = player.cityWalls.indexOf(vertexId);
-    if (index !== -1) {
-        player.cityWalls.splice(index, 1);
-    }
+    return baseThreshold + (wallCount * 2);
 }
