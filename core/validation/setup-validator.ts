@@ -1,5 +1,5 @@
 import { GameState } from '@/lib/types';
-import { getAdjacentVertexIds } from '@/lib/hex';
+import { getAdjacentVertexIds, getEdgeEndpoints } from '@/lib/hex';
 
 /**
  * Validate settlement placement during setup phase
@@ -62,15 +62,13 @@ export function isValidSetupRoad(
     // 2. Must be adjacent to last placed settlement
     if (!gameState.lastPlacedSettlementId) return false;
 
-    // Check if edge is adjacent to the settlement
-    const [settQ, settR, settD] = gameState.lastPlacedSettlementId.split(',').map(Number);
-    const [edgeQ, edgeR, edgeD] = edgeId.split(',').map(Number);
+    // Check if edge connects to the settlement
+    const [q, r, d] = edgeId.split(',').map(Number);
+    const endpoints = getEdgeEndpoints(q, r, d);
 
-    // An edge is adjacent to a vertex if they share coordinates and directions match
-    // Vertex (q,r,d) is adjacent to edges (q,r,d) and (q,r,(d+5)%6)
-    const isAdjacent = (
-        (edgeQ === settQ && edgeR === settR && (edgeD === settD || edgeD === (settD + 5) % 6))
-    );
+    if (!endpoints.includes(gameState.lastPlacedSettlementId)) {
+        return false; // Not connected to the just-placed settlement
+    }
 
-    return isAdjacent;
+    return true;
 }

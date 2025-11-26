@@ -40,25 +40,23 @@ export function useLobbySubscription(roomId: string, initialRoom: Room, initialP
             )
             .subscribe();
 
-        // Subscribe to Player updates (INSERT, UPDATE, DELETE)
+        // Subscribe to Player updates
         const playersChannel = supabase
             .channel(`players:${roomId}`)
             .on(
                 'postgres_changes',
                 {
-                    event: '*', // Listen to all events
+                    event: '*',
                     schema: 'public',
                     table: 'players',
-                    filter: `roomId=eq.${roomId}`,
+                    filter: `room_id=eq.${roomId}`,
                 },
-                async () => {
-                    // For players, it's easier to just refetch the list on any change
-                    // to ensure we have the correct order and full list
-                    // Alternatively, we could manage the list state manually, but refetching is safer
+                async (payload) => {
+                    // Refetch player list on any change
                     const { data, error } = await supabase
                         .from('players')
                         .select('*')
-                        .eq('roomId', roomId);
+                        .eq('room_id', roomId);
 
                     if (data && !error) {
                         setPlayers(data as Player[]);

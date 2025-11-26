@@ -123,38 +123,3 @@ export function isValidMainPhaseCity(
     // Must be own settlement
     return vertex.owner === playerId && vertex.structure === 'settlement';
 }
-
-/**
- * Validate road placement during setup phase
- * 
- * Rules:
- * 1. Edge must exist and be empty
- * 2. Must connect to the last placed settlement
- * 
- * @param gameState - Current game state
- * @param edgeId - Edge ID to place road
- * @param playerId - Player attempting to place
- * @returns true if valid placement
- */
-export function isValidSetupRoad(
-    gameState: GameState,
-    edgeId: string,
-    playerId: string
-): boolean {
-    // 1. Check if edge exists and is empty
-    const edge = gameState.board.edges[edgeId];
-    if (!edge) return false;
-    if (edge.owner !== null) return false;
-
-    // 2. Must connect to the last placed settlement
-    if (!gameState.lastPlacedSettlementId) return false;
-
-    const [q, r, d] = edgeId.split(',').map(Number);
-    const endpoints = getEdgeEndpoints(q, r, d);
-
-    if (!endpoints.includes(gameState.lastPlacedSettlementId)) {
-        return false; // Not connected to the just-placed settlement
-    }
-
-    return true;
-}
