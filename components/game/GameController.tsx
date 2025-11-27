@@ -16,6 +16,7 @@ import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { buildCityWall } from '@/app/actions';
+import { AqueductModal } from './AqueductModal';
 
 // Cities & Knights components
 import { CityManagementDialog } from './CityManagementDialog';
@@ -341,6 +342,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     playerId={playerId}
                     onClose={() => setShowTrade(false)}
                 />
+            )}
+
+            {/* Aqueduct Modal */}
+            {gameState.phase === 'aqueduct_selection' && gameState.pendingAqueduct?.includes(playerId) && (
+                <AqueductModal gameState={gameState} playerId={playerId} />
             )}
 
             <TradeOfferDisplay gameState={gameState} playerId={playerId} />

@@ -102,7 +102,7 @@ function handleDefendersWin(gameState: GameState): void {
         // Note: Actual progress card draw will be handled by the service layer
         // The service will need to let each tied player choose which category to draw from
         // Store tied defenders in a temporary field for the service to process
-        (gameState as any).pendingDefenderCardDraws = topDefenders.map(pd => pd.player.id);
+        gameState.pendingDefenderCardDraws = topDefenders.map(pd => pd.player.id);
     }
 }
 
@@ -112,36 +112,101 @@ function handleDefendersWin(gameState: GameState): void {
  *
  * @param gameState - Current game state
  */
+/**
+ * Handle attackers win scenario
+ * v2.1: Fallback targeting system
+ * 1. Group players by knight strength
+ * 2. Start with weakest group (lowest strength)
+ * 3. Check if ANY player in group has a destroyable city
+ * 4. If yes: ALL players in this group with destroyable cities lose one. Attack ends.
+ * 5. If no: Move to next weakest group and repeat.
+ * 6. If no one has destroyable cities (all settlements/metropolises), nothing happens.
+ *
+ * @param gameState - Current game state
+ */
 function handleAttackersWin(gameState: GameState): void {
-    const weakest = getWeakestPlayer(gameState);
+    // 1. Calculate strength for all players
+    const playerStrengths = gameState.players.map(player => ({
+        player,
+        strength: calculateKnightStrength(player)
+    }));
 
-    if (!weakest) {
-        gameState.logs.push({
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: Date.now(),
-            message: 'Barbarians attacked but no cities were lost (no valid target).'
-        });
-        return;
+    // 2. Group by strength
+    const strengthGroups = new Map<number, PlayerState[]>();
+    playerStrengths.forEach(({ player, strength }) => {
+        if (!strengthGroups.has(strength)) {
+            strengthGroups.set(strength, []);
+        }
+        strengthGroups.get(strength)!.push(player);
+    });
+
+    // 3. Sort strengths ascending
+    const sortedStrengths = Array.from(strengthGroups.keys()).sort((a, b) => a - b);
+
+    let citiesDestroyed = false;
+    const victims: string[] = [];
+
+    // 4. Iterate groups to find valid targets
+    for (const strength of sortedStrengths) {
+        const group = strengthGroups.get(strength)!;
+
+        // Check if ANY player in this group has a destroyable city
+        const groupHasTarget = group.some(p => hasDestroyableCity(gameState, p.id));
+
+        if (groupHasTarget) {
+            // This group is the target. All eligible players lose a city.
+            for (const player of group) {
+                if (hasDestroyableCity(gameState, player.id)) {
+                    const destroyed = destroyCity(gameState, player);
+                    if (destroyed) {
+                        citiesDestroyed = true;
+                        victims.push(player.name);
+
+                        gameState.logs.push({
+                            id: `${Date.now()}-${Math.random()}`,
+                            timestamp: Date.now(),
+                            message: `Barbarians sacked the city! ${player.name} loses a city.`,
+                            playerId: player.id
+                        });
+                    }
+                } else {
+                    // Player is in the weakest group but has no city to lose (immune)
+                    gameState.logs.push({
+                        id: `${Date.now()}-${Math.random()}`,
+                        timestamp: Date.now(),
+                        message: `Barbarians attacked ${player.name} (weakest) but they have no destroyable cities.`,
+                        playerId: player.id
+                    });
+                }
+            }
+            // Attack resolved (do not proceed to next strength)
+            break;
+        } else {
+            // No one in this group has a city. Log and continue to next group.
+            /* 
+            // Optional: Log that this group was skipped? 
+            // "Barbarians ignored [Players] (strength X) as they have no cities."
+            // Might be too spammy.
+            */
+        }
     }
 
-    // Destroy one city
-    const destroyed = destroyCity(gameState, weakest);
-
-    if (destroyed) {
+    if (!citiesDestroyed) {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `Barbarians sacked the city! ${weakest.name} loses a city.`,
-            playerId: weakest.id
-        });
-    } else {
-        gameState.logs.push({
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: Date.now(),
-            message: `Barbarians attacked ${weakest.name} but no cities could be destroyed.`,
-            playerId: weakest.id
+            message: 'Barbarians attacked but no cities were lost (no valid targets found among any players).'
         });
     }
+}
+
+/**
+ * Check if a player has any destroyable city (regular city, not metropolis)
+ */
+function hasDestroyableCity(gameState: GameState, playerId: string): boolean {
+    return Object.values(gameState.board.vertices).some(
+        v => v.owner === playerId && v.structure === 'city'
+    );
 }
 
 /**
@@ -209,58 +274,7 @@ export function getDefenderOfCatan(gameState: GameState): PlayerState | null {
     return defender;
 }
 
-/**
- * Get the weakest player (player with fewest active knights)
- * Tiebreaker: player with most cities loses
- * Returns null if no players have cities
- *
- * @param gameState - Current game state
- * @returns Weakest player, or null if none
- */
-export function getWeakestPlayer(gameState: GameState): PlayerState | null {
-    // Filter to players who have cities
-    const playersWithCities = gameState.players.filter(player => {
-        return Object.values(gameState.board.vertices).some(
-            vertex => vertex.owner === player.id &&
-                (vertex.structure === 'city' || vertex.structure === 'metropolis')
-        );
-    });
 
-    if (playersWithCities.length === 0) return null;
-
-    // Find minimum knight strength
-    let minStrength = Infinity;
-    for (const player of playersWithCities) {
-        const strength = calculateKnightStrength(player);
-        if (strength < minStrength) {
-            minStrength = strength;
-        }
-    }
-
-    // Get all players tied for weakest
-    const weakestPlayers = playersWithCities.filter(
-        player => calculateKnightStrength(player) === minStrength
-    );
-
-    // If only one weakest player, return them
-    if (weakestPlayers.length === 1) {
-        return weakestPlayers[0];
-    }
-
-    // Tiebreaker: most cities
-    let maxCities = 0;
-    let weakest: PlayerState | null = null;
-
-    for (const player of weakestPlayers) {
-        const cityCount = getCityCount(gameState, player.id);
-        if (cityCount > maxCities) {
-            maxCities = cityCount;
-            weakest = player;
-        }
-    }
-
-    return weakest;
-}
 
 /**
  * Get the number of cities a player has

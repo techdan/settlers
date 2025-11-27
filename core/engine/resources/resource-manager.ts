@@ -81,6 +81,7 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
             });
         }
     });
+
 }
 
 /**

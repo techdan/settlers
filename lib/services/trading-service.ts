@@ -17,11 +17,18 @@ import { getPortForVertex, getBestTradeRatio } from '@/core/engine/board/port-ge
  * @param getResource - Resource to get
  * @returns Updated game state
  */
+import { CommodityType } from '@/core/rules/commodity-constants';
+
+// Helper to check if type is commodity
+function isCommodity(type: string): type is CommodityType {
+    return ['paper', 'cloth', 'coin'].includes(type);
+}
+
 export async function tradeWithBank(
     roomId: string,
     playerId: string,
-    giveResource: ResourceType,
-    getResource: ResourceType
+    giveResource: ResourceType | CommodityType,
+    getResource: ResourceType | CommodityType
 ): Promise<GameState> {
     // Get game state
     const gameState = await getGameStateByRoomId(roomId);
@@ -40,21 +47,50 @@ export async function tradeWithBank(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    // Determine trade ratio based on ports
-    // Get all vertices owned by player
-    const playerVertices = Object.keys(gameState.board.vertices).filter(
-        vId => gameState.board.vertices[vId].owner === playerId
-    );
-    const ratio = getBestTradeRatio(playerVertices, giveResource);
+    // Determine trade ratio
+    let ratio = 4; // Default
+
+    if (isCommodity(giveResource)) {
+        // Commodities: Default 4:1, or 2:1 with Trading House (Trade improvement level 3+)
+        if ((player.improvements?.trade || 0) >= 3) {
+            ratio = 2;
+        }
+        // Note: Ports do NOT apply to commodities (unless Merchant Fleet card is active - handled separately/future)
+    } else {
+        // Resources: Use ports
+        // Get all vertices owned by player
+        const playerVertices = Object.keys(gameState.board.vertices).filter(
+            vId => gameState.board.vertices[vId].owner === playerId
+        );
+        ratio = getBestTradeRatio(playerVertices, giveResource);
+    }
+
+    // Get current amount of 'give' item
+    const currentAmount = isCommodity(giveResource)
+        ? (player.commodities?.[giveResource] || 0)
+        : (player.resources[giveResource] || 0);
 
     // Validate resources
-    if (player.resources[giveResource] < ratio) {
+    if (currentAmount < ratio) {
         throw new Error(`Not enough ${giveResource}. Need ${ratio} to trade.`);
     }
 
     // Execute trade
-    player.resources[giveResource] -= ratio;
-    player.resources[getResource]++;
+    // Deduct 'give'
+    if (isCommodity(giveResource)) {
+        if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+        player.commodities[giveResource] -= ratio;
+    } else {
+        player.resources[giveResource] -= ratio;
+    }
+
+    // Add 'get'
+    if (isCommodity(getResource)) {
+        if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+        player.commodities[getResource] = (player.commodities[getResource] || 0) + 1;
+    } else {
+        player.resources[getResource]++;
+    }
 
     // Add log
     gameState.logs.push({

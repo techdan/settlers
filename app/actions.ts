@@ -103,8 +103,12 @@ export async function discardCards(roomId: string, playerId: string, resources: 
 
 import { getPortForVertex } from '@/lib/board-data';
 
-export async function tradeWithBank(roomId: string, playerId: string, giveResource: ResourceType, getResource: ResourceType) {
+export async function tradeWithBank(roomId: string, playerId: string, giveResource: ResourceType | CommodityType, getResource: ResourceType | CommodityType) {
     return tradingService.tradeWithBank(roomId, playerId, giveResource, getResource);
+}
+
+export async function claimAqueductResource(roomId: string, playerId: string, resource: ResourceType) {
+    return gameService.claimAqueductResource(roomId, playerId, resource);
 }
 
 export async function offerTrade(roomId: string, playerId: string, give: Record<ResourceType, number>, get: Record<ResourceType, number>) {

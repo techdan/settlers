@@ -226,6 +226,11 @@ export function upgradeKnight(gameState: GameState, knightId: string): Knight {
     if (knight.level === 'basic') {
         newLevel = 'strong';
     } else if (knight.level === 'strong') {
+        // Fortress ability: Must have Politics level 3 to upgrade to Mighty
+        const politicsLevel = player.improvements?.politics || 0;
+        if (politicsLevel < 3) {
+            throw new Error('Must have Politics level 3 (Fortress) to upgrade to Mighty Knight');
+        }
         newLevel = 'mighty';
     } else {
         throw new Error('Knight is already at maximum level');

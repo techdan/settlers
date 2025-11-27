@@ -1,6 +1,7 @@
 import React, { useState, useTransition } from 'react';
 import { GameState, PlayerState } from '@/lib/types';
 import { ResourceType, getPortForVertex } from '@/lib/board-data';
+import { CommodityType } from '@/core/rules/commodity-constants';
 import { tradeWithBank, offerTrade } from '@/app/actions';
 
 interface TradeModalProps {
@@ -17,14 +18,34 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
     ore: '🪨'
 };
 
+const COMMODITY_ICONS: Record<CommodityType, string> = {
+    paper: '📜',
+    cloth: '🧶',
+    coin: '🪙'
+};
+
+const ALL_TYPES = [
+    'wood', 'brick', 'sheep', 'wheat', 'ore',
+    'paper', 'cloth', 'coin'
+] as const;
+
+function isCommodity(type: string): type is CommodityType {
+    return ['paper', 'cloth', 'coin'].includes(type);
+}
+
+function getIcon(type: string): string {
+    if (isCommodity(type)) return COMMODITY_ICONS[type as CommodityType];
+    return RESOURCE_ICONS[type as ResourceType];
+}
+
 export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onClose }) => {
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'bank' | 'domestic'>('bank');
 
     // Bank State
-    const [giveRes, setGiveRes] = useState<ResourceType>('wood');
-    const [getRes, setGetRes] = useState<ResourceType>('brick');
+    const [giveRes, setGiveRes] = useState<ResourceType | CommodityType>('wood');
+    const [getRes, setGetRes] = useState<ResourceType | CommodityType>('brick');
 
     // Domestic State
     const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
@@ -34,21 +55,32 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
 
     // Bank Logic
     let ratio = 4;
-    for (const vertexId in gameState.board.vertices) {
-        const vertex = gameState.board.vertices[vertexId];
-        if (vertex.owner === playerId && vertex.structure) {
-            const portType = getPortForVertex(vertexId);
-            if (portType) {
-                if (portType === giveRes) {
-                    ratio = 2;
-                    break;
-                } else if (portType === 'generic') {
-                    ratio = Math.min(ratio, 3);
+
+    if (isCommodity(giveRes)) {
+        // Trading House ability (Trade Level 3+)
+        if ((player.improvements?.trade || 0) >= 3) {
+            ratio = 2;
+        }
+    } else {
+        for (const vertexId in gameState.board.vertices) {
+            const vertex = gameState.board.vertices[vertexId];
+            if (vertex.owner === playerId && vertex.structure) {
+                const portType = getPortForVertex(vertexId);
+                if (portType) {
+                    if (portType === giveRes) {
+                        ratio = 2;
+                        break;
+                    } else if (portType === 'generic') {
+                        ratio = Math.min(ratio, 3);
+                    }
                 }
             }
         }
     }
-    const canAffordBank = (player.resources[giveRes] || 0) >= ratio;
+
+    const canAffordBank = isCommodity(giveRes)
+        ? (player.commodities?.[giveRes] || 0) >= ratio
+        : (player.resources[giveRes] || 0) >= ratio;
 
     const handleBankTrade = () => {
         if (giveRes === getRes) return;
@@ -114,14 +146,16 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                 <div className="text-xs text-slate-400 uppercase mb-2">Give</div>
                                 <select
                                     value={giveRes}
-                                    onChange={e => setGiveRes(e.target.value as ResourceType)}
+                                    onChange={e => setGiveRes(e.target.value as ResourceType | CommodityType)}
                                     className="bg-slate-700 text-white rounded p-2 w-full mb-2 text-center appearance-none cursor-pointer hover:bg-slate-600"
                                 >
-                                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(r => (
-                                        <option key={r} value={r}>{RESOURCE_ICONS[r]} {r}</option>
+                                    {ALL_TYPES.map(r => (
+                                        <option key={r} value={r}>{getIcon(r)} {r}</option>
                                     ))}
                                 </select>
-                                <div className="text-sm text-slate-500">Have: {player.resources[giveRes]}</div>
+                                <div className="text-sm text-slate-500">
+                                    Have: {isCommodity(giveRes) ? (player.commodities?.[giveRes] || 0) : (player.resources[giveRes] || 0)}
+                                </div>
                             </div>
 
                             <div className="text-2xl font-bold text-slate-500">➜</div>
@@ -131,14 +165,16 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                 <div className="text-xs text-slate-400 uppercase mb-2">Get</div>
                                 <select
                                     value={getRes}
-                                    onChange={e => setGetRes(e.target.value as ResourceType)}
+                                    onChange={e => setGetRes(e.target.value as ResourceType | CommodityType)}
                                     className="bg-slate-700 text-white rounded p-2 w-full mb-2 text-center appearance-none cursor-pointer hover:bg-slate-600"
                                 >
-                                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(r => (
-                                        <option key={r} value={r}>{RESOURCE_ICONS[r]} {r}</option>
+                                    {ALL_TYPES.map(r => (
+                                        <option key={r} value={r}>{getIcon(r)} {r}</option>
                                     ))}
                                 </select>
-                                <div className="text-sm text-slate-500">Have: {player.resources[getRes]}</div>
+                                <div className="text-sm text-slate-500">
+                                    Have: {isCommodity(getRes) ? (player.commodities?.[getRes] || 0) : (player.resources[getRes] || 0)}
+                                </div>
                             </div>
                         </div>
 

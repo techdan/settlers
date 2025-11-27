@@ -27,6 +27,7 @@ export type GamePhase =
     | 'knight_movement'
     | 'knight_displacement'
     | 'barbarian_attack'
+    | 'aqueduct_selection' // New phase for Aqueduct ability
     | 'game_over';
 
 /**
@@ -123,4 +124,6 @@ export interface GameState {
         originVertexId: string;
         previousPhase: GamePhase;
     };
+    pendingDefenderCardDraws?: string[]; // List of player IDs who need to draw a progress card (tied defenders)
+    pendingAqueduct?: string[]; // List of player IDs eligible for Aqueduct (must choose a resource)
 }

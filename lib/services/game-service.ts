@@ -1,9 +1,10 @@
 import { GameState, PlayerState } from '@/lib/types';
+import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/repositories/game-repository';
 import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
-import { distributeCommodities } from '@/core/engine/resources/commodity-manager';
+import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { rollEventDie, processEventDieRoll } from '@/core/engine/dice/event-die-manager';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
@@ -250,13 +251,47 @@ export async function rollDice(
             });
         }
     } else {
+        // Snapshot resources/commodities for Aqueduct check
+        const initialTotals: Record<string, number> = {};
+        gameState.players.forEach(p => {
+            initialTotals[p.id] = getTotalResources(p) + getTotalCommodities(p);
+        });
+
         // Distribute resources
         distributeResources(gameState, total);
 
         // Distribute commodities (C&K expansion only)
         distributeCommodities(gameState, total);
 
-        // Set to main phase if not changed by event die processing
+        // Check Aqueduct (Science level 3)
+        if (gameState.gameMode === 'cities_and_knights') {
+            const eligibleForAqueduct: string[] = [];
+            gameState.players.forEach(p => {
+                if ((p.improvements?.science || 0) >= 3) {
+                    const currentTotal = getTotalResources(p) + getTotalCommodities(p);
+                    if (currentTotal === initialTotals[p.id]) {
+                        // No change in total count => received nothing
+                        eligibleForAqueduct.push(p.id);
+                    }
+                }
+            });
+
+            if (eligibleForAqueduct.length > 0) {
+                gameState.pendingAqueduct = eligibleForAqueduct;
+                // If we are in waiting_for_roll (normal flow), switch to aqueduct selection
+                if (gameState.phase === 'waiting_for_roll') {
+                    gameState.phase = 'aqueduct_selection';
+                    const names = eligibleForAqueduct.map(id => gameState.players.find(p => p.id === id)?.name).join(', ');
+                    gameState.logs.push({
+                        id: `${Date.now()}-${Math.random()}`,
+                        timestamp: Date.now(),
+                        message: `Aqueduct triggered! ${names} can choose a resource.`,
+                    });
+                }
+            }
+        }
+
+        // Set to main phase if not changed by event die processing or Aqueduct
         if (gameState.phase === 'waiting_for_roll') {
             gameState.phase = 'main_phase';
         }
@@ -373,4 +408,61 @@ export function checkAndUpdateVictory(gameState: GameState): string | null {
     }
 
     return winnerId;
+}
+
+/**
+ * Claim a resource via Aqueduct ability
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID
+ * @param resource - Resource to claim
+ * @returns Updated game state
+ */
+export async function claimAqueductResource(
+    roomId: string,
+    playerId: string,
+    resource: ResourceType
+): Promise<GameState> {
+    // Get game state
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // Validate phase
+    if (gameState.phase !== 'aqueduct_selection') {
+        throw new Error('Not in Aqueduct selection phase');
+    }
+
+    // Validate player eligibility
+    if (!gameState.pendingAqueduct || !gameState.pendingAqueduct.includes(playerId)) {
+        throw new Error('You are not eligible for Aqueduct');
+    }
+
+    // Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Add resource
+    player.resources[resource]++;
+
+    // Remove from pending list
+    gameState.pendingAqueduct = gameState.pendingAqueduct.filter(id => id !== playerId);
+
+    // Log
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} used Aqueduct to take 1 ${resource}`,
+        playerId
+    });
+
+    // If no more pending players, return to main phase
+    if (gameState.pendingAqueduct.length === 0) {
+        gameState.phase = 'main_phase';
+        gameState.pendingAqueduct = undefined;
+    }
+
+    // Save
+    await updateGameState(gameState);
+
+    return gameState;
 }

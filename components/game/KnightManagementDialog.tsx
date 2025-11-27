@@ -147,16 +147,17 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                         {!isMaxLevel && (
                             <button
                                 onClick={handleUpgrade}
-                                disabled={!canAct || !canAffordUpgrade}
+                                disabled={!canAct || !canAffordUpgrade || (knight.level === 'strong' && (player.improvements?.politics || 0) < 3)}
+                                title={knight.level === 'strong' && (player.improvements?.politics || 0) < 3 ? "Requires Fortress (Politics Level 3)" : ""}
                                 className={`
                                     w-full py-3 rounded font-bold flex items-center justify-between px-4 transition-all
-                                    ${canAct && canAffordUpgrade
+                                    ${canAct && canAffordUpgrade && !(knight.level === 'strong' && (player.improvements?.politics || 0) < 3)
                                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                                         : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
                                     }
                                 `}
                             >
-                                <span>Upgrade</span>
+                                <span>Upgrade {(knight.level === 'strong' && (player.improvements?.politics || 0) < 3) ? "🔒" : ""}</span>
                                 <div className="flex items-center gap-1 bg-black/20 px-2 rounded text-sm">
                                     <span>1 🐑 + 1 🪨</span>
                                 </div>

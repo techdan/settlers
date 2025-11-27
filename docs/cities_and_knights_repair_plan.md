@@ -608,10 +608,59 @@ The player card must display different information based on game mode:
 
 ---
 
+### Feature 6: Level 3 City Improvement Abilities (v2.1 NEW)
+
+**Phases**: 8
+**Errors Fixed**: Missing Core Features
+**Estimated Effort**: 4-6 hours
+
+#### 1. Science Track: The Aqueduct
+**Unlock Requirement**: Science Improvement Level 3
+**Official Rule**: "If you receive no production, take 1 resource of your choice (except on a '7')."
+
+**Implementation Specs**:
+- **Trigger**: End of "Distribution Phase" (after dice roll).
+- **Condition**: `dice_roll != 7` AND `total_cards_received` (res + com) == 0.
+- **Action**: Trigger "Select Resource" modal.
+- **Edge Cases**:
+  - Commodity received = No trigger.
+  - Robber blocked only hex = Trigger (0 cards received).
+
+#### 2. Trade Track: The Trading House
+**Unlock Requirement**: Trade Improvement Level 3
+**Official Rule**: "Trade 2 identical commodities for any 1 commodity or resource."
+
+**Implementation Specs**:
+- **Trigger**: Trade Phase.
+- **UI**: Show "2:1" icon/ratio for Commodities in Trade Modal.
+- **Logic**: Allow 2x Commodity -> 1x Resource/Commodity.
+- **Constraint**: Commodities ONLY (not resources).
+
+#### 3. Politics Track: The Fortress
+**Unlock Requirement**: Politics Improvement Level 3
+**Official Rule**: "Promote strong knights (Level 2) to mighty knights (Level 3)."
+
+**Implementation Specs**:
+- **Trigger**: "Promote Knight" action.
+- **Constraint**: Max knight level = 2 (Strong) if no Fortress.
+- **UI**: Disable "Upgrade" button for Strong knights if no Fortress (tooltip: "Requires Fortress").
+- **Asset**: Ensure Mighty Knight (Level 3) asset is distinct.
+
+#### Testing:
+- [ ] Aqueduct triggers when 0 resources/commodities received
+- [ ] Aqueduct does NOT trigger if commodity received
+- [ ] Aqueduct does NOT trigger on 7
+- [ ] Trading House allows 2:1 commodity trades
+- [ ] Trading House does NOT allow 2:1 resource trades (unless port exists)
+- [ ] Fortress allows upgrade to Mighty Knight
+- [ ] Cannot upgrade to Mighty without Fortress
+
+---
+
 ## File Changes Summary
 
 ### Type Definitions (3 files)
-- **lib/types/game.ts** - Add `defenderOfCatan`, `pendingProgressCardDraw`, `pendingCardChoice`, `activeMerchant`
+- **lib/types/game.ts** - Add `defenderOfCatan`, `pendingProgressCardDraw`, `pendingCardChoice`, `activeMerchant`, `pendingAqueduct`, `aqueduct_selection` phase
 - **lib/types/player.ts** - Add `revealedVPCards`
 - **lib/types/board.ts** - (no changes needed)
 
@@ -622,14 +671,15 @@ The player card must display different information based on game mode:
 - **core/engine/progress/progress-card-manager.ts** - Draw 2 keep 1, VP card handling, hand limits
 - **core/engine/dice/event-die-manager.ts** - Single player draw per die
 - **core/engine/barbarian/barbarian-manager.ts** - Defender of Catan award, tied players lose
-- **core/engine/knights/knight-manager.ts** - Displacement logic
+- **core/engine/knights/knight-manager.ts** - Displacement logic, Fortress upgrade check
 - **core/rules/victory-conditions.ts** - Defender VP, conditional Largest Army
 
 ### Validation (1 file)
 - **core/validation/knight-validator.ts** - Displacement validation, strength checks
 
 ### Services (2 files)
-- **lib/services/game-service.ts** - Initialize defenderOfCatan, hand limit check at turn end
+- **lib/services/game-service.ts** - Initialize defenderOfCatan, hand limit check, Aqueduct trigger & action
+- **lib/services/trading-service.ts** - Trading House 2:1 commodity logic
 - **lib/services/improvement-service.ts** - Mark metropolis functions internal-only
 
 ### API Routes (4 files: 2 modified, 2 new)
@@ -637,6 +687,7 @@ The player card must display different information based on game mode:
 - **app/api/game/[roomId]/metropolis/route.ts** - Deprecate manual building
 - **NEW: app/api/game/[roomId]/progress-card/choose/route.ts** - Card choice endpoint
 - **NEW: app/api/game/[roomId]/progress-card/discard/route.ts** - Card discard endpoint
+- **app/actions.ts** - Added `claimAqueductResource`, updated `tradeWithBank`
 
 ### UI Components (9 files: 4 modified, 3 new, 2 removed)
 - **components/game/GameStatus.tsx** - Show Defender/Largest Army, knight strength, VP cards, Merchant
@@ -647,7 +698,10 @@ The player card must display different information based on game mode:
 - **REMOVE: components/game/KnightControls.tsx** - Replace with dialog (if exists)
 - **NEW: components/game/ProgressCardChoice.tsx** - Modal for draw 2 keep 1
 - **NEW: components/game/CityManagementDialog.tsx** - Click city to manage
-- **NEW: components/game/KnightManagementDialog.tsx** - Click knight to manage
+- **NEW: components/game/KnightManagementDialog.tsx** - Click knight to manage (Fortress support)
+- **NEW: components/game/AqueductModal.tsx** - Aqueduct resource selection
+- **components/game/TradeModal.tsx** - Trading House support
+- **components/game/GameController.tsx** - Render AqueductModal
 
 **Total Changes**: 19 files modified, 5 files created, 2 files removed
 

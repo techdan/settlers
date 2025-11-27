@@ -67,6 +67,27 @@ Reaching level 4 unlocks ability to build a Metropolis.
   - [cite_start]A metropolis is worth **2 extra VPs** (total city value 4 VPs)[cite: 328].
   - [cite_start]A city with a metropolis **cannot be pillaged** by barbarians[cite: 477].
 
+## ✅ v2.1 CORRECTION (Updated)
+### **Level 3 Special Abilities:**
+Reaching Level 3 in an improvement track unlocks a special ability:
+
+1.  **Science (Green) → The Aqueduct:**
+    *   **Effect:** If you receive **no production** (resources or commodities) from the dice roll (excluding a '7'), you may take **1 resource of your choice** from the bank.
+    *   **Trigger:** End of Distribution Phase.
+    *   **Condition:** `dice_roll != 7` AND `total_cards_received == 0`.
+    *   **Edge Case:** If you receive a commodity but no resources, you *did* receive production, so Aqueduct does **not** trigger.
+    *   **Robber:** If the Robber blocks your only producing hex, you received 0 cards, so Aqueduct **does** trigger.
+
+2.  **Trade (Yellow) → The Trading House:**
+    *   **Effect:** You may trade **2 identical commodities** (Paper, Cloth, or Coin) for any **1 resource or commodity** of your choice.
+    *   **Ratio:** 2:1 (Commodities only).
+    *   **Constraint:** You cannot trade 2 Resources for 1 Item using this ability (unless you have a standard 2:1 port). This is exclusive to Commodity inputs.
+
+3.  **Politics (Blue) → The Fortress:**
+    *   **Effect:** You may promote **Strong Knights** (Level 2) to **Mighty Knights** (Level 3).
+    *   **Constraint:** Without this improvement, the maximum knight level is Strong (Level 2).
+    *   **Cost:** Standard promotion cost (1 Wool + 1 Ore).
+
 ---
 
 # 5. Knights (Original)
