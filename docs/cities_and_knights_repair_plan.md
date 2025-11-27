@@ -42,39 +42,60 @@ This document provides a complete implementation plan to fix 15 critical errors 
 
 ### MEDIUM PRIORITY Errors
 
-| ID | Error | Current Behavior | Correct Behavior | Fix Location |
+| ID | Error | Current Behavior | Correct Behavior (v2.0) | Fix Location |
 |----|-------|------------------|------------------|--------------|
 | M1 | Alchemy timing blocked | Can't play before roll | Playable before roll | progress-card/route.ts:59-64 |
-| M2 | Barbarian ties | One player loses | All tied players lose | barbarian-manager.ts:192-235 |
+| M2 | Barbarian fallback missing | Stops at weakest | Next weakest if no valid city | barbarian-manager.ts:192-235 |
 | M3 | Intrigue ignores strength | Displaces any knight | Respects strength rules | progress-card-manager.ts:818-865 |
-| M4 | UI shows "Largest Army" | Shows in C&K mode | Should show "Defender" | GameStatus.tsx:97-102 |
+| M4 | Defender as transferable title | Like Longest Road | Physical VP tokens (keep forever) | GameStatus.tsx, GameState type |
 | M5 | No temp hand limit | Not enforced | 5 during turn, 4 after | progress-card-manager.ts |
+| M6 | Metropolis at level 4 permanent | Cannot be stolen | Only permanent at level 5 | improvement-manager.ts |
 
 ---
 
 ## Implementation Features (Feature-by-Feature Approach)
 
-### Feature 1: Progress Card System
+### Feature 1: Progress Card System (v2.0 UPDATED)
 
 **Phases**: 2, 3, 6
 **Errors Fixed**: C3, H1, H2, H3, H4, M1, M5
-**Estimated Effort**: 7-10 hours
+**Estimated Effort**: 5-8 hours (REDUCED - simpler than v1)
 
-#### Changes Required:
+#### v2.0 Changes Required:
 
 1. **Fix level requirement** (C3)
    - File: `core/engine/improvements/improvement-manager.ts:199`
    - Change: `if (level < 1)` → `if (level < 3)`
 
-2. **Single player draws per die** (H1)
+2. **Implement RED DIE threshold system** (H1 - v2.0)
    - File: `core/engine/dice/event-die-manager.ts:123-151`
-   - Logic: Find all eligible, select highest level, tie = closest to current player clockwise
+   - **v2.0 Logic:**
+     ```typescript
+     // Level 1-2: No cards
+     // Level 3: Draw if red die is 1 or 2
+     // Level 4-5: Draw if red die is 1, 2, or 3
 
-3. **Draw 2 keep 1** (H2)
+     function canDrawProgressCard(player, category, redDieValue) {
+       const level = player.improvements?.[category] || 0;
+       if (level < 3) return false;
+
+       const threshold = level >= 4 ? 3 : 2;  // Level 4-5: red≤3, Level 3: red≤2
+       return redDieValue <= threshold;
+     }
+     ```
+
+3. **ALL qualifying players draw** (H1 - v2.0)
+   - File: `core/engine/dice/event-die-manager.ts:123-151`
+   - ❌ **REMOVE v1 logic**: "Only ONE player draws per die"
+   - ✅ **v2.0 Logic**: ALL players who meet red die threshold draw 1 card each
+   - No priority/selection needed - everyone eligible draws simultaneously
+
+4. **Draw exactly 1 card** (H2 - v2.0)
    - File: `core/engine/progress/progress-card-manager.ts`
-   - New logic: If level ≥3, draw 2 cards, show modal choice, keep 1, return other to deck
-   - New component: `components/game/ProgressCardChoice.tsx` (blocking modal)
-   - New endpoint: `app/api/game/[roomId]/progress-card/choose/route.ts`
+   - ❌ **REMOVE v1 logic**: "Draw 2 keep 1" with modal choice
+   - ❌ **DELETE components**: `ProgressCardChoice.tsx` (not needed in v2.0)
+   - ❌ **DELETE endpoint**: `choose/route.ts` (not needed in v2.0)
+   - ✅ **v2.0 Logic**: Draw exactly 1 card from top of deck (topmost card)
 
 4. **VP card handling** (H4)
    - File: `core/engine/progress/progress-card-manager.ts`
@@ -98,10 +119,12 @@ This document provides a complete implementation plan to fix 15 critical errors 
 - **Merchant Card**: Display Merchant icon in player card when active (grants 1 VP)
 - Note: Merchant progress card logic should track which player currently has it active
 
-#### Testing:
-- [ ] Can only draw at level 3+
-- [ ] Only one player draws per event die
-- [ ] Level 3+ see 2 cards, choose 1
+#### Testing (v2.0 UPDATED):
+- [ ] Can only draw at level 3+ (not level 1-2)
+- [ ] Level 3: draws if red die ≤ 2
+- [ ] Level 4-5: draws if red die ≤ 3
+- [ ] ALL qualifying players draw (not just one)
+- [ ] Each player draws exactly 1 card (not 2)
 - [ ] VP cards don't appear in hand
 - [ ] VP cards (Printer, Constitution) display in player card
 - [ ] Merchant displays in player card when active
@@ -109,37 +132,54 @@ This document provides a complete implementation plan to fix 15 critical errors 
 - [ ] Can hold 5 during turn
 - [ ] Alchemy playable before roll
 - [ ] All card draws logged to game log
-- [ ] Card selection logged when choosing from 2
 - [ ] VP card reveals logged with "+1 VP" message
 - [ ] Hand limit warnings logged
 - [ ] Card plays logged with card name
 
 ---
 
-### Feature 2: Victory Conditions
+### Feature 2: Victory Conditions (v2.0 UPDATED)
 
 **Phases**: 1
 **Errors Fixed**: C1, C2, M4
 **Estimated Effort**: 2-3 hours
 
-#### Changes Required:
+#### v2.0 Changes Required:
 
-1. **Add Defender of Catan field** (C2)
-   - File: `lib/types/game.ts:107`
-   - Add: `defenderOfCatan: string | null`
+1. **Add Defender VP Tokens field** (C2 - v2.0)
+   - File: `lib/types/player.ts`
+   - ❌ **REMOVE v1**: `GameState.defenderOfCatan: string | null` (transferable title)
+   - ✅ **v2.0 ADD**: `PlayerState.defenderVPTokens: number` (physical tokens, default 0)
+   - **v2.0 Logic**: There are 6 total VP tokens. Once earned, they are KEPT permanently (not transferred like Longest Road)
 
-2. **Fix VP calculation** (C1, C2)
+2. **Fix VP calculation** (C1, C2 - v2.0)
    - File: `core/rules/victory-conditions.ts:60-63, 105-108`
    - Wrap Largest Army in: `if (gameMode !== 'cities_and_knights')`
-   - Add Defender check: `if (gameMode === 'cities_and_knights' && defenderOfCatan === playerId) points += 1`
+   - ✅ **v2.0 ADD**: `points += player.defenderVPTokens` (each token = 1 VP)
 
-3. **Award Defender after barbarian defense** (C2)
+3. **Award Defender VP Token after barbarian defense** (C2 - v2.0)
    - File: `core/engine/barbarian/barbarian-manager.ts:58-70`
-   - Logic: After successful defense, set `gameState.defenderOfCatan = defender.id`
+   - **v2.0 Logic**:
+     ```typescript
+     // After successful defense
+     const highestContributor = getHighestContributor(gameState);
+     if (highestContributor.length === 1) {
+       // Single highest: award 1 VP token (permanent)
+       highestContributor[0].defenderVPTokens += 1;
+       log: "Player earned a Defender of Catan token! (+1 VP)"
+     } else {
+       // Tied for highest: NO token awarded, tied players draw progress card instead
+       for (const player of highestContributor) {
+         drawProgressCard(player, randomCategory);
+       }
+       log: "Players tied for defense - each draws a progress card"
+     }
+     ```
 
-4. **Initialize in game start** (C2)
+4. **Initialize in game start** (C2 - v2.0)
    - File: `lib/services/game-service.ts:148`
-   - Add: `defenderOfCatan: null` for C&K games
+   - ❌ **REMOVE**: `defenderOfCatan: null`
+   - ✅ **v2.0 ADD**: Initialize each player with `defenderVPTokens: 0`
 
 5. **Update Player Card UI** (M4)
    - File: `components/game/GameStatus.tsx:97-102`
@@ -231,12 +271,21 @@ The player card must display different information based on game mode:
   - Current improvement levels (science/trade/politics: 0-5)
   - Upgrade buttons for each improvement (cost: 1-4 commodities based on level)
   - Available commodities display
-  - City wall building option (2 brick)
+  - City wall building option (2 brick) - **per-city**, not player-wide
+  - Wall status indicator (shows if this city has a wall)
   - Metropolis status (if applicable)
 - Disabled when:
   - Not player's turn
   - Player has no cities (can't buy improvements without cities)
 - Close button to dismiss
+
+**City Walls Implementation**:
+- Stored as `vertex.hasCityWall: boolean` in board state
+- Each city/metropolis can have 0 or 1 wall
+- Maximum 3 walls total per player (validation checks count across all cities)
+- Wall is automatically destroyed when city is downgraded to settlement
+- Robber discard threshold = 7 + (2 × total walls owned)
+- Helper function: `getCityWallCount(gameState, playerId)` computes count on demand
 
 #### Core Logic Changes:
 
@@ -302,19 +351,52 @@ The player card must display different information based on game mode:
   - Knight level (basic/strong/mighty)
   - Active/inactive status
   - Strength value (1/2/3)
+  - Knight count: "X/6 knights on board" (2 basic, 2 strong, 2 mighty max)
 - Action buttons:
   - **Activate** (1 grain) - if inactive, costs 1 grain
-  - **Deactivate** - if active
+  - **NO Deactivate button** - Knights auto-deactivate only (see below)
   - **Upgrade** (1 wool + 1 ore) - if basic→strong or strong→mighty
   - **Move** - if active:
-    - Shows adjacent vertices along own roads
-    - Highlights valid move targets (green)
-    - Shows displacement targets (red - weaker knights)
+    - Shows ALL empty intersections reachable via continuous path of own roads
+    - Can pass through intersections with own pieces (highlight in yellow)
+    - Cannot end on occupied intersection (even own knight)
+    - Highlights valid empty destinations (green)
+    - Shows displacement targets (red - weaker enemy knights on own road network)
     - Click target vertex to move
-  - **Chase Robber** - if active and robber adjacent (future enhancement)
+    - **Auto-deactivates after move**
+  - **Chase Robber** - if active and robber adjacent:
+    - Click to chase robber away
+    - Opens robber placement UI (standard robber rules)
+    - **Auto-deactivates after chasing**
 - Disabled actions:
   - Greyed out with tooltip explaining why (e.g., "Need 1 grain to activate")
 - Close button to dismiss
+
+**Knight Movement Rules** (IMPORTANT):
+- Active knight can move to **any** empty intersection connected by continuous path of **own roads**
+- Not limited to 1 edge - can move multiple edges along road network
+- Can pass through own pieces (settlements, cities, other knights)
+- Must end on empty intersection
+- Auto-deactivates after move
+
+**Displacement Rules** (IMPORTANT):
+- Can only displace **weaker** knight (Basic < Strong < Mighty)
+- Displacing knight must reach enemy knight via **own road network**
+- Displaced knight owner must **immediately** relocate it:
+  - To any empty intersection connected by **their own roads** from displacement point
+  - Displaced knight keeps its active/inactive status
+  - Can return to original spot if connected by their roads and now empty
+  - If no valid destination exists, knight is **permanently removed** from board
+- Displacing knight becomes **Inactive** after displacement
+
+**Auto-Deactivation Rules** (IMPORTANT):
+- Knights are ONLY deactivated automatically, NEVER manually
+- **After Barbarian Attack**: ALL active knights become inactive (win or lose)
+- **After Knight Actions**:
+  - Moving knight along road network → inactive
+  - Displacing weaker knight → inactive (moving knight only, displaced keeps status)
+  - Chasing robber → inactive
+- **Chase Robber Follow-Up**: Player must move robber to new hex (triggers standard robber logic)
 
 #### Core Logic Changes:
 
@@ -323,46 +405,151 @@ The player card must display different information based on game mode:
    - Add `onClick` handler for knights
    - Opens `KnightManagementDialog` with `knightId`, `gameState`, `playerId`
 
-2. **Add displacement validation** (H5)
+2. **Add knight piece limit constants**
+   - File: `core/rules/constants.ts`
+   - Add C&K constants:
+   ```typescript
+   export const CK_CONSTANTS = {
+     KNIGHTS_PER_PLAYER: {
+       basic: 2,
+       strong: 2,
+       mighty: 2,
+       total: 6,
+     },
+     VICTORY_POINTS_TO_WIN: 13,
+     // ... other C&K constants
+   }
+   ```
+
+3. **Add knight piece validation**
+   - File: `core/validation/knight-validator.ts`
+   - New function: `canRecruitKnight(gameState, playerId)`
+   - Logic: Count player's knights on board by type
+   - Prevent recruitment if 6 total knights already placed
+   - Return: `{ canRecruit: boolean, reason?: string }`
+
+4. **Add knight movement pathfinding**
+   - File: `core/validation/knight-validator.ts`
+   - New function: `getReachableIntersections(gameState, knightId, playerId)`
+   - Logic:
+     - Use BFS/DFS to find all intersections reachable via continuous path of player's roads
+     - Can pass through intersections with own pieces (settlements, cities, knights)
+     - Cannot end on occupied intersections (any piece)
+     - Include enemy knight positions if they're weaker (displacement targets)
+     - Return: `{ empty: Intersection[], displacement: Intersection[] }`
+
+5. **Add displacement validation** (H5)
    - File: `core/validation/knight-validator.ts`
    - New function: `canDisplaceKnight(gameState, movingKnight, targetVertex)`
    - Logic:
-     - Check if target has knight
+     - Check if target has enemy knight
      - If same player: cannot displace own knight
      - Compare strengths: moving must be STRONGER (not equal)
+     - Check if target reachable via own road network
      - Return: `{ canDisplace: boolean, reason?: string }`
 
-3. **Update movement validation**
-   - File: `core/validation/knight-validator.ts:142-173`
-   - Update `canMoveKnightToVertex()` to call `canDisplaceKnight()`
-   - Prevent movement if cannot displace
+6. **Add displaced knight relocation validation**
+   - File: `core/validation/knight-validator.ts`
+   - New function: `getDisplacedKnightDestinations(gameState, displacedKnight, fromVertex)`
+   - Logic:
+     - Find all empty intersections connected by **displaced knight owner's roads** from `fromVertex`
+     - Can pass through own pieces
+     - Must end on empty intersection
+     - If no valid destinations: return empty array (knight will be removed)
+     - Return: `Intersection[]`
 
-4. **Implement displacement logic**
+7. **Implement displacement logic with follow-up**
    - File: `core/engine/knights/knight-manager.ts`
    - In `moveKnight()`, check for enemy knight at target
-   - If weaker: remove from board, log displacement
-   - Move knight to target, set inactive
+   - If weaker knight present:
+     - Get valid relocation destinations for displaced knight
+     - If destinations exist: Trigger UI for owner to choose relocation
+     - If no destinations: Permanently remove displaced knight from board
+     - Move displacing knight to target, set inactive
+     - Log: "[Player] displaced [Owner]'s [level] knight!"
+   - **Trigger follow-up**: Set game state to require displaced knight placement
+   - Game state: `{ type: 'relocateKnight', knightId, validDestinations, playerId }`
 
-5. **Fix Intrigue card** (M3)
+8. **Implement chase robber with follow-up**
+   - File: `core/engine/knights/knight-manager.ts`
+   - New function: `chaseRobber(gameState, knightId, playerId)`
+   - Logic:
+     - Validate knight active and adjacent to robber
+     - Set knight inactive
+     - **Trigger follow-up**: Set game state to require robber placement
+     - Player must move robber (triggers standard robber logic: choose hex, steal card)
+     - Log: "[Player] chased away the robber! Move it to a new location."
+
+9. **Add barbarian attack deactivation**
+   - File: `core/engine/barbarian/barbarian-manager.ts`
+   - In `resolveBarbarian()`, after victory/defeat calculation:
+   - Set ALL active knights to inactive (all players)
+   - Log: "All active knights have been deactivated after the barbarian attack."
+
+10. **Fix Intrigue card** (M3)
    - File: `core/engine/progress/progress-card-manager.ts:818-865`
    - Add strength validation before displacement
    - Logic: Intrigue acts as "virtual mighty knight" (strength 3)
    - Can only displace basic/strong, not mighty
+   - Displaced knight must relocate using same rules (own roads from displacement point)
    - Error: "Cannot use Intrigue on mighty knight (too strong)"
 
 #### Testing:
+**UI/UX:**
 - [ ] No KnightControls panel exists
 - [ ] Click knight on board opens dialog
+- [ ] Dialog shows knight count (X/6 knights)
+- [ ] NO manual deactivate button exists
+
+**Piece Limits:**
+- [ ] Cannot recruit 7th knight (validation error)
+- [ ] Cannot recruit 3rd basic knight (validation error)
 - [ ] Can activate knight (1 grain)
 - [ ] Can upgrade knight (1 wool + 1 ore)
-- [ ] Can move knight along own roads
-- [ ] Can displace weaker knights only
+
+**Movement Pathfinding:**
+- [ ] Knight can move to any empty intersection via own road network (not just 1 edge)
+- [ ] Can move multiple edges in single move
+- [ ] Can pass through own pieces (settlements, cities, knights)
+- [ ] Cannot end on occupied intersection (even own knight)
+- [ ] Shows all reachable empty intersections (green)
+- [ ] Shows displacement targets - weaker knights on own road network (red)
+- [ ] Knight auto-deactivates after move
+
+**Displacement:**
+- [ ] Can only displace weaker knights (Basic < Strong < Mighty)
 - [ ] Equal strength cannot displace
-- [ ] Intrigue respects strength rules
-- [ ] Displaced knights removed from board
+- [ ] Cannot displace own knight
+- [ ] Displacing knight must reach target via own road network
+- [ ] Displacement triggers relocation UI for displaced knight owner
+- [ ] Displaced knight owner sees valid destinations connected by their roads
+- [ ] Displaced knight can return to original spot if connected and empty
+- [ ] Displaced knight keeps its active/inactive status after relocation
+- [ ] If no valid destinations, knight permanently removed from board
+- [ ] Displacing knight auto-deactivates after displacement
+
+**Other Actions:**
+- [ ] Can chase robber when adjacent
+- [ ] Chase robber triggers robber placement UI
+- [ ] Chase robber triggers steal card logic
+- [ ] Knight auto-deactivates after chasing robber
+- [ ] ALL active knights deactivate after barbarian attack (win or lose)
+
+**Intrigue Card:**
+- [ ] Intrigue respects strength rules (acts as mighty knight strength 3)
+- [ ] Intrigue can displace basic and strong knights
+- [ ] Intrigue cannot displace mighty knights
+- [ ] Intrigue displacement triggers same relocation rules
+
+**Logging:**
 - [ ] Knight activation logged with cost
+- [ ] Knight deactivation logged (move, displace, chase, barbarian)
+- [ ] Displacement logged with both players mentioned
+- [ ] Displaced knight relocation logged
+- [ ] Displaced knight removal logged (no valid destinations)
+- [ ] Chase robber logged with follow-up action required
 - [ ] Knight upgrades logged with level change and cost
-- [ ] Knight movement logged with location
+- [ ] Knight movement logged with start/end location
 - [ ] Displacements logged: "Strong knight (2) displaced basic knight (1)!"
 - [ ] Intrigue displacement logged
 - [ ] Validation errors logged (can't displace, no path, etc.)

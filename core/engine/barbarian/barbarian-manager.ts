@@ -194,7 +194,7 @@ export function getWeakestPlayer(gameState: GameState): PlayerState | null {
     const playersWithCities = gameState.players.filter(player => {
         return Object.values(gameState.board.vertices).some(
             vertex => vertex.owner === player.id &&
-                      (vertex.structure === 'city' || vertex.structure === 'metropolis')
+                (vertex.structure === 'city' || vertex.structure === 'metropolis')
         );
     });
 
@@ -245,7 +245,7 @@ export function getWeakestPlayer(gameState: GameState): PlayerState | null {
 export function getCityCount(gameState: GameState, playerId: string): number {
     return Object.values(gameState.board.vertices).filter(
         vertex => vertex.owner === playerId &&
-                  (vertex.structure === 'city' || vertex.structure === 'metropolis')
+            (vertex.structure === 'city' || vertex.structure === 'metropolis')
     ).length;
 }
 
@@ -270,12 +270,7 @@ export function destroyCity(gameState: GameState, player: PlayerState): boolean 
     // Destroy the first city found (downgrade to settlement)
     const city = cities[0];
     city.structure = 'settlement';
-
-    // Remove city wall if present
-    if (player.cityWalls && player.cityWalls.includes(city.id)) {
-        const wallIndex = player.cityWalls.indexOf(city.id);
-        player.cityWalls.splice(wallIndex, 1);
-    }
+    city.hasCityWall = false; // Wall is destroyed when city is downgraded
 
     // Update player resources (city → settlement conversion)
     // Give back 1 city piece, use 1 settlement piece

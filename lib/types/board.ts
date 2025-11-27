@@ -9,6 +9,7 @@ export interface Vertex {
     d: number; // 0-5, corner index
     owner: string | null; // Player ID
     structure: 'settlement' | 'city' | 'metropolis' | null;
+    hasCityWall?: boolean; // Cities & Knights: city wall (only for cities/metropolises)
     // Cities & Knights: metropolis type is stored in GameState.metropolises
     // Knights are stored in PlayerState.knights with vertexId reference
 }

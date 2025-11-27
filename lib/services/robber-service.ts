@@ -3,7 +3,7 @@ import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { getCanonicalVertexId } from '@/lib/hex';
 import { stealRandomResource, getTotalResources } from '@/core/engine/resources/resource-manager';
-import { getRobberDiscardThreshold } from './city-walls-service';
+import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 
 /**
  * Robber Service
@@ -138,7 +138,7 @@ export async function discardCards(
 
     // City walls increase the discard threshold for robber/7
     // Base threshold is 7, each wall adds +2
-    const discardThreshold = getRobberDiscardThreshold(player);
+    const discardThreshold = getRobberDiscardThreshold(gameState, playerId);
 
     // If player has <= threshold cards, they shouldn't be discarding
     if (currentTotal <= discardThreshold) {
@@ -173,7 +173,7 @@ export async function discardCards(
     // Check if everyone is done
     const pendingPlayers = gameState.players.filter(p => {
         const total = getTotalResources(p);
-        const threshold = getRobberDiscardThreshold(p);
+        const threshold = getRobberDiscardThreshold(gameState, p.id);
         if (total <= threshold) return false;
         return !p.discardedThisTurn;
     });

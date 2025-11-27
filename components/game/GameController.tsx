@@ -22,6 +22,7 @@ import { KnightControls } from './KnightControls';
 import { BarbarianTrack } from './BarbarianTrack';
 import { EventDieDisplay } from './EventDieDisplay';
 import { ProgressCardHand } from './ProgressCardHand';
+import { ProgressCardDiscardDialog } from './ProgressCardDiscardDialog';
 import { DebugPanel } from './DebugPanel';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
 import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
@@ -204,6 +205,23 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setBuildingMetropolisType(null);
     };
 
+    const handleDiscardProgressCards = async (cardsToDiscard: any[]) => {
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card/discard`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, cardsToDiscard })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Failed to discard cards');
+            }
+        } catch (e) {
+            console.error('Error discarding progress cards:', e);
+            throw e; // Re-throw to let dialog handle it
+        }
+    };
+
     // Initial fetch to ensure we have data before subscription kicks in
     useEffect(() => {
         const fetchInitialState = async () => {
@@ -262,6 +280,16 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             />
 
             <DiscardModal gameState={gameState} playerId={playerId} />
+
+            {/* Progress Card Discard Dialog (C&K) */}
+            {isCitiesAndKnights && currentPlayer && currentPlayer.progressCards && currentPlayer.progressCards.length > 4 && (
+                <ProgressCardDiscardDialog
+                    cards={currentPlayer.progressCards}
+                    maxCards={4}
+                    onDiscard={handleDiscardProgressCards}
+                    onClose={() => {/* Dialog closes automatically after successful discard */ }}
+                />
+            )}
 
             {showTrade && (
                 <TradeModal

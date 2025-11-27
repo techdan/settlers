@@ -16,7 +16,8 @@
       "Bash(timeout 120 npm run build)",
       "Bash(gh issue create:*)",
       "Bash(gh issue close:*)",
-      "Bash(bd show:*)"
+      "Bash(bd show:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []

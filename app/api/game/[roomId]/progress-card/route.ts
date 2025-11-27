@@ -56,11 +56,25 @@ export async function POST(
             );
         }
 
-        if (gameState.phase !== 'main_phase') {
-            return NextResponse.json(
-                { error: 'Can only play progress cards during main phase' },
-                { status: 400 }
-            );
+        // Phase validation: Alchemy can be played before dice roll, all others after
+        const isAlchemy = cardType === 'alchemist';
+
+        if (isAlchemy) {
+            // Alchemy can be played in waiting_for_roll or main_phase
+            if (gameState.phase !== 'waiting_for_roll' && gameState.phase !== 'main_phase') {
+                return NextResponse.json(
+                    { error: 'Alchemist can only be played before or after rolling dice' },
+                    { status: 400 }
+                );
+            }
+        } else {
+            // All other progress cards can only be played in main_phase (after dice roll)
+            if (gameState.phase !== 'main_phase') {
+                return NextResponse.json(
+                    { error: 'Progress cards can only be played after rolling dice (except Alchemist)' },
+                    { status: 400 }
+                );
+            }
         }
 
         // Play the progress card

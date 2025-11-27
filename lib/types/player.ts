@@ -25,11 +25,13 @@ export interface PlayerState {
     // Cities & Knights expansion fields (optional for backward compatibility)
     commodities?: Record<CommodityType, number>;
     improvements?: Record<ImprovementType, number>; // 0-5 for each track
-    progressCards?: ProgressCardType[];
+    progressCards?: ProgressCardType[]; // Progress cards in hand (max 4 at end of turn)
+    revealedVPCards?: ProgressCardType[]; // VP cards (Printer, Constitution) - auto-played and revealed
     knights?: Knight[];
     metropolisOwned?: MetropolisType[]; // Which metropolises this player owns
     activeKnightCount?: number; // Cache of active knight strength for barbarian calculations
-    cityWalls?: string[]; // Array of vertex IDs with city walls
+    defenderVPTokens: number; // Physical VP tokens earned from Defender of Catan (permanent, not transferable)
+    // Note: City walls are stored in vertex.hasCityWall, not here
 }
 
 /**

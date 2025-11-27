@@ -38,22 +38,42 @@ export function drawProgressCard(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return null;
 
-    // Initialize progress cards if needed
-    if (!player.progressCards) {
-        player.progressCards = [];
-    }
-
     // Draw card from top of deck
     const card = deck.shift()!;
-    player.progressCards.push(card);
-
     const cardMeta = getCardMetadata(card);
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `${player.name} drew a ${category} progress card: ${cardMeta.name}`,
-        playerId
-    });
+
+    // Check if this is a VP card (Printer or Constitution)
+    const isVPCard = card === 'printer' || card === 'constitution';
+
+    if (isVPCard) {
+        // VP cards are auto-played immediately and revealed
+        if (!player.revealedVPCards) {
+            player.revealedVPCards = [];
+        }
+        player.revealedVPCards.push(card);
+
+        // Log VP card reveal with special message
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} revealed ${cardMeta.name} for +1 VP!`,
+            playerId
+        });
+    } else {
+        // Regular progress cards go into hand
+        if (!player.progressCards) {
+            player.progressCards = [];
+        }
+        player.progressCards.push(card);
+
+        // Log regular card draw
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} drew a ${category} progress card: ${cardMeta.name}`,
+            playerId
+        });
+    }
 
     return card;
 }
@@ -491,6 +511,7 @@ function executeMerchant(gameState: GameState, player: PlayerState, options?: an
 
     // Place the merchant
     gameState.merchantHexId = hexId;
+    gameState.activeMerchant = player.id; // Track who has active Merchant (grants 1 VP)
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,

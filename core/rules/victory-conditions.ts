@@ -57,8 +57,8 @@ export function calculateTotalVictoryPoints(
         points += GAME_CONSTANTS.VP_FROM_LONGEST_ROAD;
     }
 
-    // Largest Army
-    if (gameState.largestArmyOwner === playerId) {
+    // Largest Army (NOT in C&K mode)
+    if (gameState.gameMode !== 'cities_and_knights' && gameState.largestArmyOwner === playerId) {
         points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
     }
 
@@ -66,10 +66,14 @@ export function calculateTotalVictoryPoints(
     if (gameState.gameMode === 'cities_and_knights') {
         points += calculateMetropolisVP(player);
 
-        // Cities & Knights: Progress Card VPs
-        if (player.progressCards) {
-            const vpCards = player.progressCards.filter(card => isVictoryPointCard(card));
-            points += vpCards.length;
+        // Cities & Knights: VP Progress Cards (Printer, Constitution)
+        if (player.revealedVPCards) {
+            points += player.revealedVPCards.length; // Each VP card = 1 VP
+        }
+
+        // Cities & Knights: Merchant (grants 1 VP)
+        if (gameState.activeMerchant === playerId) {
+            points += 1;
         }
     }
 
@@ -102,8 +106,8 @@ export function calculatePublicVictoryPoints(
         points += GAME_CONSTANTS.VP_FROM_LONGEST_ROAD;
     }
 
-    // Largest Army
-    if (gameState.largestArmyOwner === playerId) {
+    // Largest Army (NOT in C&K mode)
+    if (gameState.gameMode !== 'cities_and_knights' && gameState.largestArmyOwner === playerId) {
         points += GAME_CONSTANTS.VP_FROM_LARGEST_ARMY;
     }
 
@@ -111,10 +115,14 @@ export function calculatePublicVictoryPoints(
     if (gameState.gameMode === 'cities_and_knights') {
         points += calculateMetropolisVP(player);
 
-        // Cities & Knights: Progress Card VPs (also public since cards are visible)
-        if (player.progressCards) {
-            const vpCards = player.progressCards.filter(card => isVictoryPointCard(card));
-            points += vpCards.length;
+        // Cities & Knights: VP Progress Cards (public - revealed cards)
+        if (player.revealedVPCards) {
+            points += player.revealedVPCards.length; // Each VP card = 1 VP
+        }
+
+        // Cities & Knights: Merchant (public - grants 1 VP)
+        if (gameState.activeMerchant === playerId) {
+            points += 1;
         }
     }
 

@@ -16,7 +16,7 @@ import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, bui
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
-import { isValidCityWallPlacement } from '@/core/validation/city-wall-validator';
+import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
 import { getAdjacentEdgesForVertex } from '@/lib/hex';
 
@@ -170,8 +170,9 @@ export const Board: React.FC<BoardProps> = ({
                     }
                 });
             } else if (buildMode === 'city_wall') {
+                // City walls are per-city, highlight valid cities
                 vertices.forEach(v => {
-                    if (isValidCityWallPlacement(gameState, v.id, playerId)) {
+                    if (canBuildCityWall(gameState, v.id, playerId)) {
                         valid.add(v.id);
                     }
                 });
@@ -371,7 +372,8 @@ export const Board: React.FC<BoardProps> = ({
                         console.error("Failed to build knight", e);
                     }
                 });
-            } else if (buildMode === 'city_wall' && isValidCityWallPlacement(gameState, vertexId, playerId)) {
+            } else if (buildMode === 'city_wall' && canBuildCityWall(gameState, vertexId, playerId)) {
+                // City walls are per-city
                 startTransition(async () => {
                     try {
                         await buildCityWall(gameState.roomId, playerId, vertexId);

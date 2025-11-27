@@ -11,7 +11,7 @@ import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board
 import { createDevCardDeck } from '@/core/engine/development/dev-card-manager';
 import { getCanonicalVertexId, getCanonicalEdgeId } from '@/lib/hex';
 import { randomUUID } from 'crypto';
-import { getRobberDiscardThreshold } from './city-walls-service';
+import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 
 /**
  * Game Service
@@ -50,6 +50,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
             knightsPlayed: 0,
             hasPlayedDevCard: false,
             devCardsBoughtThisTurn: [],
+            defenderVPTokens: 0, // C&K field, but required in type
         };
 
         // Add Cities & Knights fields if in C&K mode
@@ -59,10 +60,11 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
                 commodities: { paper: 0, cloth: 0, coin: 0 },
                 improvements: { science: 0, trade: 0, politics: 0 },
                 progressCards: [],
+                revealedVPCards: [], // VP cards (Printer, Constitution) auto-revealed
                 knights: [],
                 metropolisOwned: [],
                 activeKnightCount: 0,
-                cityWalls: [],
+                defenderVPTokens: 0, // Physical VP tokens from Defender of Catan
             };
         }
 
@@ -228,7 +230,7 @@ export async function rollDice(
         // Check if any players need to discard
         // City walls increase the discard threshold (7 + 2 per wall)
         const playersToDiscard = gameState.players.filter(p => {
-            const threshold = getRobberDiscardThreshold(p);
+            const threshold = getRobberDiscardThreshold(gameState, p.id);
             return getTotalResources(p) > threshold;
         });
 
@@ -293,6 +295,13 @@ export async function endTurn(
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
+
+    // Cities & Knights: Check progress card hand limit (max 4 at end of turn)
+    if (gameState.gameMode === 'cities_and_knights' && player.progressCards) {
+        if (player.progressCards.length > 4) {
+            throw new Error(`You must discard down to 4 progress cards before ending your turn (you have ${player.progressCards.length})`);
+        }
+    }
 
     // Recalculate victory points (in case something changed during the turn)
     updateAllVictoryPoints(gameState);

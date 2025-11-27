@@ -2,24 +2,26 @@ import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { randomUUID } from 'crypto';
 import { removeResources } from '@/core/engine/resources/resource-manager';
+import { getCityWallCount } from '@/core/utils/city-wall-utils';
 
 /**
  * City Walls Service (Cities & Knights Expansion)
- * Handles building and managing city walls
+ * Handles building city walls
  *
  * Cost: 2 brick
- * Requirement: Must be on a city (not settlement)
+ * Requirement: Must be built on a city/metropolis
  * Effect: +2 discard threshold for ROBBER/7 ONLY (not barbarians)
  * Max: 1 per city, 3 total per player
  *
  * Rules:
  * - Robber/7 discard threshold = 7 + (2 × number of walls)
  * - Walls do NOT affect barbarian attacks (no discards, no protection)
- * - Walls destroyed when city is downgraded by barbarian attack
+ * - Walls are automatically destroyed when city is downgraded to settlement
+ * - Walls are stored as vertex.hasCityWall in board state
  */
 
 /**
- * Build a city wall at a city location
+ * Build a city wall on a specific city
  *
  * @param roomId - Room ID
  * @param playerId - Player ID
@@ -58,19 +60,15 @@ export async function buildCityWall(
         throw new Error('You can only build walls on cities or metropolises');
     }
 
-    // Initialize cityWalls if needed
-    if (!player.cityWalls) {
-        player.cityWalls = [];
-    }
-
-    // Check if wall already exists
-    if (player.cityWalls.includes(vertexId)) {
+    // Check if wall already exists on this city
+    if (vertex.hasCityWall) {
         throw new Error('This city already has a wall');
     }
 
     // Check max walls (3 total per player)
-    if (player.cityWalls.length >= 3) {
-        throw new Error('Maximum 3 city walls allowed');
+    const currentWallCount = getCityWallCount(gameState, playerId);
+    if (currentWallCount >= 3) {
+        throw new Error('Maximum 3 city walls allowed per player');
     }
 
     // Check resources (2 brick)
@@ -81,49 +79,17 @@ export async function buildCityWall(
     // Deduct resources
     removeResources(player, { brick: 2 });
 
-    // Add the wall
-    player.cityWalls.push(vertexId);
+    // Add the wall to this city
+    vertex.hasCityWall = true;
 
     // Log the build
     gameState.logs.push({
         id: randomUUID(),
         timestamp: Date.now(),
-        message: `${player.name} built a city wall`,
+        message: `${player.name} built a city wall (${currentWallCount + 1}/3)`,
         playerId
     });
 
     await updateGameState(gameState);
     return gameState;
-}
-
-/**
- * Check if a city has a wall
- *
- * @param gameState - Game state
- * @param playerId - Player ID
- * @param vertexId - Vertex ID
- * @returns True if city has a wall
- */
-export function hasCityWall(
-    gameState: GameState,
-    playerId: string,
-    vertexId: string
-): boolean {
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player || !player.cityWalls) return false;
-    return player.cityWalls.includes(vertexId);
-}
-
-/**
- * Get robber discard threshold for a player with city walls
- * Base threshold is 7, each wall adds +2
- * This ONLY applies to rolling a 7, NOT barbarian attacks
- *
- * @param player - Player state
- * @returns Card threshold above which player must discard on a 7
- */
-export function getRobberDiscardThreshold(player: any): number {
-    const baseThreshold = 7;
-    const wallCount = player.cityWalls ? player.cityWalls.length : 0;
-    return baseThreshold + (wallCount * 2);
 }

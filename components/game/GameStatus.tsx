@@ -94,13 +94,45 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     </span>
                                     <span className={gameState.longestRoadOwner === player.id ? 'text-orange-400' : ''}>Roads</span>
                                 </div>
-                                <div className="flex flex-col items-center" title={`Total Knight cards used${gameState.largestArmyOwner === player.id ? ' (Largest Army: 2 VP)' : ''}`}>
-                                    <span className={`font-bold ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : 'text-white'}`}>
-                                        {player.knightsPlayed || 0}
-                                    </span>
-                                    <span className={gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}>Army</span>
-                                </div>
+
+                                {/* Show Army for base game, Defense for C&K */}
+                                {gameState.gameMode !== 'cities_and_knights' ? (
+                                    <div className="flex flex-col items-center" title={`Total Knight cards used${gameState.largestArmyOwner === player.id ? ' (Largest Army: 2 VP)' : ''}`}>
+                                        <span className={`font-bold ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : 'text-white'}`}>
+                                            {player.knightsPlayed || 0}
+                                        </span>
+                                        <span className={gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}>Army</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center" title="Active Knight Strength (Defense)">
+                                        <span className="text-white font-bold">
+                                            {player.activeKnightCount || 0}
+                                        </span>
+                                        <span>Defense</span>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* C&K: VP Cards and Merchant */}
+                            {gameState.gameMode === 'cities_and_knights' && (
+                                <div className="flex gap-2 items-center text-xs border-t border-slate-700 pt-2">
+                                    {/* VP Progress Cards */}
+                                    {player.revealedVPCards && player.revealedVPCards.length > 0 && (
+                                        <div className="flex items-center gap-1 bg-amber-900/30 px-2 py-1 rounded" title={`VP Cards: ${player.revealedVPCards.join(', ')}`}>
+                                            <span className="text-amber-400">📜</span>
+                                            <span className="text-amber-200 font-bold">+{player.revealedVPCards.length} VP</span>
+                                        </div>
+                                    )}
+
+                                    {/* Merchant */}
+                                    {gameState.activeMerchant === player.id && (
+                                        <div className="flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded" title="Merchant: +1 VP">
+                                            <span className="text-green-400">🏪</span>
+                                            <span className="text-green-200 font-bold">+1 VP</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
