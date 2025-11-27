@@ -1,6 +1,7 @@
 import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { placeKnight, activateKnight, moveKnight, upgradeKnight } from '@/core/engine/knights/knight-manager';
+import { placeKnight, activateKnight, moveKnight, upgradeKnight, updateActiveKnightCount, relocateKnight } from '@/core/engine/knights/knight-manager';
+import { getHexesForVertex } from '@/lib/hex';
 import {
     isValidKnightPlacement,
     isValidKnightActivation,
@@ -238,6 +239,40 @@ export async function upgradeKnightAction(
     upgradeKnight(gameState, knightId);
 
     // 9. Save to database
+    await updateGameState(gameState);
+
+    return gameState;
+}
+
+/**
+ * Relocate a displaced knight
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID
+ * @param knightId - Knight to relocate
+ * @param targetVertexId - Target vertex (or null to remove)
+ * @returns Updated game state
+ */
+export async function relocateKnightAction(
+    roomId: string,
+    playerId: string,
+    knightId: string,
+    targetVertexId: string | null
+): Promise<GameState> {
+    // 1. Get game state
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // 2. Validate C&K mode
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Knights are only available in Cities & Knights mode');
+    }
+
+    // 3. Relocate knight
+    // Validation is handled inside relocateKnight
+    relocateKnight(gameState, playerId, knightId, targetVertexId);
+
+    // 4. Save to database
     await updateGameState(gameState);
 
     return gameState;

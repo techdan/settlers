@@ -141,6 +141,22 @@ export async function buildKnight(roomId: string, playerId: string, vertexId: st
     return knightService.buildKnightAction(roomId, playerId, vertexId);
 }
 
+export async function activateKnight(roomId: string, playerId: string, knightId: string) {
+    return knightService.activateKnightAction(roomId, playerId, knightId);
+}
+
+export async function moveKnight(roomId: string, playerId: string, knightId: string, targetVertexId: string) {
+    return knightService.moveKnightAction(roomId, playerId, knightId, targetVertexId);
+}
+
+export async function upgradeKnight(roomId: string, playerId: string, knightId: string) {
+    return knightService.upgradeKnightAction(roomId, playerId, knightId);
+}
+
+export async function relocateKnight(roomId: string, playerId: string, knightId: string, targetVertexId: string | null) {
+    return knightService.relocateKnightAction(roomId, playerId, knightId, targetVertexId);
+}
+
 export async function buildCityWall(roomId: string, playerId: string, vertexId: string) {
     return cityWallsService.buildCityWall(roomId, playerId, vertexId);
 }

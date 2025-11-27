@@ -1,8 +1,8 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
-import { hasKnightAtVertex } from '@/core/engine/knights/knight-manager';
+import { hasKnightAtVertex, getKnightAtVertex } from '@/core/engine/knights/knight-manager';
 import { hasResources } from '@/core/engine/resources/resource-manager';
-import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST } from '@/core/rules/commodity-constants';
+import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST, CK_CONSTANTS } from '@/core/rules/commodity-constants';
 import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
 
 /**
@@ -126,7 +126,35 @@ export function isValidKnightMovement(
     if (!knight.active) return false;
 
     // Check target is adjacent and connected by own road
-    return canMoveKnightToVertex(gameState, knight, targetVertexId, playerId);
+    if (!canMoveKnightToVertex(gameState, knight, targetVertexId, playerId)) {
+        return false;
+    }
+
+    // Check target occupation
+    const targetVertex = gameState.board.vertices[targetVertexId];
+
+    // Cannot move to vertex with opponent's building
+    if (targetVertex && (targetVertex.structure || targetVertex.owner) && targetVertex.owner !== playerId) {
+        return false;
+    }
+
+    // Check for knights
+    const opponentKnight = getKnightAtVertex(gameState, targetVertexId);
+    if (opponentKnight) {
+        if (opponentKnight.playerId === playerId) {
+            return false; // Cannot move to own knight
+        }
+
+        // Check strength for displacement
+        const attackerStrength = CK_CONSTANTS.KNIGHT_STRENGTH[knight.level];
+        const defenderStrength = CK_CONSTANTS.KNIGHT_STRENGTH[opponentKnight.level];
+
+        if (attackerStrength <= defenderStrength) {
+            return false; // Cannot displace equal or stronger knight
+        }
+    }
+
+    return true;
 }
 
 /**

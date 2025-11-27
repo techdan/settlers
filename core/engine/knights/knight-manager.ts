@@ -1,7 +1,8 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
 import { KnightLevel, CK_CONSTANTS } from '@/core/rules/commodity-constants';
-import { getCanonicalEdgeId } from '@/lib/hex';
+import { getCanonicalEdgeId, getAdjacentVertexIds, getAdjacentEdgesForVertex, getEdgeEndpoints, getHexesForVertex } from '@/lib/hex';
+import { GamePhase } from '@/lib/types';
 
 /**
  * Knight Manager (Cities & Knights Expansion)
@@ -133,6 +134,46 @@ export function moveKnight(
 
     if (!knight || !player) throw new Error('Knight not found');
     if (!knight.active) throw new Error('Knight must be active to move');
+
+    // Check for robber adjacency (Chase Robber)
+    let nextPhase: GamePhase = 'main_phase';
+    const [q, r, d] = targetVertexId.split(',').map(Number);
+    const adjacentHexes = getHexesForVertex(q, r, d);
+    const isAdjacentToRobber = adjacentHexes.some(h => `${h.q},${h.r}` === gameState.robberHexId);
+
+    if (isAdjacentToRobber) {
+        nextPhase = 'robber_placement';
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name}'s knight chased the robber!`,
+            playerId: player.id
+        });
+    }
+
+    // Check for opponent knight
+    const opponentKnight = getKnightAtVertex(gameState, targetVertexId);
+    if (opponentKnight) {
+        if (opponentKnight.playerId === player.id) {
+            throw new Error('Cannot move to a vertex occupied by your own knight');
+        }
+
+        // Check strength
+        const attackerStrength = CK_CONSTANTS.KNIGHT_STRENGTH[knight.level];
+        const defenderStrength = CK_CONSTANTS.KNIGHT_STRENGTH[opponentKnight.level];
+
+        if (attackerStrength <= defenderStrength) {
+            throw new Error('Cannot displace a knight of equal or greater strength');
+        }
+
+        // Displace
+        displaceKnight(gameState, opponentKnight, nextPhase);
+    } else {
+        // If no displacement, set phase directly if changed
+        if (nextPhase !== 'main_phase') {
+            gameState.phase = nextPhase;
+        }
+    }
 
     // Move the knight
     knight.vertexId = targetVertexId;
@@ -296,24 +337,7 @@ export function hasKnightAtVertex(gameState: GameState, vertexId: string): boole
  */
 export function getAdjacentVertices(vertexId: string): string[] {
     const [q, r, d] = vertexId.split(',').map(Number);
-
-    // Each vertex has 3 adjacent vertices via edges
-    const adjacent: string[] = [];
-
-    // The adjacency pattern depends on which corner (d) we're at
-    // Each vertex connects to 3 other vertices via the 3 edges emanating from it
-
-    // Edges from this vertex
-    const edge1 = getCanonicalEdgeId(q, r, d); // CW edge
-    const edge2 = getCanonicalEdgeId(q, r, (d + 5) % 6); // CCW edge
-
-    // For now, return a simplified adjacency list
-    // This needs to be implemented based on hex geometry
-    // The actual implementation should find vertices connected via these edges
-
-    // TODO: Implement proper hex vertex adjacency calculation
-    // For now, return empty array - this will be validated by knight-validator
-    return adjacent;
+    return getAdjacentVertexIds(q, r, d);
 }
 
 /**
@@ -332,4 +356,137 @@ export function removeKnight(gameState: GameState, knightId: string): void {
             return;
         }
     }
+}
+
+/**
+ * Displace an opponent's knight
+ * The displaced knight must move to an adjacent empty vertex connected by their own road
+ * If no such vertex exists, the knight is removed
+ */
+/**
+ * Displace an opponent's knight
+ * Sets the game into 'knight_displacement' phase
+ * The displaced knight owner must relocate it
+ */
+function displaceKnight(gameState: GameState, knight: Knight, nextPhase: GamePhase) {
+    const owner = gameState.players.find(p => p.id === knight.playerId);
+    if (!owner) return;
+
+    const currentVertexId = knight.vertexId;
+
+    // Mark knight as displaced (remove from board temporarily)
+    knight.vertexId = 'displaced';
+
+    // Set displacement state
+    gameState.pendingDisplacement = {
+        knightId: knight.id,
+        playerId: owner.id,
+        originVertexId: currentVertexId,
+        previousPhase: nextPhase
+    };
+
+    gameState.phase = 'knight_displacement';
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${owner.name}'s knight was displaced and must be relocated`,
+        playerId: owner.id
+    });
+}
+
+/**
+ * Relocate a displaced knight
+ *
+ * @param gameState - Current game state
+ * @param playerId - Player ID
+ * @param knightId - Knight ID
+ * @param targetVertexId - Target vertex ID (or null to remove knight)
+ */
+export function relocateKnight(
+    gameState: GameState,
+    playerId: string,
+    knightId: string,
+    targetVertexId: string | null
+): void {
+    if (gameState.phase !== 'knight_displacement') throw new Error('Not in displacement phase');
+    if (gameState.pendingDisplacement?.playerId !== playerId) throw new Error('Not your knight to relocate');
+    if (gameState.pendingDisplacement?.knightId !== knightId) throw new Error('Wrong knight');
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+    const knight = player.knights?.find(k => k.id === knightId);
+    if (!knight) throw new Error('Knight not found');
+
+    if (targetVertexId) {
+        // Validate relocation
+        const originVertexId = gameState.pendingDisplacement.originVertexId;
+        const [q, r, d] = originVertexId.split(',').map(Number);
+        const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+
+        // Must be connected by own road
+        // Must be empty
+
+        // Find edge connecting origin and target
+        // This is tricky because we only have vertex IDs.
+        // We need to check if target is adjacent to origin AND connected by own road.
+
+        // Check adjacency
+        const adjacentVertices = getAdjacentVertexIds(q, r, d);
+        if (!adjacentVertices.includes(targetVertexId)) {
+            throw new Error('Target vertex is not adjacent to original position');
+        }
+
+        // Check road connection
+        // Find edge between origin and target
+        // We can iterate adjacent edges and check endpoints
+        let connectedByRoad = false;
+        for (const edgeId of adjacentEdges) {
+            const edge = gameState.board.edges[edgeId];
+            if (!edge || edge.owner !== playerId) continue;
+
+            const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
+            if (endpoints.includes(targetVertexId)) {
+                connectedByRoad = true;
+                break;
+            }
+        }
+
+        if (!connectedByRoad) {
+            throw new Error('Target vertex is not connected by your road');
+        }
+
+        // Check occupancy
+        const vertex = gameState.board.vertices[targetVertexId];
+        if (vertex && (vertex.structure || vertex.owner)) {
+            throw new Error('Target vertex is occupied by a building');
+        }
+        if (hasKnightAtVertex(gameState, targetVertexId)) {
+            throw new Error('Target vertex is occupied by a knight');
+        }
+
+        // Move knight
+        knight.vertexId = targetVertexId;
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} relocated their displaced knight`,
+            playerId
+        });
+    } else {
+        // Remove knight
+        removeKnight(gameState, knightId);
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} removed their displaced knight`,
+            playerId
+        });
+    }
+
+    // Restore phase
+    gameState.phase = gameState.pendingDisplacement.previousPhase;
+    gameState.pendingDisplacement = undefined;
 }

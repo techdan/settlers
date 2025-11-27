@@ -15,7 +15,6 @@ interface KnightManagementDialogProps {
     onActivate: (knightId: string) => Promise<void>;
     onUpgrade: (knightId: string) => Promise<void>;
     onMove: (knightId: string) => void; // Enter move mode
-    onChaseRobber: (knightId: string) => void; // Enter chase mode
 }
 
 export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
@@ -25,8 +24,7 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
     onClose,
     onActivate,
     onUpgrade,
-    onMove,
-    onChaseRobber
+    onMove
 }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -83,14 +81,6 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
     const canAffordActivate = canAffordKnightActivation(player);
     const canAffordUpgrade = canAffordKnightUpgrade(player);
     const isMaxLevel = knight.level === 'mighty';
-
-    // Check if can chase robber (robber must be on adjacent hex)
-    // This requires hex adjacency logic which might be complex to check here.
-    // For now, we'll assume the parent component or a validator handles the "can chase" check
-    // or we just show the button and let the action fail if invalid.
-    // But ideally we disable it if no robber is adjacent.
-    // We'll leave it enabled for now if active.
-
     const strength = CK_CONSTANTS.KNIGHT_STRENGTH[knight.level];
 
     return (
@@ -190,22 +180,6 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                             </button>
                         )}
 
-                        {/* Chase Robber - Placeholder for now */}
-                        {knight.active && (
-                            <button
-                                onClick={() => onChaseRobber(knightId)}
-                                disabled={!canAct} // TODO: Add check for adjacent robber
-                                className={`
-                                    w-full py-3 rounded font-bold flex items-center justify-center transition-all
-                                    ${canAct
-                                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                    }
-                                `}
-                            >
-                                Chase Robber
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>

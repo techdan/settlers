@@ -25,6 +25,7 @@ export type GamePhase =
     | 'road_building_2'
     // Cities & Knights specific phases
     | 'knight_movement'
+    | 'knight_displacement'
     | 'barbarian_attack'
     | 'game_over';
 
@@ -116,4 +117,10 @@ export interface GameState {
     merchantHexId?: string | null; // Hex where merchant is placed (provides 2:1 trade)
     activeMerchant?: string | null; // Player ID who has active Merchant progress card (grants 1 VP)
     activeEffects?: any[]; // Active progress card effects (e.g., Alchemist, Crane, Medicine)
+    pendingDisplacement?: {
+        knightId: string;
+        playerId: string;
+        originVertexId: string;
+        previousPhase: GamePhase;
+    };
 }

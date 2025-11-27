@@ -19,6 +19,7 @@ import { buildCityWall } from '@/app/actions';
 
 // Cities & Knights components
 import { CityManagementDialog } from './CityManagementDialog';
+import { KnightManagementDialog } from './KnightManagementDialog';
 import { KnightControls } from './KnightControls';
 import { BarbarianTrack } from './BarbarianTrack';
 import { EventDieDisplay } from './EventDieDisplay';
@@ -42,6 +43,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [movingKnightId, setMovingKnightId] = useState<string | null>(null);
     const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
     const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+    const [selectedKnightId, setSelectedKnightId] = useState<string | null>(null);
 
     // Progress card board selection states
     const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
@@ -59,6 +61,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     // C&K action handlers
     const handleCityClick = (vertexId: string) => {
         setSelectedCityId(vertexId);
+        setBuildMode(null);
+    };
+
+    const handleKnightClick = (knightId: string) => {
+        setSelectedKnightId(knightId);
         setBuildMode(null);
     };
 
@@ -288,6 +295,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
                 onCityClick={handleCityClick}
+                onKnightClick={handleKnightClick}
             />
 
             <DiscardModal gameState={gameState} playerId={playerId} />
@@ -301,6 +309,19 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     onClose={() => setSelectedCityId(null)}
                     onUpgradeImprovement={handleUpgradeImprovement}
                     onBuildWall={handleBuildCityWall}
+                />
+            )}
+
+            {/* Knight Management Dialog (C&K) */}
+            {selectedKnightId && (
+                <KnightManagementDialog
+                    gameState={gameState}
+                    playerId={playerId}
+                    knightId={selectedKnightId}
+                    onClose={() => setSelectedKnightId(null)}
+                    onActivate={handleActivateKnight}
+                    onUpgrade={handleUpgradeKnight}
+                    onMove={handleMoveKnight}
                 />
             )}
 
@@ -323,6 +344,42 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             )}
 
             <TradeOfferDisplay gameState={gameState} playerId={playerId} />
+
+            {/* Knight Displacement UI */}
+            {gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
+                    <h3 className="text-xl font-bold">Your Knight Was Displaced!</h3>
+                    <p className="text-center max-w-md">
+                        One of your knights was displaced by a stronger opponent.
+                        You must move it to an adjacent empty intersection connected by your roads.
+                        If no valid spot exists, you must remove the knight.
+                    </p>
+                    <div className="flex gap-4">
+                        <button
+                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors"
+                            onClick={async () => {
+                                try {
+                                    const res = await fetch(`/api/game/${roomId}/knight`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            playerId,
+                                            action: 'relocate',
+                                            knightId: gameState.pendingDisplacement!.knightId,
+                                            targetVertexId: null // Remove
+                                        })
+                                    });
+                                    if (!res.ok) throw new Error('Failed to remove knight');
+                                } catch (e) {
+                                    console.error('Error removing knight:', e);
+                                }
+                            }}
+                        >
+                            Remove Knight
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* UI Overlay */}
             <div className="absolute inset-0 pointer-events-none p-4">

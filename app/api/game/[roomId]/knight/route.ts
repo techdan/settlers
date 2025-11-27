@@ -3,7 +3,8 @@ import {
     buildKnightAction,
     activateKnightAction,
     moveKnightAction,
-    upgradeKnightAction
+    upgradeKnightAction,
+    relocateKnightAction
 } from '@/lib/services/knight-service';
 
 /**
@@ -75,6 +76,17 @@ export async function POST(
                     );
                 }
                 gameState = await upgradeKnightAction(roomId, playerId, knightId);
+                break;
+
+            case 'relocate':
+                if (!knightId) {
+                    return NextResponse.json(
+                        { error: 'knightId is required for relocate action' },
+                        { status: 400 }
+                    );
+                }
+                // targetVertexId can be null (to remove knight)
+                gameState = await relocateKnightAction(roomId, playerId, knightId, targetVertexId);
                 break;
 
             default:

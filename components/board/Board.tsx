@@ -9,16 +9,17 @@ import { VoxelPort } from '@/themes/voxel/Port';
 import { useThemeStore } from '@/lib/theme-store';
 import { generatePorts } from '@/engine/generatePorts';
 import { GameState } from '@/lib/types';
+import { Knight } from '@/lib/types/player';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { useTransition } from 'react';
-import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad, buildKnight, buildCityWall } from '@/app/actions';
+import { placeSettlement, placeRoad, moveRobber, buildRoad, buildSettlement, buildCity, placeBonusRoad, buildKnight, buildCityWall, relocateKnight } from '@/app/actions';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
-import { getAdjacentEdgesForVertex } from '@/lib/hex';
+import { getAdjacentEdgesForVertex, getEdgeEndpoints, getAdjacentVertexIds } from '@/lib/hex';
 
 interface BoardProps {
     gameState: GameState;
@@ -34,6 +35,7 @@ interface BoardProps {
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
     onCityClick?: (vertexId: string) => void;
+    onKnightClick?: (knightId: string) => void;
 }
 
 export const Board: React.FC<BoardProps> = ({
@@ -49,7 +51,8 @@ export const Board: React.FC<BoardProps> = ({
     onHexSelected,
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
-    onCityClick
+    onCityClick,
+    onKnightClick
 }) => {
     const { theme, toggleTheme } = useThemeStore();
     const HEX_SIZE = 90;
@@ -146,6 +149,39 @@ export const Board: React.FC<BoardProps> = ({
             return valid;
         }
 
+        // Knight Displacement Mode
+        if (gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId) {
+            const originVertexId = gameState.pendingDisplacement.originVertexId;
+            const [q, r, d] = originVertexId.split(',').map(Number);
+            const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+
+            // Find valid relocation spots (connected by own road, empty)
+            const connectedVertices = new Set<string>();
+
+            adjacentEdges.forEach(edgeId => {
+                const edge = gameState.board.edges[edgeId];
+                if (edge && edge.owner === playerId) {
+                    const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
+                    endpoints.forEach(vId => {
+                        if (vId !== originVertexId) {
+                            connectedVertices.add(vId);
+                        }
+                    });
+                }
+            });
+
+            connectedVertices.forEach(vId => {
+                const vertex = gameState.board.vertices[vId];
+                const hasBuilding = vertex && (vertex.structure || vertex.owner);
+                const hasKnight = knightsMap.has(vId);
+
+                if (!hasBuilding && !hasKnight) {
+                    valid.add(vId);
+                }
+            });
+            return valid;
+        }
+
         if (gameState.phase.startsWith('setup')) {
             vertices.forEach(v => {
                 if (isValidSetupSettlement(gameState, v.id, playerId)) {
@@ -210,6 +246,8 @@ export const Board: React.FC<BoardProps> = ({
     }, [gameState, playerId, buildMode, edges, selectingEdgeForCard]);
 
     // Valid hexes for progress card selection
+
+
     const validHexes = useMemo(() => {
         const valid = new Set<string>();
         if (gameState.currentTurn !== playerId) return valid;
@@ -268,6 +306,16 @@ export const Board: React.FC<BoardProps> = ({
 
         return valid;
     }, [gameState, playerId, selectingHexForCard, tiles]);
+
+    const knightsMap = useMemo(() => {
+        const map = new Map<string, Knight>();
+        gameState.players.forEach(p => {
+            p.knights?.forEach(k => {
+                map.set(k.vertexId, k);
+            });
+        });
+        return map;
+    }, [gameState.players]);
 
     const handleVertexClick = (vertexId: string) => {
         if (isPending) return;
@@ -333,6 +381,13 @@ export const Board: React.FC<BoardProps> = ({
             return;
         }
 
+        // Handle knight click (for activation/movement UI)
+        const knight = knightsMap.get(vertexId);
+        if (knight && onKnightClick && !buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
+            onKnightClick(knight.id);
+            return;
+        }
+
         if (gameState.phase.startsWith('setup')) {
             if (isValidSetupSettlement(gameState, vertexId, playerId)) {
                 // performOptimisticAction({ type: 'PLACE_SETTLEMENT', vertexId, playerId });
@@ -341,6 +396,16 @@ export const Board: React.FC<BoardProps> = ({
                         await placeSettlement(gameState.roomId, playerId, vertexId);
                     } catch (e) {
                         console.error("Failed to place settlement", e);
+                    }
+                });
+            }
+        } else if (gameState.phase === 'knight_displacement') {
+            if (validVertices.has(vertexId)) {
+                startTransition(async () => {
+                    try {
+                        await relocateKnight(gameState.roomId, playerId, gameState.pendingDisplacement!.knightId, vertexId);
+                    } catch (e) {
+                        console.error("Failed to relocate knight", e);
                     }
                 });
             }
@@ -384,12 +449,19 @@ export const Board: React.FC<BoardProps> = ({
                         console.error("Failed to build city wall", e);
                     }
                 });
-            }
-        } else if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
-            // Handle city management click
-            const vertex = gameState.board.vertices[vertexId];
-            if (vertex && (vertex.structure === 'city' || vertex.structure === 'metropolis') && vertex.owner === playerId) {
-                onCityClick?.(vertexId);
+            } else if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
+                // Check for knight interaction first
+                const knight = knightsMap.get(vertexId);
+                if (knight && knight.playerId === playerId) {
+                    onKnightClick?.(knight.id);
+                    return;
+                }
+
+                // Handle city management click
+                const vertex = gameState.board.vertices[vertexId];
+                if (vertex && (vertex.structure === 'city' || vertex.structure === 'metropolis') && vertex.owner === playerId) {
+                    onCityClick?.(vertexId);
+                }
             }
         }
     };
@@ -572,6 +644,7 @@ export const Board: React.FC<BoardProps> = ({
                                         <VertexRenderer
                                             key={vertex.id}
                                             vertex={vertex}
+                                            knight={knightsMap.get(vertex.id)}
                                             size={HEX_SIZE}
                                             color={gameState.players.find(p => p.id === vertex.owner)?.color}
                                             onClick={handleVertexClick}
@@ -588,3 +661,4 @@ export const Board: React.FC<BoardProps> = ({
         </div>
     );
 };
+
