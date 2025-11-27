@@ -51,31 +51,59 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
 
 /**
  * Handle defenders win scenario
- * Strongest defender draws a progress card
+ * v2.1: Single highest contributor gets a permanent VP token (+1 VP)
+ * If tied, no token awarded - tied players draw progress cards instead
  *
  * @param gameState - Current game state
  */
 function handleDefendersWin(gameState: GameState): void {
-    const defender = getDefenderOfCatan(gameState);
+    // Get all players with their knight strengths
+    const playerStrengths = gameState.players.map(player => ({
+        player,
+        strength: calculateKnightStrength(player)
+    })).filter(ps => ps.strength > 0); // Only players who contributed
 
-    if (!defender) {
+    if (playerStrengths.length === 0) {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: 'Defenders repelled the barbarian attack! No single defender of Catan.'
+            message: 'Defenders repelled the barbarian attack! (No active knights contributed)'
         });
         return;
     }
 
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `Defenders repelled the barbarian attack! ${defender.name} is the Defender of Catan and draws a progress card.`,
-        playerId: defender.id
-    });
+    // Find max strength
+    const maxStrength = Math.max(...playerStrengths.map(ps => ps.strength));
 
-    // Note: Actual progress card draw will be handled by the service layer
-    // The service will need to let the player choose which category to draw from
+    // Get all players with max strength
+    const topDefenders = playerStrengths.filter(ps => ps.strength === maxStrength);
+
+    if (topDefenders.length === 1) {
+        // Single highest contributor: award permanent VP token
+        const defender = topDefenders[0].player;
+        defender.defenderVPTokens += 1;
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `Defenders repelled the barbarian attack! ${defender.name} earned a Defender of Catan token! (+1 VP, total: ${defender.defenderVPTokens})`,
+            playerId: defender.id
+        });
+    } else {
+        // Tied for highest: no token, each tied player draws a progress card
+        const defenderNames = topDefenders.map(pd => pd.player.name).join(', ');
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `Defenders repelled the barbarian attack! ${defenderNames} tied for highest defense (${maxStrength} strength) - each may draw a progress card.`
+        });
+
+        // Note: Actual progress card draw will be handled by the service layer
+        // The service will need to let each tied player choose which category to draw from
+        // Store tied defenders in a temporary field for the service to process
+        (gameState as any).pendingDefenderCardDraws = topDefenders.map(pd => pd.player.id);
+    }
 }
 
 /**

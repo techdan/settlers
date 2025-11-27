@@ -22,9 +22,6 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
         const settlementVP = settlements * GAME_CONSTANTS.VP_FROM_SETTLEMENT;
         const cityVP = cities * GAME_CONSTANTS.VP_FROM_CITY;
         const roadVP = gameState.longestRoadOwner === player.id ? GAME_CONSTANTS.VP_FROM_LONGEST_ROAD : 0;
-        const armyVP = gameState.largestArmyOwner === player.id ? GAME_CONSTANTS.VP_FROM_LARGEST_ARMY : 0;
-        const totalPublicVP = settlementVP + cityVP + roadVP + armyVP;
-        const vpCards = player.victoryPoints - totalPublicVP;
 
         const parts = [
             `${settlements} Settlements (${settlementVP} VP)`,
@@ -32,8 +29,33 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
         ];
 
         if (roadVP > 0) parts.push(`Longest Road (${roadVP} VP)`);
-        if (armyVP > 0) parts.push(`Largest Army (${armyVP} VP)`);
-        if (vpCards > 0) parts.push(`VP Cards (${vpCards} VP)`);
+
+        // Base game: Largest Army
+        // C&K mode: Defender tokens
+        if (gameState.gameMode !== 'cities_and_knights') {
+            const armyVP = gameState.largestArmyOwner === player.id ? GAME_CONSTANTS.VP_FROM_LARGEST_ARMY : 0;
+            if (armyVP > 0) parts.push(`Largest Army (${armyVP} VP)`);
+        } else {
+            // C&K: Defender tokens
+            if (player.defenderVPTokens > 0) {
+                parts.push(`Defender Tokens (${player.defenderVPTokens} VP)`);
+            }
+            // VP Progress Cards
+            if (player.revealedVPCards && player.revealedVPCards.length > 0) {
+                parts.push(`VP Cards (${player.revealedVPCards.length} VP)`);
+            }
+            // Merchant
+            if (gameState.activeMerchant === player.id) {
+                parts.push(`Merchant (1 VP)`);
+            }
+        }
+
+        // Hidden VP cards (base game only)
+        if (gameState.gameMode !== 'cities_and_knights') {
+            const totalPublicVP = settlementVP + cityVP + roadVP + (gameState.largestArmyOwner === player.id ? GAME_CONSTANTS.VP_FROM_LARGEST_ARMY : 0);
+            const vpCards = player.victoryPoints - totalPublicVP;
+            if (vpCards > 0) parts.push(`VP Cards (${vpCards} VP)`);
+        }
 
         return parts.join('\n');
     };
@@ -115,7 +137,15 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                             {/* C&K: VP Cards and Merchant */}
                             {gameState.gameMode === 'cities_and_knights' && (
-                                <div className="flex gap-2 items-center text-xs border-t border-slate-700 pt-2">
+                                <div className="flex gap-2 items-center text-xs border-t border-slate-700 pt-2 flex-wrap">
+                                    {/* Defender of Catan Tokens */}
+                                    {player.defenderVPTokens > 0 && (
+                                        <div className="flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded" title={`Defender of Catan: ${player.defenderVPTokens} token${player.defenderVPTokens !== 1 ? 's' : ''}`}>
+                                            <span className="text-blue-400">🛡️</span>
+                                            <span className="text-blue-200 font-bold">+{player.defenderVPTokens} VP</span>
+                                        </div>
+                                    )}
+
                                     {/* VP Progress Cards */}
                                     {player.revealedVPCards && player.revealedVPCards.length > 0 && (
                                         <div className="flex items-center gap-1 bg-amber-900/30 px-2 py-1 rounded" title={`VP Cards: ${player.revealedVPCards.join(', ')}`}>

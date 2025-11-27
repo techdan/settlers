@@ -252,3 +252,4 @@ export async function setLobbyStandardBoard(roomId: string, hostId: string) {
     revalidatePath(`/room/${roomId}`);
     return result;
 }
+

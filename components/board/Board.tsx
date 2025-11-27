@@ -33,6 +33,7 @@ interface BoardProps {
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
+    onCityClick?: (vertexId: string) => void;
 }
 
 export const Board: React.FC<BoardProps> = ({
@@ -47,7 +48,8 @@ export const Board: React.FC<BoardProps> = ({
     selectingEdgeForCard,
     onHexSelected,
     onVertexSelectedForCard,
-    onEdgeSelectedForCard
+    onEdgeSelectedForCard,
+    onCityClick
 }) => {
     const { theme, toggleTheme } = useThemeStore();
     const HEX_SIZE = 90;
@@ -382,6 +384,12 @@ export const Board: React.FC<BoardProps> = ({
                         console.error("Failed to build city wall", e);
                     }
                 });
+            }
+        } else if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
+            // Handle city management click
+            const vertex = gameState.board.vertices[vertexId];
+            if (vertex && (vertex.structure === 'city' || vertex.structure === 'metropolis') && vertex.owner === playerId) {
+                onCityClick?.(vertexId);
             }
         }
     };

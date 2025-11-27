@@ -15,9 +15,10 @@ import { DiceDisplay } from './DiceDisplay';
 import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
+import { buildCityWall } from '@/app/actions';
 
 // Cities & Knights components
-import { CityImprovements } from './CityImprovements';
+import { CityManagementDialog } from './CityManagementDialog';
 import { KnightControls } from './KnightControls';
 import { BarbarianTrack } from './BarbarianTrack';
 import { EventDieDisplay } from './EventDieDisplay';
@@ -40,6 +41,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null>(null);
     const [movingKnightId, setMovingKnightId] = useState<string | null>(null);
     const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
+    const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
 
     // Progress card board selection states
     const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
@@ -54,18 +56,26 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     // Debug mode: enabled by default in development or via NEXT_PUBLIC_DEBUG_MODE env var
     const isDebugMode = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 
-    // C&K action handlers (placeholder implementations)
+    // C&K action handlers
+    const handleCityClick = (vertexId: string) => {
+        setSelectedCityId(vertexId);
+        setBuildMode(null);
+    };
+
     const handleUpgradeImprovement = async (improvement: 'science' | 'trade' | 'politics') => {
-        try {
-            const res = await fetch(`/api/game/${roomId}/improvement`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, action: 'upgrade', improvement })
-            });
-            if (!res.ok) throw new Error('Failed to upgrade improvement');
-        } catch (e) {
-            console.error('Error upgrading improvement:', e);
+        const res = await fetch(`/api/game/${roomId}/improvement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerId, action: 'upgrade', improvement })
+        });
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || 'Failed to upgrade improvement');
         }
+    };
+
+    const handleBuildCityWall = async (vertexId: string) => {
+        await buildCityWall(roomId, playerId, vertexId);
     };
 
     const handleBuildKnight = async () => {
@@ -277,9 +287,22 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingEdgeForCard={null}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
+                onCityClick={handleCityClick}
             />
 
             <DiscardModal gameState={gameState} playerId={playerId} />
+
+            {/* City Management Dialog (C&K) */}
+            {selectedCityId && (
+                <CityManagementDialog
+                    gameState={gameState}
+                    playerId={playerId}
+                    vertexId={selectedCityId}
+                    onClose={() => setSelectedCityId(null)}
+                    onUpgradeImprovement={handleUpgradeImprovement}
+                    onBuildWall={handleBuildCityWall}
+                />
+            )}
 
             {/* Progress Card Discard Dialog (C&K) */}
             {isCitiesAndKnights && currentPlayer && currentPlayer.progressCards && currentPlayer.progressCards.length > 4 && (
@@ -323,15 +346,6 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         <>
                             <EventDieDisplay gameState={gameState} />
                             <BarbarianTrack gameState={gameState} />
-                            {currentPlayer && (
-                                <CityImprovements
-                                    player={currentPlayer}
-                                    roomId={roomId}
-                                    gameState={gameState}
-                                    onUpgrade={handleUpgradeImprovement}
-                                    onBuildMetropolis={handleBuildMetropolis}
-                                />
-                            )}
                         </>
                     )}
                 </div>

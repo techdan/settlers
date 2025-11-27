@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import {
-    upgradePlayerImprovement,
-    buildPlayerMetropolis
+    upgradePlayerImprovement
 } from '@/lib/services/improvement-service';
-import { ImprovementType, MetropolisType } from '@/core/rules/commodity-constants';
+import { ImprovementType } from '@/core/rules/commodity-constants';
 
 /**
  * Improvement API Route (Cities & Knights Expansion)
@@ -58,26 +57,10 @@ export async function POST(
                 break;
 
             case 'metropolis':
-                if (!improvement || !vertexId) {
-                    return NextResponse.json(
-                        { error: 'improvement and vertexId are required for metropolis action' },
-                        { status: 400 }
-                    );
-                }
-                // Validate improvement type
-                if (!['science', 'trade', 'politics'].includes(improvement)) {
-                    return NextResponse.json(
-                        { error: 'improvement must be science, trade, or politics' },
-                        { status: 400 }
-                    );
-                }
-                gameState = await buildPlayerMetropolis(
-                    roomId,
-                    playerId,
-                    vertexId,
-                    improvement as MetropolisType
+                return NextResponse.json(
+                    { error: 'Metropolises are automatically awarded when reaching improvement level 4/5. Manual building is deprecated.' },
+                    { status: 400 }
                 );
-                break;
 
             default:
                 return NextResponse.json(

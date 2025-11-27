@@ -1,4 +1,4 @@
-import { PlayerState } from '@/lib/types';
+import { PlayerState, GameState } from '@/lib/types';
 import { ImprovementType, IMPROVEMENT_UPGRADE_COSTS, CK_CONSTANTS } from '@/core/rules/commodity-constants';
 import { getCommodityForImprovement, hasCommodities, removeCommodities } from '@/core/engine/resources/commodity-manager';
 
@@ -98,6 +98,176 @@ export function upgradeImprovement(player: PlayerState, improvement: Improvement
     player.improvements[improvement] = currentLevel + 1;
 
     return player.improvements[improvement];
+}
+
+/**
+ * Try to award metropolis to player who just reached level 4
+ * v2.0: Metropolis is automatically awarded at level 4 if unclaimed
+ *
+ * @param gameState - Current game state
+ * @param player - Player who just upgraded
+ * @param improvement - Improvement type
+ * @returns true if metropolis was awarded
+ */
+export function tryAwardMetropolis(
+    gameState: GameState,
+    player: PlayerState,
+    improvement: ImprovementType
+): boolean {
+    const playerLevel = player.improvements?.[improvement] || 0;
+
+    // Only award at level 4
+    if (playerLevel !== 4) return false;
+
+    // Check if metropolis is already owned
+    const metropolisType = getMetropolisType(improvement);
+    const currentOwner = gameState.players.find(p =>
+        p.metropolisOwned?.includes(metropolisType)
+    );
+
+    // If already owned, can't auto-award (need level 5 to steal)
+    if (currentOwner) return false;
+
+    // Find player's first city to upgrade to metropolis
+    const playerCity = Object.values(gameState.board.vertices).find(v =>
+        v.owner === player.id && v.structure === 'city'
+    );
+
+    if (!playerCity) {
+        // Player has no cities - can't claim metropolis
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} reached level 4 ${improvement} but has no cities to claim the ${metropolisType} Metropolis!`,
+            playerId: player.id
+        });
+        return false;
+    }
+
+    // Award metropolis
+    playerCity.structure = 'metropolis';
+    if (!player.metropolisOwned) player.metropolisOwned = [];
+    player.metropolisOwned.push(metropolisType);
+
+    // Store metropolis type in game state
+    if (!gameState.metropolises) gameState.metropolises = {};
+    gameState.metropolises[metropolisType] = {
+        type: metropolisType,
+        owner: player.id,
+        vertexId: playerCity.id
+    };
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} automatically claimed the ${metropolisType} Metropolis! (+2 VP)`,
+        playerId: player.id
+    });
+
+    return true;
+}
+
+/**
+ * Try to steal metropolis from another player who just reached level 5
+ * v2.0: At level 5, you steal the metropolis from a level 4 holder
+ *
+ * @param gameState - Current game state
+ * @param player - Player who just upgraded to level 5
+ * @param improvement - Improvement type
+ * @returns true if metropolis was stolen
+ */
+export function tryStealMetropolis(
+    gameState: GameState,
+    player: PlayerState,
+    improvement: ImprovementType
+): boolean {
+    const playerLevel = player.improvements?.[improvement] || 0;
+
+    // Only steal at level 5
+    if (playerLevel !== 5) return false;
+
+    const metropolisType = getMetropolisType(improvement);
+
+    // Check if another player owns it at level 4
+    const currentOwner = gameState.players.find(p =>
+        p.id !== player.id && p.metropolisOwned?.includes(metropolisType)
+    );
+
+    if (!currentOwner) {
+        // No one else owns it - try to claim it
+        return tryAwardMetropolis(gameState, player, improvement);
+    }
+
+    // Check if current owner is at level 5 (can't steal)
+    const ownerLevel = currentOwner.improvements?.[improvement] || 0;
+    if (ownerLevel >= 5) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} reached level 5 ${improvement}, but ${currentOwner.name} has secured the ${metropolisType} Metropolis at level 5.`,
+            playerId: player.id
+        });
+        return false;
+    }
+
+    // Find player's city to upgrade
+    const playerCity = Object.values(gameState.board.vertices).find(v =>
+        v.owner === player.id && v.structure === 'city'
+    );
+
+    if (!playerCity) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} reached level 5 ${improvement} but has no cities to claim the ${metropolisType} Metropolis!`,
+            playerId: player.id
+        });
+        return false;
+    }
+
+    // Find current owner's metropolis vertex
+    const ownerMetropolis = Object.values(gameState.board.vertices).find(v =>
+        v.owner === currentOwner.id && v.structure === 'metropolis'
+    );
+
+    // Downgrade previous owner's metropolis to city
+    if (ownerMetropolis) {
+        ownerMetropolis.structure = 'city';
+    }
+
+    // Remove from previous owner
+    if (currentOwner.metropolisOwned) {
+        currentOwner.metropolisOwned = currentOwner.metropolisOwned.filter(m => m !== metropolisType);
+    }
+
+    // Award to new owner
+    playerCity.structure = 'metropolis';
+    if (!player.metropolisOwned) player.metropolisOwned = [];
+    player.metropolisOwned.push(metropolisType);
+
+    // Update game state
+    if (!gameState.metropolises) gameState.metropolises = {};
+    gameState.metropolises[metropolisType] = {
+        type: metropolisType,
+        owner: player.id,
+        vertexId: playerCity.id
+    };
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} stole the ${metropolisType} Metropolis from ${currentOwner.name}!`,
+        playerId: player.id
+    });
+
+    return true;
+}
+
+/**
+ * Get metropolis type from improvement type
+ */
+function getMetropolisType(improvement: ImprovementType): 'science' | 'trade' | 'politics' {
+    return improvement as 'science' | 'trade' | 'politics';
 }
 
 /**

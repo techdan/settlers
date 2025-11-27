@@ -21,11 +21,11 @@ import { MetropolisType, CK_CONSTANTS } from '@/core/rules/commodity-constants';
  */
 export function initializeMetropolises(gameState: GameState): void {
     if (!gameState.metropolises) {
-        gameState.metropolises = [
-            { type: 'science', owner: null, vertexId: null },
-            { type: 'trade', owner: null, vertexId: null },
-            { type: 'politics', owner: null, vertexId: null },
-        ];
+        gameState.metropolises = {
+            science: { type: 'science', owner: null, vertexId: null },
+            trade: { type: 'trade', owner: null, vertexId: null },
+            politics: { type: 'politics', owner: null, vertexId: null },
+        };
     }
 }
 
@@ -38,7 +38,7 @@ export function initializeMetropolises(gameState: GameState): void {
  */
 export function getMetropolis(gameState: GameState, type: MetropolisType): MetropolisState | null {
     if (!gameState.metropolises) return null;
-    return gameState.metropolises.find(m => m.type === type) || null;
+    return gameState.metropolises[type] || null;
 }
 
 /**
@@ -297,5 +297,6 @@ export function checkMetropolisOwnership(
  */
 export function getAllMetropolises(gameState: GameState): MetropolisState[] {
     initializeMetropolises(gameState);
-    return gameState.metropolises || [];
+    if (!gameState.metropolises) return [];
+    return Object.values(gameState.metropolises).filter((m): m is MetropolisState => m !== undefined && m !== null);
 }

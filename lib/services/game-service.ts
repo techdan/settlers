@@ -156,11 +156,11 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         // Cities & Knights fields
         gameMode,
         barbarianPosition: gameMode === 'cities_and_knights' ? 0 : undefined,
-        metropolises: gameMode === 'cities_and_knights' ? [
-            { type: 'science', owner: null, vertexId: null },
-            { type: 'trade', owner: null, vertexId: null },
-            { type: 'politics', owner: null, vertexId: null },
-        ] : undefined,
+        metropolises: gameMode === 'cities_and_knights' ? {
+            science: { type: 'science', owner: null, vertexId: null },
+            trade: { type: 'trade', owner: null, vertexId: null },
+            politics: { type: 'politics', owner: null, vertexId: null },
+        } : undefined,
         progressDecks,
         eventDieRoll: undefined,
     };

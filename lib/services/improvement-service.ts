@@ -1,8 +1,7 @@
 import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { upgradeImprovement, canAffordImprovement } from '@/core/engine/improvements/improvement-manager';
-import { buildMetropolis, canBuildMetropolis, checkMetropolisOwnership } from '@/core/engine/metropolis/metropolis-manager';
-import { ImprovementType, MetropolisType } from '@/core/rules/commodity-constants';
+import { upgradeImprovement, canAffordImprovement, tryAwardMetropolis, tryStealMetropolis } from '@/core/engine/improvements/improvement-manager';
+import { ImprovementType } from '@/core/rules/commodity-constants';
 
 /**
  * Improvement Service (Cities & Knights Expansion)
@@ -58,66 +57,16 @@ export async function upgradePlayerImprovement(
         throw new Error('Failed to upgrade improvement');
     }
 
-    // 7. Check if metropolis ownership should transfer
-    checkMetropolisOwnership(gameState, improvement);
+    // 7. Check for Metropolis award/steal (v2.0 logic)
+    // Level 4: Auto-award if unclaimed
+    // Level 5: Steal from level 4 owner
+    if (newLevel === 4) {
+        tryAwardMetropolis(gameState, player, improvement);
+    } else if (newLevel === 5) {
+        tryStealMetropolis(gameState, player, improvement);
+    }
 
     // 8. Save to database
-    await updateGameState(gameState);
-
-    return gameState;
-}
-
-/**
- * Build/claim a metropolis
- * Requires level 4+ in corresponding improvement
- * Can steal from another player if you have higher level
- *
- * @param roomId - Room ID
- * @param playerId - Player ID
- * @param vertexId - Vertex where city is located
- * @param improvement - Improvement type (determines metropolis type)
- * @returns Updated game state
- */
-export async function buildPlayerMetropolis(
-    roomId: string,
-    playerId: string,
-    vertexId: string,
-    improvement: MetropolisType
-): Promise<GameState> {
-    // 1. Get game state
-    const gameState = await getGameStateByRoomId(roomId);
-    if (!gameState) throw new Error('Game not found');
-
-    // 2. Validate C&K mode
-    if (gameState.gameMode !== 'cities_and_knights') {
-        throw new Error('Metropolises are only available in Cities & Knights mode');
-    }
-
-    // 3. Validate turn
-    if (gameState.currentTurn !== playerId) {
-        throw new Error('Not your turn');
-    }
-
-    if (gameState.phase !== 'main_phase') {
-        throw new Error('Can only build metropolises during main phase');
-    }
-
-    // 4. Get player
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
-    // 5. Validate metropolis building
-    if (!canBuildMetropolis(gameState, playerId, improvement, vertexId)) {
-        throw new Error('Cannot build metropolis (check level requirement and city ownership)');
-    }
-
-    // 6. Build metropolis
-    const success = buildMetropolis(gameState, playerId, vertexId, improvement);
-    if (!success) {
-        throw new Error('Failed to build metropolis');
-    }
-
-    // 7. Save to database
     await updateGameState(gameState);
 
     return gameState;
