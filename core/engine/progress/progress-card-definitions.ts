@@ -3,14 +3,15 @@ import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 
 /**
  * Progress Card Definitions (Cities & Knights Expansion)
- * Defines all 24 progress cards across three categories
+ * Defines all 25 unique progress card types across three categories
  *
  * Categories:
  * - Science (green): 10 cards
  * - Trade (yellow): 6 cards
- * - Politics (blue): 8 cards
+ * - Politics (blue): 9 cards
  *
- * Total: 24 cards
+ * Total: 25 unique card types
+ * Note: Total deck contains 54 cards (many cards appear multiple times)
  */
 
 export interface ProgressCardMetadata {
@@ -30,8 +31,8 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
     alchemist: {
         type: 'alchemist',
         category: 'science',
-        name: 'Alchemist',
-        description: 'Convert any 2 resources of the same type into any 1 resource of your choice.',
+        name: 'Alchemy',
+        description: 'Play at start of your turn, before rolling. Choose results of the production dice; roll the event die normally.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -39,15 +40,15 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'crane',
         category: 'science',
         name: 'Crane',
-        description: 'Build up to 2 city walls during your turn. City walls give 2 VP each.',
+        description: 'Build one city improvement for 1 commodity less.',
         isVictoryPoint: false,
         implemented: true
     },
     engineer: {
         type: 'engineer',
         category: 'science',
-        name: 'Engineer',
-        description: 'Build 1 city improvement at a discount (1 commodity instead of normal cost).',
+        name: 'Engineering',
+        description: 'Build one city wall for free.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -55,7 +56,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'inventor',
         category: 'science',
         name: 'Inventor',
-        description: 'Swap the number tokens of any 2 terrain hexes.',
+        description: 'Swap any two number tokens except 2, 6, 8, or 12.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -63,7 +64,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'irrigation',
         category: 'science',
         name: 'Irrigation',
-        description: 'When you roll the dice, you may also receive resources from 1 field hex regardless of the roll.',
+        description: 'Take 2 wheat for each fields hex adjacent to one of your buildings.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -71,23 +72,23 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'medicine',
         category: 'science',
         name: 'Medicine',
-        description: 'This card is worth 1 victory point.',
-        isVictoryPoint: true,
+        description: 'Upgrade a settlement to a city for 2 ore + 1 wheat.',
+        isVictoryPoint: false,
         implemented: true
     },
     mining: {
         type: 'mining',
         category: 'science',
         name: 'Mining',
-        description: 'When you roll the dice, you may also receive resources from 1 mountain hex regardless of the roll.',
+        description: 'Take 2 ore for each mountains hex adjacent to one of your buildings.',
         isVictoryPoint: false,
         implemented: true
     },
     printer: {
         type: 'printer',
         category: 'science',
-        name: 'Printer',
-        description: 'This card is worth 1 victory point.',
+        name: 'Printing',
+        description: 'Play immediately. Worth 1 VP.',
         isVictoryPoint: true,
         implemented: true
     },
@@ -95,15 +96,15 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'road_building_progress',
         category: 'science',
         name: 'Road Building',
-        description: 'Build 2 roads for free.',
+        description: 'Build two roads for free.',
         isVictoryPoint: false,
         implemented: true
     },
     smith: {
         type: 'smith',
         category: 'science',
-        name: 'Smith',
-        description: 'Upgrade 1 knight to the next level for free (no resource cost).',
+        name: 'Smithing',
+        description: 'Promote up to two knights for free.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -113,23 +114,23 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'commercial_harbor',
         category: 'trade',
         name: 'Commercial Harbor',
-        description: 'This card is worth 1 victory point.',
-        isVictoryPoint: true,
+        description: 'Offer 1 resource to each player; each must give you 1 commodity if they have one. Otherwise, you take your resource back.',
+        isVictoryPoint: false,
         implemented: true
     },
-    master_merchant: {
-        type: 'master_merchant',
+    guild_dues: {
+        type: 'guild_dues',
         category: 'trade',
-        name: 'Master Merchant',
-        description: 'This card is worth 1 victory point.',
-        isVictoryPoint: true,
+        name: 'Guild Dues',
+        description: 'Choose a player with more VPs than you. Look at their hand and take any 2 cards.',
+        isVictoryPoint: false,
         implemented: true
     },
     merchant: {
         type: 'merchant',
         category: 'trade',
         name: 'Merchant',
-        description: 'Choose 1 resource type. You may trade that resource at a 2:1 ratio for this turn.',
+        description: 'Place Merchant on a resource hex adjacent to one of your buildings. While you control it: 2:1 trade of that resource +1 VP.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -137,7 +138,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'merchant_fleet',
         category: 'trade',
         name: 'Merchant Fleet',
-        description: 'For this turn, you may trade any resources at a 2:1 ratio with the bank.',
+        description: 'Choose 1 resource or commodity. Trade it at 2:1 with supply for the rest of this turn.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -145,7 +146,7 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'resource_monopoly',
         category: 'trade',
         name: 'Resource Monopoly',
-        description: 'Choose 1 resource type. All other players must give you all their resources of that type.',
+        description: 'Name a resource. Each player must give you up to 2 of that resource.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -153,41 +154,41 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'trade_monopoly',
         category: 'trade',
         name: 'Trade Monopoly',
-        description: 'Choose 1 commodity type. All other players must give you all their commodities of that type.',
+        description: 'Name a commodity. Each player must give you 1 of that commodity if they have it.',
         isVictoryPoint: false,
         implemented: true
     },
 
-    // POLITICS CARDS (8)
-    bishop: {
-        type: 'bishop',
-        category: 'politics',
-        name: 'Bishop',
-        description: 'This card is worth 1 victory point.',
-        isVictoryPoint: true,
-        implemented: true
-    },
+    // POLITICS CARDS (9)
     constitution: {
         type: 'constitution',
         category: 'politics',
         name: 'Constitution',
-        description: 'This card is worth 1 victory point.',
+        description: 'Play immediately. Worth 1 VP.',
         isVictoryPoint: true,
-        implemented: true
-    },
-    deserter: {
-        type: 'deserter',
-        category: 'politics',
-        name: 'Deserter',
-        description: 'Deactivate 1 of an opponent\'s knights. That knight must be reactivated.',
-        isVictoryPoint: false,
         implemented: true
     },
     diplomat: {
         type: 'diplomat',
         category: 'politics',
         name: 'Diplomat',
-        description: 'Move 1 of your own knights to any location where you have a settlement or city.',
+        description: 'Remove an open road. If it is yours, you may rebuild one road for free.',
+        isVictoryPoint: false,
+        implemented: true
+    },
+    encouragement: {
+        type: 'encouragement',
+        category: 'politics',
+        name: 'Encouragement',
+        description: 'Activate all your knights for free.',
+        isVictoryPoint: false,
+        implemented: true
+    },
+    espionage: {
+        type: 'espionage',
+        category: 'politics',
+        name: 'Espionage',
+        description: 'Look at another player\'s progress cards; take 1.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -195,31 +196,31 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'intrigue',
         category: 'politics',
         name: 'Intrigue',
-        description: 'Move 1 of an opponent\'s knights to any location. That knight remains active/inactive as it was.',
+        description: 'Displace a knight on an intersection connected to one of your routes.',
         isVictoryPoint: false,
         implemented: true
     },
     saboteur: {
         type: 'saboteur',
         category: 'politics',
-        name: 'Saboteur',
-        description: 'Choose an opponent with at least 4 resource cards. That player must discard half of them.',
+        name: 'Sabotage',
+        description: 'Players with equal or more VPs discard half their resource/commodity cards.',
         isVictoryPoint: false,
         implemented: true
     },
-    spy: {
-        type: 'spy',
+    taxation: {
+        type: 'taxation',
         category: 'politics',
-        name: 'Spy',
-        description: 'Look at all of an opponent\'s progress cards and steal 1 of them.',
+        name: 'Taxation',
+        description: 'Move the robber. Steal 1 random card from each player with a building on that hex.',
         isVictoryPoint: false,
         implemented: true
     },
-    warlord: {
-        type: 'warlord',
+    treason: {
+        type: 'treason',
         category: 'politics',
-        name: 'Warlord',
-        description: 'Activate all of your knights for free (no wheat cost).',
+        name: 'Treason',
+        description: 'Choose a player; they remove a knight. You place a knight of equal or lower strength with same status.',
         isVictoryPoint: false,
         implemented: true
     },
@@ -227,8 +228,8 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
         type: 'wedding',
         category: 'politics',
         name: 'Wedding',
-        description: 'This card is worth 1 victory point.',
-        isVictoryPoint: true,
+        description: 'Each player with more VPs than you must give you 2 cards of their choice.',
+        isVictoryPoint: false,
         implemented: true
     },
 };
@@ -258,7 +259,7 @@ export function createProgressDecks(): {
 
     const tradeDeck: ProgressCardType[] = [
         'commercial_harbor',
-        'master_merchant',
+        'guild_dues',
         'merchant',
         'merchant_fleet',
         'resource_monopoly',
@@ -266,14 +267,14 @@ export function createProgressDecks(): {
     ];
 
     const politicsDeck: ProgressCardType[] = [
-        'bishop',
         'constitution',
-        'deserter',
         'diplomat',
+        'encouragement',
+        'espionage',
         'intrigue',
         'saboteur',
-        'spy',
-        'warlord',
+        'taxation',
+        'treason',
         'wedding',
     ];
 

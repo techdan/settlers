@@ -49,7 +49,8 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = { fromResource, toResource };
                 break;
 
-            case 'merchant':
+                break;
+
             case 'resource_monopoly':
                 if (!resource) {
                     alert('Please select a resource');
@@ -74,7 +75,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = { knightId };
                 break;
 
-            case 'deserter':
+            case 'treason':
                 if (!opponentId || !knightId) {
                     alert('Please select an opponent and their knight');
                     return;
@@ -90,7 +91,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = { opponentId };
                 break;
 
-            case 'spy':
+            case 'espionage':
                 if (!opponentId || !stolenCard) {
                     alert('Please select an opponent and a card to steal');
                     return;
@@ -102,9 +103,10 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'inventor':
             case 'irrigation':
             case 'mining':
+            case 'merchant':
             case 'diplomat':
             case 'intrigue':
-                alert('This card requires board interaction. Feature coming soon!');
+                alert('This card requires board interaction. Close this dialog and click on the board to select the target. Feature coming soon!');
                 onClose();
                 return;
         }
@@ -165,7 +167,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                 );
 
-            case 'merchant':
+
             case 'resource_monopoly':
                 return (
                     <div>
@@ -237,7 +239,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                 );
 
-            case 'deserter':
+            case 'treason':
                 return (
                     <div className="space-y-4">
                         <div>
@@ -255,7 +257,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         </div>
                         {opponentId && (
                             <div>
-                                <label className="text-sm font-medium block mb-1">Select active knight to deactivate:</label>
+                                <label className="text-sm font-medium block mb-1">Select knight to remove:</label>
                                 <select
                                     value={knightId}
                                     onChange={(e) => setKnightId(e.target.value)}
@@ -263,7 +265,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                 >
                                     <option value="">Select knight</option>
                                     {getOpponentKnights(opponentId)
-                                        .filter(k => k.active)
                                         .map(k => (
                                             <option key={k.id} value={k.id}>
                                                 {k.level} knight (vertex {k.vertexId})
@@ -275,7 +276,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                 );
 
-            case 'spy':
+            case 'espionage':
                 return (
                     <div className="space-y-4">
                         <div>

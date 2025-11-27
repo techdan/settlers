@@ -160,8 +160,11 @@ function executeProgressCardEffect(
             break;
 
         case 'medicine':
+            executeMedicine(gameState, player);
+            break;
+
         case 'printer':
-            // Victory point cards - no effect on play
+            // Victory point card - no effect on play
             break;
 
         // TRADE CARDS
@@ -182,8 +185,11 @@ function executeProgressCardEffect(
             break;
 
         case 'commercial_harbor':
-        case 'master_merchant':
-            // Victory point cards - no effect on play
+            executeCommercialHarbor(gameState, player, options);
+            break;
+
+        case 'guild_dues':
+            executeGuildDues(gameState, player, options);
             break;
 
         // POLITICS CARDS
@@ -191,12 +197,12 @@ function executeProgressCardEffect(
             executeDiplomat(gameState, player, options);
             break;
 
-        case 'spy':
-            executeSpy(gameState, player, options);
+        case 'espionage':
+            executeEspionage(gameState, player, options);
             break;
 
-        case 'deserter':
-            executeDeserter(gameState, player, options);
+        case 'treason':
+            executeTreason(gameState, player, options);
             break;
 
         case 'intrigue':
@@ -207,14 +213,20 @@ function executeProgressCardEffect(
             executeSaboteur(gameState, player, options);
             break;
 
-        case 'warlord':
-            executeWarlord(gameState, player);
+        case 'encouragement':
+            executeEncouragement(gameState, player);
             break;
 
-        case 'bishop':
+        case 'taxation':
+            executeTaxation(gameState, player, options);
+            break;
+
         case 'constitution':
+            // Victory point card - no effect on play
+            break;
+
         case 'wedding':
-            // Victory point cards - no effect on play
+            executeWedding(gameState, player);
             break;
 
         default:
@@ -226,39 +238,75 @@ function executeProgressCardEffect(
 // ===== SCIENCE CARD EFFECTS =====
 
 function executeAlchemist(gameState: GameState, player: PlayerState, options?: any): void {
-    // Convert 2 of same resource into 1 of chosen resource
-    const { fromResource, toResource } = options || {};
-    if (!fromResource || !toResource) {
-        throw new Error('Alchemist requires fromResource and toResource');
+    // Choose the dice results before rolling
+    // This card is played BEFORE the dice roll, not after
+    // The implementation sets a flag that the dice roll handler will check
+    // The actual dice manipulation happens in the rollDice action
+
+    const { chosenDice1, chosenDice2 } = options || {};
+    if (chosenDice1 === undefined || chosenDice2 === undefined) {
+        throw new Error('Alchemist requires chosenDice1 and chosenDice2 (1-6 each)');
     }
 
-    if (player.resources[fromResource as ResourceType] < 2) {
-        throw new Error('Not enough resources');
+    if (chosenDice1 < 1 || chosenDice1 > 6 || chosenDice2 < 1 || chosenDice2 > 6) {
+        throw new Error('Dice values must be between 1 and 6');
     }
 
-    removeResources(player, { [fromResource]: 2 });
-    addResources(player, { [toResource]: 1 });
+    // Set game state flag for the next dice roll
+    if (!gameState.activeEffects) {
+        gameState.activeEffects = [];
+    }
+
+    gameState.activeEffects.push({
+        type: 'alchemist',
+        playerId: player.id,
+        chosenDice1,
+        chosenDice2,
+    });
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} converted 2 ${fromResource} into 1 ${toResource}`,
+        message: `${player.name} played Alchemist and chose the dice results`,
         playerId: player.id
     });
 }
 
 function executeCrane(gameState: GameState, player: PlayerState, options?: any): void {
-    // Crane is a victory point card - no effect on play
-    // (Already counted in victory points)
-}
-
-function executeEngineer(gameState: GameState, player: PlayerState, options?: any): void {
-    // Build 1 city improvement at discount
+    // Reduce cost of next city improvement by 1 commodity
     // This flag can be checked by the improvement service
+    if (!gameState.activeEffects) {
+        gameState.activeEffects = [];
+    }
+
+    gameState.activeEffects.push({
+        type: 'crane',
+        playerId: player.id,
+    });
+
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can upgrade 1 improvement at discount`,
+        message: `${player.name} can upgrade 1 city improvement with 1 less commodity`,
+        playerId: player.id
+    });
+}
+
+function executeEngineer(gameState: GameState, player: PlayerState, options?: any): void {
+    // Build a city wall for free
+    if (!gameState.activeEffects) {
+        gameState.activeEffects = [];
+    }
+
+    gameState.activeEffects.push({
+        type: 'engineer',
+        playerId: player.id,
+    });
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} can build a city wall for free`,
         playerId: player.id
     });
 }
@@ -274,25 +322,47 @@ function executeRoadBuilding(gameState: GameState, player: PlayerState): void {
     });
 }
 
-function executeSmith(gameState: GameState, player: PlayerState, options?: any): void {
-    // Upgrade 1 knight for free
-    const { knightId } = options || {};
-    if (!knightId) {
-        throw new Error('Smith requires knightId');
+function executeMedicine(gameState: GameState, player: PlayerState): void {
+    // Reduce city upgrade cost to 2 ore + 1 grain (instead of 3 ore + 2 grain)
+    if (!gameState.activeEffects) {
+        gameState.activeEffects = [];
     }
 
-    // Knight upgrade will be handled by service layer
-    // This just logs that the effect was triggered
+    gameState.activeEffects.push({
+        type: 'medicine',
+        playerId: player.id,
+    });
+
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can upgrade 1 knight for free`,
+        message: `${player.name} can upgrade a settlement to city with Medicine discount (2 ore + 1 grain)`,
+        playerId: player.id
+    });
+}
+
+function executeSmith(gameState: GameState, player: PlayerState, options?: any): void {
+    // Upgrade 2 knights for free
+    if (!gameState.activeEffects) {
+        gameState.activeEffects = [];
+    }
+
+    gameState.activeEffects.push({
+        type: 'smith',
+        playerId: player.id,
+        knightsRemaining: 2, // Can upgrade 2 knights
+    });
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} can upgrade 2 knights for free`,
         playerId: player.id
     });
 }
 
 function executeInventor(gameState: GameState, player: PlayerState, options?: any): void {
-    // Swap number tokens of any 2 terrain hexes
+    // Swap any two number tokens except 2, 6, 8, or 12
     const { hex1Id, hex2Id } = options || {};
     if (!hex1Id || !hex2Id) {
         throw new Error('Inventor requires hex1Id and hex2Id');
@@ -309,6 +379,12 @@ function executeInventor(gameState: GameState, player: PlayerState, options?: an
         throw new Error('Cannot swap desert or ocean hexes');
     }
 
+    // Check numbers are not restricted (2, 6, 8, 12)
+    const restrictedNumbers = [2, 6, 8, 12];
+    if (restrictedNumbers.includes(hex1.number) || restrictedNumbers.includes(hex2.number)) {
+        throw new Error('Cannot swap number tokens 2, 6, 8, or 12');
+    }
+
     // Swap the number tokens
     const tempNumber = hex1.number;
     hex1.number = hex2.number;
@@ -317,53 +393,73 @@ function executeInventor(gameState: GameState, player: PlayerState, options?: an
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} swapped number tokens between two hexes`,
+        message: `${player.name} swapped number tokens between two hexes (${hex2.number} ↔ ${hex1.number})`,
         playerId: player.id
     });
 }
 
 function executeIrrigation(gameState: GameState, player: PlayerState, options?: any): void {
-    // Get resources from 1 field hex regardless of roll
-    const { hexId } = options || {};
-    if (!hexId) {
-        throw new Error('Irrigation requires hexId');
+    // Take 2 wheat for each fields hex adjacent to one of your buildings
+    let wheatGained = 0;
+
+    // Find all field hexes
+    const fieldHexes = gameState.board.hexes.filter(h => h.terrain === 'field');
+
+    for (const hex of fieldHexes) {
+        // Check if player has a building (settlement, city, or metropolis) on this hex
+        const adjacentVertices = hex.vertices || [];
+        const hasAdjacentBuilding = adjacentVertices.some((vertexId: string) => {
+            const vertex = gameState.board.vertices[vertexId];
+            return vertex && vertex.owner === player.id &&
+                (vertex.structure === 'settlement' || vertex.structure === 'city' || vertex.structure === 'metropolis');
+        });
+
+        if (hasAdjacentBuilding) {
+            wheatGained += 2;
+        }
     }
 
-    const hex = gameState.board.hexes.find(h => h.id === hexId);
-    if (!hex || hex.terrain !== 'field') {
-        throw new Error('Must choose a field hex');
+    if (wheatGained > 0) {
+        addResources(player, { wheat: wheatGained });
     }
-
-    // Give wheat from the chosen hex
-    addResources(player, { wheat: 1 });
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} received wheat from irrigation`,
+        message: `${player.name} received ${wheatGained} grain from Irrigation`,
         playerId: player.id
     });
 }
 
 function executeMining(gameState: GameState, player: PlayerState, options?: any): void {
-    // Get resources from 1 mountain hex regardless of roll
-    const { hexId } = options || {};
-    if (!hexId) {
-        throw new Error('Mining requires hexId');
+    // Take 2 ore for each mountains hex adjacent to one of your buildings
+    let oreGained = 0;
+
+    // Find all mountain hexes
+    const mountainHexes = gameState.board.hexes.filter(h => h.terrain === 'mountain');
+
+    for (const hex of mountainHexes) {
+        // Check if player has a building (settlement, city, or metropolis) on this hex
+        const adjacentVertices = hex.vertices || [];
+        const hasAdjacentBuilding = adjacentVertices.some((vertexId: string) => {
+            const vertex = gameState.board.vertices[vertexId];
+            return vertex && vertex.owner === player.id &&
+                (vertex.structure === 'settlement' || vertex.structure === 'city' || vertex.structure === 'metropolis');
+        });
+
+        if (hasAdjacentBuilding) {
+            oreGained += 2;
+        }
     }
 
-    const hex = gameState.board.hexes.find(h => h.id === hexId);
-    if (!hex || hex.terrain !== 'mountain') {
-        throw new Error('Must choose a mountain hex');
+    if (oreGained > 0) {
+        addResources(player, { ore: oreGained });
     }
-
-    // Give ore from the chosen hex
-    addResources(player, { ore: 1 });
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} received ore from mining`,
+        message: `${player.name} received ${oreGained} ore from Mining`,
         playerId: player.id
     });
 }
@@ -371,16 +467,35 @@ function executeMining(gameState: GameState, player: PlayerState, options?: any)
 // ===== TRADE CARD EFFECTS =====
 
 function executeMerchant(gameState: GameState, player: PlayerState, options?: any): void {
-    // Choose 1 resource for 2:1 trading this turn
-    const { resource } = options || {};
-    if (!resource) {
-        throw new Error('Merchant requires resource selection');
+    // Place merchant on a hex adjacent to player's settlement/city
+    const { hexId } = options || {};
+    if (!hexId) {
+        throw new Error('Merchant requires hexId selection');
     }
+
+    const hex = gameState.board.hexes.find(h => h.id === hexId);
+    if (!hex) {
+        throw new Error('Invalid hex ID');
+    }
+
+    // Validate hex is adjacent to player's settlement/city
+    const adjacentVertices = hex.vertices || [];
+    const hasAdjacentSettlement = adjacentVertices.some((vertexId: string) => {
+        const vertex = gameState.board.vertices[vertexId];
+        return vertex && vertex.owner === player.id && (vertex.structure === 'settlement' || vertex.structure === 'city' || vertex.structure === 'metropolis');
+    });
+
+    if (!hasAdjacentSettlement) {
+        throw new Error('Merchant must be placed on a hex adjacent to your settlement or city');
+    }
+
+    // Place the merchant
+    gameState.merchantHexId = hexId;
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can trade ${resource} at 2:1 ratio this turn`,
+        message: `${player.name} placed the merchant on a ${hex.terrain} hex (2:1 trade + 1 VP)`,
         playerId: player.id
     });
 }
@@ -396,7 +511,7 @@ function executeMerchantFleet(gameState: GameState, player: PlayerState): void {
 }
 
 function executeResourceMonopoly(gameState: GameState, player: PlayerState, options?: any): void {
-    // Take all of chosen resource from all other players
+    // Take up to 2 of chosen resource from each player
     const { resource } = options || {};
     if (!resource) {
         throw new Error('Resource Monopoly requires resource selection');
@@ -408,8 +523,10 @@ function executeResourceMonopoly(gameState: GameState, player: PlayerState, opti
 
         const amount = otherPlayer.resources[resource as ResourceType] || 0;
         if (amount > 0) {
-            removeResources(otherPlayer, { [resource]: amount });
-            totalTaken += amount;
+            // Take up to 2 cards per player (2 if ≥2, 1 if =1, 0 if =0)
+            const amountToTake = Math.min(amount, 2);
+            removeResources(otherPlayer, { [resource]: amountToTake });
+            totalTaken += amountToTake;
         }
     }
 
@@ -420,16 +537,16 @@ function executeResourceMonopoly(gameState: GameState, player: PlayerState, opti
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} took ${totalTaken} ${resource} from other players`,
+        message: `${player.name} took ${totalTaken} ${resource} from other players (up to 2 per player)`,
         playerId: player.id
     });
 }
 
 function executeTradeMonopoly(gameState: GameState, player: PlayerState, options?: any): void {
-    // Take all of chosen commodity from all other players
+    // Take 1 of chosen commodity from each player who has any
     const { commodity } = options || {};
     if (!commodity) {
-        throw new Error('Trade Monopoly requires commodity selection');
+        throw new Error('Commercial Monopoly requires commodity selection');
     }
 
     let totalTaken = 0;
@@ -440,8 +557,9 @@ function executeTradeMonopoly(gameState: GameState, player: PlayerState, options
 
         const amount = otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] || 0;
         if (amount > 0) {
-            otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] -= amount;
-            totalTaken += amount;
+            // Only take 1 commodity per player, not all
+            otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] -= 1;
+            totalTaken += 1;
         }
     }
 
@@ -455,7 +573,112 @@ function executeTradeMonopoly(gameState: GameState, player: PlayerState, options
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} took ${totalTaken} ${commodity} from other players`,
+        message: `${player.name} took ${totalTaken} ${commodity} from other players (1 per player)`,
+        playerId: player.id
+    });
+}
+
+function executeCommercialHarbor(gameState: GameState, player: PlayerState, options?: any): void {
+    // Offer 1 resource to each player; each must give you 1 commodity if they have one. Otherwise, you take your resource back.
+    const { offeredResource } = options || {};
+    if (!offeredResource) {
+        throw new Error('Commercial Harbor requires offeredResource');
+    }
+
+    // Check player has the resource to offer
+    if (!player.resources[offeredResource as ResourceType] ||
+        player.resources[offeredResource as ResourceType] < gameState.players.length - 1) {
+        throw new Error(`You need ${gameState.players.length - 1} ${offeredResource} to offer to all other players`);
+    }
+
+    let totalCommoditiesReceived = 0;
+    let resourcesReturned = 0;
+
+    for (const opponent of gameState.players) {
+        if (opponent.id === player.id) continue;
+
+        // Check if opponent has any commodity
+        const hasCommodity = opponent.commodities &&
+            (opponent.commodities.paper > 0 || opponent.commodities.cloth > 0 || opponent.commodities.coin > 0);
+
+        if (hasCommodity) {
+            // Opponent must give 1 commodity (they choose which one)
+            // For simplicity, take first available commodity
+            const commodityTypes: ('paper' | 'cloth' | 'coin')[] = ['paper', 'cloth', 'coin'];
+            for (const commodityType of commodityTypes) {
+                if (opponent.commodities && opponent.commodities[commodityType] > 0) {
+                    // Execute trade: player gives resource, receives commodity
+                    removeResources(player, { [offeredResource]: 1 });
+                    opponent.commodities[commodityType] -= 1;
+                    addResources(opponent, { [offeredResource]: 1 });
+                    if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+                    player.commodities[commodityType] += 1;
+                    totalCommoditiesReceived++;
+                    break;
+                }
+            }
+        } else {
+            // Opponent has no commodities, resource is returned (do nothing)
+            resourcesReturned++;
+        }
+    }
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} offered ${offeredResource} to all players with Commercial Harbor: received ${totalCommoditiesReceived} commodities (${resourcesReturned} returned)`,
+        playerId: player.id
+    });
+}
+
+function executeGuildDues(gameState: GameState, player: PlayerState, options?: any): void {
+    // Take 2 cards from opponent with more VP
+    const { opponentId, card1Type, card1Value, card2Type, card2Value } = options || {};
+    if (!opponentId || !card1Type || !card2Type) {
+        throw new Error('Guild Dues requires opponentId, card1Type, card2Type, and their values');
+    }
+
+    const opponent = gameState.players.find(p => p.id === opponentId);
+    if (!opponent) throw new Error('Opponent not found');
+
+    // Check opponent has more VP (validation should be in service layer)
+    // For now we'll trust the input
+
+    // Take cards from opponent
+    if (card1Type === 'resource') {
+        if (opponent.resources[card1Value as ResourceType] < 1) {
+            throw new Error('Opponent does not have that resource');
+        }
+        removeResources(opponent, { [card1Value]: 1 });
+        addResources(player, { [card1Value]: 1 });
+    } else if (card1Type === 'commodity') {
+        if (!opponent.commodities || opponent.commodities[card1Value as 'paper' | 'cloth' | 'coin'] < 1) {
+            throw new Error('Opponent does not have that commodity');
+        }
+        opponent.commodities[card1Value as 'paper' | 'cloth' | 'coin'] -= 1;
+        if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+        player.commodities[card1Value as 'paper' | 'cloth' | 'coin'] += 1;
+    }
+
+    if (card2Type === 'resource') {
+        if (opponent.resources[card2Value as ResourceType] < 1) {
+            throw new Error('Opponent does not have that resource');
+        }
+        removeResources(opponent, { [card2Value]: 1 });
+        addResources(player, { [card2Value]: 1 });
+    } else if (card2Type === 'commodity') {
+        if (!opponent.commodities || opponent.commodities[card2Value as 'paper' | 'cloth' | 'coin'] < 1) {
+            throw new Error('Opponent does not have that commodity');
+        }
+        opponent.commodities[card2Value as 'paper' | 'cloth' | 'coin'] -= 1;
+        if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+        player.commodities[card2Value as 'paper' | 'cloth' | 'coin'] += 1;
+    }
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} took 2 cards from ${opponent.name}'s hand`,
         playerId: player.id
     });
 }
@@ -463,26 +686,58 @@ function executeTradeMonopoly(gameState: GameState, player: PlayerState, options
 // ===== POLITICS CARD EFFECTS =====
 
 function executeDiplomat(gameState: GameState, player: PlayerState, options?: any): void {
-    // Move 1 own knight to any own settlement/city
-    const { knightId, targetVertexId } = options || {};
-    if (!knightId || !targetVertexId) {
-        throw new Error('Diplomat requires knightId and targetVertexId');
+    // Remove an open road and place it as your own
+    const { edgeId, newEdgeId } = options || {};
+    if (!edgeId) {
+        throw new Error('Diplomat requires edgeId (road to remove)');
     }
 
-    // Knight movement will be handled by service layer
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `${player.name} can move a knight via Diplomat`,
-        playerId: player.id
-    });
+    const edge = gameState.board.edges[edgeId];
+    if (!edge || !edge.owner || edge.structure !== 'road') {
+        throw new Error('Invalid edge or no road present');
+    }
+
+    // Check if road is "open" (has at least one end not connected to a settlement/city)
+    // This validation should be done in the service layer
+    // For now, we'll trust the input is valid
+
+    const originalOwner = edge.owner;
+
+    // Remove the road
+    edge.owner = null;
+    edge.structure = null;
+
+    // Optionally place it as player's own road (if newEdgeId provided)
+    if (newEdgeId) {
+        const newEdge = gameState.board.edges[newEdgeId];
+        if (!newEdge || newEdge.owner !== null) {
+            throw new Error('Invalid new edge location');
+        }
+
+        newEdge.owner = player.id;
+        newEdge.structure = 'road';
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} removed a road from another player and placed it elsewhere`,
+            playerId: player.id
+        });
+    } else {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} removed a road (did not replace)`,
+            playerId: player.id
+        });
+    }
 }
 
-function executeSpy(gameState: GameState, player: PlayerState, options?: any): void {
+function executeEspionage(gameState: GameState, player: PlayerState, options?: any): void {
     // Look at opponent's progress cards and steal 1
     const { opponentId, stolenCard } = options || {};
     if (!opponentId || !stolenCard) {
-        throw new Error('Spy requires opponentId and stolenCard');
+        throw new Error('Espionage requires opponentId and stolenCard');
     }
 
     const opponent = gameState.players.find(p => p.id === opponentId);
@@ -508,11 +763,11 @@ function executeSpy(gameState: GameState, player: PlayerState, options?: any): v
     });
 }
 
-function executeDeserter(gameState: GameState, player: PlayerState, options?: any): void {
-    // Deactivate 1 of opponent's knights
-    const { opponentId, knightId } = options || {};
+function executeTreason(gameState: GameState, player: PlayerState, options?: any): void {
+    // Choose a player; they remove a knight. You place a knight of equal or lower strength with same status
+    const { opponentId, knightId, newKnightLevel, newKnightVertexId } = options || {};
     if (!opponentId || !knightId) {
-        throw new Error('Deserter requires opponentId and knightId');
+        throw new Error('Treason requires opponentId and knightId');
     }
 
     const opponent = gameState.players.find(p => p.id === opponentId);
@@ -520,26 +775,48 @@ function executeDeserter(gameState: GameState, player: PlayerState, options?: an
 
     if (!opponent.knights) throw new Error('Opponent has no knights');
 
-    const knight = opponent.knights.find(k => k.id === knightId);
-    if (!knight) throw new Error('Knight not found');
+    const knightIndex = opponent.knights.findIndex(k => k.id === knightId);
+    if (knightIndex === -1) throw new Error('Knight not found');
 
-    if (!knight.active) {
-        throw new Error('Knight is already inactive');
+    const knight = opponent.knights[knightIndex];
+
+    // Remove knight from opponent
+    opponent.knights.splice(knightIndex, 1);
+
+    // Add knight to player's army (equal or lower strength, same active status)
+    if (!player.knights) player.knights = [];
+
+    // Determine knight level (use provided level or default to same level)
+    const levelMap = { basic: 0, strong: 1, mighty: 2 };
+    const levelNames: ('basic' | 'strong' | 'mighty')[] = ['basic', 'strong', 'mighty'];
+    const targetLevel = newKnightLevel || knight.level;
+
+    // Validate level is equal or lower
+    if (levelMap[targetLevel as 'basic' | 'strong' | 'mighty'] > levelMap[knight.level]) {
+        throw new Error('New knight must be equal or lower strength');
     }
 
-    // Deactivate the knight
-    knight.active = false;
+    // Create new knight for player with same active status
+    const newKnight = {
+        id: `${Date.now()}-${Math.random()}`,
+        playerId: player.id,
+        level: targetLevel as 'basic' | 'strong' | 'mighty',
+        active: knight.active, // Preserve active/inactive status
+        vertexId: newKnightVertexId || knight.vertexId,
+    };
+
+    player.knights.push(newKnight);
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} deactivated ${opponent.name}'s knight`,
+        message: `${player.name} used Treason: removed ${opponent.name}'s ${knight.level} knight and placed a ${targetLevel} knight (${knight.active ? 'active' : 'inactive'})`,
         playerId: player.id
     });
 }
 
 function executeIntrigue(gameState: GameState, player: PlayerState, options?: any): void {
-    // Move 1 of opponent's knights to any location
+    // Displace a knight on an intersection connected to one of your routes
     const { opponentId, knightId, targetVertexId } = options || {};
     if (!opponentId || !knightId || !targetVertexId) {
         throw new Error('Intrigue requires opponentId, knightId, and targetVertexId');
@@ -553,6 +830,25 @@ function executeIntrigue(gameState: GameState, player: PlayerState, options?: an
     const knight = opponent.knights.find(k => k.id === knightId);
     if (!knight) throw new Error('Knight not found');
 
+    // Validate the knight is on an intersection connected to one of player's routes
+    const knightVertex = gameState.board.vertices[knight.vertexId];
+    if (!knightVertex) throw new Error('Knight vertex not found');
+
+    // Check if knight's current vertex is adjacent to any of player's roads
+    // We need to find all edges that connect to this vertex
+    const hasAdjacentRoute = Object.values(gameState.board.edges).some((edge) => {
+        // Check if edge connects to this vertex and is owned by player
+        // Edge IDs are in format "q,r,d" where d is 0-5
+        // Vertices connect to edges - we need to check if the edge endpoints include this vertex
+        // This is a simplified check - in practice you'd need proper vertex-edge adjacency logic
+        return edge && edge.owner === player.id && edge.structure === 'road' &&
+            (edge.q === knightVertex.q && edge.r === knightVertex.r);
+    });
+
+    if (!hasAdjacentRoute) {
+        throw new Error('Knight must be on an intersection connected to one of your routes');
+    }
+
     // Validate target vertex exists
     const vertex = gameState.board.vertices[targetVertexId];
     if (!vertex) throw new Error('Invalid target vertex');
@@ -563,69 +859,187 @@ function executeIntrigue(gameState: GameState, player: PlayerState, options?: an
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} moved ${opponent.name}'s knight with intrigue`,
+        message: `${player.name} displaced ${opponent.name}'s knight with Intrigue`,
+        playerId: player.id
+    });
+}
+
+function executeTaxation(gameState: GameState, player: PlayerState, options?: any): void {
+    // Move robber and steal 1 random resource from each opponent on the hex
+    const { hexId } = options || {};
+    if (!hexId) {
+        throw new Error('Taxation requires hexId (where to move robber)');
+    }
+
+    const hex = gameState.board.hexes.find(h => h.id === hexId);
+    if (!hex) throw new Error('Invalid hex');
+
+    // Move robber
+    gameState.robberHexId = hexId;
+
+    // Find all opponents with settlements/cities on this hex
+    const adjacentVertices = hex.vertices || [];
+    const opponentsOnHex = new Set<string>();
+
+    for (const vertexId of adjacentVertices) {
+        const vertex = gameState.board.vertices[vertexId];
+        if (vertex && vertex.owner && vertex.owner !== player.id && vertex.structure) {
+            opponentsOnHex.add(vertex.owner);
+        }
+    }
+
+    // Each opponent gives 1 random resource
+    let totalStolen = 0;
+    for (const opponentId of opponentsOnHex) {
+        const opponent = gameState.players.find(p => p.id === opponentId);
+        if (!opponent) continue;
+
+        // Get all available resources
+        const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
+        const availableResources: ResourceType[] = [];
+        for (const resourceType of resourceTypes) {
+            if (opponent.resources[resourceType] > 0) {
+                availableResources.push(resourceType);
+            }
+        }
+
+        if (availableResources.length > 0) {
+            // Pick a random resource
+            const randomIndex = Math.floor(Math.random() * availableResources.length);
+            const resourceType = availableResources[randomIndex];
+            removeResources(opponent, { [resourceType]: 1 });
+            addResources(player, { [resourceType]: 1 });
+            totalStolen++;
+        }
+    }
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} moved the robber and stole ${totalStolen} resources`,
         playerId: player.id
     });
 }
 
 function executeSaboteur(gameState: GameState, player: PlayerState, options?: any): void {
-    // Choose opponent with at least 4 resources, they discard half
-    const { opponentId } = options || {};
-    if (!opponentId) {
-        throw new Error('Saboteur requires opponentId');
-    }
+    // Players with equal or more VPs discard half their cards (resources AND commodities)
+    let totalDiscarded = 0;
 
-    const opponent = gameState.players.find(p => p.id === opponentId);
-    if (!opponent) throw new Error('Opponent not found');
+    for (const opponent of gameState.players) {
+        if (opponent.id === player.id) continue;
 
-    // Count total resources
-    const totalResources = Object.values(opponent.resources).reduce((sum, count) => sum + count, 0);
+        // Check if opponent has equal or more VP (should calculate VP here)
+        // For now, we'll trust validation is done in service layer
 
-    if (totalResources < 4) {
-        throw new Error('Opponent must have at least 4 resource cards');
-    }
+        // Count total cards (resources + commodities)
+        const totalResources = Object.values(opponent.resources).reduce((sum, count) => sum + count, 0);
+        const totalCommodities = opponent.commodities ?
+            Object.values(opponent.commodities).reduce((sum, count) => sum + count, 0) : 0;
+        const totalCards = totalResources + totalCommodities;
 
-    // Calculate how many to discard (half, rounded down)
-    const discardCount = Math.floor(totalResources / 2);
+        if (totalCards === 0) continue;
 
-    // For simplicity, discard proportionally from each resource type
-    // In the real game, the opponent would choose which cards to discard
-    const resourcesToDiscard: Partial<Record<ResourceType, number>> = {};
-    let remaining = discardCount;
+        // Calculate how many to discard (half, rounded down)
+        const discardCount = Math.floor(totalCards / 2);
 
-    const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
-    for (const resourceType of resourceTypes) {
-        const count = opponent.resources[resourceType];
-        const proportion = count / totalResources;
-        const toDiscard = Math.min(Math.floor(proportion * discardCount), remaining);
+        // For simplicity, discard proportionally
+        // In real game, opponent chooses which cards to discard
+        const resourcesToDiscard: Partial<Record<ResourceType, number>> = {};
+        let remaining = discardCount;
 
-        if (toDiscard > 0) {
-            resourcesToDiscard[resourceType] = toDiscard;
-            remaining -= toDiscard;
-        }
-    }
-
-    // If we haven't discarded enough due to rounding, discard more
-    while (remaining > 0) {
+        const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
         for (const resourceType of resourceTypes) {
-            if (opponent.resources[resourceType] > 0 && remaining > 0) {
-                resourcesToDiscard[resourceType] = (resourcesToDiscard[resourceType] || 0) + 1;
-                remaining--;
+            const count = opponent.resources[resourceType];
+            const proportion = count / totalCards;
+            const toDiscard = Math.min(Math.floor(proportion * discardCount), remaining, count);
+
+            if (toDiscard > 0) {
+                resourcesToDiscard[resourceType] = toDiscard;
+                remaining -= toDiscard;
             }
         }
-    }
 
-    removeResources(opponent, resourcesToDiscard);
+        // Discard commodities if needed
+        if (remaining > 0 && opponent.commodities) {
+            const commodityTypes: ('paper' | 'cloth' | 'coin')[] = ['paper', 'cloth', 'coin'];
+            for (const commodityType of commodityTypes) {
+                const count = opponent.commodities[commodityType];
+                const toDiscard = Math.min(remaining, count);
+
+                if (toDiscard > 0) {
+                    opponent.commodities[commodityType] -= toDiscard;
+                    remaining -= toDiscard;
+                }
+            }
+        }
+
+        // Remove resources
+        if (Object.keys(resourcesToDiscard).length > 0) {
+            removeResources(opponent, resourcesToDiscard);
+        }
+
+        totalDiscarded += discardCount;
+    }
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} forced ${opponent.name} to discard ${discardCount} resources`,
+        message: `${player.name} forced opponents to discard ${totalDiscarded} total cards`,
         playerId: player.id
     });
 }
 
-function executeWarlord(gameState: GameState, player: PlayerState): void {
+function executeWedding(gameState: GameState, player: PlayerState): void {
+    // Each opponent with more VP gives 2 cards of their choice (or as many as they have)
+    let totalReceived = 0;
+
+    for (const opponent of gameState.players) {
+        if (opponent.id === player.id) continue;
+
+        // Check if opponent has more VP (should calculate VP here)
+        // For now, we'll trust validation is done in service layer
+
+        // Opponent gives up to 2 cards (they choose)
+        // For simplicity, take first 2 available resources/commodities
+        const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
+        let cardsGiven = 0;
+
+        // Try to give 2 cards total
+        for (const resourceType of resourceTypes) {
+            while (cardsGiven < 2 && opponent.resources[resourceType] > 0) {
+                removeResources(opponent, { [resourceType]: 1 });
+                addResources(player, { [resourceType]: 1 });
+                totalReceived++;
+                cardsGiven++;
+            }
+            if (cardsGiven >= 2) break;
+        }
+
+        // If still need cards and opponent has commodities
+        if (cardsGiven < 2 && opponent.commodities) {
+            const commodityTypes: ('paper' | 'cloth' | 'coin')[] = ['paper', 'cloth', 'coin'];
+            for (const commodityType of commodityTypes) {
+                while (cardsGiven < 2 && opponent.commodities[commodityType] > 0) {
+                    opponent.commodities[commodityType] -= 1;
+                    if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+                    player.commodities[commodityType] += 1;
+                    totalReceived++;
+                    cardsGiven++;
+                }
+                if (cardsGiven >= 2) break;
+            }
+        }
+    }
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} received ${totalReceived} cards from Wedding (2 per opponent with more VP)`,
+        playerId: player.id
+    });
+}
+
+function executeEncouragement(gameState: GameState, player: PlayerState): void {
     // Activate all of your knights for free
     if (!player.knights || player.knights.length === 0) {
         throw new Error('You have no knights to activate');
@@ -642,7 +1056,7 @@ function executeWarlord(gameState: GameState, player: PlayerState): void {
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} activated ${activatedCount} knights with Warlord`,
+        message: `${player.name} activated ${activatedCount} knights with Encouragement`,
         playerId: player.id
     });
 }

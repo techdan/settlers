@@ -13,7 +13,10 @@
       "Bash(find:*)",
       "Bash(git push)",
       "Bash(git restore:*)",
-      "Bash(timeout 120 npm run build)"
+      "Bash(timeout 120 npm run build)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue close:*)",
+      "Bash(bd show:*)"
     ],
     "deny": [],
     "ask": []

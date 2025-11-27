@@ -18,6 +18,7 @@ import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity 
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { isValidCityWallPlacement } from '@/core/validation/city-wall-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
+import { getAdjacentEdgesForVertex } from '@/lib/hex';
 
 interface BoardProps {
     gameState: GameState;
@@ -26,9 +27,28 @@ interface BoardProps {
     onCancelBuild: () => void;
     movingKnightId?: string | null;
     buildingMetropolisType?: 'science' | 'trade' | 'politics' | null;
+    selectingHexForCard?: 'merchant' | 'irrigation' | 'mining' | 'inventor' | null;
+    selectingVertexForCard?: 'intrigue' | 'diplomat' | null;
+    selectingEdgeForCard?: null;
+    onHexSelected?: (hexId: string) => void;
+    onVertexSelectedForCard?: (vertexId: string) => void;
+    onEdgeSelectedForCard?: (edgeId: string) => void;
 }
 
-export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, onCancelBuild, movingKnightId, buildingMetropolisType }) => {
+export const Board: React.FC<BoardProps> = ({
+    gameState,
+    playerId,
+    buildMode,
+    onCancelBuild,
+    movingKnightId,
+    buildingMetropolisType,
+    selectingHexForCard,
+    selectingVertexForCard,
+    selectingEdgeForCard,
+    onHexSelected,
+    onVertexSelectedForCard,
+    onEdgeSelectedForCard
+}) => {
     const { theme, toggleTheme } = useThemeStore();
     const HEX_SIZE = 90;
 
@@ -85,6 +105,45 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             return valid;
         }
 
+        // Progress Card Vertex Selection (Intrigue)
+        if (selectingVertexForCard === 'intrigue') {
+            // Intrigue: Move opponent's knight to any location
+            // Valid vertices are those with opponent's knights
+            vertices.forEach(v => {
+                const knight = gameState.players
+                    .flatMap(p => p.knights || [])
+                    .find(k => k.vertexId === v.id);
+
+                if (knight && knight.playerId !== playerId) {
+                    // Check if the knight is on a road network connected to player's road
+                    const adjacentEdgeIds = getAdjacentEdgesForVertex(v.q, v.r, v.d);
+                    const connectedEdges = adjacentEdgeIds
+                        .map(id => gameState.board.edges[id])
+                        .filter(e => e !== undefined);
+
+                    const hasPlayerRoad = connectedEdges.some(e => e && e.owner === playerId);
+
+                    if (hasPlayerRoad) {
+                        valid.add(v.id);
+                    }
+                }
+            });
+            return valid;
+        }
+
+        // Progress Card Vertex Selection (Diplomat)
+        if (selectingVertexForCard === 'diplomat') {
+            // Diplomat: Move own knight to any own settlement or city
+            // Valid vertices are those with player's own settlements or cities
+            vertices.forEach(v => {
+                const vertex = gameState.board.vertices[v.id];
+                if (vertex && vertex.structure && vertex.owner === playerId) {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
+
         if (gameState.phase.startsWith('setup')) {
             vertices.forEach(v => {
                 if (isValidSetupSettlement(gameState, v.id, playerId)) {
@@ -119,7 +178,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             }
         }
         return valid;
-    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType]);
+    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard]);
 
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
@@ -145,11 +204,79 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             });
         }
         return valid;
-    }, [gameState, playerId, buildMode, edges]);
+    }, [gameState, playerId, buildMode, edges, selectingEdgeForCard]);
+
+    // Valid hexes for progress card selection
+    const validHexes = useMemo(() => {
+        const valid = new Set<string>();
+        if (gameState.currentTurn !== playerId) return valid;
+        if (!selectingHexForCard) return valid;
+
+        const currentPlayer = gameState.players.find(p => p.id === playerId);
+        if (!currentPlayer) return valid;
+
+        tiles.forEach(hex => {
+            switch (selectingHexForCard) {
+                case 'merchant':
+                    // Hex must be adjacent to player's settlement/city
+                    const hasAdjacentSettlement = (hex.vertices || []).some((vertexId: string) => {
+                        const vertex = gameState.board.vertices[vertexId];
+                        return vertex && vertex.owner === playerId && vertex.structure;
+                    });
+                    if (hasAdjacentSettlement && hex.terrain !== 'desert' && hex.terrain !== 'ocean') {
+                        valid.add(hex.id);
+                    }
+                    break;
+
+                case 'irrigation':
+                    // Must be field hex where player has settlement/city
+                    if (hex.terrain === 'field') {
+                        const hasPlayerStructure = (hex.vertices || []).some((vertexId: string) => {
+                            const vertex = gameState.board.vertices[vertexId];
+                            return vertex && vertex.owner === playerId && vertex.structure;
+                        });
+                        if (hasPlayerStructure) {
+                            valid.add(hex.id);
+                        }
+                    }
+                    break;
+
+                case 'mining':
+                    // Must be mountain hex where player has settlement/city
+                    if (hex.terrain === 'mountain') {
+                        const hasPlayerStructure = (hex.vertices || []).some((vertexId: string) => {
+                            const vertex = gameState.board.vertices[vertexId];
+                            return vertex && vertex.owner === playerId && vertex.structure;
+                        });
+                        if (hasPlayerStructure) {
+                            valid.add(hex.id);
+                        }
+                    }
+                    break;
+
+                case 'inventor':
+                    // Any hex with a number token
+                    if (hex.numberToken && hex.terrain !== 'desert') {
+                        valid.add(hex.id);
+                    }
+                    break;
+            }
+        });
+
+        return valid;
+    }, [gameState, playerId, selectingHexForCard, tiles]);
 
     const handleVertexClick = (vertexId: string) => {
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
+
+        // Progress Card Vertex Selection
+        if (selectingVertexForCard && onVertexSelectedForCard) {
+            if (validVertices.has(vertexId)) {
+                onVertexSelectedForCard(vertexId);
+            }
+            return;
+        }
 
         // Knight Movement Mode
         if (movingKnightId) {
@@ -168,7 +295,6 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                             })
                         });
                         if (!res.ok) throw new Error('Failed to move knight');
-                        // Exit movement mode
                         onCancelBuild();
                     } catch (e) {
                         console.error("Failed to move knight", e);
@@ -180,8 +306,8 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
 
         // Metropolis Building Mode
         if (buildingMetropolisType) {
-            const vertex = gameState.board.vertices[vertexId];
-            if (vertex.owner === playerId && vertex.structure === 'city') {
+            const { isValidMetropolisPlacement } = require('@/core/validation/metropolis-validator');
+            if (isValidMetropolisPlacement(gameState, vertexId, playerId, buildingMetropolisType)) {
                 startTransition(async () => {
                     try {
                         const res = await fetch(`/api/game/${gameState.roomId}/metropolis`, {
@@ -190,12 +316,11 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                             body: JSON.stringify({
                                 playerId,
                                 action: 'build',
-                                metropolisType: buildingMetropolisType,
-                                vertexId
+                                vertexId,
+                                metropolisType: buildingMetropolisType
                             })
                         });
                         if (!res.ok) throw new Error('Failed to build metropolis');
-                        // Exit metropolis building mode
                         onCancelBuild();
                     } catch (e) {
                         console.error("Failed to build metropolis", e);
@@ -205,113 +330,56 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
             return;
         }
 
-        // Setup Phase
         if (gameState.phase.startsWith('setup')) {
-            if (gameState.phase.includes('settlement')) {
-                if (isValidSetupSettlement(gameState, vertexId, playerId)) {
-                    startTransition(async () => {
-                        try {
-                            await placeSettlement(gameState.roomId, playerId, vertexId);
-                        } catch (e) {
-                            console.error("Failed to place settlement", e);
-                        }
-                    });
-                }
+            if (isValidSetupSettlement(gameState, vertexId, playerId)) {
+                // performOptimisticAction({ type: 'PLACE_SETTLEMENT', vertexId, playerId });
+                startTransition(async () => {
+                    try {
+                        await placeSettlement(gameState.roomId, playerId, vertexId);
+                    } catch (e) {
+                        console.error("Failed to place settlement", e);
+                    }
+                });
             }
-        }
-        // Main Phase
-        else if (gameState.phase === 'main_phase') {
-            if (buildMode === 'settlement') {
-                if (isValidMainPhaseSettlement(gameState, vertexId, playerId)) {
-                    // Optimistic update for instant feedback
-                    performOptimisticAction(
-                        `build-settlement-${vertexId}`,
-                        (state) => {
-                            const newState = { ...state };
-                            newState.board.vertices[vertexId].owner = playerId;
-                            newState.board.vertices[vertexId].structure = 'settlement';
-                            return newState;
-                        },
-                        async () => {
-                            await buildSettlement(gameState.roomId, playerId, vertexId);
-                            onCancelBuild();
-                        },
-                        (error) => {
-                            console.error("Failed to build settlement", error);
-                        }
-                    );
-                }
-            } else if (buildMode === 'city') {
-                if (isValidMainPhaseCity(gameState, vertexId, playerId)) {
-                    // Optimistic update for instant feedback
-                    performOptimisticAction(
-                        `build-city-${vertexId}`,
-                        (state) => {
-                            const newState = { ...state };
-                            newState.board.vertices[vertexId].structure = 'city';
-                            return newState;
-                        },
-                        async () => {
-                            await buildCity(gameState.roomId, playerId, vertexId);
-                            onCancelBuild();
-                        },
-                        (error) => {
-                            console.error("Failed to build city", error);
-                        }
-                    );
-                }
-            } else if (buildMode === 'knight') {
-                if (isValidKnightPlacement(gameState, vertexId, playerId)) {
-                    // Optimistic update for instant feedback
-                    performOptimisticAction(
-                        `build-knight-${vertexId}`,
-                        (state) => {
-                            const newState = { ...state };
-                            const player = newState.players.find(p => p.id === playerId);
-                            if (player && player.knights) {
-                                const knight = {
-                                    id: `knight-${Date.now()}-${Math.random()}`,
-                                    vertexId,
-                                    playerId,
-                                    level: 'basic' as const,
-                                    active: false
-                                };
-                                player.knights.push(knight);
-                            }
-                            return newState;
-                        },
-                        async () => {
-                            await buildKnight(gameState.roomId, playerId, vertexId);
-                            onCancelBuild();
-                        },
-                        (error) => {
-                            console.error("Failed to build knight", error);
-                        }
-                    );
-                }
-            } else if (buildMode === 'city_wall') {
-                if (isValidCityWallPlacement(gameState, vertexId, playerId)) {
-                    // Optimistic update for instant feedback
-                    performOptimisticAction(
-                        `build-city-wall-${vertexId}`,
-                        (state) => {
-                            const newState = { ...state };
-                            const player = newState.players.find(p => p.id === playerId);
-                            if (player) {
-                                if (!player.cityWalls) player.cityWalls = [];
-                                player.cityWalls.push(vertexId);
-                            }
-                            return newState;
-                        },
-                        async () => {
-                            await buildCityWall(gameState.roomId, playerId, vertexId);
-                            onCancelBuild();
-                        },
-                        (error) => {
-                            console.error("Failed to build city wall", error);
-                        }
-                    );
-                }
+        } else if (gameState.phase === 'main_phase') {
+            if (buildMode === 'settlement' && isValidMainPhaseSettlement(gameState, vertexId, playerId)) {
+                // performOptimisticAction({ type: 'BUILD_SETTLEMENT', vertexId, playerId });
+                startTransition(async () => {
+                    try {
+                        await buildSettlement(gameState.roomId, playerId, vertexId);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build settlement", e);
+                    }
+                });
+            } else if (buildMode === 'city' && isValidMainPhaseCity(gameState, vertexId, playerId)) {
+                // performOptimisticAction({ type: 'BUILD_CITY', vertexId, playerId });
+                startTransition(async () => {
+                    try {
+                        await buildCity(gameState.roomId, playerId, vertexId);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build city", e);
+                    }
+                });
+            } else if (buildMode === 'knight' && isValidKnightPlacement(gameState, vertexId, playerId)) {
+                startTransition(async () => {
+                    try {
+                        await buildKnight(gameState.roomId, playerId, vertexId);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build knight", e);
+                    }
+                });
+            } else if (buildMode === 'city_wall' && isValidCityWallPlacement(gameState, vertexId, playerId)) {
+                startTransition(async () => {
+                    try {
+                        await buildCityWall(gameState.roomId, playerId, vertexId);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build city wall", e);
+                    }
+                });
             }
         }
     };
@@ -320,47 +388,38 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
 
-        // Setup Phase
+        // Progress Card Edge Selection
+        if (selectingEdgeForCard && onEdgeSelectedForCard) {
+            if (validEdges.has(edgeId)) {
+                onEdgeSelectedForCard(edgeId);
+            }
+            return;
+        }
+
         if (gameState.phase.startsWith('setup')) {
-            if (gameState.phase.includes('road')) {
-                if (isValidSetupRoad(gameState, edgeId, playerId)) {
-                    startTransition(async () => {
-                        try {
-                            await placeRoad(gameState.roomId, playerId, edgeId);
-                        } catch (e) {
-                            console.error("Failed to place road", e);
-                        }
-                    });
-                }
+            if (isValidSetupRoad(gameState, edgeId, playerId)) {
+                // performOptimisticAction({ type: 'PLACE_ROAD', edgeId, playerId });
+                startTransition(async () => {
+                    try {
+                        await placeRoad(gameState.roomId, playerId, edgeId);
+                    } catch (e) {
+                        console.error("Failed to place road", e);
+                    }
+                });
             }
-        }
-        // Main Phase
-        else if (gameState.phase === 'main_phase') {
-            if (buildMode === 'road') {
-                if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
-                    // Optimistic update for instant feedback
-                    performOptimisticAction(
-                        `build-road-${edgeId}`,
-                        (state) => {
-                            // Apply optimistic update
-                            const newState = { ...state };
-                            newState.board.edges[edgeId].owner = playerId;
-                            newState.board.edges[edgeId].structure = 'road';
-                            return newState;
-                        },
-                        async () => {
-                            await buildRoad(gameState.roomId, playerId, edgeId);
-                            onCancelBuild();
-                        },
-                        (error) => {
-                            console.error("Failed to build road", error);
-                        }
-                    );
-                }
+        } else if (gameState.phase === 'main_phase' && buildMode === 'road') {
+            if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
+                // performOptimisticAction({ type: 'BUILD_ROAD', edgeId, playerId });
+                startTransition(async () => {
+                    try {
+                        await buildRoad(gameState.roomId, playerId, edgeId);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build road", e);
+                    }
+                });
             }
-        }
-        // Road Building Bonus
-        else if (gameState.phase === 'road_building_1' || gameState.phase === 'road_building_2') {
+        } else if (gameState.phase === 'road_building_1' || gameState.phase === 'road_building_2') {
             if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
                 startTransition(async () => {
                     try {
@@ -377,6 +436,15 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
 
+        // Progress card hex selection
+        if (selectingHexForCard && onHexSelected) {
+            if (validHexes.has(hexId)) {
+                onHexSelected(hexId);
+            }
+            return;
+        }
+
+        // Robber placement
         if (gameState.phase === 'robber_placement') {
             startTransition(async () => {
                 try {
@@ -413,55 +481,26 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                 </summary>
                                 <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
                                     <div className="flex items-center gap-2 justify-between w-full">
-                                        <style>{`
-                                            input[type=number]::-webkit-inner-spin-button, 
-                                            input[type=number]::-webkit-outer-spin-button { 
-                                                -webkit-appearance: none; 
-                                                margin: 0; 
-                                            }
-                                            input[type=number] {
-                                                -moz-appearance: textfield;
-                                            }
-                                        `}</style>
                                         <button
-                                            onClick={() => zoomOut(0.1)}
-                                            className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
-                                            title="Zoom Out"
-                                        >
-                                            −
-                                        </button>
-                                        <input
-                                            type="number"
-                                            min={0.5}
-                                            max={1.3}
-                                            step={0.1}
-                                            value={Math.round(zoomLevel * 10) / 10}
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                if (!isNaN(val) && val >= 0.5 && val <= 1.3) {
-                                                    setZoomLevel(val);
-                                                    setTransform(0, 0, val);
-                                                }
-                                            }}
-                                            className="w-16 bg-slate-800 text-white text-center px-1 py-1 rounded border border-slate-600 text-sm appearance-none"
-                                            title="Zoom Level"
-                                        />
-                                        <button
-                                            onClick={() => zoomIn(0.1)}
-                                            className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold w-8 text-sm"
+                                            onClick={() => zoomIn()}
+                                            className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors"
                                             title="Zoom In"
                                         >
-                                            +
+                                            ➕
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                resetTransform();
-                                                setZoomLevel(1);
-                                            }}
-                                            className="bg-slate-800 text-white px-2 py-1 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-xs ml-1"
+                                            onClick={() => zoomOut()}
+                                            className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors"
+                                            title="Zoom Out"
+                                        >
+                                            ➖
+                                        </button>
+                                        <button
+                                            onClick={() => resetTransform()}
+                                            className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors"
                                             title="Reset View"
                                         >
-                                            Reset
+                                            🔄
                                         </button>
                                     </div>
                                     <button
@@ -495,6 +534,7 @@ export const Board: React.FC<BoardProps> = ({ gameState, playerId, buildMode, on
                                                 size={HEX_SIZE}
                                                 onClick={() => handleHexClick(tile.id)}
                                                 isRolled={isRolled}
+                                                isValid={validHexes.has(tile.id)}
                                             />
                                         );
                                     })}

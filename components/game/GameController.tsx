@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Board } from '@/components/board/Board';
 import { GameState } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -17,12 +17,12 @@ import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 
 // Cities & Knights components
-import { CommodityHand } from './CommodityHand';
 import { CityImprovements } from './CityImprovements';
 import { KnightControls } from './KnightControls';
 import { BarbarianTrack } from './BarbarianTrack';
 import { EventDieDisplay } from './EventDieDisplay';
 import { ProgressCardHand } from './ProgressCardHand';
+import { DebugPanel } from './DebugPanel';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
 import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
 import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
@@ -39,9 +39,19 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null>(null);
     const [movingKnightId, setMovingKnightId] = useState<string | null>(null);
     const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
+
+    // Progress card board selection states
+    const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
+    const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | 'diplomat' | null>(null);
+    const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<null>(null);
+    const [cardSelectionData, setCardSelectionData] = useState<any>(null); // Stores partial data (e.g., selected hexes for inventor)
+
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
+
+    // Debug mode: enabled by default in development or via NEXT_PUBLIC_DEBUG_MODE env var
+    const isDebugMode = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 
     // C&K action handlers (placeholder implementations)
     const handleUpgradeImprovement = async (improvement: 'science' | 'trade' | 'politics') => {
@@ -118,6 +128,82 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     };
 
+    const handleStartHexSelection = (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => {
+        setSelectingHexForCard(cardType);
+        setBuildMode(null);
+        setMovingKnightId(null);
+        setBuildingMetropolisType(null);
+        setCardSelectionData(null);
+    };
+
+    const handleHexSelected = async (hexId: string) => {
+        if (!selectingHexForCard) return;
+
+        // Handle multi-step selection (e.g. Inventor needs 2 hexes)
+        if (selectingHexForCard === 'inventor') {
+            if (!cardSelectionData) {
+                // First hex selected
+                setCardSelectionData({ hex1Id: hexId });
+                return;
+            } else {
+                // Second hex selected
+                await handlePlayProgressCard('inventor', { hex1Id: cardSelectionData.hex1Id, hex2Id: hexId });
+                setSelectingHexForCard(null);
+                setCardSelectionData(null);
+                return;
+            }
+        }
+
+        // Single hex selection cards
+        await handlePlayProgressCard(selectingHexForCard, { hexId });
+        setSelectingHexForCard(null);
+    };
+
+    const handleStartVertexSelection = (cardType: 'intrigue' | 'diplomat') => {
+        setSelectingVertexForCard(cardType);
+        setBuildMode(null);
+        setMovingKnightId(null);
+        setBuildingMetropolisType(null);
+        setCardSelectionData(null);
+    };
+
+    const handleVertexSelected = async (vertexId: string) => {
+        if (!selectingVertexForCard) return;
+
+        if (selectingVertexForCard === 'intrigue') {
+            // Intrigue: Move opponent's knight to this location
+            const targetKnight = baseGameState?.players
+                .flatMap(p => p.knights || [])
+                .find(k => k.vertexId === vertexId);
+
+            if (targetKnight) {
+                await handlePlayProgressCard(selectingVertexForCard, {
+                    knightId: targetKnight.id,
+                    targetVertexId: vertexId
+                });
+            }
+        } else if (selectingVertexForCard === 'diplomat') {
+            // Diplomat: Move own knight to this location (own settlement/city)
+            // Backend expects knightId and targetVertexId
+            // TODO: Add UI to select which knight to move
+            await handlePlayProgressCard(selectingVertexForCard, {
+                targetVertexId: vertexId
+            });
+        }
+
+        setSelectingVertexForCard(null);
+    };
+
+
+    const handleCancelSelection = () => {
+        setSelectingHexForCard(null);
+        setSelectingVertexForCard(null);
+        setCardSelectionData(null);
+        setBuildMode(null);
+        setMovingKnightId(null);
+        setBuildingMetropolisType(null);
+    };
+
     // Initial fetch to ensure we have data before subscription kicks in
     useEffect(() => {
         const fetchInitialState = async () => {
@@ -165,13 +251,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 gameState={gameState}
                 playerId={playerId}
                 buildMode={buildMode}
-                onCancelBuild={() => {
-                    setBuildMode(null);
-                    setMovingKnightId(null);
-                    setBuildingMetropolisType(null);
-                }}
+                onCancelBuild={handleCancelSelection}
                 movingKnightId={movingKnightId}
                 buildingMetropolisType={buildingMetropolisType}
+                selectingHexForCard={selectingHexForCard}
+                selectingVertexForCard={selectingVertexForCard}
+                selectingEdgeForCard={null}
+                onHexSelected={handleHexSelected}
+                onVertexSelectedForCard={handleVertexSelected}
             />
 
             <DiscardModal gameState={gameState} playerId={playerId} />
@@ -189,12 +276,16 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             {/* UI Overlay */}
             <div className="absolute inset-0 pointer-events-none p-4">
 
-                {/* Left Sidebar: Game Log */}
+                {/* Left Sidebar: Game Log & Debug Panel */}
                 {/* Positioned below Map Controls (approx top-20) */}
                 <div className="absolute top-48 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto">
                     <div className="flex-1 min-h-0 overflow-y-auto">
                         <GameLog logs={gameState.logs || []} />
                     </div>
+                    {/* Debug Panel */}
+                    {isDebugMode && currentPlayer && (
+                        <DebugPanel player={currentPlayer} roomId={roomId} />
+                    )}
                 </div>
 
                 {/* Right Sidebar: Status + C&K Components */}
@@ -232,12 +323,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} />}
                         {isCitiesAndKnights && currentPlayer && (
                             <>
-                                <CommodityHand player={currentPlayer} />
                                 <ProgressCardHand
                                     player={currentPlayer}
                                     roomId={roomId}
                                     gameState={gameState}
                                     onPlayCard={handlePlayProgressCard}
+                                    onStartHexSelection={handleStartHexSelection}
+                                    onStartVertexSelection={handleStartVertexSelection}
                                 />
                             </>
                         )}

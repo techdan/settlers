@@ -167,6 +167,61 @@ export async function debugGiveResource(roomId: string, playerId: string, resour
         .where(eq(games.id, gameState.id));
 }
 
+import { CommodityType } from '@/core/rules/commodity-constants';
+import { ProgressCardType } from '@/lib/types/player';
+
+export async function debugGiveCommodity(roomId: string, playerId: string, commodity: CommodityType) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    if (!player.commodities) {
+        throw new Error('Player does not have commodities (not in C&K mode)');
+    }
+
+    player.commodities[commodity]++;
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `DEBUG: ${player.name} gave themselves 1 ${commodity}.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
+export async function debugGiveProgressCard(roomId: string, playerId: string, cardType: ProgressCardType) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    if (!player.progressCards) {
+        throw new Error('Player does not have progress cards (not in C&K mode)');
+    }
+
+    player.progressCards.push(cardType);
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `DEBUG: ${player.name} gave themselves a ${cardType} progress card.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
 export async function placeBonusRoad(roomId: string, playerId: string, edgeId: string) {
     return devCardService.placeBonusRoad(roomId, playerId, edgeId);
 }

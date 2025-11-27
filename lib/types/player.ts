@@ -62,20 +62,20 @@ export type ProgressCardType =
     | 'smith'
     // Trade cards (yellow)
     | 'commercial_harbor'
-    | 'master_merchant'
+    | 'guild_dues'
     | 'merchant'
     | 'merchant_fleet'
     | 'resource_monopoly'
     | 'trade_monopoly'
     // Politics cards (blue)
-    | 'bishop'
     | 'constitution'
-    | 'deserter'
     | 'diplomat'
+    | 'encouragement'
+    | 'espionage'
     | 'intrigue'
     | 'saboteur'
-    | 'spy'
-    | 'warlord'
+    | 'taxation'
+    | 'treason'
     | 'wedding';
 
 /**

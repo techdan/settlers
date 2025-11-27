@@ -113,4 +113,6 @@ export interface GameState {
     metropolises?: MetropolisState[]; // 3 metropolises (science, trade, politics)
     progressDecks?: ProgressDeck; // Three decks of progress cards
     eventDieRoll?: EventDieRoll; // Last event die roll result
+    merchantHexId?: string | null; // Hex where merchant is placed (provides 2:1 trade + 1 VP)
+    activeEffects?: any[]; // Active progress card effects (e.g., Alchemist, Crane, Medicine)
 }

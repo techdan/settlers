@@ -13,6 +13,7 @@ interface HexTileProps {
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
+    isValid?: boolean;
 }
 
 const TERRAIN_COLORS: Record<TerrainType, string> = {
@@ -33,7 +34,7 @@ const TERRAIN_COMPONENTS: Record<TerrainType, React.ElementType> = {
     desert: VoxelDesert,
 };
 
-export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled }) => {
+export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled, isValid }) => {
     const { x, y } = hexToPixel(hex, size);
     const DEPTH = 15;
 
@@ -81,6 +82,14 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
                     .animate-flash {
                         animation: flash 1s ease-in-out 3;
                     }
+                    @keyframes pulse-valid-voxel {
+                        0% { stroke-width: 2; stroke: #4ade80; stroke-opacity: 0.8; }
+                        50% { stroke-width: 4; stroke: #22c55e; stroke-opacity: 1; }
+                        100% { stroke-width: 2; stroke: #4ade80; stroke-opacity: 0.8; }
+                    }
+                    .animate-pulse-valid-voxel {
+                        animation: pulse-valid-voxel 2s infinite;
+                    }
                 `}
             </style>
 
@@ -95,10 +104,10 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
                 <polygon
                     points={topPointsStr}
                     fill={baseColor}
-                    stroke="#fff"
-                    strokeWidth="1"
-                    strokeOpacity="0.3"
-                    className={`transition-colors hover:brightness-110 ${isRolled ? 'animate-flash' : ''}`}
+                    stroke={isValid ? "#4ade80" : "#fff"}
+                    strokeWidth={isValid ? "3" : "1"}
+                    strokeOpacity={isValid ? "1" : "0.3"}
+                    className={`transition-all hover:brightness-110 ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid-voxel' : ''}`}
                 />
                 {/* Simple texture overlay (noise or pattern could be added here) */}
                 <polygon points={topPointsStr} fill="url(#noise)" opacity="0.1" style={{ pointerEvents: 'none' }} />

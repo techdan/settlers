@@ -54,7 +54,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
             >
-                <span>Road 🛣️</span>
+                <span>Road 🛣️ ({player?.roadsRemaining ?? 0})</span>
                 <span className="text-xs font-normal opacity-80">1🧱 1🌲</span>
             </button>
             <button
@@ -67,7 +67,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
             >
-                <span>Settlement 🏠</span>
+                <span>Settlement 🏠 ({player?.settlementsRemaining ?? 0})</span>
                 <span className="text-xs font-normal opacity-80">1🧱 1🌲 1🐑 1🌾</span>
             </button>
             <button
@@ -80,7 +80,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
             >
-                <span>City 🏙️</span>
+                <span>City 🏙️ ({player?.citiesRemaining ?? 0})</span>
                 <span className="text-xs font-normal opacity-80">3🪨 2🌾</span>
             </button>
             {/* Dev Card (Base Game only) */}

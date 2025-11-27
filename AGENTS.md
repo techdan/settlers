@@ -54,7 +54,7 @@ Before taking any action (either tool calls *or* responses to the user), you mus
 - Clean up temporary or backup files after they are no longer necessary. Double check for cleanup after finishing any task
 - Be verbose as you carry out tasks. Provide output describing your understanding of the current task and how you are approaching it.
 - Always use `bd` (beads) commands for task tracking and progress management. NEVER use TodoWrite or other task tracking tools. Use `bd create`, `bd update`, `bd close` etc. See [AGENTS.md](AGENTS.md) for full workflow.
-
+- Send me a 1-2 sentence update every 4 steps or 6 tools calls. Tell me what you found or did, not just what's next.
 
 ## Tech Stack
 

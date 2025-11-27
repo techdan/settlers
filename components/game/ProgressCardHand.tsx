@@ -8,40 +8,42 @@ interface ProgressCardHandProps {
     roomId: string;
     gameState: GameState;
     onPlayCard: (cardType: ProgressCardType, options?: any) => Promise<void>;
+    onStartHexSelection?: (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => void;
+    onStartVertexSelection?: (cardType: 'intrigue' | 'diplomat') => void;
 }
 
 // Card descriptions for tooltip/display
 const PROGRESS_CARD_INFO: Record<ProgressCardType, { name: string; description: string; category: 'science' | 'trade' | 'politics' }> = {
     // Science cards (green)
     alchemist: { name: 'Alchemist', description: 'Convert 2 resources of one type into 1 resource of any type', category: 'science' },
-    crane: { name: 'Crane', description: 'Build a city wall or move your city wall', category: 'science' },
-    engineer: { name: 'Engineer', description: 'Build a city wall for free', category: 'science' },
-    inventor: { name: 'Inventor', description: 'Swap a number token', category: 'science' },
-    irrigation: { name: 'Irrigation', description: 'Take 2 grain from the bank', category: 'science' },
-    medicine: { name: 'Medicine', description: 'Choose a die roll number', category: 'science' },
-    mining: { name: 'Mining', description: 'Take 2 ore from the bank', category: 'science' },
-    printer: { name: 'Printer', description: 'Draw and keep 1 progress card from each deck', category: 'science' },
+    crane: { name: 'Crane', description: 'Build up to 2 city walls during your turn', category: 'science' },
+    engineer: { name: 'Engineer', description: 'Move 1 city wall to any other city', category: 'science' },
+    inventor: { name: 'Inventor', description: 'Swap the number tokens of any 2 terrain hexes', category: 'science' },
+    irrigation: { name: 'Irrigation', description: 'Receive resources from 1 field hex regardless of the roll', category: 'science' },
+    medicine: { name: 'Medicine', description: 'Worth 1 victory point', category: 'science' },
+    mining: { name: 'Mining', description: 'Receive resources from 1 mountain hex regardless of the roll', category: 'science' },
+    printer: { name: 'Printer', description: 'Worth 1 victory point', category: 'science' },
     road_building_progress: { name: 'Road Building', description: 'Build 2 roads for free', category: 'science' },
-    smith: { name: 'Smith', description: 'Upgrade 2 knights for free', category: 'science' },
+    smith: { name: 'Smith', description: 'Upgrade 1 knight to the next level for free', category: 'science' },
 
     // Trade cards (yellow)
-    commercial_harbor: { name: 'Commercial Harbor', description: 'Special trade with bank at 2:1', category: 'trade' },
-    master_merchant: { name: 'Master Merchant', description: 'Place or move the merchant', category: 'trade' },
-    merchant: { name: 'Merchant', description: 'Take any 2 resources from the bank', category: 'trade' },
-    merchant_fleet: { name: 'Merchant Fleet', description: 'Pick up to 2 trade offers to accept', category: 'trade' },
-    resource_monopoly: { name: 'Resource Monopoly', description: 'All players must give you all of one resource type', category: 'trade' },
-    trade_monopoly: { name: 'Trade Monopoly', description: 'All players must give you all of one commodity type', category: 'trade' },
+    commercial_harbor: { name: 'Commercial Harbor', description: 'Offer 1 resource to each player; each must give you 1 commodity if they have one', category: 'trade' },
+    guild_dues: { name: 'Guild Dues', description: 'Choose a player with more VPs than you. Look at their hand and take any 2 cards', category: 'trade' },
+    merchant: { name: 'Merchant', description: 'Place merchant on a hex adjacent to your settlement/city (2:1 trade + 1 VP)', category: 'trade' },
+    merchant_fleet: { name: 'Merchant Fleet', description: 'Choose 1 resource or commodity. Trade it at 2:1 for the rest of this turn', category: 'trade' },
+    resource_monopoly: { name: 'Resource Monopoly', description: 'Name a resource. Each player must give you up to 2 of that resource', category: 'trade' },
+    trade_monopoly: { name: 'Trade Monopoly', description: 'Name a commodity. Each player must give you 1 of that commodity if they have it', category: 'trade' },
 
     // Politics cards (blue)
-    bishop: { name: 'Bishop', description: 'Move the robber and steal 1 card', category: 'politics' },
+    taxation: { name: 'Taxation', description: 'Move the robber. Steal 1 random card from each player with a building on that hex', category: 'politics' },
     constitution: { name: 'Constitution', description: 'Worth 1 victory point', category: 'politics' },
-    deserter: { name: 'Deserter', description: 'Deactivate 1 of opponent\'s knights', category: 'politics' },
-    diplomat: { name: 'Diplomat', description: 'Remove 1 opponent\'s road', category: 'politics' },
-    intrigue: { name: 'Intrigue', description: 'Move 1 of your knights to opponent\'s road', category: 'politics' },
-    saboteur: { name: 'Saboteur', description: 'Reduce opponent\'s city improvement by 1 level', category: 'politics' },
-    spy: { name: 'Spy', description: 'Look at opponent\'s progress cards', category: 'politics' },
-    warlord: { name: 'Warlord', description: 'Activate all your knights for free', category: 'politics' },
-    wedding: { name: 'Wedding', description: 'Worth 1 victory point', category: 'politics' }
+    treason: { name: 'Treason', description: 'Choose a player; they remove a knight. You place a knight of equal or lower strength', category: 'politics' },
+    diplomat: { name: 'Diplomat', description: 'Remove an open road. If it is yours, you may rebuild one road for free', category: 'politics' },
+    intrigue: { name: 'Intrigue', description: 'Displace a knight on an intersection connected to one of your routes', category: 'politics' },
+    saboteur: { name: 'Sabotage', description: 'Players with equal or more VPs discard half their resource/commodity cards', category: 'politics' },
+    espionage: { name: 'Espionage', description: 'Look at another player\'s progress cards; take 1', category: 'politics' },
+    encouragement: { name: 'Encouragement', description: 'Activate all your knights for free', category: 'politics' },
+    wedding: { name: 'Wedding', description: 'Each player with more VPs than you must give you 2 cards of their choice', category: 'politics' }
 };
 
 const CATEGORY_COLORS = {
@@ -59,17 +61,11 @@ const CATEGORY_ICONS = {
 // Cards that require parameter selection
 const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
     'alchemist',
-    'inventor',
-    'irrigation',
-    'mining',
     'smith',
-    'merchant',
     'resource_monopoly',
     'trade_monopoly',
-    'diplomat',
-    'spy',
-    'deserter',
-    'intrigue',
+    'espionage',
+    'treason',
     'saboteur'
 ];
 
@@ -77,9 +73,15 @@ function requiresParameters(cardType: ProgressCardType): boolean {
     return CARDS_REQUIRING_PARAMETERS.includes(cardType);
 }
 
-export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, roomId, gameState, onPlayCard }) => {
+export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
+    player,
+    roomId,
+    gameState,
+    onPlayCard,
+    onStartHexSelection,
+    onStartVertexSelection
+}) => {
     const [isPending, startTransition] = useTransition();
-    const [expandedCard, setExpandedCard] = useState<ProgressCardType | null>(null);
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
 
     // Only show in C&K mode
@@ -88,6 +90,17 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, room
     }
 
     const handlePlayCard = (cardType: ProgressCardType) => {
+        // Check for board selection cards first
+        if (onStartHexSelection && (cardType === 'merchant' || cardType === 'irrigation' || cardType === 'mining' || cardType === 'inventor')) {
+            onStartHexSelection(cardType);
+            return;
+        }
+
+        if (onStartVertexSelection && (cardType === 'intrigue' || cardType === 'diplomat')) {
+            onStartVertexSelection(cardType);
+            return;
+        }
+
         // Check if card requires parameters
         if (requiresParameters(cardType)) {
             setModalCard(cardType);
@@ -95,134 +108,97 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({ player, room
             // Play card directly
             startTransition(async () => {
                 try {
-                    await onPlayCard(cardType, {});
-                    setExpandedCard(null);
-                } catch (error) {
-                    console.error('Failed to play progress card:', error);
+                    await onPlayCard(cardType);
+                } catch (e) {
+                    console.error('Failed to play card', e);
                 }
             });
         }
     };
 
-    const handlePlayWithOptions = (cardType: ProgressCardType, options: any) => {
-        startTransition(async () => {
-            try {
-                await onPlayCard(cardType, options);
-                setExpandedCard(null);
-                setModalCard(null);
-            } catch (error) {
-                console.error('Failed to play progress card:', error);
+    // Collect all cards into a single list
+    const allCards: ProgressCardType[] = [];
+
+    // Handle both Array (new) and Record (legacy/mismatch) formats
+    if (Array.isArray(player.progressCards)) {
+        allCards.push(...player.progressCards);
+    } else if (typeof player.progressCards === 'object' && player.progressCards !== null) {
+        // Fallback for Record<string, number>
+        Object.entries(player.progressCards).forEach(([type, count]) => {
+            if (typeof count === 'number' && count > 0) {
+                const cardType = type as ProgressCardType;
+                for (let i = 0; i < count; i++) {
+                    allCards.push(cardType);
+                }
             }
         });
-    };
-
-    const groupedCards = player.progressCards.reduce((acc, card) => {
-        const category = PROGRESS_CARD_INFO[card].category;
-        if (!acc[category]) acc[category] = [];
-        acc[category].push(card);
-        return acc;
-    }, {} as Record<'science' | 'trade' | 'politics', ProgressCardType[]>);
-
-    const totalCards = player.progressCards.length;
-
-    if (totalCards === 0) {
-        return (
-            <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">
-                    Progress Cards
-                </h3>
-                <div className="text-xs text-slate-400 text-center py-2">
-                    No progress cards
-                </div>
-            </div>
-        );
     }
+
+    const cardCount = allCards.length;
+    const isEmpty = cardCount === 0;
 
     return (
         <>
-            <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
-                <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-                        Progress Cards
-                    </h3>
+            <div className="bg-slate-800/90 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto w-80">
+                {/* Header */}
+                <div className="flex justify-between items-center px-4 py-2 border-b border-slate-700">
+                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Progress Cards</h3>
                     <div className="text-xs text-slate-400">
-                        Total: <span className="text-white font-bold">{totalCards}</span>
+                        <span className="text-white font-bold">{cardCount}</span>
                     </div>
                 </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {(['science', 'trade', 'politics'] as const).map(category => {
-                        const cards = groupedCards[category] || [];
-                        if (cards.length === 0) return null;
+                {/* Card List */}
+                <div className="max-h-64 overflow-y-auto">
+                    {isEmpty ? (
+                        <div className="p-4 text-center text-slate-500 text-sm">No progress cards</div>
+                    ) : (
+                        <div className="flex flex-col">
+                            {allCards.map((cardType, index) => {
+                                const info = PROGRESS_CARD_INFO[cardType];
+                                const icon = CATEGORY_ICONS[info.category];
 
-                        return (
-                            <div key={category} className="space-y-1">
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <span>{CATEGORY_ICONS[category]}</span>
-                                    <span className="uppercase tracking-wide">{category}</span>
-                                    <span>({cards.length})</span>
-                                </div>
-                                {cards.map((card, index) => {
-                                    const info = PROGRESS_CARD_INFO[card];
-                                    const isExpanded = expandedCard === card;
-                                    const needsParams = requiresParameters(card);
-
-                                    return (
-                                        <div
-                                            key={`${card}-${index}`}
-                                            className={`p-2 rounded border transition-colors ${isExpanded
-                                                    ? 'border-yellow-500 bg-slate-700'
-                                                    : 'border-slate-600 bg-slate-900/50'
-                                                }`}
-                                        >
-                                            <button
-                                                onClick={() => setExpandedCard(isExpanded ? null : card)}
-                                                className="w-full text-left"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm font-medium">{info.name}</span>
-                                                    <span className={`text-xs px-2 py-0.5 rounded ${CATEGORY_COLORS[category]} text-white`}>
-                                                        {CATEGORY_ICONS[category]}
-                                                    </span>
-                                                </div>
-                                            </button>
-
-                                            {isExpanded && (
-                                                <div className="mt-2 space-y-2">
-                                                    <p className="text-xs text-slate-300 leading-relaxed">
-                                                        {info.description}
-                                                    </p>
-                                                    {needsParams && (
-                                                        <p className="text-xs text-yellow-400">
-                                                            ⚙️ Requires parameter selection
-                                                        </p>
-                                                    )}
-                                                    <button
-                                                        onClick={() => handlePlayCard(card)}
-                                                        disabled={isPending}
-                                                        className="w-full text-xs py-1.5 px-2 rounded bg-green-600 hover:bg-green-700 text-white font-medium transition-colors disabled:bg-slate-700 disabled:text-slate-500"
-                                                    >
-                                                        {isPending ? 'Playing...' : needsParams ? 'Select Options...' : 'Play Card'}
-                                                    </button>
-                                                </div>
-                                            )}
+                                return (
+                                    <button
+                                        key={`${cardType}-${index}`}
+                                        onClick={() => handlePlayCard(cardType)}
+                                        disabled={isPending}
+                                        className="relative group w-full text-left px-4 py-3 hover:bg-slate-700/50 transition-colors disabled:opacity-50 border-b border-slate-700/50 last:border-b-0"
+                                        title={info.description}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">{icon}</span>
+                                            <span className="font-semibold text-white group-hover:text-blue-300 transition-colors">
+                                                {info.name}
+                                            </span>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <ProgressCardModal
-                isOpen={modalCard !== null}
-                onClose={() => setModalCard(null)}
-                cardType={modalCard}
-                gameState={gameState}
-                currentPlayer={player}
-                onPlay={handlePlayWithOptions}
-            />
+            {modalCard && (
+                <ProgressCardModal
+                    cardType={modalCard}
+                    isOpen={!!modalCard}
+                    onClose={() => setModalCard(null)}
+                    onPlay={(options) => {
+                        startTransition(async () => {
+                            try {
+                                await onPlayCard(modalCard, options);
+                                setModalCard(null);
+                            } catch (e) {
+                                console.error('Failed to play card', e);
+                            }
+                        });
+                    }}
+                    gameState={gameState}
+                    currentPlayer={player}
+                />
+            )}
         </>
     );
 };

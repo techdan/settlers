@@ -13,6 +13,7 @@ interface HexTileProps {
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
+    isValid?: boolean;
 }
 
 const TERRAIN_COLORS: Record<TerrainType, string> = {
@@ -33,7 +34,7 @@ const TERRAIN_ICONS: Record<TerrainType, React.ElementType> = {
     desert: Sun,
 };
 
-export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled }) => {
+export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled, isValid }) => {
     const { x, y } = hexToPixel(hex, size);
 
     // Calculate points for pointy-topped hex
@@ -59,14 +60,22 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, has
                     .animate-flash {
                         animation: flash 1s ease-in-out 3;
                     }
+                    @keyframes pulse-valid {
+                        0% { stroke-width: 4; stroke: #4ade80; }
+                        50% { stroke-width: 8; stroke: #22c55e; }
+                        100% { stroke-width: 4; stroke: #4ade80; }
+                    }
+                    .animate-pulse-valid {
+                        animation: pulse-valid 2s infinite;
+                    }
                 `}
             </style>
             <polygon
                 points={pointsStr}
                 fill={TERRAIN_COLORS[terrain]}
-                stroke="#e5e7eb"
-                strokeWidth="4"
-                className={`transition-colors hover:brightness-110 ${isRolled ? 'animate-flash' : ''}`}
+                stroke={isValid ? "#4ade80" : "#e5e7eb"}
+                strokeWidth={isValid ? "6" : "4"}
+                className={`transition-all hover:brightness-110 ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid' : ''}`}
             />
 
             {/* Resource Icon */}
