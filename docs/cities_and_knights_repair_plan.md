@@ -61,28 +61,35 @@ This document provides a complete implementation plan to fix 15 critical errors 
 **Errors Fixed**: C3, H1, H2, H3, H4, M1, M5
 **Estimated Effort**: 5-8 hours (REDUCED - simpler than v1)
 
-#### v2.0 Changes Required:
+#### v2.1 Changes Required (CORRECTED):
 
-1. **Fix level requirement** (C3)
-   - File: `core/engine/improvements/improvement-manager.ts:199`
-   - Change: `if (level < 1)` → `if (level < 3)`
+1. **~~Fix level requirement~~ ALREADY CORRECT** (C3)
+   - File: `core/engine/improvements/improvement-manager.ts:368-373`
+   - ✅ **CURRENT IMPLEMENTATION IS CORRECT** per v2.1 GDD
+   - Current: `if (level < 1) return false;` with threshold `level + 1`
+   - This correctly implements the v2.1 specification (see GDD v2.1 lines 184-194)
 
-2. **Implement RED DIE threshold system** (H1 - v2.0)
-   - File: `core/engine/dice/event-die-manager.ts:123-151`
-   - **v2.0 Logic:**
+2. **~~Implement RED DIE threshold system~~ ALREADY CORRECT** (H1 - v2.1)
+   - File: `core/engine/improvements/improvement-manager.ts:368-373`
+   - ✅ **CURRENT IMPLEMENTATION IS CORRECT** per v2.1 GDD
+   - **v2.1 Logic (ALREADY IMPLEMENTED):**
      ```typescript
-     // Level 1-2: No cards
-     // Level 3: Draw if red die is 1 or 2
-     // Level 4-5: Draw if red die is 1, 2, or 3
+     // Level 0: No cards
+     // Level 1: Draw if red die ≤ 2 (1-2)
+     // Level 2: Draw if red die ≤ 3 (1-3)
+     // Level 3: Draw if red die ≤ 4 (1-4)
+     // Level 4: Draw if red die ≤ 5 (1-5)
+     // Level 5: Draw if red die ≤ 6 (1-6, always)
 
      function canDrawProgressCard(player, category, redDieValue) {
        const level = player.improvements?.[category] || 0;
-       if (level < 3) return false;
+       if (level < 1) return false;
 
-       const threshold = level >= 4 ? 3 : 2;  // Level 4-5: red≤3, Level 3: red≤2
-       return redDieValue <= threshold;
+       const redDieThreshold = level + 1;
+       return redDieValue <= redDieThreshold;
      }
      ```
+   - **NOTE**: The v2.0 specification was incorrect. v2.1 GDD corrects this.
 
 3. **ALL qualifying players draw** (H1 - v2.0)
    - File: `core/engine/dice/event-die-manager.ts:123-151`
@@ -119,22 +126,25 @@ This document provides a complete implementation plan to fix 15 critical errors 
 - **Merchant Card**: Display Merchant icon in player card when active (grants 1 VP)
 - Note: Merchant progress card logic should track which player currently has it active
 
-#### Testing (v2.0 UPDATED):
-- [ ] Can only draw at level 3+ (not level 1-2)
-- [ ] Level 3: draws if red die ≤ 2
-- [ ] Level 4-5: draws if red die ≤ 3
-- [ ] ALL qualifying players draw (not just one)
-- [ ] Each player draws exactly 1 card (not 2)
-- [ ] VP cards don't appear in hand
-- [ ] VP cards (Printer, Constitution) display in player card
+#### Testing (v2.1 UPDATED):
+- [x] Can draw at level 1+ (v2.1: Level 1 allowed)
+- [x] Level 1: draws if red die ≤ 2
+- [x] Level 2: draws if red die ≤ 3
+- [x] Level 3: draws if red die ≤ 4
+- [x] Level 4: draws if red die ≤ 5
+- [x] Level 5: draws if red die ≤ 6 (always)
+- [x] ALL qualifying players draw (not just one)
+- [x] Each player draws exactly 1 card (not 2)
+- [x] VP cards don't appear in hand
+- [x] VP cards (Printer, Constitution) display in player card
 - [ ] Merchant displays in player card when active
-- [ ] Cannot end turn with >4 cards
+- [x] Cannot end turn with >4 cards
 - [ ] Can hold 5 during turn
 - [ ] Alchemy playable before roll
-- [ ] All card draws logged to game log
-- [ ] VP card reveals logged with "+1 VP" message
+- [x] All card draws logged to game log
+- [x] VP card reveals logged with "+1 VP" message
 - [ ] Hand limit warnings logged
-- [ ] Card plays logged with card name
+- [x] Card plays logged with card name
 
 ---
 

@@ -4,6 +4,8 @@ import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
 import { ResourceType } from '@/core/rules/board-constants';
+import { displaceKnight } from '@/core/engine/knights/knight-manager';
+import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
 
 /**
  * Progress Card Manager (Cities & Knights Expansion)
@@ -837,10 +839,11 @@ function executeTreason(gameState: GameState, player: PlayerState, options?: any
 }
 
 function executeIntrigue(gameState: GameState, player: PlayerState, options?: any): void {
-    // Displace a knight on an intersection connected to one of your routes
-    const { opponentId, knightId, targetVertexId } = options || {};
-    if (!opponentId || !knightId || !targetVertexId) {
-        throw new Error('Intrigue requires opponentId, knightId, and targetVertexId');
+    // Intrigue: Displace any opponent's knight adjacent to one of your roads
+    // Unlike normal knight displacement, Intrigue can displace ANY knight (basic, strong, OR mighty)
+    const { opponentId, knightId } = options || {};
+    if (!opponentId || !knightId) {
+        throw new Error('Intrigue requires opponentId and knightId');
     }
 
     const opponent = gameState.players.find(p => p.id === opponentId);
@@ -851,36 +854,36 @@ function executeIntrigue(gameState: GameState, player: PlayerState, options?: an
     const knight = opponent.knights.find(k => k.id === knightId);
     if (!knight) throw new Error('Knight not found');
 
-    // Validate the knight is on an intersection connected to one of player's routes
-    const knightVertex = gameState.board.vertices[knight.vertexId];
-    if (!knightVertex) throw new Error('Knight vertex not found');
+    // Validate the knight is on an intersection connected to one of player's roads
+    const knightVertexId = knight.vertexId;
+    const [q, r, d] = knightVertexId.split(',').map(Number);
 
-    // Check if knight's current vertex is adjacent to any of player's roads
-    // We need to find all edges that connect to this vertex
-    const hasAdjacentRoute = Object.values(gameState.board.edges).some((edge) => {
-        // Check if edge connects to this vertex and is owned by player
-        // Edge IDs are in format "q,r,d" where d is 0-5
-        // Vertices connect to edges - we need to check if the edge endpoints include this vertex
-        // This is a simplified check - in practice you'd need proper vertex-edge adjacency logic
-        return edge && edge.owner === player.id && edge.structure === 'road' &&
-            (edge.q === knightVertex.q && edge.r === knightVertex.r);
-    });
+    // Get all edges adjacent to the knight's vertex
+    const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+
+    // Check if any of these edges are owned by the player
+    let hasAdjacentRoute = false;
+    for (const edgeId of adjacentEdges) {
+        const edge = gameState.board.edges[edgeId];
+        if (edge && edge.owner === player.id && edge.structure === 'road') {
+            hasAdjacentRoute = true;
+            break;
+        }
+    }
 
     if (!hasAdjacentRoute) {
         throw new Error('Knight must be on an intersection connected to one of your routes');
     }
 
-    // Validate target vertex exists
-    const vertex = gameState.board.vertices[targetVertexId];
-    if (!vertex) throw new Error('Invalid target vertex');
-
-    // Move the knight
-    knight.vertexId = targetVertexId;
+    // Use the proper displacement logic
+    // This will set the game into 'knight_displacement' phase
+    // The displaced knight owner must relocate it via their road network
+    displaceKnight(gameState, knight, 'main_phase');
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} displaced ${opponent.name}'s knight with Intrigue`,
+        message: `${player.name} displaced ${opponent.name}'s ${knight.level} knight with Intrigue`,
         playerId: player.id
     });
 }

@@ -373,7 +373,7 @@ export function removeKnight(gameState: GameState, knightId: string): void {
  * Sets the game into 'knight_displacement' phase
  * The displaced knight owner must relocate it
  */
-function displaceKnight(gameState: GameState, knight: Knight, nextPhase: GamePhase) {
+export function displaceKnight(gameState: GameState, knight: Knight, nextPhase: GamePhase) {
     const owner = gameState.players.find(p => p.id === knight.playerId);
     if (!owner) return;
 

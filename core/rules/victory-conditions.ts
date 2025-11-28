@@ -75,6 +75,11 @@ export function calculateTotalVictoryPoints(
         if (gameState.activeMerchant === playerId) {
             points += 1;
         }
+
+        // Cities & Knights: Defender of Catan VP Tokens
+        if (player.defenderVPTokens) {
+            points += player.defenderVPTokens; // Each token = 1 VP
+        }
     }
 
     return points;
@@ -123,6 +128,11 @@ export function calculatePublicVictoryPoints(
         // Cities & Knights: Merchant (public - grants 1 VP)
         if (gameState.activeMerchant === playerId) {
             points += 1;
+        }
+
+        // Cities & Knights: Defender of Catan VP Tokens (public)
+        if (player.defenderVPTokens) {
+            points += player.defenderVPTokens; // Each token = 1 VP
         }
     }
 
