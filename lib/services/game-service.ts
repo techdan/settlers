@@ -157,6 +157,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         // Cities & Knights fields
         gameMode,
         barbarianPosition: gameMode === 'cities_and_knights' ? 0 : undefined,
+        hasBarbariansAttacked: gameMode === 'cities_and_knights' ? false : undefined,
         metropolises: gameMode === 'cities_and_knights' ? {
             science: { type: 'science', owner: null, vertexId: null },
             trade: { type: 'trade', owner: null, vertexId: null },
@@ -243,12 +244,22 @@ export async function rollDice(
                 message: `Players exceeding their hand limit must discard half`
             });
         } else {
-            gameState.phase = 'robber_placement';
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `${player.name} must move the robber`
-            });
+            // C&K Rule: Robber doesn't move until first barbarian attack
+            if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+                gameState.phase = 'main_phase';
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `7 rolled, but the robber stays in the desert until the first barbarian attack.`
+                });
+            } else {
+                gameState.phase = 'robber_placement';
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `${player.name} must move the robber`
+                });
+            }
         }
     } else {
         // Snapshot resources/commodities for Aqueduct check

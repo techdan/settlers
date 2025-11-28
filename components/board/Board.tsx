@@ -21,6 +21,8 @@ import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
 import { getAdjacentEdgesForVertex, getEdgeEndpoints, getAdjacentVertexIds } from '@/lib/hex';
 
+import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
+
 interface BoardProps {
     gameState: GameState;
     playerId: string;
@@ -75,9 +77,30 @@ export const Board: React.FC<BoardProps> = ({
     const [isPending, startTransition] = useTransition();
     const performOptimisticAction = useOptimisticAction();
 
+    const knightsMap = useMemo(() => {
+        const map = new Map<string, Knight>();
+        gameState.players.forEach(p => {
+            p.knights?.forEach(k => {
+                map.set(k.vertexId, k);
+            });
+        });
+        return map;
+    }, [gameState.players]);
+
     // Calculate valid placements for highlighting
     const validVertices = useMemo(() => {
         const valid = new Set<string>();
+
+        // Knight Displacement Mode - Must be checked FIRST before currentTurn check
+        // The displaced player needs to relocate even if it's not their turn
+        if (gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId) {
+            const originVertexId = gameState.pendingDisplacement.originVertexId;
+            const targets = getValidRelocationTargets(gameState, playerId, originVertexId);
+            targets.forEach((t: string) => valid.add(t));
+            return valid;
+        }
+
+        // For all other actions, must be the current player's turn
         if (gameState.currentTurn !== playerId) return valid;
 
         // Knight Movement Mode
@@ -149,39 +172,6 @@ export const Board: React.FC<BoardProps> = ({
             return valid;
         }
 
-        // Knight Displacement Mode
-        if (gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId) {
-            const originVertexId = gameState.pendingDisplacement.originVertexId;
-            const [q, r, d] = originVertexId.split(',').map(Number);
-            const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
-
-            // Find valid relocation spots (connected by own road, empty)
-            const connectedVertices = new Set<string>();
-
-            adjacentEdges.forEach(edgeId => {
-                const edge = gameState.board.edges[edgeId];
-                if (edge && edge.owner === playerId) {
-                    const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
-                    endpoints.forEach(vId => {
-                        if (vId !== originVertexId) {
-                            connectedVertices.add(vId);
-                        }
-                    });
-                }
-            });
-
-            connectedVertices.forEach(vId => {
-                const vertex = gameState.board.vertices[vId];
-                const hasBuilding = vertex && (vertex.structure || vertex.owner);
-                const hasKnight = knightsMap.has(vId);
-
-                if (!hasBuilding && !hasKnight) {
-                    valid.add(vId);
-                }
-            });
-            return valid;
-        }
-
         if (gameState.phase.startsWith('setup')) {
             vertices.forEach(v => {
                 if (isValidSetupSettlement(gameState, v.id, playerId)) {
@@ -189,31 +179,46 @@ export const Board: React.FC<BoardProps> = ({
                 }
             });
         } else if (gameState.phase === 'main_phase') {
-            if (buildMode === 'settlement') {
+            if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
+                // Highlight own cities and metropolises for management
+                // Also highlight own knights for management
                 vertices.forEach(v => {
-                    if (isValidMainPhaseSettlement(gameState, v.id, playerId)) {
+                    const isOwnCity = v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis');
+                    const hasOwnKnight = knightsMap.has(v.id) && knightsMap.get(v.id)?.playerId === playerId;
+
+                    if (isOwnCity || hasOwnKnight) {
                         valid.add(v.id);
                     }
                 });
-            } else if (buildMode === 'city') {
-                vertices.forEach(v => {
-                    if (isValidMainPhaseCity(gameState, v.id, playerId)) {
-                        valid.add(v.id);
-                    }
-                });
-            } else if (buildMode === 'knight') {
-                vertices.forEach(v => {
-                    if (isValidKnightPlacement(gameState, v.id, playerId)) {
-                        valid.add(v.id);
-                    }
-                });
-            } else if (buildMode === 'city_wall') {
-                // City walls are per-city, highlight valid cities
-                vertices.forEach(v => {
-                    if (canBuildCityWall(gameState, v.id, playerId)) {
-                        valid.add(v.id);
-                    }
-                });
+            }
+
+            if (gameState.currentTurn === playerId) {
+                if (buildMode === 'settlement') {
+                    vertices.forEach(v => {
+                        if (isValidMainPhaseSettlement(gameState, v.id, playerId)) {
+                            valid.add(v.id);
+                        }
+                    });
+                } else if (buildMode === 'city') {
+                    vertices.forEach(v => {
+                        if (isValidMainPhaseCity(gameState, v.id, playerId)) {
+                            valid.add(v.id);
+                        }
+                    });
+                } else if (buildMode === 'knight') {
+                    vertices.forEach(v => {
+                        if (isValidKnightPlacement(gameState, v.id, playerId)) {
+                            valid.add(v.id);
+                        }
+                    });
+                } else if (buildMode === 'city_wall') {
+                    // City walls are per-city, highlight valid cities
+                    vertices.forEach(v => {
+                        if (canBuildCityWall(gameState, v.id, playerId)) {
+                            valid.add(v.id);
+                        }
+                    });
+                }
             }
         }
         return valid;
@@ -251,6 +256,15 @@ export const Board: React.FC<BoardProps> = ({
     const validHexes = useMemo(() => {
         const valid = new Set<string>();
         if (gameState.currentTurn !== playerId) return valid;
+        if (gameState.phase === 'robber_placement') {
+            tiles.forEach(hex => {
+                if (hex.id !== gameState.robberHexId) {
+                    valid.add(hex.id);
+                }
+            });
+            return valid;
+        }
+
         if (!selectingHexForCard) return valid;
 
         const currentPlayer = gameState.players.find(p => p.id === playerId);
@@ -307,19 +321,19 @@ export const Board: React.FC<BoardProps> = ({
         return valid;
     }, [gameState, playerId, selectingHexForCard, tiles]);
 
-    const knightsMap = useMemo(() => {
-        const map = new Map<string, Knight>();
-        gameState.players.forEach(p => {
-            p.knights?.forEach(k => {
-                map.set(k.vertexId, k);
-            });
-        });
-        return map;
-    }, [gameState.players]);
-
     const handleVertexClick = (vertexId: string) => {
         if (isPending) return;
-        if (gameState.currentTurn !== playerId) return;
+
+        // Allow viewing city details even if not current turn
+        // Also allow viewing knight details
+        const vertex = gameState.board.vertices[vertexId];
+        const isOwnCity = vertex && (vertex.structure === 'city' || vertex.structure === 'metropolis') && vertex.owner === playerId;
+        const isOwnKnight = knightsMap.has(vertexId) && knightsMap.get(vertexId)?.playerId === playerId;
+
+        // Allow displaced player to relocate their knight even if it's not their turn
+        const isDisplacedPlayer = gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId;
+
+        if (gameState.currentTurn !== playerId && !isOwnCity && !isOwnKnight && !isDisplacedPlayer) return;
 
         // Progress Card Vertex Selection
         if (selectingVertexForCard && onVertexSelectedForCard) {
@@ -384,8 +398,11 @@ export const Board: React.FC<BoardProps> = ({
         // Handle knight click (for activation/movement UI)
         const knight = knightsMap.get(vertexId);
         if (knight && onKnightClick && !buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
-            onKnightClick(knight.id);
-            return;
+            // Only allow knight interaction if it's my turn (or if we want to view knight details later)
+            if (gameState.currentTurn === playerId) {
+                onKnightClick(knight.id);
+                return;
+            }
         }
 
         if (gameState.phase.startsWith('setup')) {
@@ -453,13 +470,14 @@ export const Board: React.FC<BoardProps> = ({
                 // Check for knight interaction first
                 const knight = knightsMap.get(vertexId);
                 if (knight && knight.playerId === playerId) {
-                    onKnightClick?.(knight.id);
+                    if (gameState.currentTurn === playerId) {
+                        onKnightClick?.(knight.id);
+                    }
                     return;
                 }
 
                 // Handle city management click
-                const vertex = gameState.board.vertices[vertexId];
-                if (vertex && (vertex.structure === 'city' || vertex.structure === 'metropolis') && vertex.owner === playerId) {
+                if (isOwnCity) {
                     onCityClick?.(vertexId);
                 }
             }
@@ -640,18 +658,24 @@ export const Board: React.FC<BoardProps> = ({
                                     ))}
 
                                     {/* Vertices (Settlements/Cities) */}
-                                    {vertices.map(vertex => (
-                                        <VertexRenderer
-                                            key={vertex.id}
-                                            vertex={vertex}
-                                            knight={knightsMap.get(vertex.id)}
-                                            size={HEX_SIZE}
-                                            color={gameState.players.find(p => p.id === vertex.owner)?.color}
-                                            onClick={handleVertexClick}
-                                            isValid={validVertices.has(vertex.id)}
-                                            theme={theme}
-                                        />
-                                    ))}
+                                    {vertices.map(vertex => {
+                                        const knight = knightsMap.get(vertex.id);
+                                        const isMoving = knight && knight.id === movingKnightId;
+                                        return (
+                                            <VertexRenderer
+                                                key={vertex.id}
+                                                vertex={vertex}
+                                                knight={knight}
+                                                size={HEX_SIZE}
+                                                color={gameState.players.find(p => p.id === vertex.owner)?.color}
+                                                onClick={handleVertexClick}
+                                                isValid={validVertices.has(vertex.id)}
+                                                theme={theme}
+                                                isMoving={isMoving}
+                                                onCancelMove={onCancelBuild}
+                                            />
+                                        );
+                                    })}
                                 </svg>
                             </div>
                         </TransformComponent>

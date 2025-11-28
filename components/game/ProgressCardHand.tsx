@@ -139,9 +139,12 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
 
     return (
         <>
-            <div className="bg-slate-800/90 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto w-80">
+            <div className="relative rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto w-80 overflow-hidden">
+                <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
+                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
+
                 {/* Header */}
-                <div className="flex justify-between items-center px-4 py-2 border-b border-slate-700">
+                <div className="relative z-10 flex justify-between items-center px-4 py-2 border-b border-slate-700">
                     <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Progress Cards</h3>
                     <div className="text-xs text-slate-400">
                         <span className="text-white font-bold">{cardCount}</span>
@@ -149,7 +152,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                 </div>
 
                 {/* Card List */}
-                <div className="max-h-64 overflow-y-auto">
+                <div className="relative z-10 max-h-64 overflow-y-auto">
                     {isEmpty ? (
                         <div className="p-4 text-center text-slate-500 text-sm">No progress cards</div>
                     ) : (

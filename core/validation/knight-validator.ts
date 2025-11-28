@@ -28,17 +28,23 @@ export function isValidKnightPlacement(
     vertexId: string,
     playerId: string
 ): boolean {
-    // 1. Check vertex has player's building
+    // 1. Check vertex is empty (no building)
     const vertex = gameState.board.vertices[vertexId];
-    if (!vertex) return false;
-    if (vertex.owner !== playerId) return false;
-    if (!vertex.structure || vertex.structure === null) return false;
+    if (vertex && (vertex.structure || vertex.owner)) return false;
 
     // 2. Check no existing knight
     if (hasKnightAtVertex(gameState, vertexId)) return false;
 
-    // 3. Check resources (validated separately in service layer)
-    // This validator just checks placement rules, not affordability
+    // 3. Check connected to player's road
+    const [q, r, d] = vertexId.split(',').map(Number);
+    const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+
+    const hasRoad = adjacentEdges.some(edgeId => {
+        const edge = gameState.board.edges[edgeId];
+        return edge && edge.owner === playerId;
+    });
+
+    if (!hasRoad) return false;
 
     return true;
 }
@@ -133,8 +139,8 @@ export function isValidKnightMovement(
     // Check target occupation
     const targetVertex = gameState.board.vertices[targetVertexId];
 
-    // Cannot move to vertex with opponent's building
-    if (targetVertex && (targetVertex.structure || targetVertex.owner) && targetVertex.owner !== playerId) {
+    // Cannot move to vertex with ANY building (own or opponent)
+    if (targetVertex && (targetVertex.structure || targetVertex.owner)) {
         return false;
     }
 

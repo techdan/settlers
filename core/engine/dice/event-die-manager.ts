@@ -108,6 +108,7 @@ function processBarbarianAdvance(gameState: GameState): void {
         // Set phase to barbarian_attack so the attack must be resolved
         // before continuing the game
         gameState.phase = 'barbarian_attack';
+        gameState.hasBarbariansAttacked = true;
     }
 }
 

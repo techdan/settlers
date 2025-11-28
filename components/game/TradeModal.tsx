@@ -135,7 +135,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             className={`px-4 py-1 rounded-full text-sm font-bold ${mode === 'domestic' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
                         >Players</button>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer">✕</button>
                 </div>
 
                 {mode === 'bank' ? (
@@ -149,13 +149,13 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                     onChange={e => setGiveRes(e.target.value as ResourceType | CommodityType)}
                                     className="bg-slate-700 text-white rounded p-2 w-full mb-2 text-center appearance-none cursor-pointer hover:bg-slate-600"
                                 >
-                                    {ALL_TYPES.map(r => (
-                                        <option key={r} value={r}>{getIcon(r)} {r}</option>
-                                    ))}
+                                    {ALL_TYPES.map(r => {
+                                        const count = isCommodity(r) ? (player.commodities?.[r as CommodityType] || 0) : (player.resources[r as ResourceType] || 0);
+                                        return (
+                                            <option key={r} value={r}>{getIcon(r)} {r} ({count})</option>
+                                        );
+                                    })}
                                 </select>
-                                <div className="text-sm text-slate-500">
-                                    Have: {isCommodity(giveRes) ? (player.commodities?.[giveRes] || 0) : (player.resources[giveRes] || 0)}
-                                </div>
                             </div>
 
                             <div className="text-2xl font-bold text-slate-500">➜</div>
@@ -168,13 +168,13 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                     onChange={e => setGetRes(e.target.value as ResourceType | CommodityType)}
                                     className="bg-slate-700 text-white rounded p-2 w-full mb-2 text-center appearance-none cursor-pointer hover:bg-slate-600"
                                 >
-                                    {ALL_TYPES.map(r => (
-                                        <option key={r} value={r}>{getIcon(r)} {r}</option>
-                                    ))}
+                                    {ALL_TYPES.map(r => {
+                                        const count = isCommodity(r) ? (player.commodities?.[r as CommodityType] || 0) : (player.resources[r as ResourceType] || 0);
+                                        return (
+                                            <option key={r} value={r}>{getIcon(r)} {r} ({count})</option>
+                                        );
+                                    })}
                                 </select>
-                                <div className="text-sm text-slate-500">
-                                    Have: {isCommodity(getRes) ? (player.commodities?.[getRes] || 0) : (player.resources[getRes] || 0)}
-                                </div>
                             </div>
                         </div>
 
@@ -202,16 +202,27 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                 <h3 className="text-center text-slate-300 mb-4 font-bold">You Give</h3>
                                 <div className="space-y-2">
                                     {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
+                                        const current = player.resources[res] || 0;
+                                        const giving = offerGive[res] || 0;
+                                        const getting = offerGet[res] || 0;
+                                        const projected = current - giving + getting;
+
+                                        let colorClass = 'text-slate-300';
+                                        if (projected < current) colorClass = 'text-red-400';
+                                        if (projected > current) colorClass = 'text-green-400';
+
                                         return (
                                             <div key={res} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
                                                     <span>{RESOURCE_ICONS[res]}</span>
-                                                    <span className="text-sm capitalize">{res}</span>
+                                                    <span className={`text-sm capitalize ${colorClass}`}>
+                                                        {res} ({projected})
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => updateOffer('give', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600">-</button>
                                                     <span className="w-4 text-center">{offerGive[res]}</span>
-                                                    <button onClick={() => updateOffer('give', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600" disabled={offerGive[res] >= player.resources[res]}>+</button>
+                                                    <button onClick={() => updateOffer('give', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600" disabled={offerGive[res] >= (player.resources[res] || 0)}>+</button>
                                                 </div>
                                             </div>
                                         );
@@ -224,11 +235,22 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                 <h3 className="text-center text-slate-300 mb-4 font-bold">You Get</h3>
                                 <div className="space-y-2">
                                     {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
+                                        const current = player.resources[res] || 0;
+                                        const giving = offerGive[res] || 0;
+                                        const getting = offerGet[res] || 0;
+                                        const projected = current - giving + getting;
+
+                                        let colorClass = 'text-slate-300';
+                                        if (projected < current) colorClass = 'text-red-400';
+                                        if (projected > current) colorClass = 'text-green-400';
+
                                         return (
                                             <div key={res} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
                                                     <span>{RESOURCE_ICONS[res]}</span>
-                                                    <span className="text-sm capitalize">{res}</span>
+                                                    <span className={`text-sm capitalize ${colorClass}`}>
+                                                        {res} ({projected})
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => updateOffer('get', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600">-</button>

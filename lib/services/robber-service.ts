@@ -179,15 +179,24 @@ export async function discardCards(
     });
 
     if (pendingPlayers.length === 0) {
-        gameState.phase = 'robber_placement';
+        // C&K Rule: Robber doesn't move until first barbarian attack
+        if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+            gameState.phase = 'main_phase';
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `All discards complete. Robber stays in desert (no barbarian attack yet).`
+            });
+        } else {
+            gameState.phase = 'robber_placement';
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `All discards complete. Move the robber.`
+            });
+        }
         // Reset flags
         gameState.players.forEach(p => p.discardedThisTurn = false);
-
-        gameState.logs.push({
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: Date.now(),
-            message: `All discards complete. Move the robber.`
-        });
     }
 
     // Save to database

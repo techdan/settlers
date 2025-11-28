@@ -40,16 +40,29 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
         });
     };
 
+    const MAX_KNIGHTS = 6;
+    const MAX_WALLS = 3;
+
+    const knightsCount = player?.knights?.length || 0;
+    const knightsRemaining = Math.max(0, MAX_KNIGHTS - knightsCount);
+
+    const wallsCount = Object.values(gameState.board.vertices).filter(v => v.owner === playerId && v.hasCityWall).length;
+    const wallsRemaining = Math.max(0, MAX_WALLS - wallsCount);
+
+    const canBuildKnight = canAffordKnight && knightsRemaining > 0;
+    const canBuildCityWall = canAffordCityWall && wallsRemaining > 0;
+
     if (!isMyTurn || gameState.phase !== 'main_phase') return null;
 
     return (
         <div className="flex gap-2 bg-slate-800/80 p-2 rounded-xl backdrop-blur-sm border border-slate-700 pointer-events-auto">
             <button
                 onClick={() => onSetBuildMode(buildMode === 'road' ? null : 'road')}
-                disabled={!canAffordRoad}
+                disabled={!canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
+                title={`Build a Road (1 Brick, 1 Wood)\nConnects settlements and cities.\nRemaining: ${player?.roadsRemaining ?? 0}`}
                 className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'road'
                     ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : canAffordRoad
+                    : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
                         ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
@@ -59,10 +72,11 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
             </button>
             <button
                 onClick={() => onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
-                disabled={!canAffordSettlement}
+                disabled={!canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
+                title={`Build a Settlement (1 Brick, 1 Wood, 1 Sheep, 1 Wheat)\nGathers 1 resource from adjacent hexes.\nRemaining: ${player?.settlementsRemaining ?? 0}`}
                 className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'settlement'
                     ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : canAffordSettlement
+                    : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
                         ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
@@ -72,10 +86,11 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
             </button>
             <button
                 onClick={() => onSetBuildMode(buildMode === 'city' ? null : 'city')}
-                disabled={!canAffordCity}
+                disabled={!canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
+                title={`Build a City (3 Ore, 2 Wheat)\nUpgrades a settlement. Gathers 2 resources/commodities.\nRemaining: ${player?.citiesRemaining ?? 0}`}
                 className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city'
                     ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : canAffordCity
+                    : canAffordCity && (player?.citiesRemaining ?? 0) > 0
                         ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
@@ -88,6 +103,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 <button
                     onClick={handleBuyDevCard}
                     disabled={!canAffordDevCard || deckSize === 0 || isPending}
+                    title={`Buy a Development Card (1 Sheep, 1 Wheat, 1 Ore)\nGrants special abilities or VP.\nCards in deck: ${deckSize}`}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
                         ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
@@ -102,15 +118,16 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
             {isCitiesAndKnights && (
                 <button
                     onClick={() => onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
-                    disabled={!canAffordKnight}
+                    disabled={!canBuildKnight}
+                    title={`Hire a Knight (1 Sheep, 1 Ore)\nDefends against barbarians and can displace opponents.\nRemaining: ${knightsRemaining}`}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                        : canAffordKnight
+                        : canBuildKnight
                             ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
-                    <span>Knight ⚔️</span>
+                    <span>Knight ⚔️ ({knightsRemaining})</span>
                     <span className="text-xs font-normal opacity-80">1🐑 1🪨</span>
                 </button>
             )}
@@ -119,15 +136,16 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
             {isCitiesAndKnights && (
                 <button
                     onClick={() => onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
-                    disabled={!canAffordCityWall}
+                    disabled={!canBuildCityWall}
+                    title={`Build a City Wall (2 Brick)\nIncreases hand limit by 2 and protects against robber.\nRemaining: ${wallsRemaining}`}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                        : canAffordCityWall
+                        : canBuildCityWall
                             ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
-                    <span>City Wall 🏰</span>
+                    <span>City Wall 🏰 ({wallsRemaining})</span>
                     <span className="text-xs font-normal opacity-80">2🧱</span>
                 </button>
             )}

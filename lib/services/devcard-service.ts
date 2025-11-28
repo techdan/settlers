@@ -139,6 +139,10 @@ export async function playDevCard(
 
     switch (cardType) {
         case 'knight':
+            // C&K Rule: Robber cannot move before first barbarian attack
+            if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+                throw new Error('Cannot move the robber before the first barbarian attack');
+            }
             player.knightsPlayed = (player.knightsPlayed || 0) + 1;
             updateLargestArmy(gameState);
             gameState.phase = 'robber_placement';

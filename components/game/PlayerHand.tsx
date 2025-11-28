@@ -30,9 +30,12 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId }) => {
         : 0;
 
     return (
-        <div className="bg-slate-800/90 px-6 py-3 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-3">
+        <div className="relative px-6 py-3 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-3 overflow-hidden">
+            <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
+            <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
+
             {/* Resources */}
-            <div className="flex items-center gap-1">
+            <div className="relative z-10 flex items-center gap-1">
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
                     <div key={res} className="flex items-center gap-1 px-2">
                         <div className="text-xl">{RESOURCE_ICONS[res]}</div>
@@ -47,8 +50,8 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId }) => {
             {/* Commodities (if in C&K mode) */}
             {hasCommodities && (
                 <>
-                    <div className="h-8 border-l border-slate-600"></div>
-                    <div className="flex items-center gap-1">
+                    <div className="relative z-10 h-8 border-l border-slate-600"></div>
+                    <div className="relative z-10 flex items-center gap-1">
                         {(['paper', 'cloth', 'coin'] as CommodityType[]).map(commodity => (
                             <div key={commodity} className="flex items-center gap-1 px-2">
                                 <div className="text-xl">{COMMODITY_ICONS[commodity]}</div>

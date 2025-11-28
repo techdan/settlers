@@ -171,6 +171,42 @@ Knights are pieces placed on intersections:
 
 ---
 
+# 6.5. Robber Delay Rule (Cities & Knights)
+
+## ✅ v2.1 ADDITION (Verified)
+
+In Cities & Knights mode, the **Robber remains on the desert hex and does not move** until **after the first barbarian attack** on Catan.
+
+### **Rules:**
+1. **Rolling a 7 Before First Attack:**
+   - Players with more than 7 cards (adjusted for city walls: 7 + 2 per wall) **must still discard half** their cards.
+   - The Robber **does NOT move** from the desert hex.
+   - No player steals cards.
+   - The game proceeds directly to the main phase after discarding is complete.
+
+2. **Knight Actions Before First Attack:**
+   - Knights **cannot chase the robber** if they move adjacent to it.
+   - The knight move is still valid, but no robber placement phase is triggered.
+
+3. **Progress Cards Before First Attack:**
+   - The **Bishop (Taxation)** progress card **cannot be played** before the first barbarian attack (it requires moving the robber).
+
+4. **Development Cards Before First Attack:**
+   - **Knight development cards** (from base game, if somehow in deck) **cannot be played** before the first barbarian attack.
+
+5. **After First Attack:**
+   - Once the barbarian ship reaches position 7 and the first attack is resolved, the robber functions normally for the rest of the game.
+   - All subsequent 7 rolls trigger normal robber movement and stealing.
+   - Knights can chase the robber.
+   - Bishop and Knight cards can be played normally.
+
+### **Implementation:**
+- `gameState.hasBarbariansAttacked` flag tracks whether the first attack has occurred.
+- Initialized to `false` at game start in C&K mode.
+- Set to `true` when `barbarianPosition >= 7`.
+
+---
+
 # 7. Progress Cards (Original)
 Triggered by event die showing city-gate color: green/yellow/blue.
 Player with improvement ≥3 draws corresponding deck card.

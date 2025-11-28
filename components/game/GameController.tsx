@@ -21,7 +21,8 @@ import { AqueductModal } from './AqueductModal';
 // Cities & Knights components
 import { CityManagementDialog } from './CityManagementDialog';
 import { KnightManagementDialog } from './KnightManagementDialog';
-import { KnightControls } from './KnightControls';
+import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
+
 import { BarbarianTrack } from './BarbarianTrack';
 import { EventDieDisplay } from './EventDieDisplay';
 import { ProgressCardHand } from './ProgressCardHand';
@@ -86,14 +87,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         await buildCityWall(roomId, playerId, vertexId);
     };
 
-    const handleBuildKnight = async () => {
-        try {
-            // This would need vertex selection logic similar to buildMode
-            console.log('Build knight - vertex selection needed');
-        } catch (e) {
-            console.error('Error building knight:', e);
-        }
-    };
+
 
     const handleActivateKnight = async (knightId: string) => {
         try {
@@ -355,35 +349,51 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             {gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId && (
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
                     <h3 className="text-xl font-bold">Your Knight Was Displaced!</h3>
-                    <p className="text-center max-w-md">
-                        One of your knights was displaced by a stronger opponent.
-                        You must move it to an adjacent empty intersection connected by your roads.
-                        If no valid spot exists, you must remove the knight.
-                    </p>
-                    <div className="flex gap-4">
-                        <button
-                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors"
-                            onClick={async () => {
-                                try {
-                                    const res = await fetch(`/api/game/${roomId}/knight`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                            playerId,
-                                            action: 'relocate',
-                                            knightId: gameState.pendingDisplacement!.knightId,
-                                            targetVertexId: null // Remove
-                                        })
-                                    });
-                                    if (!res.ok) throw new Error('Failed to remove knight');
-                                } catch (e) {
-                                    console.error('Error removing knight:', e);
-                                }
-                            }}
-                        >
-                            Remove Knight
-                        </button>
-                    </div>
+                    {(() => {
+                        const validTargets = getValidRelocationTargets(
+                            gameState,
+                            playerId,
+                            gameState.pendingDisplacement!.originVertexId
+                        );
+                        const hasValidTargets = validTargets.length > 0;
+
+                        return (
+                            <>
+                                <p className="text-center max-w-md">
+                                    {hasValidTargets
+                                        ? "One of your knights was displaced by a stronger opponent. Click on any empty intersection connected by your roads to relocate it."
+                                        : "No valid intersections available to relocate your knight. You must remove it from the board."
+                                    }
+                                </p>
+                                {!hasValidTargets && (
+                                    <div className="flex gap-4">
+                                        <button
+                                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors"
+                                            onClick={async () => {
+                                                try {
+                                                    const res = await fetch(`/api/game/${roomId}/knight`, {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            playerId,
+                                                            action: 'relocate',
+                                                            knightId: gameState.pendingDisplacement!.knightId,
+                                                            targetVertexId: null // Remove
+                                                        })
+                                                    });
+                                                    if (!res.ok) throw new Error('Failed to remove knight');
+                                                } catch (e) {
+                                                    console.error('Error removing knight:', e);
+                                                }
+                                            }}
+                                        >
+                                            Remove Knight
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             )}
 
@@ -439,16 +449,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                             </>
                         )}
                         {!isCitiesAndKnights && <PlayerDevCards gameState={gameState} playerId={playerId} />}
-                        {isCitiesAndKnights && currentPlayer && (
-                            <KnightControls
-                                player={currentPlayer}
-                                roomId={roomId}
-                                onBuildKnight={handleBuildKnight}
-                                onActivateKnight={handleActivateKnight}
-                                onMoveKnight={handleMoveKnight}
-                                onUpgradeKnight={handleUpgradeKnight}
-                            />
-                        )}
+
                     </div>
                 </div>
 

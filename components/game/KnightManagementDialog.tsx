@@ -92,7 +92,7 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-slate-400 hover:text-white text-2xl"
+                        className="text-slate-400 hover:text-white text-2xl cursor-pointer"
                     >
                         ×
                     </button>

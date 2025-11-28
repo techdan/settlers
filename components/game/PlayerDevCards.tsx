@@ -53,10 +53,13 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
     };
 
     return (
-        <div className="bg-slate-800/90 p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto flex flex-col h-full">
-            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
+        <div className="relative p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto flex flex-col h-full overflow-hidden">
+            <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
+            <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
 
-            <div className="space-y-2 flex-1 overflow-y-auto max-h-[300px]">
+            <h3 className="relative z-10 text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
+
+            <div className="relative z-10 space-y-2 flex-1 overflow-y-auto max-h-[300px]">
                 {(Object.keys(player.devCards) as DevCardType[]).map(type => {
                     const count = player.devCards[type];
                     if (count === 0) return null;

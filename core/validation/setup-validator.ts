@@ -23,6 +23,13 @@ export function isValidSetupSettlement(
     if (!vertex) return false; // Invalid vertex ID
     if (vertex.owner !== null) return false; // Already occupied
 
+    // Check for knights (Cities & Knights rule: cannot build on occupied vertex)
+    // We need to check all players' knights
+    const hasKnight = gameState.players.some(p =>
+        p.knights?.some(k => k.vertexId === vertexId)
+    );
+    if (hasKnight) return false;
+
     // 2. Distance Rule: Check adjacent vertices
     const [q, r, d] = vertexId.split(',').map(Number);
     const adjacentIds = getAdjacentVertexIds(q, r, d);

@@ -303,7 +303,7 @@ export async function placeInitialSettlement(
     if (isSecondPlacement) {
         const [q, r, d] = vertexId.split(',').map(Number);
         const hexes = getHexesForVertex(q, r, d);
-        const resourcesPerHex = placeCity ? 2 : 1;
+        const resourcesPerHex = 1;
 
         hexes.forEach(hexCoords => {
             const hex = gameState.board.hexes.find(
@@ -417,6 +417,10 @@ export async function placeInitialRoad(
             gameState.phase = 'setup_round_2_settlement';
         }
     }
+
+    // Clear the last placed settlement ID so the next player (or same player in round 2)
+    // starts fresh with a settlement placement
+    gameState.lastPlacedSettlementId = null;
 
     // Save to database
     await updateGameState(gameState);

@@ -49,7 +49,7 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, has
     const Icon = TERRAIN_ICONS[terrain];
 
     return (
-        <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
+        <g transform={`translate(${x}, ${y})`} onClick={isValid ? onClick : undefined} className={isValid ? "cursor-pointer" : ""}>
             <style>
                 {`
                     @keyframes flash {
@@ -75,7 +75,7 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, has
                 fill={TERRAIN_COLORS[terrain]}
                 stroke={isValid ? "#4ade80" : "#e5e7eb"}
                 strokeWidth={isValid ? "6" : "4"}
-                className={`transition-all hover:brightness-110 ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid' : ''}`}
+                className={`transition-all ${isValid ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid' : ''}`}
             />
 
             {/* Resource Icon */}

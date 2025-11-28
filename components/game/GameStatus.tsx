@@ -12,8 +12,9 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
     const getPlayerStats = (player: PlayerState) => {
         const resourceCount = Object.values(player.resources).reduce((a, b) => a + b, 0);
         const devCardCount = Object.values(player.devCards).reduce((a, b) => a + b, 0) + (player.devCardsBoughtThisTurn?.length || 0);
+        const progressCardCount = player.progressCards?.length || 0;
         const longestRoad = calculateLongestRoad(gameState, player.id);
-        return { resourceCount, devCardCount, longestRoad };
+        return { resourceCount, devCardCount, progressCardCount, longestRoad };
     };
 
     const getVPBreakdown = (player: PlayerState) => {
@@ -102,15 +103,34 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                             </div>
 
                             <div className="grid grid-cols-4 gap-1 text-[10px] text-slate-400 border-t border-slate-700 pt-2">
-                                <div className="flex flex-col items-center" title="Number of Resource Cards">
-                                    <span className="text-white font-bold">{stats.resourceCount}</span>
-                                    <span>Res</span>
-                                </div>
-                                <div className="flex flex-col items-center" title="Number of Development Cards">
-                                    <span className="text-white font-bold">{stats.devCardCount}</span>
-                                    <span>Dev</span>
-                                </div>
-                                <div className="flex flex-col items-center" title={`Total Consecutive Roads${gameState.longestRoadOwner === player.id ? ' (Longest Road: 2 VP)' : ''}`}>
+                                {(() => {
+                                    // Calculate safe limit: 7 base + 2 per city wall (max 3 walls)
+                                    // Count active city walls
+                                    const cityWallCount = Object.values(gameState.board.vertices).filter(v =>
+                                        v.owner === player.id && v.hasCityWall
+                                    ).length;
+                                    const safeLimit = 7 + (cityWallCount * 2);
+                                    const isDanger = stats.resourceCount > safeLimit;
+
+                                    return (
+                                        <div className="flex flex-col items-center cursor-help" title={`Total number of Resource and Commodity cards in hand.\nSafe Limit: ${safeLimit} cards${isDanger ? '\n⚠️ DANGER: Robber will steal half your cards on a 7!' : ''}`}>
+                                            <span className={`font-bold ${isDanger ? 'text-red-500' : 'text-white'}`}>{stats.resourceCount}</span>
+                                            <span className={isDanger ? 'text-red-500' : ''}>Res</span>
+                                        </div>
+                                    );
+                                })()}
+                                {gameState.gameMode !== 'cities_and_knights' ? (
+                                    <div className="flex flex-col items-center cursor-help" title="Total number of Development Cards in hand.">
+                                        <span className="text-white font-bold">{stats.devCardCount}</span>
+                                        <span>Dev</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center cursor-help" title="Total number of Progress Cards in hand.">
+                                        <span className="text-white font-bold">{stats.progressCardCount}</span>
+                                        <span>Prog</span>
+                                    </div>
+                                )}
+                                <div className="flex flex-col items-center cursor-help" title={`Current length of continuous road.\nLongest Road (>=5) grants 2 VP.${gameState.longestRoadOwner === player.id ? '\n(Currently holds Longest Road)' : ''}`}>
                                     <span className={`font-bold ${gameState.longestRoadOwner === player.id ? 'text-orange-400' : 'text-white'}`}>
                                         {stats.longestRoad}
                                     </span>
@@ -119,14 +139,14 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                                 {/* Show Army for base game, Defense for C&K */}
                                 {gameState.gameMode !== 'cities_and_knights' ? (
-                                    <div className="flex flex-col items-center" title={`Total Knight cards used${gameState.largestArmyOwner === player.id ? ' (Largest Army: 2 VP)' : ''}`}>
+                                    <div className="flex flex-col items-center cursor-help" title={`Total Knight cards played.\nLargest Army (>=3) grants 2 VP.${gameState.largestArmyOwner === player.id ? '\n(Currently holds Largest Army)' : ''}`}>
                                         <span className={`font-bold ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : 'text-white'}`}>
                                             {player.knightsPlayed || 0}
                                         </span>
                                         <span className={gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}>Army</span>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center" title="Active Knight Strength (Defense)">
+                                    <div className="flex flex-col items-center cursor-help" title="Total active Knight strength.\nUsed to defend Catan against the Barbarian attack.">
                                         <span className="text-white font-bold">
                                             {player.activeKnightCount || 0}
                                         </span>
@@ -135,32 +155,57 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                 )}
                             </div>
 
-                            {/* C&K: VP Cards and Merchant */}
+                            {/* C&K: VP Cards, Merchant, and City Status */}
                             {gameState.gameMode === 'cities_and_knights' && (
-                                <div className="flex gap-2 items-center text-xs border-t border-slate-700 pt-2 flex-wrap">
-                                    {/* Defender of Catan Tokens */}
-                                    {player.defenderVPTokens > 0 && (
-                                        <div className="flex items-center gap-1 bg-blue-900/30 px-2 py-1 rounded" title={`Defender of Catan: ${player.defenderVPTokens} token${player.defenderVPTokens !== 1 ? 's' : ''}`}>
+                                <div className="flex flex-col gap-2 border-t border-slate-700 pt-2">
+                                    {/* VP & Special Tokens */}
+                                    <div className="flex gap-2 items-center text-xs flex-wrap">
+                                        {/* Defender of Catan Tokens */}
+                                        <div className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${player.defenderVPTokens > 0 ? 'bg-blue-900/30' : 'bg-slate-800/30 opacity-50'}`} title={`Defender of Catan Tokens.\nEarned by contributing the most knights to defend Catan.\nEach token is worth 1 VP.`}>
                                             <span className="text-blue-400">🛡️</span>
-                                            <span className="text-blue-200 font-bold">+{player.defenderVPTokens} VP</span>
+                                            <span className={`font-bold ${player.defenderVPTokens > 0 ? 'text-blue-200' : 'text-slate-400'}`}>{player.defenderVPTokens} VP</span>
                                         </div>
-                                    )}
 
-                                    {/* VP Progress Cards */}
-                                    {player.revealedVPCards && player.revealedVPCards.length > 0 && (
-                                        <div className="flex items-center gap-1 bg-amber-900/30 px-2 py-1 rounded" title={`VP Cards: ${player.revealedVPCards.join(', ')}`}>
+                                        {/* VP Progress Cards */}
+                                        <div className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${player.revealedVPCards && player.revealedVPCards.length > 0 ? 'bg-amber-900/30' : 'bg-slate-800/30 opacity-50'}`} title={`Victory Point Progress Cards (e.g., Printer, Constitution).\nEach card is worth 1 VP.\nCurrent: ${player.revealedVPCards?.join(', ') || 'None'}`}>
                                             <span className="text-amber-400">📜</span>
-                                            <span className="text-amber-200 font-bold">+{player.revealedVPCards.length} VP</span>
+                                            <span className={`font-bold ${player.revealedVPCards && player.revealedVPCards.length > 0 ? 'text-amber-200' : 'text-slate-400'}`}>{player.revealedVPCards?.length || 0} VP</span>
                                         </div>
-                                    )}
 
-                                    {/* Merchant */}
-                                    {gameState.activeMerchant === player.id && (
-                                        <div className="flex items-center gap-1 bg-green-900/30 px-2 py-1 rounded" title="Merchant: +1 VP">
+                                        {/* Merchant */}
+                                        <div className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${gameState.activeMerchant === player.id ? 'bg-green-900/30' : 'bg-slate-800/30 opacity-50'}`} title={`The Merchant.\nGives 1 VP and allows 2:1 trading for the resource of the hex it is placed on.`}>
                                             <span className="text-green-400">🏪</span>
-                                            <span className="text-green-200 font-bold">+1 VP</span>
+                                            <span className={`font-bold ${gameState.activeMerchant === player.id ? 'text-green-200' : 'text-slate-400'}`}>{gameState.activeMerchant === player.id ? 1 : 0} VP</span>
                                         </div>
-                                    )}
+                                    </div>
+
+                                    {/* City Improvements & Metropolises */}
+                                    <div className="grid grid-cols-3 gap-1">
+                                        {/* Science */}
+                                        <div className="flex items-center gap-1 bg-green-900/20 p-1 rounded cursor-help" title={`Science Improvement Track (Green).\nLevel 3 unlocks the Aqueduct ability:\nIf you produce no resources on a dice roll (except 7), you may take any one resource of your choice.`}>
+                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                            <span className="text-[10px] text-green-200">{player.improvements?.science || 0}</span>
+                                            {player.metropolisOwned?.includes('science') && (
+                                                <span className="text-[10px]" title="Science Metropolis (+2 VP). You have the highest level in Science (at least level 4).">🏛️</span>
+                                            )}
+                                        </div>
+                                        {/* Trade */}
+                                        <div className="flex items-center gap-1 bg-yellow-900/20 p-1 rounded cursor-help" title={`Trade Improvement Track (Yellow).\nLevel 3 unlocks the Trading House ability:\nYou may trade commodities (Paper, Cloth, Coin) 2:1 with the bank.`}>
+                                            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                            <span className="text-[10px] text-yellow-200">{player.improvements?.trade || 0}</span>
+                                            {player.metropolisOwned?.includes('trade') && (
+                                                <span className="text-[10px]" title="Trade Metropolis (+2 VP). You have the highest level in Trade (at least level 4).">🏛️</span>
+                                            )}
+                                        </div>
+                                        {/* Politics */}
+                                        <div className="flex items-center gap-1 bg-blue-900/20 p-1 rounded cursor-help" title={`Politics Improvement Track (Blue).\nLevel 3 unlocks the Fortress ability:\nYou may promote Strong Knights to Mighty Knights.`}>
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                            <span className="text-[10px] text-blue-200">{player.improvements?.politics || 0}</span>
+                                            {player.metropolisOwned?.includes('politics') && (
+                                                <span className="text-[10px]" title="Politics Metropolis (+2 VP). You have the highest level in Politics (at least level 4).">🏛️</span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -70,7 +70,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
     const baseColor = TERRAIN_COLORS[terrain];
 
     return (
-        <g transform={`translate(${x}, ${y})`} onClick={onClick} className={onClick ? "cursor-pointer" : ""}>
+        <g transform={`translate(${x}, ${y})`} onClick={isValid ? onClick : undefined} className={isValid ? "cursor-pointer" : ""}>
             {/* Defs for gradients/patterns could go here or globally, but for simplicity we use simple fills/filters */}
             <style>
                 {`
@@ -107,7 +107,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
                     stroke={isValid ? "#4ade80" : "#fff"}
                     strokeWidth={isValid ? "3" : "1"}
                     strokeOpacity={isValid ? "1" : "0.3"}
-                    className={`transition-all hover:brightness-110 ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid-voxel' : ''}`}
+                    className={`transition-all ${isValid ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid-voxel' : ''}`}
                 />
                 {/* Simple texture overlay (noise or pattern could be added here) */}
                 <polygon points={topPointsStr} fill="url(#noise)" opacity="0.1" style={{ pointerEvents: 'none' }} />

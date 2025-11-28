@@ -112,6 +112,7 @@ export interface GameState {
     // Cities & Knights expansion fields (optional for backward compatibility)
     gameMode?: GameMode; // Default to 'base' if not set
     barbarianPosition?: number; // 0-7, attacks at 7
+    hasBarbariansAttacked?: boolean; // C&K: True if barbarians have attacked at least once
     metropolises?: Partial<Record<MetropolisType, MetropolisState>>; // 3 metropolises (science, trade, politics) indexed by type
     progressDecks?: ProgressDeck; // Three decks of progress cards
     eventDieRoll?: EventDieRoll; // Last event die roll result

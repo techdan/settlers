@@ -142,13 +142,23 @@ export function moveKnight(
     const isAdjacentToRobber = adjacentHexes.some(h => `${h.q},${h.r}` === gameState.robberHexId);
 
     if (isAdjacentToRobber) {
-        nextPhase = 'robber_placement';
-        gameState.logs.push({
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: Date.now(),
-            message: `${player.name}'s knight chased the robber!`,
-            playerId: player.id
-        });
+        // C&K Rule: Cannot chase robber before first barbarian attack
+        if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${player.name}'s knight moved next to the robber, but cannot chase it until the first barbarian attack.`,
+                playerId: player.id
+            });
+        } else {
+            nextPhase = 'robber_placement';
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${player.name}'s knight chased the robber!`,
+                playerId: player.id
+            });
+        }
     }
 
     // Check for opponent knight
@@ -401,6 +411,63 @@ export function displaceKnight(gameState: GameState, knight: Knight, nextPhase: 
 }
 
 /**
+ * Get all valid relocation targets for a displaced knight
+ * Must be empty intersections connected by the player's own roads from the origin
+ *
+ * @param gameState - Current game state
+ * @param playerId - Player ID
+ * @param originVertexId - Where the knight was displaced from
+ * @returns Array of valid vertex IDs
+ */
+export function getValidRelocationTargets(
+    gameState: GameState,
+    playerId: string,
+    originVertexId: string
+): string[] {
+    const validTargets = new Set<string>();
+    const visited = new Set<string>();
+    const queue = [originVertexId];
+    visited.add(originVertexId);
+
+    while (queue.length > 0) {
+        const currentVertexId = queue.shift()!;
+        const [q, r, d] = currentVertexId.split(',').map(Number);
+
+        // Get all connected edges owned by player
+        const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+
+        for (const edgeId of adjacentEdges) {
+            const edge = gameState.board.edges[edgeId];
+            // Must be owned by player (road)
+            if (!edge || edge.owner !== playerId) continue;
+
+            // Get the other endpoint of this edge
+            const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
+            const neighborId = endpoints.find(id => id !== currentVertexId);
+
+            if (neighborId && !visited.has(neighborId)) {
+                visited.add(neighborId);
+                queue.push(neighborId);
+
+                // Check if this vertex is a valid destination
+                // 1. Must not be the origin (which is occupied by attacker anyway)
+                // 2. Must not have a building
+                // 3. Must not have a knight
+                const vertex = gameState.board.vertices[neighborId];
+                const hasBuilding = vertex && (vertex.structure || vertex.owner);
+                const hasKnight = hasKnightAtVertex(gameState, neighborId);
+
+                if (!hasBuilding && !hasKnight) {
+                    validTargets.add(neighborId);
+                }
+            }
+        }
+    }
+
+    return Array.from(validTargets);
+}
+
+/**
  * Relocate a displaced knight
  *
  * @param gameState - Current game state
@@ -426,48 +493,10 @@ export function relocateKnight(
     if (targetVertexId) {
         // Validate relocation
         const originVertexId = gameState.pendingDisplacement.originVertexId;
-        const [q, r, d] = originVertexId.split(',').map(Number);
-        const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+        const validTargets = getValidRelocationTargets(gameState, playerId, originVertexId);
 
-        // Must be connected by own road
-        // Must be empty
-
-        // Find edge connecting origin and target
-        // This is tricky because we only have vertex IDs.
-        // We need to check if target is adjacent to origin AND connected by own road.
-
-        // Check adjacency
-        const adjacentVertices = getAdjacentVertexIds(q, r, d);
-        if (!adjacentVertices.includes(targetVertexId)) {
-            throw new Error('Target vertex is not adjacent to original position');
-        }
-
-        // Check road connection
-        // Find edge between origin and target
-        // We can iterate adjacent edges and check endpoints
-        let connectedByRoad = false;
-        for (const edgeId of adjacentEdges) {
-            const edge = gameState.board.edges[edgeId];
-            if (!edge || edge.owner !== playerId) continue;
-
-            const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
-            if (endpoints.includes(targetVertexId)) {
-                connectedByRoad = true;
-                break;
-            }
-        }
-
-        if (!connectedByRoad) {
-            throw new Error('Target vertex is not connected by your road');
-        }
-
-        // Check occupancy
-        const vertex = gameState.board.vertices[targetVertexId];
-        if (vertex && (vertex.structure || vertex.owner)) {
-            throw new Error('Target vertex is occupied by a building');
-        }
-        if (hasKnightAtVertex(gameState, targetVertexId)) {
-            throw new Error('Target vertex is occupied by a knight');
+        if (!validTargets.includes(targetVertexId)) {
+            throw new Error('Invalid relocation target. Must be an empty intersection connected by your roads.');
         }
 
         // Move knight

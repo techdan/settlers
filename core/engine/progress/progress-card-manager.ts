@@ -895,6 +895,11 @@ function executeTaxation(gameState: GameState, player: PlayerState, options?: an
         throw new Error('Taxation requires hexId (where to move robber)');
     }
 
+    // C&K Rule: Robber cannot move before first barbarian attack
+    if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+        throw new Error('Cannot move the robber before the first barbarian attack');
+    }
+
     const hex = gameState.board.hexes.find(h => h.id === hexId);
     if (!hex) throw new Error('Invalid hex');
 
