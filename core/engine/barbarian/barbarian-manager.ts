@@ -42,6 +42,9 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
         handleAttackersWin(gameState);
     }
 
+    // Deactivate all knights after the attack (win or lose)
+    deactivateAllKnights(gameState);
+
     // Reset barbarian position to 0
     gameState.barbarianPosition = 0;
 
@@ -348,4 +351,36 @@ export function advanceBarbarian(gameState: GameState): number {
  */
 export function resetBarbarianPosition(gameState: GameState): void {
     gameState.barbarianPosition = 0;
+}
+
+/**
+ * Deactivate all knights after barbarian attack
+ * All active knights become inactive (win or lose)
+ *
+ * @param gameState - Current game state
+ */
+function deactivateAllKnights(gameState: GameState): void {
+    let totalDeactivated = 0;
+
+    for (const player of gameState.players) {
+        if (!player.knights) continue;
+
+        for (const knight of player.knights) {
+            if (knight.active) {
+                knight.active = false;
+                totalDeactivated++;
+            }
+        }
+
+        // Update cached knight strength (should now be 0)
+        player.activeKnightCount = 0;
+    }
+
+    if (totalDeactivated > 0) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `All ${totalDeactivated} active knights have been deactivated after the barbarian attack.`
+        });
+    }
 }
