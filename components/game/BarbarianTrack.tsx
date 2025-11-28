@@ -41,13 +41,12 @@ export const BarbarianTrack: React.FC<BarbarianTrackProps> = ({ gameState }) => 
                 {Array.from({ length: 8 }, (_, i) => (
                     <div
                         key={i}
-                        className={`flex-1 h-6 rounded flex items-center justify-center text-xs font-bold transition-colors ${
-                            i === barbarianPosition
+                        className={`flex-1 h-6 rounded flex items-center justify-center text-xs font-bold transition-colors ${i === barbarianPosition
                                 ? 'bg-red-600 text-white ring-2 ring-red-400'
                                 : i < barbarianPosition
-                                ? 'bg-red-900/40 text-slate-600'
-                                : 'bg-slate-700 text-slate-500'
-                        }`}
+                                    ? 'bg-red-900/40 text-slate-600'
+                                    : 'bg-slate-700 text-slate-500'
+                            }`}
                     >
                         {i === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION ? '⚔️' : i}
                     </div>
@@ -70,8 +69,10 @@ export const BarbarianTrack: React.FC<BarbarianTrackProps> = ({ gameState }) => 
 
             {/* Status Message */}
             <div className="mt-3 text-center text-xs">
-                {barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION ? (
-                    <span className="text-red-400 font-bold">⚠️ ATTACK IMMINENT!</span>
+                {(barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION || gameState.phase === 'barbarian_city_selection') ? (
+                    <span className="text-red-400 font-bold">⚔️ Barbarians Attack!</span>
+                ) : barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION - 1 ? (
+                    <span className="text-orange-400 font-bold">⚠️ ATTACK IMMINENT!</span>
                 ) : defendersWinning ? (
                     <span className="text-green-400">✓ Defenders winning</span>
                 ) : (

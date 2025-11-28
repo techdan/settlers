@@ -83,29 +83,31 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                         return (
                             <div key={res} className="bg-slate-800 p-3 rounded-lg flex flex-col items-center border border-slate-700">
                                 <div className="text-2xl mb-1">{RESOURCE_ICONS[res]}</div>
-                                <div className="text-xs text-slate-400 uppercase mb-2">{res}</div>
+                                <div className="text-xs text-slate-300 uppercase mb-2">{res}</div>
 
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={() => handleDecrement(res)}
                                         disabled={selected[res] === 0}
-                                        className="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center font-bold"
+                                        className="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center font-bold text-white"
                                     >-</button>
-                                    <span className="font-bold w-4 text-center">{selected[res]}</span>
+                                    <span className="font-bold w-4 text-center text-white">{selected[res]}</span>
                                     <button
                                         onClick={() => handleIncrement(res)}
                                         disabled={selected[res] === max || currentSelected >= requiredDiscard}
-                                        className="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center font-bold"
+                                        className="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center font-bold text-white"
                                     >+</button>
                                 </div>
-                                <div className="text-xs text-slate-500 mt-1">Have: {max}</div>
+                                <div className={`text-xs mt-1 font-semibold ${selected[res] > 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                    Have: {max - selected[res]}
+                                </div>
                             </div>
                         );
                     })}
                 </div>
 
                 <div className="flex flex-col items-center gap-4">
-                    <div className="text-lg font-bold">
+                    <div className="text-lg font-bold text-white">
                         Selected: <span className={currentSelected === requiredDiscard ? "text-green-400" : "text-yellow-400"}>
                             {currentSelected}
                         </span> / {requiredDiscard}

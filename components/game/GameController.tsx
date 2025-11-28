@@ -234,6 +234,23 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     };
 
+    const handleLoseCityToBarbarians = async (vertexId: string) => {
+        try {
+            const res = await fetch(`/api/game/${roomId}/barbarian`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'lose_city', playerId, vertexId })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Failed to lose city');
+            }
+        } catch (e) {
+            console.error('Error losing city to barbarians:', e);
+            throw e;
+        }
+    };
+
     // Initial fetch to ensure we have data before subscription kicks in
     useEffect(() => {
         const fetchInitialState = async () => {
@@ -249,6 +266,28 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         };
         fetchInitialState();
     }, [roomId]);
+
+    // Auto-resolve stuck barbarian_attack phase (cleanup for old games)
+    useEffect(() => {
+        if (baseGameState?.phase === 'barbarian_attack') {
+            const resolveStuckAttack = async () => {
+                try {
+                    console.log('Auto-resolving stuck barbarian attack...');
+                    const res = await fetch(`/api/game/${roomId}/barbarian`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'resolve' })
+                    });
+                    if (!res.ok) {
+                        console.error('Failed to auto-resolve barbarian attack');
+                    }
+                } catch (e) {
+                    console.error('Error auto-resolving barbarian attack:', e);
+                }
+            };
+            resolveStuckAttack();
+        }
+    }, [baseGameState?.phase, roomId]);
 
     // Realtime subscription
     const subscribedGameState = useGameSubscription(roomId, baseGameState);
@@ -291,6 +330,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onVertexSelectedForCard={handleVertexSelected}
                 onCityClick={handleCityClick}
                 onKnightClick={handleKnightClick}
+                onBarbarianCitySelect={handleLoseCityToBarbarians}
             />
 
             <DiscardModal gameState={gameState} playerId={playerId} />
@@ -341,6 +381,17 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             {/* Aqueduct Modal */}
             {gameState.phase === 'aqueduct_selection' && gameState.pendingAqueduct?.includes(playerId) && (
                 <AqueductModal gameState={gameState} playerId={playerId} />
+            )}
+
+            {/* Barbarian City Selection UI */}
+            {gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId) && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
+                    <h3 className="text-xl font-bold">⚔️ Barbarians Attacked!</h3>
+                    <p className="text-center">
+                        The barbarians have sacked your lands!<br />
+                        <span className="font-bold text-red-300">Click on a city to destroy it.</span>
+                    </p>
+                </div>
             )}
 
             <TradeOfferDisplay gameState={gameState} playerId={playerId} />
@@ -435,7 +486,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
                     {/* Resources, Commodities & Dev Cards / Progress Cards */}
                     <div className="flex gap-4 items-stretch max-w-full overflow-x-auto">
-                        {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} />}
+                        {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} lastTheft={gameState.lastTheft} />}
                         {isCitiesAndKnights && currentPlayer && (
                             <>
                                 <ProgressCardHand

@@ -13,14 +13,26 @@ interface VertexRendererProps {
     theme?: 'flat' | 'voxel';
     isMoving?: boolean;
     onCancelMove?: () => void;
+    currentPlayerId?: string; // ID of the current player viewing the board
 }
 
-export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove }) => {
+export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId }) => {
     const pixel = hexCornerToPixel(createHex(vertex.q, vertex.r), vertex.d, size);
     const DEPTH = 15;
     const offset = theme === 'voxel' ? { x: 0, y: -DEPTH } : { x: 0, y: 0 };
 
     if (!vertex.structure && !knight && !isValid) return null;
+
+    // Get pastel shade of player color for knights (better contrast)
+    const getPastelKnightColor = (playerColor: string): string => {
+        const colorMap: Record<string, string> = {
+            'red': '#FF6B6B',      // Pastel red
+            'blue': '#4DABF7',     // Pastel blue
+            'white': '#E9ECEF',    // Light gray
+            'orange': '#FFA94D',   // Pastel orange
+        };
+        return colorMap[playerColor] || '#ADB5BD'; // Default to gray
+    };
 
     // Determine knight color/style based on level
     const getKnightStyle = () => {
@@ -32,10 +44,23 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
 
     const knightStyle = getKnightStyle();
 
+    // Get knight color - use the knight owner's color, not the vertex owner
+    const knightColor = knight ? getPastelKnightColor(color || 'gray') : null;
+
+    // Determine if this vertex should show cursor-pointer
+    const isOwnKnight = knight && knight.playerId === currentPlayerId;
+    const isOwnCity = vertex.owner === currentPlayerId && (vertex.structure === 'city' || vertex.structure === 'metropolis');
+    const showPointer = isValid || isOwnKnight || isOwnCity;
+
     return (
-        <g transform={`translate(${pixel.x + offset.x}, ${pixel.y + offset.y})`} onClick={() => onClick?.(vertex.id)} className={isValid ? "cursor-pointer" : ""}>
-            {/* Hitbox */}
-            <circle r={size * 0.35} fill="transparent" />
+        <g transform={`translate(${pixel.x + offset.x}, ${pixel.y + offset.y})`} onClick={() => onClick?.(vertex.id)} className={showPointer ? "cursor-pointer" : ""}>
+            {/* Valid Target Indicator (for existing structures like cities) - Rendered FIRST to be behind structure */}
+            {vertex.structure && isValid && (
+                <circle r={size * 0.4} fill="none" stroke="#ef4444" strokeWidth={4} className="animate-pulse pointer-events-none" />
+            )}
+
+            {/* Hitbox - Reduced size for tighter click area */}
+            <circle r={size * 0.2} fill="transparent" />
 
             {/* Visual - Building */}
             {vertex.structure === 'settlement' && (
@@ -133,6 +158,11 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
             {/* Visual - Knight */}
             {knight && knightStyle && (
                 <g>
+                    {/* Tooltip */}
+                    <title>
+                        {knight.level === 'basic' ? 'Basic' : knight.level === 'strong' ? 'Strong' : 'Mighty'} Knight (Strength {knightStyle.levelIndicator}) - {knight.active ? 'Active' : 'Inactive'}
+                    </title>
+
                     {theme === 'voxel' ? (
                         <g transform="translate(0, -2) scale(1.5)">
                             {/* 3D Knight - Single Wide Body with Multiple Heads */}
@@ -140,7 +170,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                                 const renderHead = (x: number, y: number, key: number) => (
                                     <g key={key} transform={`translate(${x}, ${y})`}>
                                         {/* Helmet/Head */}
-                                        <path d="M0 -2 L-3 -7 L0 -11 L3 -7 Z" fill={color || 'gray'} filter="brightness(1.2)" />
+                                        <path d="M0 -2 L-3 -7 L0 -11 L3 -7 Z" fill={knightColor || '#4B5563'} filter="brightness(1.2)" />
                                         {/* Plume/Eye/Indicator */}
                                         <circle r={1.5} cy={-11} fill={knightStyle.ringColor} />
                                     </g>
@@ -162,7 +192,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                                             width={bodyWidth}
                                             height={10}
                                             rx={5}
-                                            fill={color || 'gray'}
+                                            fill={knightColor || '#4B5563'}
                                             stroke={knightStyle.ringColor}
                                             strokeWidth={1}
                                         />
@@ -191,7 +221,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                             {/* Flat Knight - Shield */}
                             <path
                                 d="M0 10 L-8 2 L-8 -8 L8 -8 L8 2 Z"
-                                fill={color || 'gray'}
+                                fill={knightColor || '#4B5563'}
                                 stroke={knightStyle.ringColor}
                                 strokeWidth={2}
                             />

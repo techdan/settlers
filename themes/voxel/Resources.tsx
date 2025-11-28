@@ -37,21 +37,21 @@ export const VoxelMountain: React.FC = () => (
 
 export const VoxelWheat: React.FC = () => (
     <g transform="translate(0, 0)">
-        {/* Sheaf 1 */}
+        {/* Sheaf 1 - Left */}
         <g transform="rotate(-15) translate(-5,0)">
-            <ellipse cx="0" cy="-10" rx="3" ry="12" fill="#FFD54F" />
-            <path d="M-1,-10 L1,-10" stroke="#F57F17" strokeWidth="1" />
+            <ellipse cx="0" cy="-10" rx="3" ry="12" fill="#FFA000" stroke="#E65100" strokeWidth="0.5" />
+            <path d="M-1,-10 L1,-10" stroke="#E65100" strokeWidth="1" />
         </g>
-        {/* Sheaf 2 */}
+        {/* Sheaf 2 - Right */}
         <g transform="rotate(15) translate(5,0)">
-            <ellipse cx="0" cy="-10" rx="3" ry="12" fill="#FFCA28" />
+            <ellipse cx="0" cy="-10" rx="3" ry="12" fill="#FF8F00" stroke="#E65100" strokeWidth="0.5" />
         </g>
         {/* Sheaf 3 (Center) */}
         <g transform="translate(0,2)">
-            <ellipse cx="0" cy="-12" rx="3.5" ry="13" fill="#FFECB3" />
+            <ellipse cx="0" cy="-12" rx="3.5" ry="13" fill="#FF6F00" stroke="#BF360C" strokeWidth="0.5" />
         </g>
         {/* Band */}
-        <rect x="-6" y="-8" width="12" height="4" fill="#8D6E63" rx="2" />
+        <rect x="-6" y="-8" width="12" height="4" fill="#5D4037" rx="2" stroke="#3E2723" strokeWidth="0.5" />
     </g>
 );
 

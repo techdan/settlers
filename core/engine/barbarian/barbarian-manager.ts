@@ -28,28 +28,27 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
     const totalCities = getTotalCities(gameState);
     const totalKnightStrength = getTotalKnightStrength(gameState);
 
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `Barbarian attack! Cities: ${totalCities}, Knight Strength: ${totalKnightStrength}`
-    });
-
     if (totalKnightStrength >= totalCities) {
         // Defenders win
-        handleDefendersWin(gameState);
+        handleDefendersWin(gameState, totalCities, totalKnightStrength);
+
+        // Deactivate all knights and reset position (defenders won)
+        deactivateAllKnights(gameState);
+        gameState.barbarianPosition = 0;
+        gameState.phase = 'main_phase';
     } else {
         // Attackers win
-        handleAttackersWin(gameState);
+        handleAttackersWin(gameState, totalCities, totalKnightStrength);
+
+        // If no victims need to choose (all immune), clean up now
+        if (!gameState.pendingBarbarianVictims || gameState.pendingBarbarianVictims.length === 0) {
+            deactivateAllKnights(gameState);
+            gameState.barbarianPosition = 0;
+            gameState.phase = 'main_phase';
+        }
+        // Otherwise, phase is already set to 'barbarian_city_selection'
+        // Cleanup will happen after cities are chosen
     }
-
-    // Deactivate all knights after the attack (win or lose)
-    deactivateAllKnights(gameState);
-
-    // Reset barbarian position to 0
-    gameState.barbarianPosition = 0;
-
-    // Return to main phase
-    gameState.phase = 'main_phase';
 }
 
 /**
@@ -58,19 +57,23 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
  * If tied, no token awarded - tied players draw progress cards instead
  *
  * @param gameState - Current game state
+ * @param totalCities - Total cities in game
+ * @param totalKnightStrength - Total active knight strength
  */
-function handleDefendersWin(gameState: GameState): void {
+function handleDefendersWin(gameState: GameState, totalCities: number, totalKnightStrength: number): void {
     // Get all players with their knight strengths
     const playerStrengths = gameState.players.map(player => ({
         player,
         strength: calculateKnightStrength(player)
     })).filter(ps => ps.strength > 0); // Only players who contributed
 
+    const baseMessage = `Barbarians attack! Cities: ${totalCities}, Knight Strength: ${totalKnightStrength}. Defenders win!`;
+
     if (playerStrengths.length === 0) {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: 'Defenders repelled the barbarian attack! (No active knights contributed)'
+            message: `${baseMessage} (No active knights contributed)`
         });
         return;
     }
@@ -89,7 +92,7 @@ function handleDefendersWin(gameState: GameState): void {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `Defenders repelled the barbarian attack! ${defender.name} earned a Defender of Catan token! (+1 VP, total: ${defender.defenderVPTokens})`,
+            message: `${baseMessage} ${defender.name} contributed the most knights and gains a Defender of Catan VP! (Total: ${defender.defenderVPTokens})`,
             playerId: defender.id
         });
     } else {
@@ -99,7 +102,7 @@ function handleDefendersWin(gameState: GameState): void {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `Defenders repelled the barbarian attack! ${defenderNames} tied for highest defense (${maxStrength} strength) - each may draw a progress card.`
+            message: `${baseMessage} ${defenderNames} tied for highest contribution (${maxStrength} strength) - each may draw a progress card.`
         });
 
         // Note: Actual progress card draw will be handled by the service layer
@@ -111,12 +114,6 @@ function handleDefendersWin(gameState: GameState): void {
 
 /**
  * Handle attackers win scenario
- * Weakest player loses a city (downgraded to settlement)
- *
- * @param gameState - Current game state
- */
-/**
- * Handle attackers win scenario
  * v2.1: Fallback targeting system
  * 1. Group players by knight strength
  * 2. Start with weakest group (lowest strength)
@@ -126,8 +123,10 @@ function handleDefendersWin(gameState: GameState): void {
  * 6. If no one has destroyable cities (all settlements/metropolises), nothing happens.
  *
  * @param gameState - Current game state
+ * @param totalCities - Total cities in game
+ * @param totalKnightStrength - Total active knight strength
  */
-function handleAttackersWin(gameState: GameState): void {
+function handleAttackersWin(gameState: GameState, totalCities: number, totalKnightStrength: number): void {
     // 1. Calculate strength for all players
     const playerStrengths = gameState.players.map(player => ({
         player,
@@ -146,59 +145,79 @@ function handleAttackersWin(gameState: GameState): void {
     // 3. Sort strengths ascending
     const sortedStrengths = Array.from(strengthGroups.keys()).sort((a, b) => a - b);
 
-    let citiesDestroyed = false;
     const victims: string[] = [];
+    const baseMessage = `Barbarians attack! Cities: ${totalCities}, Knight Strength: ${totalKnightStrength}. Settlers lose.`;
 
-    // 4. Iterate groups to find valid targets
+    // 4. Iterate groups to find valid targets (Cascade rule)
+    // "The penalty moves to the next lowest eligible player(s) until a city is lost"
     for (const strength of sortedStrengths) {
         const group = strengthGroups.get(strength)!;
 
-        // Check if ANY player in this group has a destroyable city
-        const groupHasTarget = group.some(p => hasDestroyableCity(gameState, p.id));
+        // Find all players in this group who CAN lose a city
+        const eligibleVictimsInGroup = group.filter(p => hasDestroyableCity(gameState, p.id));
 
-        if (groupHasTarget) {
-            // This group is the target. All eligible players lose a city.
-            for (const player of group) {
-                if (hasDestroyableCity(gameState, player.id)) {
-                    const destroyed = destroyCity(gameState, player);
-                    if (destroyed) {
-                        citiesDestroyed = true;
-                        victims.push(player.name);
+        if (eligibleVictimsInGroup.length > 0) {
+            // We found at least one player who can lose a city.
+            // ALL eligible players in this tie group must lose a city.
+            // Those who cannot (no cities/only metropolises) are skipped.
 
-                        gameState.logs.push({
-                            id: `${Date.now()}-${Math.random()}`,
-                            timestamp: Date.now(),
-                            message: `Barbarians sacked the city! ${player.name} loses a city.`,
-                            playerId: player.id
-                        });
-                    }
-                } else {
-                    // Player is in the weakest group but has no city to lose (immune)
-                    gameState.logs.push({
-                        id: `${Date.now()}-${Math.random()}`,
-                        timestamp: Date.now(),
-                        message: `Barbarians attacked ${player.name} (weakest) but they have no destroyable cities.`,
-                        playerId: player.id
-                    });
-                }
+            for (const player of eligibleVictimsInGroup) {
+                victims.push(player.id);
             }
-            // Attack resolved (do not proceed to next strength)
+
+            // Log the outcome
+            const victimNames = victims.map(id => gameState.players.find(p => p.id === id)?.name).join(', ');
+            const skippedNames = group
+                .filter(p => !victims.includes(p.id))
+                .map(p => p.name)
+                .join(', ');
+
+            if (victims.length === 1) {
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `${baseMessage} ${victimNames} contributed the least knights (${strength}) and must choose a city to lose.`
+                });
+            } else {
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `${baseMessage} ${victimNames} tied for least knights (${strength}) and must each choose a city to lose.`
+                });
+            }
+
+            if (skippedNames) {
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `${skippedNames} also had strength ${strength} but had no destroyable cities and were skipped.`
+                });
+            }
+
+            // Stop cascading. A city (or cities) will be lost.
             break;
         } else {
-            // No one in this group has a city. Log and continue to next group.
-            /* 
-            // Optional: Log that this group was skipped? 
-            // "Barbarians ignored [Players] (strength X) as they have no cities."
-            // Might be too spammy.
-            */
+            // Entire group is immune.
+            const groupNames = group.map(p => p.name).join(', ');
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${baseMessage} ${groupNames} (strength ${strength}) have no destroyable cities. Checking next lowest strength...`
+            });
+            // Continue to next strength group...
         }
     }
 
-    if (!citiesDestroyed) {
+    if (victims.length > 0) {
+        // Set up pending city selection
+        gameState.pendingBarbarianVictims = victims;
+        gameState.phase = 'barbarian_city_selection';
+    } else {
+        // We went through ALL groups and found no one with a destroyable city.
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: 'Barbarians attacked but no cities were lost (no valid targets found among any players).'
+            message: `${baseMessage} No one has a destroyable city. The barbarians leave empty-handed.`
         });
     }
 }
@@ -277,8 +296,6 @@ export function getDefenderOfCatan(gameState: GameState): PlayerState | null {
     return defender;
 }
 
-
-
 /**
  * Get the number of cities a player has
  * Includes both regular cities and metropolises
@@ -302,9 +319,10 @@ export function getCityCount(gameState: GameState, playerId: string): number {
  *
  * @param gameState - Current game state
  * @param player - Player losing the city
+ * @param vertexId - Optional specific city to destroy. If not provided, destroys first city found.
  * @returns true if a city was destroyed
  */
-export function destroyCity(gameState: GameState, player: PlayerState): boolean {
+export function destroyCity(gameState: GameState, player: PlayerState, vertexId?: string): boolean {
     // Find all cities (not metropolises) owned by this player
     const cities = Object.values(gameState.board.vertices).filter(
         vertex => vertex.owner === player.id && vertex.structure === 'city'
@@ -312,8 +330,16 @@ export function destroyCity(gameState: GameState, player: PlayerState): boolean 
 
     if (cities.length === 0) return false;
 
-    // Destroy the first city found (downgrade to settlement)
-    const city = cities[0];
+    // Find the specific city if vertexId provided, otherwise use first city
+    let city;
+    if (vertexId) {
+        city = cities.find(c => c.id === vertexId);
+        if (!city) return false; // Specified city not found or not valid
+    } else {
+        city = cities[0];
+    }
+
+    // Destroy the city (downgrade to settlement)
     city.structure = 'settlement';
     city.hasCityWall = false; // Wall is destroyed when city is downgraded
 
@@ -323,6 +349,55 @@ export function destroyCity(gameState: GameState, player: PlayerState): boolean 
     player.settlementsRemaining--;
 
     return true;
+}
+
+/**
+ * Handle a player choosing which city to lose to barbarians
+ * Called when a player selects a city during barbarian_city_selection phase
+ *
+ * @param gameState - Current game state
+ * @param playerId - Player ID choosing the city
+ * @param vertexId - Vertex ID of the city to lose
+ */
+export function loseCityToBarbarians(gameState: GameState, playerId: string, vertexId: string): void {
+    // Validate player is in pending victims
+    if (!gameState.pendingBarbarianVictims || !gameState.pendingBarbarianVictims.includes(playerId)) {
+        throw new Error('You are not required to lose a city');
+    }
+
+    // Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Destroy the chosen city
+    const destroyed = destroyCity(gameState, player, vertexId);
+    if (!destroyed) {
+        throw new Error('Failed to destroy city - invalid selection');
+    }
+
+    // Log the loss
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `Barbarians sacked ${player.name}'s city!`,
+        playerId
+    });
+
+    // Remove player from pending victims
+    gameState.pendingBarbarianVictims = gameState.pendingBarbarianVictims.filter(id => id !== playerId);
+
+    // If all victims have chosen, finish the attack
+    if (gameState.pendingBarbarianVictims.length === 0) {
+        // Deactivate all knights
+        deactivateAllKnights(gameState);
+
+        // Reset barbarian position
+        gameState.barbarianPosition = 0;
+
+        // Return to main phase
+        gameState.phase = 'main_phase';
+        gameState.pendingBarbarianVictims = undefined;
+    }
 }
 
 /**

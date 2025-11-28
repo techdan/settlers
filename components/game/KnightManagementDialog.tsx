@@ -115,7 +115,7 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                                 Strength: {strength}
                             </div>
                         </div>
-                        <div className={`px-3 py-1 rounded font-bold ${knight.active ? 'bg-green-600 text-white' : 'bg-slate-600 text-slate-300'}`}>
+                        <div className={`font-bold ${knight.active ? 'text-green-400' : 'text-slate-400'}`}>
                             {knight.active ? 'Active' : 'Inactive'}
                         </div>
                     </div>

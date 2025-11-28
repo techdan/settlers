@@ -27,6 +27,7 @@ export type GamePhase =
     | 'knight_movement'
     | 'knight_displacement'
     | 'barbarian_attack'
+    | 'barbarian_city_selection' // Players choose which city to lose
     | 'aqueduct_selection' // New phase for Aqueduct ability
     | 'game_over';
 
@@ -127,4 +128,11 @@ export interface GameState {
     };
     pendingDefenderCardDraws?: string[]; // List of player IDs who need to draw a progress card (tied defenders)
     pendingAqueduct?: string[]; // List of player IDs eligible for Aqueduct (must choose a resource)
+    pendingBarbarianVictims?: string[]; // List of player IDs who must choose a city to lose to barbarians
+    lastTheft?: {
+        victimId: string;
+        thiefId: string;
+        resource: ResourceType;
+        timestamp: number;
+    };
 }

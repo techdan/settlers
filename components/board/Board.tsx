@@ -38,6 +38,7 @@ interface BoardProps {
     onEdgeSelectedForCard?: (edgeId: string) => void;
     onCityClick?: (vertexId: string) => void;
     onKnightClick?: (knightId: string) => void;
+    onBarbarianCitySelect?: (vertexId: string) => void;
 }
 
 export const Board: React.FC<BoardProps> = ({
@@ -54,7 +55,8 @@ export const Board: React.FC<BoardProps> = ({
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
     onCityClick,
-    onKnightClick
+    onKnightClick,
+    onBarbarianCitySelect
 }) => {
     const { theme, toggleTheme } = useThemeStore();
     const HEX_SIZE = 90;
@@ -97,6 +99,16 @@ export const Board: React.FC<BoardProps> = ({
             const originVertexId = gameState.pendingDisplacement.originVertexId;
             const targets = getValidRelocationTargets(gameState, playerId, originVertexId);
             targets.forEach((t: string) => valid.add(t));
+            return valid;
+        }
+
+        // Barbarian City Selection - Must be checked before currentTurn check
+        if (gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId)) {
+            vertices.forEach(v => {
+                if (v.owner === playerId && v.structure === 'city') {
+                    valid.add(v.id);
+                }
+            });
             return valid;
         }
 
@@ -179,14 +191,11 @@ export const Board: React.FC<BoardProps> = ({
                 }
             });
         } else if (gameState.phase === 'main_phase') {
+            // Only highlight cities for management when not in any build/action mode
             if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
-                // Highlight own cities and metropolises for management
-                // Also highlight own knights for management
                 vertices.forEach(v => {
                     const isOwnCity = v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis');
-                    const hasOwnKnight = knightsMap.has(v.id) && knightsMap.get(v.id)?.playerId === playerId;
-
-                    if (isOwnCity || hasOwnKnight) {
+                    if (isOwnCity) {
                         valid.add(v.id);
                     }
                 });
@@ -333,7 +342,18 @@ export const Board: React.FC<BoardProps> = ({
         // Allow displaced player to relocate their knight even if it's not their turn
         const isDisplacedPlayer = gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId;
 
-        if (gameState.currentTurn !== playerId && !isOwnCity && !isOwnKnight && !isDisplacedPlayer) return;
+        // Allow barbarian victim to choose a city to lose
+        const isBarbarianVictim = gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId);
+
+        if (gameState.currentTurn !== playerId && !isOwnCity && !isOwnKnight && !isDisplacedPlayer && !isBarbarianVictim) return;
+
+        // Barbarian City Selection
+        if (gameState.phase === 'barbarian_city_selection') {
+            if (isOwnCity && onBarbarianCitySelect) {
+                onBarbarianCitySelect(vertexId);
+            }
+            return;
+        }
 
         // Progress Card Vertex Selection
         if (selectingVertexForCard && onVertexSelectedForCard) {
@@ -661,18 +681,23 @@ export const Board: React.FC<BoardProps> = ({
                                     {vertices.map(vertex => {
                                         const knight = knightsMap.get(vertex.id);
                                         const isMoving = knight && knight.id === movingKnightId;
+                                        // Use knight owner's color if knight exists, otherwise vertex owner's color
+                                        const ownerColor = knight
+                                            ? gameState.players.find(p => p.id === knight.playerId)?.color
+                                            : gameState.players.find(p => p.id === vertex.owner)?.color;
                                         return (
                                             <VertexRenderer
                                                 key={vertex.id}
                                                 vertex={vertex}
                                                 knight={knight}
                                                 size={HEX_SIZE}
-                                                color={gameState.players.find(p => p.id === vertex.owner)?.color}
+                                                color={ownerColor}
                                                 onClick={handleVertexClick}
                                                 isValid={validVertices.has(vertex.id)}
                                                 theme={theme}
                                                 isMoving={isMoving}
                                                 onCancelMove={onCancelBuild}
+                                                currentPlayerId={playerId}
                                             />
                                         );
                                     })}

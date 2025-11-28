@@ -81,7 +81,15 @@ export async function moveRobber(
             const stolenResource = stealRandomResource(victim);
             if (stolenResource) {
                 thief.resources[stolenResource]++;
-                stealLog = ` and stole a card from ${victim.name}`;
+                stealLog = ` and stole 1 ${stolenResource} from ${victim.name}`;
+
+                // Record theft for UI highlighting
+                gameState.lastTheft = {
+                    victimId: victim.id,
+                    thiefId: thief.id,
+                    resource: stolenResource,
+                    timestamp: Date.now()
+                };
             } else {
                 stealLog = ` but ${victim.name} had no cards to steal`;
             }
@@ -162,11 +170,17 @@ export async function discardCards(
 
     player.discardedThisTurn = true;
 
+    // Build detailed discard message
+    const discardedItems = Object.entries(resources)
+        .filter(([_, amount]) => amount > 0)
+        .map(([res, amount]) => `${amount} ${res}`)
+        .join(', ');
+
     // Add log
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} discarded ${discardCount} cards`,
+        message: `${player.name} discarded ${discardCount} cards (${discardedItems})`,
         playerId
     });
 

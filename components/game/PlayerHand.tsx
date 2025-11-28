@@ -6,6 +6,12 @@ import { CommodityType } from '@/core/rules/commodity-constants';
 interface PlayerHandProps {
     player: PlayerState;
     roomId: string;
+    lastTheft?: {
+        victimId: string;
+        thiefId: string;
+        resource: ResourceType;
+        timestamp: number;
+    };
 }
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
@@ -22,12 +28,31 @@ const COMMODITY_ICONS: Record<CommodityType, string> = {
     coin: '🪙'
 };
 
-export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId }) => {
+export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastTheft }) => {
     const hasCommodities = !!player.commodities;
     const totalResources = Object.values(player.resources).reduce((a, b) => a + b, 0);
     const totalCommodities = player.commodities
         ? Object.values(player.commodities).reduce((a, b) => a + b, 0)
         : 0;
+
+    // Check for active theft highlight (within 10 seconds)
+    const getHighlightClass = (res: string) => {
+        if (!lastTheft) return '';
+
+        const isRecent = Date.now() - lastTheft.timestamp < 10000;
+        if (!isRecent) return '';
+
+        if (lastTheft.resource === res) {
+            if (lastTheft.victimId === player.id) {
+                // I lost this resource -> Red highlight
+                return 'bg-red-500/50 animate-pulse rounded ring-2 ring-red-500';
+            } else if (lastTheft.thiefId === player.id) {
+                // I stole this resource -> Green highlight
+                return 'bg-green-500/50 animate-pulse rounded ring-2 ring-green-500';
+            }
+        }
+        return '';
+    };
 
     return (
         <div className="relative px-6 py-3 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-3 overflow-hidden">
@@ -37,7 +62,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId }) => {
             {/* Resources */}
             <div className="relative z-10 flex items-center gap-1">
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
-                    <div key={res} className="flex items-center gap-1 px-2">
+                    <div key={res} className={`flex items-center gap-1 px-2 transition-all duration-300 ${getHighlightClass(res)}`}>
                         <div className="text-xl">{RESOURCE_ICONS[res]}</div>
                         <div className="font-bold">{player.resources[res] || 0}</div>
                     </div>

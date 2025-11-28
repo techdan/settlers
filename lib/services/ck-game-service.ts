@@ -83,3 +83,41 @@ export async function drawProgressCardAction(
 
     return gameState;
 }
+
+/**
+ * Handle player choosing which city to lose to barbarians
+ * Called during barbarian_city_selection phase
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID
+ * @param vertexId - Vertex ID of the city to lose
+ * @returns Updated game state
+ */
+export async function loseCityToBarbarianAction(
+    roomId: string,
+    playerId: string,
+    vertexId: string
+): Promise<GameState> {
+    // 1. Get game state
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // 2. Validate C&K mode
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Barbarian attacks only occur in Cities & Knights mode');
+    }
+
+    // 3. Validate phase
+    if (gameState.phase !== 'barbarian_city_selection') {
+        throw new Error('Not in barbarian city selection phase');
+    }
+
+    // 4. Handle city loss
+    const { loseCityToBarbarians } = require('@/core/engine/barbarian/barbarian-manager');
+    loseCityToBarbarians(gameState, playerId, vertexId);
+
+    // 5. Save to database
+    await updateGameState(gameState);
+
+    return gameState;
+}

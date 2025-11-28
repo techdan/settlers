@@ -161,10 +161,10 @@ Knights are pieces placed on intersections:
 - [cite_start]**Defender Strength:** Equal to the total strength of all **Active Knights** only[cite: 448].
 - **Result - Barbarian Victory (Cities > Knights):**
   - ❌ **PREVIOUS INCORRECT LOGIC:** "Weakest player loses a city" (implied stopping there).
-  - [cite_start]✅ **v2.0 LOGIC:** The player with the lowest active knight contribution is the primary target[cite: 474].
-  - [cite_start]**Critical Fallback:** If the weakest contributor has **no cities** (only settlements) OR their only city is a **Metropolis** (immune), the barbarians target the player with the **next lowest** active knight contribution[cite: 475].
-  - [cite_start]This continues until a valid city is pillaged[cite: 476].
-  - [cite_start]If multiple players are tied for lowest, **all tied players** lose a city[cite: 496].
+  - [cite_start]✅ **v2.0 LOGIC:** The player(s) with the lowest active knight contribution are the primary targets[cite: 474].
+  - [cite_start]**Tie-Breaking:** If multiple players are tied for lowest strength, **all tied players** must lose a city[cite: 496].
+  - [cite_start]**Critical Fallback (Cascade):** If a targeted player (weakest or tied for weakest) has **no cities** (only settlements) or only **Metropolises** (immune), they are skipped. The penalty moves to the **next lowest** eligible player(s) (or group of tied players) until at least one city is lost[cite: 475, 476].
+  - [cite_start]**Outcome:** The attack ends once a city (or cities from a tied group) is destroyed. If no one in the entire game has a destroyable city, no penalty occurs.
 - **Result - Defender Victory (Knights >= Cities):**
   - [cite_start]The single highest contributor gets a **VP Token**[cite: 498].
   - [cite_start]If tied for highest, **no one** gets the token; instead, tied players draw a Progress Card[cite: 499, 500].

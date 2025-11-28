@@ -98,16 +98,9 @@ function processBarbarianAdvance(gameState: GameState): void {
 
     // Check if barbarian attacks (position 7)
     if (gameState.barbarianPosition >= 7) {
-        // Trigger barbarian attack (handled by barbarian-manager)
-        gameState.logs.push({
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: Date.now(),
-            message: 'Barbarian attack! Resolve attack now.'
-        });
-
-        // Set phase to barbarian_attack so the attack must be resolved
-        // before continuing the game
-        gameState.phase = 'barbarian_attack';
+        // Trigger barbarian attack immediately
+        const { resolveBarbbarianAttack } = require('@/core/engine/barbarian/barbarian-manager');
+        resolveBarbbarianAttack(gameState);
         gameState.hasBarbariansAttacked = true;
     }
 }
