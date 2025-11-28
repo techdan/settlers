@@ -191,16 +191,6 @@ export const Board: React.FC<BoardProps> = ({
                 }
             });
         } else if (gameState.phase === 'main_phase') {
-            // Only highlight cities for management when not in any build/action mode
-            if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
-                vertices.forEach(v => {
-                    const isOwnCity = v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis');
-                    if (isOwnCity) {
-                        valid.add(v.id);
-                    }
-                });
-            }
-
             if (gameState.currentTurn === playerId) {
                 if (buildMode === 'settlement') {
                     vertices.forEach(v => {
