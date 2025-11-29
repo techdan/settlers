@@ -4,6 +4,59 @@ import { GameState, PlayerState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
+import { getCanonicalVertexId } from '@/lib/hex';
+
+function calculateIrrigationGain(gameState: GameState, playerId: string) {
+    let fieldCount = 0;
+    const fieldHexes = (gameState.board.hexes || []).filter((hex: any) => hex.terrain === 'field');
+
+    for (const hex of fieldHexes) {
+        const [q, r] = (hex.id || '').split(',').map(Number);
+        if (Number.isNaN(q) || Number.isNaN(r)) continue;
+        const adjacentVertices = Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
+
+        const hasAdjacentBuilding = adjacentVertices.some((vertexId: string) => {
+            const vertex = gameState.board.vertices[vertexId];
+            return (
+                vertex &&
+                vertex.owner === playerId &&
+                (vertex.structure === 'settlement' || vertex.structure === 'city' || vertex.structure === 'metropolis')
+            );
+        });
+
+        if (hasAdjacentBuilding) {
+            fieldCount += 1;
+        }
+    }
+
+    return { fieldCount, wheatGained: fieldCount * 2 };
+}
+
+function calculateMiningGain(gameState: GameState, playerId: string) {
+    let mountainCount = 0;
+    const mountainHexes = (gameState.board.hexes || []).filter((hex: any) => hex.terrain === 'mountain');
+
+    for (const hex of mountainHexes) {
+        const [q, r] = (hex.id || '').split(',').map(Number);
+        if (Number.isNaN(q) || Number.isNaN(r)) continue;
+        const adjacentVertices = Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
+
+        const hasAdjacentBuilding = adjacentVertices.some((vertexId: string) => {
+            const vertex = gameState.board.vertices[vertexId];
+            return (
+                vertex &&
+                vertex.owner === playerId &&
+                (vertex.structure === 'settlement' || vertex.structure === 'city' || vertex.structure === 'metropolis')
+            );
+        });
+
+        if (hasAdjacentBuilding) {
+            mountainCount += 1;
+        }
+    }
+
+    return { mountainCount, oreGained: mountainCount * 2 };
+}
 
 interface ProgressCardModalProps {
     isOpen: boolean;
@@ -38,6 +91,8 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const resources: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
     const commodities: CommodityType[] = ['paper', 'cloth', 'coin'];
     const alchemyLocked = cardType === 'alchemist' && gameState.phase !== 'waiting_for_roll';
+    const irrigationStats = cardType === 'irrigation' ? calculateIrrigationGain(gameState, currentPlayer.id) : null;
+    const miningStats = cardType === 'mining' ? calculateMiningGain(gameState, currentPlayer.id) : null;
 
     const handlePlay = async () => {
         let options: any = {};
@@ -74,12 +129,8 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 break;
 
             case 'smith':
-                if (!knightId) {
-                    setError('Please select a knight');
-                    return;
-                }
-                options = { knightId };
-                break;
+                setError('Select knights directly on the board to use Smithing.');
+                return;
 
             case 'treason':
                 if (!opponentId || !knightId) {
@@ -105,10 +156,16 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = { opponentId, stolenCard };
                 break;
 
+            case 'irrigation':
+                options = {};
+                break;
+
+            case 'mining':
+                options = {};
+                break;
+
             // For board-selection cards, show message
             case 'inventor':
-            case 'irrigation':
-            case 'mining':
             case 'merchant':
             case 'diplomat':
             case 'intrigue':
@@ -208,25 +265,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                 );
 
-            case 'smith':
-                return (
-                    <div>
-                        <label className="text-sm font-medium block mb-1">Select knight to upgrade:</label>
-                        <select
-                            value={knightId}
-                            onChange={(e) => setKnightId(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                        >
-                            <option value="">Select knight</option>
-                            {getOwnKnights().map(k => (
-                                <option key={k.id} value={k.id}>
-                                    {k.level} knight (vertex {k.vertexId})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                );
-
             case 'saboteur':
                 return (
                     <div>
@@ -321,6 +359,44 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                 );
 
+            case 'irrigation':
+                if (!irrigationStats) return null;
+                return (
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-200">
+                            You will receive{' '}
+                            <span className="font-semibold text-emerald-300">{irrigationStats.wheatGained}</span>{' '}
+                            wheat for the{' '}
+                            <span className="font-semibold text-amber-200">{irrigationStats.fieldCount}</span>{' '}
+                            field{irrigationStats.fieldCount === 1 ? '' : 's'} adjacent to your buildings.
+                        </p>
+                        {irrigationStats.fieldCount === 0 && (
+                            <div className="text-xs text-amber-200 bg-amber-900/40 border border-amber-600 rounded px-3 py-2">
+                                You have no adjacent fields, so playing Irrigation will not add any wheat.
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'mining':
+                if (!miningStats) return null;
+                return (
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-200">
+                            You will receive{' '}
+                            <span className="font-semibold text-emerald-300">{miningStats.oreGained}</span>{' '}
+                            ore for the{' '}
+                            <span className="font-semibold text-amber-200">{miningStats.mountainCount}</span>{' '}
+                            mountain{miningStats.mountainCount === 1 ? '' : 's'} adjacent to your buildings.
+                        </p>
+                        {miningStats.mountainCount === 0 && (
+                            <div className="text-xs text-amber-200 bg-amber-900/40 border border-amber-600 rounded px-3 py-2">
+                                You have no adjacent mountains, so playing Mining will not add any ore.
+                            </div>
+                        )}
+                    </div>
+                );
+
             default:
                 return (
                     <p className="text-sm text-slate-300">
@@ -341,7 +417,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none"
+                        className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none cursor-pointer"
                         aria-label="Close"
                     >
                         ×
@@ -383,7 +459,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                 : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
                         }`}
                     >
-                        Play Card
+                        {cardType === 'irrigation' || cardType === 'mining' ? 'Confirm' : 'Play Card'}
                     </button>
                 </div>
             </div>

@@ -9,7 +9,7 @@ import { VoxelPort } from '@/themes/voxel/Port';
 import { useThemeStore } from '@/lib/theme-store';
 import { generatePorts } from '@/engine/generatePorts';
 import { GameState } from '@/lib/types';
-import { Knight } from '@/lib/types/player';
+import { Knight, ProgressCardType } from '@/lib/types/player';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { useTransition } from 'react';
@@ -19,7 +19,7 @@ import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity 
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
-import { getAdjacentEdgesForVertex, getEdgeEndpoints, getAdjacentVertexIds } from '@/lib/hex';
+import { getAdjacentEdgesForVertex, getEdgeEndpoints, getAdjacentVertexIds, getCanonicalVertexId } from '@/lib/hex';
 
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 
@@ -30,19 +30,33 @@ interface BoardProps {
     onCancelBuild: () => void;
     movingKnightId?: string | null;
     buildingMetropolisType?: 'science' | 'trade' | 'politics' | null;
-    selectingHexForCard?: 'merchant' | 'irrigation' | 'mining' | 'inventor' | null;
+    selectingHexForCard?: 'merchant' | 'inventor' | null;
     selectingVertexForCard?: 'intrigue' | null;
     selectingEdgeForCard?: 'diplomat' | null;
     selectingCityForEngineer?: boolean;
+    selectingCityForMedicine?: boolean;
+    selectingKnightsForSmith?: boolean;
+    smithSelectableKnightIds?: string[];
+    smithSelectedKnightIds?: string[];
+    progressPromptCardType?: ProgressCardType | null;
+    progressPromptVisible?: boolean;
+    progressPromptReady?: boolean;
     inventorSelection?: { firstHexId?: string; secondHexId?: string } | null;
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
     onEngineerCitySelected?: (vertexId: string) => void;
+    onMedicineCitySelected?: (vertexId: string) => void;
     onCityClick?: (vertexId: string) => void;
     onKnightClick?: (knightId: string) => void;
     onBarbarianCitySelect?: (vertexId: string) => void;
 }
+
+const getHexVertexIds = (hexId: string): string[] => {
+    const [q, r] = hexId.split(',').map(Number);
+    if (Number.isNaN(q) || Number.isNaN(r)) return [];
+    return Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
+};
 
 export const Board: React.FC<BoardProps> = ({
     gameState,
@@ -55,11 +69,19 @@ export const Board: React.FC<BoardProps> = ({
     selectingVertexForCard,
     selectingEdgeForCard,
     selectingCityForEngineer,
+    selectingCityForMedicine,
+    selectingKnightsForSmith,
+    smithSelectableKnightIds,
+    smithSelectedKnightIds,
+    progressPromptCardType,
+    progressPromptVisible,
+    progressPromptReady,
     inventorSelection,
     onHexSelected,
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
     onEngineerCitySelected,
+    onMedicineCitySelected,
     onCityClick,
     onKnightClick,
     onBarbarianCitySelect
@@ -151,6 +173,20 @@ export const Board: React.FC<BoardProps> = ({
             return valid;
         }
 
+        if (selectingCityForMedicine) {
+            vertices.forEach(v => {
+                if (isValidMainPhaseCity(gameState, v.id, playerId)) {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
+
+        if (selectingKnightsForSmith && smithSelectableKnightIds && smithSelectableKnightIds.length > 0) {
+            smithSelectableKnightIds.forEach(id => valid.add(id));
+            return valid;
+        }
+
         // Engineering progress card - free city wall placement
         if (selectingCityForEngineer) {
             vertices.forEach(v => {
@@ -225,7 +261,7 @@ export const Board: React.FC<BoardProps> = ({
             }
         }
         return valid;
-    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer]);
+    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer, selectingCityForMedicine, selectingKnightsForSmith, smithSelectableKnightIds]);
 
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
@@ -289,38 +325,12 @@ export const Board: React.FC<BoardProps> = ({
             switch (selectingHexForCard) {
                 case 'merchant':
                     // Hex must be adjacent to player's settlement/city
-                    const hasAdjacentSettlement = (hex.vertices || []).some((vertexId: string) => {
+                    const hasAdjacentSettlement = getHexVertexIds(hex.id).some((vertexId: string) => {
                         const vertex = gameState.board.vertices[vertexId];
                         return vertex && vertex.owner === playerId && vertex.structure;
                     });
                     if (hasAdjacentSettlement && hex.terrain !== 'desert' && hex.terrain !== 'ocean') {
                         valid.add(hex.id);
-                    }
-                    break;
-
-                case 'irrigation':
-                    // Must be field hex where player has settlement/city
-                    if (hex.terrain === 'field') {
-                        const hasPlayerStructure = (hex.vertices || []).some((vertexId: string) => {
-                            const vertex = gameState.board.vertices[vertexId];
-                            return vertex && vertex.owner === playerId && vertex.structure;
-                        });
-                        if (hasPlayerStructure) {
-                            valid.add(hex.id);
-                        }
-                    }
-                    break;
-
-                case 'mining':
-                    // Must be mountain hex where player has settlement/city
-                    if (hex.terrain === 'mountain') {
-                        const hasPlayerStructure = (hex.vertices || []).some((vertexId: string) => {
-                            const vertex = gameState.board.vertices[vertexId];
-                            return vertex && vertex.owner === playerId && vertex.structure;
-                        });
-                        if (hasPlayerStructure) {
-                            valid.add(hex.id);
-                        }
                     }
                     break;
 
@@ -370,6 +380,18 @@ export const Board: React.FC<BoardProps> = ({
             if (validVertices.has(vertexId)) {
                 onVertexSelectedForCard(vertexId);
             }
+            return;
+        }
+
+        if (selectingCityForMedicine && validVertices.has(vertexId)) {
+            startTransition(async () => {
+                try {
+                    await onMedicineCitySelected?.(vertexId);
+                    onCancelBuild();
+                } catch (e) {
+                    console.error('Failed to upgrade city with Medicine', e);
+                }
+            });
             return;
         }
 
@@ -561,7 +583,11 @@ export const Board: React.FC<BoardProps> = ({
                     }
                 });
             }
-        } else if (gameState.phase === 'road_building_1' || gameState.phase === 'road_building_2') {
+        } else if (
+            (gameState.phase === 'road_building_1' || gameState.phase === 'road_building_2') ||
+            (progressPromptVisible && progressPromptCardType === 'road_building_progress')
+        ) {
+            if (!progressPromptReady && progressPromptCardType === 'road_building_progress') return; // wait until server effect active to avoid errors
             if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
                 startTransition(async () => {
                     try {
@@ -717,6 +743,10 @@ export const Board: React.FC<BoardProps> = ({
                                         const ownerColor = knight
                                             ? gameState.players.find(p => p.id === knight.playerId)?.color
                                             : gameState.players.find(p => p.id === vertex.owner)?.color;
+                                        const isEngineerCancel = !!selectingCityForEngineer && validVertices.has(vertex.id);
+                                        const isMedicineCancel = !!selectingCityForMedicine && validVertices.has(vertex.id);
+                                        const isSmithCancel = !!selectingKnightsForSmith && validVertices.has(vertex.id);
+                                        const isSmithSelected = !!(selectingKnightsForSmith && knight && smithSelectedKnightIds?.includes(knight.id));
                                         return (
                                             <VertexRenderer
                                                 key={vertex.id}
@@ -730,8 +760,15 @@ export const Board: React.FC<BoardProps> = ({
                                                 isMoving={isMoving}
                                                 onCancelMove={onCancelBuild}
                                                 currentPlayerId={playerId}
-                                                showCancelIcon={!!selectingCityForEngineer && validVertices.has(vertex.id)}
-                                                cancelIconTitle="Cancel Engineering"
+                                                showCancelIcon={isEngineerCancel || isMedicineCancel || isSmithCancel}
+                                                cancelIconTitle={
+                                                    isEngineerCancel
+                                                        ? 'Cancel Engineering'
+                                                        : isMedicineCancel
+                                                            ? 'Cancel Medicine'
+                                                            : 'Cancel Smithing'
+                                                }
+                                                isSelectedForAction={isSmithSelected}
                                                 onCancelIconClick={onCancelBuild}
                                             />
                                         );

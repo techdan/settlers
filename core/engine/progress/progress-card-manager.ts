@@ -4,8 +4,8 @@ import { CK_CONSTANTS, ImprovementType, ProgressCardCategory } from '@/core/rule
 import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
 import { ResourceType, TOKEN_PIPS } from '@/core/rules/board-constants';
-import { displaceKnight } from '@/core/engine/knights/knight-manager';
-import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
+import { displaceKnight, upgradeKnight } from '@/core/engine/knights/knight-manager';
+import { getAdjacentEdgesForVertex, getCanonicalVertexId, getEdgeEndpoints } from '@/lib/hex';
 import {
     canAffordImprovement,
     tryAwardMetropolis,
@@ -14,11 +14,25 @@ import {
 } from '@/core/engine/improvements/improvement-manager';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { getCityWallCount } from '@/core/utils/city-wall-utils';
+import { isValidMainPhaseCity } from '@/core/validation/building-validator';
+import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
+import { isKnightPromotable } from '@/core/utils/knight-upgrade-utils';
+
+const MEDICINE_COST: Partial<Record<ResourceType, number>> = {
+    ore: 2,
+    wheat: 1
+};
 
 /**
  * Progress Card Manager (Cities & Knights Expansion)
  * Handles drawing and playing progress cards
  */
+
+function getVertexIdsForHex(hexId: string): string[] {
+    const [q, r] = hexId.split(',').map(Number);
+    if (Number.isNaN(q) || Number.isNaN(r)) return [];
+    return Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
+}
 
 /**
  * Draw a progress card from a deck
@@ -73,6 +87,28 @@ export function drawProgressCard(
             message: `${player.name} revealed ${cardMeta.name} for +1 VP!`,
             playerId
         });
+
+        // Track recency for UI highlight and recalc VPs immediately
+        gameState.lastVPCardGain = {
+            playerId,
+            cardType: card,
+            timestamp: Date.now()
+        };
+
+        updateAllVictoryPoints(gameState);
+
+        const winnerId = checkVictoryCondition(gameState);
+        if (winnerId) {
+            gameState.winner = winnerId;
+            gameState.phase = 'game_over';
+
+            const winner = gameState.players.find(p => p.id === winnerId);
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
+            });
+        }
     } else {
         // Regular progress cards go into hand
         if (!player.progressCards) {
@@ -109,6 +145,8 @@ export function playProgressCard(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
+    const deferRemoval = cardType === 'road_building_progress';
+
     // Pre-validate cards that need additional data before removal
     if (cardType === 'crane') {
         validateCranePlayable(gameState, player, options);
@@ -118,25 +156,70 @@ export function playProgressCard(
         validateEngineerPlayable(gameState, playerId, options);
     }
 
+    if (cardType === 'medicine') {
+        validateMedicinePlayable(gameState, player, options);
+    }
+
+    if (cardType === 'road_building_progress') {
+        const existingEffect = gameState.activeEffects?.find(
+            (effect: any) => effect?.type === 'road_building_progress' && effect.playerId === playerId
+        );
+        if (existingEffect) {
+            throw new Error('Road Building is already in progress');
+        }
+    }
+
     // Check player has the card
     if (!player.progressCards || !player.progressCards.includes(cardType)) {
         throw new Error('Player does not have this card');
     }
 
-    // Remove card from hand
-    const index = player.progressCards.indexOf(cardType);
-    player.progressCards.splice(index, 1);
+    // Remove card from hand unless deferred (Road Building waits until finish)
+    if (!deferRemoval) {
+        const index = player.progressCards.indexOf(cardType);
+        player.progressCards.splice(index, 1);
+    }
 
     const cardMeta = getCardMetadata(cardType);
+    const isVPCard = cardType === 'printer' || cardType === 'constitution';
 
     // Log card play (Alchemy handled inside its effect for combined roll/play message)
-    if (cardType !== 'alchemist') {
+    if (cardType !== 'alchemist' && cardType !== 'road_building_progress') {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
             message: `${player.name} played ${cardMeta.name}`,
             playerId
         });
+    }
+
+    if (isVPCard) {
+        if (!player.revealedVPCards) {
+            player.revealedVPCards = [];
+        }
+        if (!player.revealedVPCards.includes(cardType)) {
+            player.revealedVPCards.push(cardType);
+        }
+
+        gameState.lastVPCardGain = {
+            playerId,
+            cardType,
+            timestamp: Date.now()
+        };
+
+        updateAllVictoryPoints(gameState);
+        const winnerId = checkVictoryCondition(gameState);
+        if (winnerId) {
+            gameState.winner = winnerId;
+            gameState.phase = 'game_over';
+
+            const winner = gameState.players.find(p => p.id === winnerId);
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
+            });
+        }
     }
 
     // Execute card effect
@@ -178,6 +261,27 @@ function validateEngineerPlayable(gameState: GameState, playerId: string, option
 
     if (!canBuildCityWall(gameState, vertexId, playerId, { ignoreCost: true })) {
         throw new Error('Selected city is not eligible for Engineering');
+    }
+}
+
+function validateMedicinePlayable(gameState: GameState, player: PlayerState, options?: any): void {
+    const vertexId = options?.vertexId as string | undefined;
+    if (!vertexId) {
+        throw new Error('Medicine requires selecting one of your settlements');
+    }
+
+    if (!isValidMainPhaseCity(gameState, vertexId, player.id)) {
+        throw new Error('Selected location is not an eligible settlement for Medicine');
+    }
+
+    if ((player.citiesRemaining || 0) <= 0) {
+        throw new Error('No cities remaining to upgrade');
+    }
+
+    const ore = player.resources.ore || 0;
+    const wheat = player.resources.wheat || 0;
+    if (ore < (MEDICINE_COST.ore || 0) || wheat < (MEDICINE_COST.wheat || 0)) {
+        throw new Error('Not enough resources for Medicine (2 ore + 1 wheat)');
     }
 }
 
@@ -233,7 +337,7 @@ function executeProgressCardEffect(
             break;
 
         case 'medicine':
-            executeMedicine(gameState, player);
+            executeMedicine(gameState, player, options);
             break;
 
         case 'printer':
@@ -486,51 +590,118 @@ function executeEngineer(gameState: GameState, player: PlayerState, options?: an
 }
 
 function executeRoadBuilding(gameState: GameState, player: PlayerState): void {
-    // Player can build 2 roads for free
-    // This should set a game state flag that the service layer checks
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `${player.name} can build 2 roads for free`,
-        playerId: player.id
-    });
-}
-
-function executeMedicine(gameState: GameState, player: PlayerState): void {
-    // Reduce city upgrade cost to 2 ore + 1 grain (instead of 3 ore + 2 grain)
+    // Progress card: build 2 roads for free (enter road-building flow)
     if (!gameState.activeEffects) {
         gameState.activeEffects = [];
     }
 
+    // Clear any prior progress-card road building effect for this player
+    gameState.activeEffects = gameState.activeEffects.filter(
+        (effect) => !(effect?.type === 'road_building_progress' && effect.playerId === player.id)
+    );
+
     gameState.activeEffects.push({
-        type: 'medicine',
+        type: 'road_building_progress',
         playerId: player.id,
+        placedEdges: [] as string[],
+        completed: false
     });
+
+    gameState.phase = 'road_building_1';
+}
+
+function executeMedicine(gameState: GameState, player: PlayerState, options?: any): void {
+    const vertexId = options?.vertexId as string | undefined;
+    if (!vertexId) {
+        throw new Error('Medicine requires selecting one of your settlements');
+    }
+
+    if (!isValidMainPhaseCity(gameState, vertexId, player.id)) {
+        throw new Error('Selected location is not an eligible settlement for Medicine');
+    }
+
+    const vertex = gameState.board.vertices[vertexId];
+    if (!vertex) {
+        throw new Error('Invalid city selection for Medicine');
+    }
+
+    removeResources(player, MEDICINE_COST);
+
+    player.citiesRemaining = Math.max(0, (player.citiesRemaining || 0) - 1);
+    player.settlementsRemaining = (player.settlementsRemaining || 0) + 1;
+    vertex.structure = 'city';
+
+    updateAllVictoryPoints(gameState);
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can upgrade a settlement to city with Medicine discount (2 ore + 1 grain)`,
+        message: `${player.name} upgraded a settlement to a city with Medicine (2 ore + 1 wheat)`,
         playerId: player.id
     });
+
+    const winnerId = checkVictoryCondition(gameState);
+    if (winnerId) {
+        gameState.winner = winnerId;
+        gameState.phase = 'game_over';
+
+        const winner = gameState.players.find(p => p.id === winnerId);
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
+        });
+    }
 }
 
 function executeSmith(gameState: GameState, player: PlayerState, options?: any): void {
-    // Upgrade 2 knights for free
-    if (!gameState.activeEffects) {
-        gameState.activeEffects = [];
+    const rawIds = Array.isArray(options?.knightIds)
+        ? options.knightIds
+        : options?.knightId
+            ? [options.knightId]
+            : [];
+
+    const knightIds = Array.from(new Set(rawIds.filter(Boolean)));
+
+    if (knightIds.length === 0) {
+        throw new Error('Smithing requires selecting at least one of your knights to promote');
     }
 
-    gameState.activeEffects.push({
-        type: 'smith',
-        playerId: player.id,
-        knightsRemaining: 2, // Can upgrade 2 knights
+    if (knightIds.length > 2) {
+        throw new Error('Smithing can promote at most two knights');
+    }
+
+    if (!player.knights || player.knights.length === 0) {
+        throw new Error('No knights available to promote');
+    }
+
+    // Validate all selections before mutating state to avoid partial upgrades
+    const knightsToUpgrade = knightIds.map((id: string) => {
+        const knight = player.knights?.find(k => k.id === id);
+        if (!knight) {
+            throw new Error('Selected knight does not belong to you');
+        }
+        if (!isKnightPromotable(knight, player)) {
+            if (knight.level === 'mighty') {
+                throw new Error('Mighty knights cannot be promoted further');
+            }
+            if (knight.level === 'strong') {
+                throw new Error('Politics level 3 is required to promote a strong knight to mighty');
+            }
+            throw new Error('Selected knight cannot be promoted right now');
+        }
+        return knight;
     });
 
+    knightsToUpgrade.forEach(knight => {
+        upgradeKnight(gameState, knight.id);
+    });
+
+    const upgradedCount = knightsToUpgrade.length;
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can upgrade 2 knights for free`,
+        message: `${player.name} upgraded ${upgradedCount} knight${upgradedCount === 1 ? '' : 's'} for free with Smithing`,
         playerId: player.id
     });
 }
@@ -589,7 +760,7 @@ function executeIrrigation(gameState: GameState, player: PlayerState, options?: 
 
     for (const hex of fieldHexes) {
         // Check if player has a building (settlement, city, or metropolis) on this hex
-        const adjacentVertices = hex.vertices || [];
+        const adjacentVertices = getVertexIdsForHex(hex.id);
         const hasAdjacentBuilding = adjacentVertices.some((vertexId: string) => {
             const vertex = gameState.board.vertices[vertexId];
             return vertex && vertex.owner === player.id &&
@@ -622,7 +793,7 @@ function executeMining(gameState: GameState, player: PlayerState, options?: any)
 
     for (const hex of mountainHexes) {
         // Check if player has a building (settlement, city, or metropolis) on this hex
-        const adjacentVertices = hex.vertices || [];
+        const adjacentVertices = getVertexIdsForHex(hex.id);
         const hasAdjacentBuilding = adjacentVertices.some((vertexId: string) => {
             const vertex = gameState.board.vertices[vertexId];
             return vertex && vertex.owner === player.id &&
@@ -661,7 +832,7 @@ function executeMerchant(gameState: GameState, player: PlayerState, options?: an
     }
 
     // Validate hex is adjacent to player's settlement/city
-    const adjacentVertices = hex.vertices || [];
+    const adjacentVertices = getVertexIdsForHex(hex.id);
     const hasAdjacentSettlement = adjacentVertices.some((vertexId: string) => {
         const vertex = gameState.board.vertices[vertexId];
         return vertex && vertex.owner === player.id && (vertex.structure === 'settlement' || vertex.structure === 'city' || vertex.structure === 'metropolis');
@@ -1106,7 +1277,7 @@ function executeTaxation(gameState: GameState, player: PlayerState, options?: an
     gameState.robberHexId = hexId;
 
     // Find all opponents with settlements/cities on this hex
-    const adjacentVertices = hex.vertices || [];
+    const adjacentVertices = getVertexIdsForHex(hex.id);
     const opponentsOnHex = new Set<string>();
 
     for (const vertexId of adjacentVertices) {

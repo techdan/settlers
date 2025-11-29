@@ -17,9 +17,10 @@ interface VertexRendererProps {
     showCancelIcon?: boolean;
     cancelIconTitle?: string;
     onCancelIconClick?: () => void;
+    isSelectedForAction?: boolean;
 }
 
-export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick }) => {
+export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick, isSelectedForAction }) => {
     const pixel = hexCornerToPixel(createHex(vertex.q, vertex.r), vertex.d, size);
     const DEPTH = 15;
     const offset = theme === 'voxel' ? { x: 0, y: -DEPTH } : { x: 0, y: 0 };
@@ -60,6 +61,10 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
             {/* Valid Target Indicator (for existing structures like cities) - Rendered FIRST to be behind structure */}
             {vertex.structure && isValid && (
                 <circle r={size * 0.4} fill="none" stroke="#ef4444" strokeWidth={4} className="animate-pulse pointer-events-none" />
+            )}
+
+            {isSelectedForAction && (
+                <circle r={size * 0.32} fill="none" stroke="#22d3ee" strokeWidth={3} className="animate-pulse pointer-events-none" />
             )}
 
             {/* Hitbox - Reduced size for tighter click area */}

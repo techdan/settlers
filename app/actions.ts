@@ -189,6 +189,7 @@ export async function debugGiveResource(roomId: string, playerId: string, resour
 
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { ProgressCardType } from '@/lib/types/player';
+import { updateAllVictoryPoints, checkVictoryCondition } from '@/core/rules/victory-conditions';
 
 export async function debugGiveCommodity(roomId: string, playerId: string, commodity: CommodityType) {
     const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
@@ -228,14 +229,53 @@ export async function debugGiveProgressCard(roomId: string, playerId: string, ca
         throw new Error('Player does not have progress cards (not in C&K mode)');
     }
 
-    player.progressCards.push(cardType);
+    const isVPCard = cardType === 'printer' || cardType === 'constitution';
 
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `DEBUG: ${player.name} gave themselves a ${cardType} progress card.`,
-        playerId
-    });
+    if (isVPCard) {
+        if (!player.revealedVPCards) {
+            player.revealedVPCards = [];
+        }
+        if (!player.revealedVPCards.includes(cardType)) {
+            player.revealedVPCards.push(cardType);
+        }
+
+        gameState.lastVPCardGain = {
+            playerId,
+            cardType,
+            timestamp: Date.now()
+        };
+
+        updateAllVictoryPoints(gameState);
+
+        const winnerId = checkVictoryCondition(gameState);
+        if (winnerId) {
+            gameState.winner = winnerId;
+            gameState.phase = 'game_over';
+
+            const winner = gameState.players.find(p => p.id === winnerId);
+            gameState.logs.push({
+                id: randomUUID(),
+                timestamp: Date.now(),
+                message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
+            });
+        }
+
+        gameState.logs.push({
+            id: randomUUID(),
+            timestamp: Date.now(),
+            message: `DEBUG: ${player.name} revealed ${cardType} for +1 VP.`,
+            playerId
+        });
+    } else {
+        player.progressCards.push(cardType);
+
+        gameState.logs.push({
+            id: randomUUID(),
+            timestamp: Date.now(),
+            message: `DEBUG: ${player.name} gave themselves a ${cardType} progress card.`,
+            playerId
+        });
+    }
 
     await db.update(games)
         .set({ state: JSON.stringify(gameState), updatedAt: new Date() })

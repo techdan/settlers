@@ -6,9 +6,28 @@ import { GAME_CONSTANTS } from '@/core/rules/constants';
 interface GameStatusProps {
     gameState: GameState;
     currentPlayerId: string;
+    vpAckTimestamp?: number | null;
 }
 
-export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayerId }) => {
+export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayerId, vpAckTimestamp }) => {
+    const [vpHighlightExpiry, setVpHighlightExpiry] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        if (!gameState.lastVPCardGain || !vpAckTimestamp) {
+            setVpHighlightExpiry(null);
+            return;
+        }
+
+        const expiry = vpAckTimestamp + 5000;
+        setVpHighlightExpiry(expiry);
+
+        const timeout = setTimeout(() => {
+            setVpHighlightExpiry(null);
+        }, Math.max(0, expiry - Date.now()));
+
+        return () => clearTimeout(timeout);
+    }, [gameState.lastVPCardGain?.timestamp, vpAckTimestamp]);
+
     const getPlayerStats = (player: PlayerState) => {
         const resourceCount = Object.values(player.resources).reduce((a, b) => a + b, 0);
         const devCardCount = Object.values(player.devCards).reduce((a, b) => a + b, 0) + (player.devCardsBoughtThisTurn?.length || 0);
@@ -78,6 +97,12 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                     const isTurn = gameState.currentTurn === player.id;
                     const isMe = currentPlayerId === player.id;
                     const stats = getPlayerStats(player);
+                    const hasVPProgressCards = !!(player.revealedVPCards && player.revealedVPCards.length > 0);
+                    const vpCardGainActive =
+                        gameState.lastVPCardGain &&
+                        gameState.lastVPCardGain.playerId === player.id &&
+                        vpHighlightExpiry !== null &&
+                        Date.now() < vpHighlightExpiry;
 
                     return (
                         <div
@@ -167,9 +192,9 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                         </div>
 
                                         {/* VP Progress Cards */}
-                                        <div className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${player.revealedVPCards && player.revealedVPCards.length > 0 ? 'bg-amber-900/30' : 'bg-slate-800/30 opacity-50'}`} title={`Victory Point Progress Cards (e.g., Printer, Constitution).\nEach card is worth 1 VP.\nCurrent: ${player.revealedVPCards?.join(', ') || 'None'}`}>
+                                        <div className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${hasVPProgressCards ? 'bg-amber-900/30' : 'bg-slate-800/30 opacity-50'} ${vpCardGainActive ? 'ring-2 ring-amber-400 animate-pulse' : ''}`} title={`Victory Point Progress Cards (e.g., Printer, Constitution).\nEach card is worth 1 VP.\nCurrent: ${player.revealedVPCards?.join(', ') || 'None'}`}>
                                             <span className="text-amber-400">📜</span>
-                                            <span className={`font-bold ${player.revealedVPCards && player.revealedVPCards.length > 0 ? 'text-amber-200' : 'text-slate-400'}`}>{player.revealedVPCards?.length || 0} VP</span>
+                                            <span className={`font-bold ${hasVPProgressCards ? 'text-amber-200' : 'text-slate-400'} ${vpCardGainActive ? 'text-amber-50' : ''}`}>{player.revealedVPCards?.length || 0} VP</span>
                                         </div>
 
                                         {/* Merchant */}

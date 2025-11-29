@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Board } from '@/components/board/Board';
 import { GameState } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -15,6 +15,7 @@ import { DiceDisplay } from './DiceDisplay';
 import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
+import { BoardSelectionPrompt } from './BoardSelectionPrompt';
 import { buildCityWall, endTurn } from '@/app/actions';
 import { AqueductModal } from './AqueductModal';
 
@@ -29,11 +30,15 @@ import { ProgressCardHand } from './ProgressCardHand';
 import { ProgressCardDiscardDialog } from './ProgressCardDiscardDialog';
 import { DebugPanel } from './DebugPanel';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
+import { useProgressCardSelectionDecorator } from '@/lib/hooks/useProgressCardSelectionDecorator';
 import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
 import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
 import { ConnectionStatusIndicator } from './ConnectionStatus';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
+import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
+import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 import { ProgressCardType } from '@/lib/types/player';
+import { ProgressPromptProvider, useProgressPrompt } from '@/lib/hooks/useProgressPrompt';
 
 interface GameControllerProps {
     roomId: string;
@@ -51,7 +56,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [isCraneDialogOpen, setIsCraneDialogOpen] = useState(false);
 
     // Progress card board selection states
-    const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
+    const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'inventor' | null>(null);
     const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | null>(null);
     const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<'diplomat' | null>(null);
     const [inventorSelection, setInventorSelection] = useState<{ firstHexId?: string; firstValue?: number; secondHexId?: string; secondValue?: number }>({});
@@ -60,6 +65,19 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
     const [progressDiscardContext, setProgressDiscardContext] = useState<'own_turn' | 'other_turn'>('own_turn');
     const [selectingCityForEngineer, setSelectingCityForEngineer] = useState(false);
+    const [selectingCityForMedicine, setSelectingCityForMedicine] = useState(false);
+    const [selectingKnightsForSmith, setSelectingKnightsForSmith] = useState(false);
+    const [selectedSmithKnightIds, setSelectedSmithKnightIds] = useState<string[]>([]);
+    const [smithError, setSmithError] = useState<string | null>(null);
+    const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
+    const [vpCardModalType, setVpCardModalType] = useState<'printer' | 'constitution' | null>(null);
+    const lastVPCardSeenRef = useRef<number>(0);
+    const {
+        selectedCard: selectedProgressCard,
+        decorateCardHandler,
+        clearSelectedCard
+    } = useProgressCardSelectionDecorator();
+    const [lastVPAcknowledgedAt, setLastVPAcknowledgedAt] = useState<number | null>(null);
 
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
@@ -75,6 +93,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleKnightClick = (knightId: string) => {
+        if (selectingKnightsForSmith) {
+            handleSmithKnightSelected(knightId);
+            return;
+        }
+
         setSelectedKnightId(knightId);
         setBuildMode(null);
     };
@@ -157,6 +180,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     const handlePlayProgressCard = async (cardType: any, options?: any) => {
         try {
+            if (cardType === 'road_building_progress') {
+                roadBuildingPrompt.begin();
+            }
             const res = await fetch(`/api/game/${roomId}/progress-card`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -164,15 +190,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             });
             if (!res.ok) {
                 const errorData = await res.json();
+                if (cardType === 'road_building_progress') {
+                    roadBuildingPrompt.clear();
+                }
                 throw new Error(errorData.error || 'Failed to play progress card');
             }
         } catch (e: any) {
+            if (cardType === 'road_building_progress') {
+                roadBuildingPrompt.clear();
+            }
             console.error('Error playing progress card:', e);
             throw e; // Re-throw so calling code can handle it
         }
     };
 
-    const handleStartHexSelection = (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => {
+    const handleStartHexSelection = (cardType: 'merchant' | 'inventor') => {
         if (selectingHexForCard === cardType) {
             handleCancelSelection();
             return;
@@ -244,6 +276,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     };
 
+    const handleMedicineCitySelected = async (vertexId: string) => {
+        try {
+            await handlePlayProgressCard('medicine', { vertexId });
+            setSelectingCityForMedicine(false);
+        } catch (e) {
+            console.error('Failed to upgrade settlement with Medicine', e);
+        }
+    };
+
     const handleStartVertexSelection = (cardType: 'intrigue') => {
         if (selectingVertexForCard === cardType) {
             handleCancelSelection();
@@ -270,6 +311,58 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSelectingVertexForCard(null);
     };
 
+    const handleCancelRoadBuildingProgress = async () => {
+        roadBuildingPrompt.hide();
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card/road-building`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, action: 'cancel' })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                const message = error.error || 'Failed to cancel Road Building';
+                if (message.toLowerCase().includes('no active road building')) {
+                    roadBuildingPrompt.clear();
+                    clearSelectedCard();
+                    return;
+                }
+                throw new Error(message);
+            }
+            clearSelectedCard();
+            roadBuildingPrompt.clear();
+        } catch (e) {
+            console.error('Failed to cancel Road Building progress card', e);
+            roadBuildingPrompt.clear();
+        }
+    };
+
+    const handleFinalizeRoadBuildingProgress = async () => {
+        roadBuildingPrompt.hide();
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card/road-building`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playerId, action: 'complete' })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                const message = error.error || 'Failed to finish Road Building';
+                if (message.toLowerCase().includes('no active road building')) {
+                    roadBuildingPrompt.clear();
+                    clearSelectedCard();
+                    return;
+                }
+                throw new Error(message);
+            }
+            clearSelectedCard();
+            roadBuildingPrompt.clear();
+        } catch (e) {
+            console.error('Failed to finalize Road Building progress card', e);
+            roadBuildingPrompt.clear();
+        }
+    };
+
     const handleStartEngineerSelection = () => {
         if (!baseGameState) return;
         const effectiveState = getOptimisticState(baseGameState);
@@ -281,6 +374,80 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
         handleCancelSelection();
         setSelectingCityForEngineer(true);
+    };
+
+    const handleStartSmithSelection = () => {
+        if (!baseGameState) return;
+        const effectiveState = getOptimisticState(baseGameState);
+        const promotableKnights = effectiveState ? getPromotableKnights(effectiveState, playerId) : [];
+
+        if (promotableKnights.length === 0) return;
+
+        if (selectingKnightsForSmith) {
+            handleCancelSelection();
+            return;
+        }
+
+        handleCancelSelection();
+        setSelectingKnightsForSmith(true);
+        setSelectedSmithKnightIds([]);
+        setSmithError(null);
+    };
+
+    const handleSmithKnightSelected = (knightId: string) => {
+        if (!selectingKnightsForSmith) return;
+
+        const effectiveState = baseGameState ? getOptimisticState(baseGameState) : null;
+        const promotableKnights = effectiveState ? getPromotableKnights(effectiveState, playerId) : [];
+        const isPromotable = promotableKnights.some(k => k.id === knightId);
+        if (!isPromotable) return;
+
+        setSmithError(null);
+        setSelectedSmithKnightIds(prev => {
+            if (prev.includes(knightId)) {
+                return prev.filter(id => id !== knightId);
+            }
+            if (prev.length >= 2) {
+                return [prev[0], knightId];
+            }
+            return [...prev, knightId];
+        });
+    };
+
+    const handleConfirmSmithPromotions = async () => {
+        if (selectedSmithKnightIds.length === 0) return;
+
+        try {
+            await handlePlayProgressCard('smith', { knightIds: selectedSmithKnightIds });
+            setSelectingKnightsForSmith(false);
+            setSelectedSmithKnightIds([]);
+            setSmithError(null);
+        } catch (e: any) {
+            setSmithError(e?.message || 'Failed to promote knights');
+        }
+    };
+
+    const handleStartMedicineSelection = () => {
+        if (!baseGameState) return;
+        const effectiveState = getOptimisticState(baseGameState);
+        const player = effectiveState.players.find(p => p.id === playerId);
+
+        const hasResources =
+            !!player &&
+            (player.resources.ore ?? 0) >= MEDICINE_COST.ore &&
+            (player.resources.wheat ?? 0) >= MEDICINE_COST.wheat;
+        const hasCityToken = (player?.citiesRemaining ?? 0) > 0;
+        const eligibleSettlements = getUpgradeableSettlementVertices(effectiveState, playerId);
+
+        if (!hasResources || !hasCityToken || eligibleSettlements.length === 0) return;
+
+        if (selectingCityForMedicine) {
+            handleCancelSelection();
+            return;
+        }
+
+        handleCancelSelection();
+        setSelectingCityForMedicine(true);
     };
 
     const handleVertexSelected = async (vertexId: string) => {
@@ -330,7 +497,20 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
         setSelectingCityForEngineer(false);
+        setSelectingKnightsForSmith(false);
+        setSelectedSmithKnightIds([]);
+        setSmithError(null);
+        setSelectingCityForMedicine(false);
         setIsCraneDialogOpen(false);
+        clearSelectedCard();
+    };
+
+    const handleCancelFollowupCard = () => {
+        if (isRoadBuildingProgressActive) {
+            handleCancelRoadBuildingProgress();
+            return;
+        }
+        handleCancelSelection();
     };
 
     const handleDiscardProgressCards = async (cardsToDiscard: any[]) => {
@@ -417,6 +597,22 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     }, [subscribedGameState]);
 
+    // Show forced modal when the current player draws a VP progress card (auto-plays immediately).
+    useEffect(() => {
+        const gain = baseGameState?.lastVPCardGain;
+        if (!gain) return;
+        if (gain.cardType !== 'printer' && gain.cardType !== 'constitution') return;
+        if (gain.playerId !== playerId) return;
+        if (gain.timestamp <= lastVPCardSeenRef.current) return;
+
+        // Only trigger for fresh draws to avoid resurfacing on unrelated state changes or reloads.
+        const isRecent = Date.now() - gain.timestamp < 8000;
+        if (!isRecent) return;
+
+        lastVPCardSeenRef.current = gain.timestamp;
+        setVpCardModalType(gain.cardType);
+    }, [baseGameState?.lastVPCardGain, playerId]);
+
     // Automatically force a discard modal when another player's turn pushes us over the progress card limit
     useEffect(() => {
         if (!baseGameState) return;
@@ -445,14 +641,59 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     }, [baseGameState, getOptimisticState, playerId, progressDiscardContext, showProgressCardDiscard]);
 
-    if (!baseGameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
+    useEffect(() => {
+        if (!selectedProgressCard || selectedProgressCard === 'road_building_progress') return;
 
-    // Apply optimistic updates on top of base state
-    const gameState = getOptimisticState(baseGameState);
+        const hasActiveLocalSelection =
+            !!selectingHexForCard ||
+            !!selectingVertexForCard ||
+            !!selectingEdgeForCard ||
+            selectingCityForEngineer ||
+            selectingCityForMedicine ||
+            selectingKnightsForSmith ||
+            isCraneDialogOpen;
 
-    const currentPlayer = gameState.players.find(p => p.id === playerId);
-    const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
-    const isActiveTurn = gameState.currentTurn === playerId;
+        if (!hasActiveLocalSelection) {
+            clearSelectedCard();
+        }
+    }, [
+        clearSelectedCard,
+        isCraneDialogOpen,
+        selectedProgressCard,
+        selectingCityForEngineer,
+        selectingCityForMedicine,
+        selectingEdgeForCard,
+        selectingHexForCard,
+        selectingKnightsForSmith,
+        selectingVertexForCard
+    ]);
+
+    // Apply optimistic updates on top of base state (null-safe for hook order)
+    const gameState = baseGameState ? getOptimisticState(baseGameState) : null;
+
+    const smithEligibleKnights = selectingKnightsForSmith && gameState ? getPromotableKnights(gameState, playerId) : [];
+    const smithEligibleVertexIds = smithEligibleKnights.map(k => k.vertexId).filter(Boolean);
+
+    const currentPlayer = gameState?.players.find(p => p.id === playerId);
+    const isCitiesAndKnights = gameState?.gameMode === 'cities_and_knights';
+    const isActiveTurn = gameState?.currentTurn === playerId;
+    const roadBuildingEffect = gameState?.activeEffects?.find(
+        (effect: any) => effect?.type === 'road_building_progress' && effect.playerId === playerId
+    );
+    const roadBuildingPlacedCount = Array.isArray((roadBuildingEffect as any)?.placedEdges)
+        ? (roadBuildingEffect as any).placedEdges.length
+        : 0;
+    const isRoadBuildingProgressActive = !!roadBuildingEffect && !!isActiveTurn;
+    const roadBuildingCompleted = (roadBuildingEffect as any)?.completed === true;
+    const roadBuildingPrompt = useProgressPrompt('road_building_progress', isRoadBuildingProgressActive);
+    const showRoadBuildingPrompt = roadBuildingPrompt.isVisible;
+    const roadBuildingPromptStatus =
+        roadBuildingPrompt.status ||
+        (roadBuildingCompleted
+            ? `Placed ${roadBuildingPlacedCount}/2. Finish or cancel to undo both.`
+            : `Placed ${roadBuildingPlacedCount}/2 roads.`);
+
+    if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
     const handleEndTurnClick = async () => {
         const cardCount = currentPlayer?.progressCards?.length ?? 0;
@@ -466,13 +707,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const activeProgressCard: ProgressCardType | null = (() => {
+        if (showRoadBuildingPrompt) return 'road_building_progress';
         if (selectingHexForCard) return selectingHexForCard;
         if (selectingVertexForCard) return selectingVertexForCard;
         if (selectingEdgeForCard) return selectingEdgeForCard;
+        if (selectingKnightsForSmith) return 'smith';
+        if (selectingCityForMedicine) return 'medicine';
         if (selectingCityForEngineer) return 'engineer';
         if (isCraneDialogOpen) return 'crane';
+        if (selectedProgressCard) return selectedProgressCard;
         return null;
     })();
+    const promptBlocksUI = showRoadBuildingPrompt;
 
     return (
         <div className="relative h-screen w-screen overflow-hidden">
@@ -482,6 +728,39 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 consecutiveFailures={connectionStatus.consecutiveFailures}
                 lastError={connectionStatus.lastError}
             />
+
+            {selectingKnightsForSmith && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-slate-900/90 border border-blue-500/60 rounded-lg px-4 py-3 shadow-lg pointer-events-auto">
+                    <div className="text-sm text-white">
+                        <div className="font-semibold">Smithing: promote up to 2 knights</div>
+                        <div className="text-xs text-slate-300">Click your knights on the board to select them.</div>
+                        <div className="text-xs text-slate-200 mt-1">Selected {selectedSmithKnightIds.length}/2</div>
+                    </div>
+                    {smithError && (
+                        <div className="text-xs text-red-200 bg-red-900/50 border border-red-600 rounded px-3 py-2">
+                            {smithError}
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <button
+                            className="px-3 py-2 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+                            onClick={handleCancelSelection}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            className={`px-3 py-2 rounded-md font-semibold shadow transition-colors ${selectedSmithKnightIds.length === 0
+                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
+                                }`}
+                            disabled={selectedSmithKnightIds.length === 0}
+                            onClick={handleConfirmSmithPromotions}
+                        >
+                            Promote
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <Board
                 gameState={gameState}
@@ -494,15 +773,34 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingVertexForCard={selectingVertexForCard}
                 selectingEdgeForCard={selectingEdgeForCard}
                 selectingCityForEngineer={selectingCityForEngineer}
+                selectingCityForMedicine={selectingCityForMedicine}
+                selectingKnightsForSmith={selectingKnightsForSmith}
+                smithSelectableKnightIds={smithEligibleVertexIds}
+                smithSelectedKnightIds={selectedSmithKnightIds}
+                progressPromptCardType={showRoadBuildingPrompt ? 'road_building_progress' : null}
+                progressPromptVisible={showRoadBuildingPrompt}
+                progressPromptReady={isRoadBuildingProgressActive}
                 inventorSelection={inventorSelection}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
                 onEdgeSelectedForCard={handleEdgeSelected}
                 onEngineerCitySelected={handleEngineerCitySelected}
+                onMedicineCitySelected={handleMedicineCitySelected}
                 onCityClick={handleCityClick}
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
             />
+
+            {showRoadBuildingPrompt && (
+                <BoardSelectionPrompt
+                    title="Road Building"
+                    description="Place up to 2 roads for free on your network."
+                    status={roadBuildingPromptStatus}
+                    onCancel={handleCancelRoadBuildingProgress}
+                    onFinish={handleFinalizeRoadBuildingProgress}
+                    finishLabel="Build"
+                />
+            )}
 
             {isInventorConfirmOpen && inventorSelection.firstValue !== undefined && inventorSelection.secondValue !== undefined && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center">
@@ -535,6 +833,34 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                 Confirm Swap
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {vpCardModalType && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 pointer-events-auto">
+                    <div className="bg-slate-900 border border-amber-500/60 rounded-xl shadow-2xl p-6 w-[360px] text-white">
+                        <div className="text-sm uppercase tracking-wide text-amber-300 mb-2">Victory Point Card</div>
+                        <div className="text-xl font-bold text-amber-100 mb-3">
+                            {vpCardModalType === 'printer' ? 'Printing (1 VP)' : 'Constitution (1 VP)'}
+                        </div>
+                        <p className="text-slate-200 text-sm mb-3">
+                            {vpCardModalType === 'printer'
+                                ? 'Printing is a Victory Point progress card. It plays immediately and adds +1 VP to your total.'
+                                : 'Constitution is a Victory Point progress card. It plays immediately and adds +1 VP to your total.'}
+                        </p>
+                        <p className="text-slate-300 text-xs mb-4">
+                            This card cannot be cancelled or held. Click &ldquo;Play Card&rdquo; to acknowledge and continue.
+                        </p>
+                        <button
+                            className="w-full bg-amber-400 text-slate-900 font-semibold py-2 rounded-lg hover:bg-amber-300 transition cursor-pointer"
+                            onClick={() => {
+                                setLastVPAcknowledgedAt(Date.now());
+                                setVpCardModalType(null);
+                            }}
+                        >
+                            Play Card
+                        </button>
                     </div>
                 </div>
             )}
@@ -685,7 +1011,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
                 {/* Right Sidebar: Status + C&K Components */}
                 <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
-                    <GameStatus gameState={gameState} currentPlayerId={playerId} />
+                    <GameStatus
+                        gameState={gameState}
+                        currentPlayerId={playerId}
+                        vpAckTimestamp={lastVPAcknowledgedAt}
+                    />
                     {isCitiesAndKnights && (
                         <>
                             <EventDieDisplay gameState={gameState} />
@@ -697,12 +1027,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 {/* Bottom Center: Build Controls & Resources */}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 pointer-events-auto max-w-[90vw]">
                     {/* Build Controls */}
-                    <BuildControls
-                        gameState={gameState}
-                        playerId={playerId}
-                        buildMode={buildMode}
-                        onSetBuildMode={setBuildMode}
-                    />
+                    <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}>
+                        <BuildControls
+                            gameState={gameState}
+                            playerId={playerId}
+                            buildMode={buildMode}
+                            onSetBuildMode={setBuildMode}
+                        />
+                    </div>
 
                     {/* Resources, Commodities & Dev Cards / Progress Cards */}
                     <div className="flex gap-4 items-stretch max-w-full overflow-x-auto">
@@ -719,10 +1051,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     onStartEdgeSelection={handleStartEdgeSelection}
                                     onStartCrane={handleStartCraneDialog}
                                     onStartEngineerSelection={handleStartEngineerSelection}
+                                    onStartSmithSelection={handleStartSmithSelection}
+                                    onStartMedicineSelection={handleStartMedicineSelection}
                                     isActiveTurn={isActiveTurn}
                                     isEngineerSelecting={selectingCityForEngineer}
+                                    isSmithSelecting={selectingKnightsForSmith}
+                                    isMedicineSelecting={selectingCityForMedicine}
                                     activeFollowupCard={activeProgressCard}
-                                    onCancelFollowupCard={handleCancelSelection}
+                                    onCancelFollowupCard={handleCancelFollowupCard}
+                                    decorateCardHandler={decorateCardHandler}
                                 />
                             </>
                         )}
@@ -732,7 +1069,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 </div>
 
                 {/* Bottom Right: Dice & Actions */}
-                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-4 pointer-events-auto">
+                <div className={`absolute bottom-4 right-4 flex flex-col items-end gap-4 pointer-events-auto ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}`}>
                     <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
                     <ActionControls
                         gameState={gameState}
@@ -750,7 +1087,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 export const GameController: React.FC<GameControllerProps> = (props) => {
     return (
         <OptimisticGameStateProvider>
-            <GameControllerInner {...props} />
+            <ProgressPromptProvider>
+                <GameControllerInner {...props} />
+            </ProgressPromptProvider>
         </OptimisticGameStateProvider>
     );
 };

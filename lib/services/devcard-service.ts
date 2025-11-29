@@ -249,6 +249,10 @@ export async function placeBonusRoad(
         throw new Error('Invalid road placement');
     }
 
+    const roadBuildingEffect = gameState.activeEffects?.find(
+        (effect: any) => effect?.type === 'road_building_progress' && effect.playerId === playerId
+    );
+
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
@@ -262,6 +266,15 @@ export async function placeBonusRoad(
     player.roadsRemaining--;
     gameState.board.edges[edgeId].owner = playerId;
     gameState.board.edges[edgeId].structure = 'road';
+
+    if (roadBuildingEffect) {
+        if (!Array.isArray(roadBuildingEffect.placedEdges)) {
+            roadBuildingEffect.placedEdges = [];
+        }
+        if (!roadBuildingEffect.placedEdges.includes(edgeId)) {
+            roadBuildingEffect.placedEdges.push(edgeId);
+        }
+    }
 
     // Update longest road incrementally (only checks affected player)
     updateLongestRoadIncremental(gameState, playerId);
@@ -300,6 +313,10 @@ export async function placeBonusRoad(
             message: `${player.name} finished road building`,
             playerId
         });
+    }
+
+    if (roadBuildingEffect) {
+        roadBuildingEffect.completed = gameState.phase === 'main_phase';
     }
 
     // Save to database

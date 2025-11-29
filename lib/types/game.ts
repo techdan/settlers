@@ -70,6 +70,12 @@ export interface EventDieRoll {
     timestamp: number;
 }
 
+export interface VictoryPointCardGain {
+    playerId: string;
+    cardType: ProgressCardType;
+    timestamp: number;
+}
+
 /**
  * Cities & Knights - Metropolis ownership
  */
@@ -135,4 +141,5 @@ export interface GameState {
         resource: ResourceType;
         timestamp: number;
     };
+    lastVPCardGain?: VictoryPointCardGain;
 }

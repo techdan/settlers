@@ -1,4 +1,4 @@
-import React, { useState, useTransition } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { PlayerState, GameState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
@@ -6,21 +6,32 @@ import { ProgressCardModal } from './ProgressCardModal';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
+import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
+import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 
 interface ProgressCardHandProps {
     player: PlayerState;
     roomId: string;
     gameState: GameState;
     onPlayCard: (cardType: ProgressCardType, options?: any) => Promise<void>;
-    onStartHexSelection?: (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => void;
+    onStartHexSelection?: (cardType: 'merchant' | 'inventor') => void;
     onStartVertexSelection?: (cardType: 'intrigue') => void;
     onStartEdgeSelection?: (cardType: 'diplomat') => void;
     onStartCrane?: () => void;
     onStartEngineerSelection?: () => void;
+    onStartSmithSelection?: () => void;
+    onStartMedicineSelection?: () => void;
     isActiveTurn?: boolean;
     isEngineerSelecting?: boolean;
+    isSmithSelecting?: boolean;
+    isMedicineSelecting?: boolean;
     activeFollowupCard?: ProgressCardType | null;
     onCancelFollowupCard?: () => void;
+    decorateCardHandler?: <TArgs extends any[], TResult>(
+        cardType: ProgressCardType,
+        hasFollowupStep: boolean,
+        handler: (...args: TArgs) => TResult
+    ) => (...args: TArgs) => TResult;
 }
 
 // Build card info from the official definitions
@@ -44,10 +55,11 @@ const CATEGORY_ICONS = {
     politics: '🔵'
 };
 
+const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
+
 // Cards that require parameter selection
 const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
     'alchemist',
-    'smith',
     'resource_monopoly',
     'trade_monopoly',
     'espionage',
@@ -55,7 +67,9 @@ const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
     'saboteur'
 ];
 
-const BOARD_SELECTION_CARDS: ProgressCardType[] = ['merchant', 'irrigation', 'mining', 'inventor', 'intrigue', 'diplomat'];
+const BOARD_SELECTION_CARDS: ProgressCardType[] = ['merchant', 'inventor', 'intrigue', 'diplomat'];
+const CONFIRMATION_MODAL_CARDS: ProgressCardType[] = ['irrigation', 'mining'];
+const ROAD_PLACEMENT_CARDS: ProgressCardType[] = ['road_building_progress'];
 
 function requiresParameters(cardType: ProgressCardType): boolean {
     return CARDS_REQUIRING_PARAMETERS.includes(cardType);
@@ -71,14 +85,20 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     onStartEdgeSelection,
     onStartCrane,
     onStartEngineerSelection,
+    onStartSmithSelection,
+    onStartMedicineSelection,
     isActiveTurn,
     isEngineerSelecting,
+    isSmithSelecting,
+    isMedicineSelecting,
     activeFollowupCard,
-    onCancelFollowupCard
+    onCancelFollowupCard,
+    decorateCardHandler
 }) => {
     const [isPending, startTransition] = useTransition();
+    const [manualFollowupCard, setManualFollowupCard] = useState<ProgressCardType | null>(null);
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
-    const currentActiveFollowup = modalCard ?? activeFollowupCard ?? null;
+    const currentActiveFollowup = modalCard ?? activeFollowupCard ?? manualFollowupCard ?? null;
 
     // Only show in C&K mode
     if (!player.progressCards) {
@@ -87,13 +107,23 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
 
     const handlePlayCard = (cardType: ProgressCardType) => {
         const isBoardSelectionCard = BOARD_SELECTION_CARDS.includes(cardType);
+        const isConfirmationModalCard = CONFIRMATION_MODAL_CARDS.includes(cardType);
+        const isRoadPlacementCard = ROAD_PLACEMENT_CARDS.includes(cardType);
         const hasFollowupStep =
-            isBoardSelectionCard || requiresParameters(cardType) || cardType === 'crane' || cardType === 'engineer';
+            isBoardSelectionCard ||
+            isConfirmationModalCard ||
+            isRoadPlacementCard ||
+            requiresParameters(cardType) ||
+            cardType === 'crane' ||
+            cardType === 'engineer' ||
+            cardType === 'smith' ||
+            cardType === 'medicine';
 
         if (hasFollowupStep && currentActiveFollowup === cardType) {
             if (modalCard === cardType) {
                 setModalCard(null);
             }
+            setManualFollowupCard(null);
             onCancelFollowupCard?.();
             return;
         }
@@ -114,8 +144,18 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
+        if (cardType === 'smith' && onStartSmithSelection) {
+            onStartSmithSelection();
+            return;
+        }
+
+        if (cardType === 'medicine' && onStartMedicineSelection) {
+            onStartMedicineSelection();
+            return;
+        }
+
         // Check for board selection cards first
-        if (onStartHexSelection && (cardType === 'merchant' || cardType === 'irrigation' || cardType === 'mining' || cardType === 'inventor')) {
+        if (onStartHexSelection && (cardType === 'merchant' || cardType === 'inventor')) {
             onStartHexSelection(cardType);
             return;
         }
@@ -130,8 +170,21 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
+        if (isRoadPlacementCard) {
+            setManualFollowupCard(cardType);
+            (async () => {
+                try {
+                    await onPlayCard(cardType);
+                } catch (e) {
+                    console.error('Failed to play card', e);
+                    setManualFollowupCard(null);
+                }
+            })();
+            return;
+        }
+
         // Check if card requires parameters
-        if (requiresParameters(cardType)) {
+        if (isConfirmationModalCard || requiresParameters(cardType)) {
             setModalCard(cardType);
         } else {
             // Play card directly
@@ -144,6 +197,13 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             });
         }
     };
+
+    // Clear local follow-up highlight when the server-driven active card clears
+    useEffect(() => {
+        if (!activeFollowupCard) {
+            setManualFollowupCard(null);
+        }
+    }, [activeFollowupCard]);
 
     // Collect all cards into a single list
     const allCards: ProgressCardType[] = [];
@@ -166,6 +226,13 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     const cardCount = allCards.length;
     const engineerTargets = getEligibleCityWallVertices(gameState, player.id, { ignoreCost: true });
     const hasEngineerTarget = engineerTargets.length > 0;
+    const smithTargets = getPromotableKnights(gameState, player.id);
+    const hasSmithTarget = smithTargets.length > 0;
+    const medicineTargets = getUpgradeableSettlementVertices(gameState, player.id);
+    const hasMedicineTarget = medicineTargets.length > 0 && (player.citiesRemaining ?? 0) > 0;
+    const canAffordMedicine =
+        (player.resources.ore ?? 0) >= MEDICINE_COST.ore &&
+        (player.resources.wheat ?? 0) >= MEDICINE_COST.wheat;
     const isEmpty = cardCount === 0;
 
     return (
@@ -199,24 +266,46 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                 const icon = CATEGORY_ICONS[info.category];
 
                                 const isEngineer = cardType === 'engineer';
+                                const isSmith = cardType === 'smith';
+                                const isMedicine = cardType === 'medicine';
                                 const engineerDisabled = isEngineer && !hasEngineerTarget;
+                                const smithDisabled = isSmith && !hasSmithTarget;
+                                const medicineDisabled = isMedicine && (!canAffordMedicine || !hasMedicineTarget);
                                 const hasFollowup =
                                     requiresParameters(cardType) ||
                                     BOARD_SELECTION_CARDS.includes(cardType) ||
+                                    ROAD_PLACEMENT_CARDS.includes(cardType) ||
                                     isEngineer ||
+                                    isSmith ||
+                                    isMedicine ||
                                     cardType === 'crane';
                                 const isFollowupActive =
-                                    hasFollowup && (currentActiveFollowup === cardType || (isEngineer && isEngineerSelecting));
+                                    hasFollowup && (
+                                        currentActiveFollowup === cardType ||
+                                        (isEngineer && isEngineerSelecting) ||
+                                        (isSmith && isSmithSelecting) ||
+                                        (isMedicine && isMedicineSelecting)
+                                    );
+                                const disabledTitle = isEngineer && engineerDisabled
+                                    ? 'No cities without walls are available for Engineering'
+                                    : isSmith && smithDisabled
+                                        ? 'No knights can be promoted'
+                                    : isMedicine && medicineDisabled
+                                        ? 'Need 2 ore + 1 wheat, a city piece, and an upgradeable settlement for Medicine'
+                                        : info.description;
+                                const onCardClick = decorateCardHandler
+                                    ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
+                                    : () => handlePlayCard(cardType);
                                 return (
                                     <button
                                         key={`${cardType}-${index}`}
-                                        onClick={() => handlePlayCard(cardType)}
-                                        disabled={isPending || engineerDisabled}
+                                        onClick={onCardClick}
+                                        disabled={isPending || engineerDisabled || smithDisabled || medicineDisabled}
                                         className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
                                             ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
                                             : 'hover:bg-slate-700/50'
-                                            } ${engineerDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        title={isEngineer && engineerDisabled ? 'No cities without walls are available for Engineering' : info.description}
+                                            } ${engineerDisabled || smithDisabled || medicineDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        title={disabledTitle}
                                     >
                                         <div className="flex items-center gap-2">
                                             <span className="text-lg">{icon}</span>
