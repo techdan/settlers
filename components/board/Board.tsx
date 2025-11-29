@@ -105,6 +105,7 @@ export const Board: React.FC<BoardProps> = ({
     const PortComponent = theme === 'flat' ? FlatPort : VoxelPort;
 
     const [isPending, startTransition] = useTransition();
+    const [isPlacingBonusRoad, setIsPlacingBonusRoad] = useState(false);
     const performOptimisticAction = useOptimisticAction();
 
     const knightsMap = useMemo(() => {
@@ -549,7 +550,7 @@ export const Board: React.FC<BoardProps> = ({
     };
 
     const handleEdgeClick = (edgeId: string) => {
-        if (isPending) return;
+        if (isPending || isPlacingBonusRoad) return;
         if (gameState.currentTurn !== playerId) return;
 
         // Progress Card Edge Selection
@@ -589,13 +590,16 @@ export const Board: React.FC<BoardProps> = ({
         ) {
             if (!progressPromptReady && progressPromptCardType === 'road_building_progress') return; // wait until server effect active to avoid errors
             if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
-                startTransition(async () => {
+                setIsPlacingBonusRoad(true);
+                (async () => {
                     try {
                         await placeBonusRoad(gameState.roomId, playerId, edgeId);
                     } catch (e) {
                         console.error("Failed to place bonus road", e);
+                    } finally {
+                        setIsPlacingBonusRoad(false);
                     }
-                });
+                })();
             }
         }
     };
