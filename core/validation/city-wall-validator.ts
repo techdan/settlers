@@ -17,7 +17,8 @@ import { getCityWallCount } from '@/core/utils/city-wall-utils';
 export function canBuildCityWall(
     gameState: GameState,
     vertexId: string,
-    playerId: string
+    playerId: string,
+    options?: { ignoreCost?: boolean }
 ): boolean {
     const vertex = gameState.board.vertices[vertexId];
     if (!vertex) return false;
@@ -38,8 +39,8 @@ export function canBuildCityWall(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return false;
 
-    // Must have 2 brick
-    if (player.resources.brick < 2) return false;
+    // Must have 2 brick unless a free effect (Engineering) is in play
+    if (!options?.ignoreCost && player.resources.brick < 2) return false;
 
     return true;
 }

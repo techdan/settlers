@@ -6,12 +6,14 @@ interface ActionControlsProps {
     gameState: GameState;
     playerId: string;
     onOpenTrade: () => void;
+    onEndTurn?: () => Promise<void> | void;
 }
 
 export const ActionControls: React.FC<ActionControlsProps> = ({
     gameState,
     playerId,
-    onOpenTrade
+    onOpenTrade,
+    onEndTurn
 }) => {
     const isMyTurn = gameState.currentTurn === playerId;
     const [isPending, startTransition] = useTransition();
@@ -29,7 +31,11 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
     const handleEndTurn = () => {
         startTransition(async () => {
             try {
-                await endTurn(gameState.roomId, playerId);
+                if (onEndTurn) {
+                    await onEndTurn();
+                } else {
+                    await endTurn(gameState.roomId, playerId);
+                }
             } catch (e) {
                 console.error("Failed to end turn", e);
             }

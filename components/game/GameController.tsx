@@ -15,7 +15,7 @@ import { DiceDisplay } from './DiceDisplay';
 import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
-import { buildCityWall } from '@/app/actions';
+import { buildCityWall, endTurn } from '@/app/actions';
 import { AqueductModal } from './AqueductModal';
 
 // Cities & Knights components
@@ -32,6 +32,7 @@ import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks
 import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
 import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
 import { ConnectionStatusIndicator } from './ConnectionStatus';
+import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 
 interface GameControllerProps {
     roomId: string;
@@ -46,12 +47,16 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
     const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
     const [selectedKnightId, setSelectedKnightId] = useState<string | null>(null);
+    const [isCraneDialogOpen, setIsCraneDialogOpen] = useState(false);
 
     // Progress card board selection states
     const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
     const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | null>(null);
     const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<'diplomat' | null>(null);
     const [cardSelectionData, setCardSelectionData] = useState<any>(null); // Stores partial data (e.g., selected hexes for inventor)
+    const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
+    const [progressDiscardContext, setProgressDiscardContext] = useState<'own_turn' | 'other_turn'>('own_turn');
+    const [selectingCityForEngineer, setSelectingCityForEngineer] = useState(false);
 
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
@@ -81,6 +86,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             const error = await res.json();
             throw new Error(error.error || 'Failed to upgrade improvement');
         }
+    };
+
+    const handleStartCraneDialog = () => {
+        handleCancelSelection();
+        setIsCraneDialogOpen(true);
+        setSelectedCityId(null);
+        setSelectedKnightId(null);
+        setBuildMode(null);
+        setMovingKnightId(null);
+        setBuildingMetropolisType(null);
+    };
+
+    const handleCraneUpgrade = async (improvement: 'science' | 'trade' | 'politics') => {
+        await handlePlayProgressCard('crane', { improvement });
+        setIsCraneDialogOpen(false);
     };
 
     const handleBuildCityWall = async (vertexId: string) => {
@@ -176,6 +196,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSelectingHexForCard(null);
     };
 
+    const handleEngineerCitySelected = async (vertexId: string) => {
+        try {
+            await handlePlayProgressCard('engineer', { vertexId });
+            setSelectingCityForEngineer(false);
+        } catch (e) {
+            console.error('Failed to build city wall with Engineering', e);
+        }
+    };
+
     const handleStartVertexSelection = (cardType: 'intrigue') => {
         setSelectingVertexForCard(cardType);
         setBuildMode(null);
@@ -192,6 +221,19 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setBuildingMetropolisType(null);
         setSelectingVertexForCard(null);
         setCardSelectionData(null);
+    };
+
+    const handleStartEngineerSelection = () => {
+        if (!baseGameState) return;
+        const effectiveState = getOptimisticState(baseGameState);
+        const eligible = getEligibleCityWallVertices(effectiveState, playerId, { ignoreCost: true });
+        if (eligible.length === 0) return;
+        if (selectingCityForEngineer) {
+            handleCancelSelection();
+            return;
+        }
+        handleCancelSelection();
+        setSelectingCityForEngineer(true);
     };
 
     const handleVertexSelected = async (vertexId: string) => {
@@ -238,6 +280,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
+        setSelectingCityForEngineer(false);
     };
 
     const handleDiscardProgressCards = async (cardsToDiscard: any[]) => {
@@ -251,6 +294,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 const error = await res.json();
                 throw new Error(error.error || 'Failed to discard cards');
             }
+            setShowProgressCardDiscard(false);
+            setProgressDiscardContext('own_turn');
         } catch (e) {
             console.error('Error discarding progress cards:', e);
             throw e; // Re-throw to let dialog handle it
@@ -322,6 +367,34 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     }, [subscribedGameState]);
 
+    // Automatically force a discard modal when another player's turn pushes us over the progress card limit
+    useEffect(() => {
+        if (!baseGameState) return;
+
+        const effectiveState = getOptimisticState(baseGameState);
+        const player = effectiveState.players.find(p => p.id === playerId);
+        const cardCount = player?.progressCards?.length ?? 0;
+        const overLimit = effectiveState.gameMode === 'cities_and_knights' && cardCount > 4;
+
+        if (!overLimit) {
+            if (showProgressCardDiscard) {
+                setShowProgressCardDiscard(false);
+            }
+            if (progressDiscardContext !== 'own_turn') {
+                setProgressDiscardContext('own_turn');
+            }
+            return;
+        }
+
+        const isPlayersTurn = effectiveState.currentTurn === playerId;
+        if (!isPlayersTurn) {
+            if (!showProgressCardDiscard || progressDiscardContext !== 'other_turn') {
+                setProgressDiscardContext('other_turn');
+                setShowProgressCardDiscard(true);
+            }
+        }
+    }, [baseGameState, getOptimisticState, playerId, progressDiscardContext, showProgressCardDiscard]);
+
     if (!baseGameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
     // Apply optimistic updates on top of base state
@@ -329,6 +402,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     const currentPlayer = gameState.players.find(p => p.id === playerId);
     const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
+    const isActiveTurn = gameState.currentTurn === playerId;
+
+    const handleEndTurnClick = async () => {
+        const cardCount = currentPlayer?.progressCards?.length ?? 0;
+        if (isCitiesAndKnights && cardCount > 4) {
+            setProgressDiscardContext('own_turn');
+            setShowProgressCardDiscard(true);
+            return;
+        }
+
+        await endTurn(roomId, playerId);
+    };
 
     return (
         <div className="relative h-screen w-screen overflow-hidden">
@@ -349,9 +434,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingHexForCard={selectingHexForCard}
                 selectingVertexForCard={selectingVertexForCard}
                 selectingEdgeForCard={selectingEdgeForCard}
+                selectingCityForEngineer={selectingCityForEngineer}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
                 onEdgeSelectedForCard={handleEdgeSelected}
+                onEngineerCitySelected={handleEngineerCitySelected}
                 onCityClick={handleCityClick}
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
@@ -371,6 +458,16 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 />
             )}
 
+            {isCraneDialogOpen && (
+                <CityManagementDialog
+                    gameState={gameState}
+                    playerId={playerId}
+                    onClose={() => setIsCraneDialogOpen(false)}
+                    onCraneUpgrade={handleCraneUpgrade}
+                    variant="crane"
+                />
+            )}
+
             {/* Knight Management Dialog (C&K) */}
             {selectedKnightId && (
                 <KnightManagementDialog
@@ -385,12 +482,16 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             )}
 
             {/* Progress Card Discard Dialog (C&K) */}
-            {isCitiesAndKnights && currentPlayer && currentPlayer.progressCards && currentPlayer.progressCards.length > 4 && (
+            {isCitiesAndKnights && currentPlayer && currentPlayer.progressCards && currentPlayer.progressCards.length > 4 && showProgressCardDiscard && (
                 <ProgressCardDiscardDialog
                     cards={currentPlayer.progressCards}
                     maxCards={4}
                     onDiscard={handleDiscardProgressCards}
-                    onClose={() => {/* Dialog closes automatically after successful discard */ }}
+                    onClose={() => {
+                        setShowProgressCardDiscard(false);
+                        setProgressDiscardContext('own_turn');
+                    }}
+                    turnContext={progressDiscardContext}
                 />
             )}
 
@@ -521,6 +622,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     onStartHexSelection={handleStartHexSelection}
                                     onStartVertexSelection={handleStartVertexSelection}
                                     onStartEdgeSelection={handleStartEdgeSelection}
+                                    onStartCrane={handleStartCraneDialog}
+                                    onStartEngineerSelection={handleStartEngineerSelection}
+                                    isActiveTurn={isActiveTurn}
+                                    isEngineerSelecting={selectingCityForEngineer}
                                 />
                             </>
                         )}
@@ -536,6 +641,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         gameState={gameState}
                         playerId={playerId}
                         onOpenTrade={() => setShowTrade(true)}
+                        onEndTurn={handleEndTurnClick}
                     />
                 </div>
             </div>

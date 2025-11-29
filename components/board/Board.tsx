@@ -33,9 +33,11 @@ interface BoardProps {
     selectingHexForCard?: 'merchant' | 'irrigation' | 'mining' | 'inventor' | null;
     selectingVertexForCard?: 'intrigue' | null;
     selectingEdgeForCard?: 'diplomat' | null;
+    selectingCityForEngineer?: boolean;
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
+    onEngineerCitySelected?: (vertexId: string) => void;
     onCityClick?: (vertexId: string) => void;
     onKnightClick?: (knightId: string) => void;
     onBarbarianCitySelect?: (vertexId: string) => void;
@@ -51,9 +53,11 @@ export const Board: React.FC<BoardProps> = ({
     selectingHexForCard,
     selectingVertexForCard,
     selectingEdgeForCard,
+    selectingCityForEngineer,
     onHexSelected,
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
+    onEngineerCitySelected,
     onCityClick,
     onKnightClick,
     onBarbarianCitySelect
@@ -145,6 +149,16 @@ export const Board: React.FC<BoardProps> = ({
             return valid;
         }
 
+        // Engineering progress card - free city wall placement
+        if (selectingCityForEngineer) {
+            vertices.forEach(v => {
+                if (canBuildCityWall(gameState, v.id, playerId, { ignoreCost: true })) {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
+
         // Progress Card Vertex Selection (Intrigue)
         if (selectingVertexForCard === 'intrigue') {
             // Intrigue: Move opponent's knight to any location
@@ -209,7 +223,7 @@ export const Board: React.FC<BoardProps> = ({
             }
         }
         return valid;
-    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard]);
+    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer]);
 
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
@@ -350,6 +364,18 @@ export const Board: React.FC<BoardProps> = ({
             if (validVertices.has(vertexId)) {
                 onVertexSelectedForCard(vertexId);
             }
+            return;
+        }
+
+        if (selectingCityForEngineer && validVertices.has(vertexId)) {
+            startTransition(async () => {
+                try {
+                    await onEngineerCitySelected?.(vertexId);
+                    onCancelBuild();
+                } catch (e) {
+                    console.error('Failed to build city wall with Engineering', e);
+                }
+            });
             return;
         }
 
@@ -688,6 +714,9 @@ export const Board: React.FC<BoardProps> = ({
                                                 isMoving={isMoving}
                                                 onCancelMove={onCancelBuild}
                                                 currentPlayerId={playerId}
+                                                showCancelIcon={!!selectingCityForEngineer && validVertices.has(vertex.id)}
+                                                cancelIconTitle="Cancel Engineering"
+                                                onCancelIconClick={onCancelBuild}
                                             />
                                         );
                                     })}

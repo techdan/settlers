@@ -14,9 +14,12 @@ interface VertexRendererProps {
     isMoving?: boolean;
     onCancelMove?: () => void;
     currentPlayerId?: string; // ID of the current player viewing the board
+    showCancelIcon?: boolean;
+    cancelIconTitle?: string;
+    onCancelIconClick?: () => void;
 }
 
-export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId }) => {
+export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick }) => {
     const pixel = hexCornerToPixel(createHex(vertex.q, vertex.r), vertex.d, size);
     const DEPTH = 15;
     const offset = theme === 'voxel' ? { x: 0, y: -DEPTH } : { x: 0, y: 0 };
@@ -50,7 +53,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
     // Determine if this vertex should show cursor-pointer
     const isOwnKnight = knight && knight.playerId === currentPlayerId;
     const isOwnCity = vertex.owner === currentPlayerId && (vertex.structure === 'city' || vertex.structure === 'metropolis');
-    const showPointer = isValid || isOwnKnight || isOwnCity;
+    const showPointer = isValid || isOwnKnight || isOwnCity || showCancelIcon;
 
     return (
         <g transform={`translate(${pixel.x + offset.x}, ${pixel.y + offset.y})`} onClick={() => onClick?.(vertex.id)} className={showPointer ? "cursor-pointer" : ""}>
@@ -248,6 +251,21 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
 
             {!vertex.structure && isValid && (
                 <circle r={8} fill="rgba(255, 255, 255, 0.5)" className="hover:fill-white transition-colors" />
+            )}
+
+            {showCancelIcon && (
+                <g
+                    transform="translate(18, -18)"
+                    className="cursor-pointer"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onCancelIconClick?.();
+                    }}
+                >
+                    <circle r={8} fill="#ef4444" stroke="white" strokeWidth={1} />
+                    <text x="0" y="3" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">x</text>
+                    <title>{cancelIconTitle || 'Cancel selection'}</title>
+                </g>
             )}
         </g>
     );

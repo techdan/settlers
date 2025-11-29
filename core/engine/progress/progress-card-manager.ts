@@ -1,11 +1,19 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
-import { ProgressCardCategory } from '@/core/rules/commodity-constants';
+import { CK_CONSTANTS, ImprovementType, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
 import { ResourceType } from '@/core/rules/board-constants';
 import { displaceKnight } from '@/core/engine/knights/knight-manager';
 import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
+import {
+    canAffordImprovement,
+    tryAwardMetropolis,
+    tryStealMetropolis,
+    upgradeImprovement
+} from '@/core/engine/improvements/improvement-manager';
+import { canBuildCityWall } from '@/core/validation/city-wall-validator';
+import { getCityWallCount } from '@/core/utils/city-wall-utils';
 
 /**
  * Progress Card Manager (Cities & Knights Expansion)
@@ -25,7 +33,11 @@ export function drawProgressCard(
     playerId: string,
     category: ProgressCardCategory
 ): ProgressCardType | null {
-    if (!gameState.progressDecks) return null;
+    if (!gameState.progressDecks) {
+        // Lazy-create decks if missing (e.g., legacy game state)
+        const { createProgressDecks } = require('@/core/engine/progress/progress-card-definitions');
+        gameState.progressDecks = createProgressDecks();
+    }
 
     const deck = gameState.progressDecks[category];
     if (deck.length === 0) {
@@ -97,6 +109,15 @@ export function playProgressCard(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
+    // Pre-validate cards that need additional data before removal
+    if (cardType === 'crane') {
+        validateCranePlayable(gameState, player, options);
+    }
+
+    if (cardType === 'engineer') {
+        validateEngineerPlayable(gameState, playerId, options);
+    }
+
     // Check player has the card
     if (!player.progressCards || !player.progressCards.includes(cardType)) {
         throw new Error('Player does not have this card');
@@ -129,6 +150,34 @@ export function playProgressCard(
             message: `${cardMeta.name} effect not yet implemented`,
             playerId
         });
+    }
+}
+
+function validateCranePlayable(gameState: GameState, player: PlayerState, options?: any): void {
+    const improvement = options?.improvement as ImprovementType | undefined;
+    if (!improvement || !(['science', 'trade', 'politics'] as ImprovementType[]).includes(improvement)) {
+        throw new Error('Crane requires selecting an improvement to upgrade');
+    }
+
+    const currentLevel = player.improvements?.[improvement] || 0;
+    if (currentLevel >= CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL) {
+        throw new Error('Selected improvement is already at maximum level');
+    }
+
+    const discount = 1;
+    if (!canAffordImprovement(player, improvement, discount)) {
+        throw new Error('Not enough commodities after Crane discount');
+    }
+}
+
+function validateEngineerPlayable(gameState: GameState, playerId: string, options?: any): void {
+    const vertexId = options?.vertexId as string | undefined;
+    if (!vertexId) {
+        throw new Error('Engineering requires selecting a city without a wall');
+    }
+
+    if (!canBuildCityWall(gameState, vertexId, playerId, { ignoreCost: true })) {
+        throw new Error('Selected city is not eligible for Engineering');
     }
 }
 
@@ -385,40 +434,53 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
 }
 
 function executeCrane(gameState: GameState, player: PlayerState, options?: any): void {
-    // Reduce cost of next city improvement by 1 commodity
-    // This flag can be checked by the improvement service
-    if (!gameState.activeEffects) {
-        gameState.activeEffects = [];
+    const improvement = options?.improvement as ImprovementType | undefined;
+    if (!improvement) {
+        throw new Error('Crane requires selecting an improvement to upgrade');
     }
 
-    gameState.activeEffects.push({
-        type: 'crane',
-        playerId: player.id,
-    });
+    const discount = 1;
+    const newLevel = upgradeImprovement(player, improvement, discount);
+    if (newLevel === -1) {
+        throw new Error('Failed to upgrade improvement with Crane');
+    }
+
+    if (newLevel === 4) {
+        tryAwardMetropolis(gameState, player, improvement);
+    } else if (newLevel === 5) {
+        tryStealMetropolis(gameState, player, improvement);
+    }
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can upgrade 1 city improvement with 1 less commodity`,
+        message: `${player.name} used Crane to upgrade ${improvement} to level ${newLevel} (cost reduced by 1 commodity)`,
         playerId: player.id
     });
 }
 
 function executeEngineer(gameState: GameState, player: PlayerState, options?: any): void {
-    // Build a city wall for free
-    if (!gameState.activeEffects) {
-        gameState.activeEffects = [];
+    const vertexId = options?.vertexId as string | undefined;
+    if (!vertexId) {
+        throw new Error('Engineering requires selecting a city without a wall');
     }
 
-    gameState.activeEffects.push({
-        type: 'engineer',
-        playerId: player.id,
-    });
+    if (!canBuildCityWall(gameState, vertexId, player.id, { ignoreCost: true })) {
+        throw new Error('Selected city is not eligible for a city wall');
+    }
+
+    const vertex = gameState.board.vertices[vertexId];
+    if (!vertex) {
+        throw new Error('Invalid city selection for Engineering');
+    }
+
+    const currentWallCount = getCityWallCount(gameState, player.id);
+    vertex.hasCityWall = true;
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can build a city wall for free`,
+        message: `${player.name} built a city wall for free with Engineering (${currentWallCount + 1}/3)`,
         playerId: player.id
     });
 }

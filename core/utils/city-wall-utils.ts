@@ -25,6 +25,29 @@ export function getCityWallCount(gameState: GameState, playerId: string): number
 }
 
 /**
+ * Get the list of the player's cities/metropolises that can take a wall.
+ * Optionally ignores resource cost (useful for the Engineering progress card).
+ */
+export function getEligibleCityWallVertices(
+    gameState: GameState,
+    playerId: string,
+    options?: { ignoreCost?: boolean }
+): string[] {
+    if (getCityWallCount(gameState, playerId) >= 3) return [];
+
+    return Object.values(gameState.board.vertices)
+        .filter(v => v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis'))
+        .filter(v => !v.hasCityWall)
+        .filter(v => {
+            if (options?.ignoreCost) return true;
+            const player = gameState.players.find(p => p.id === playerId);
+            return player ? player.resources.brick >= 2 : false;
+        })
+        .slice(0) // ensure array copy
+        .map(v => v.id);
+}
+
+/**
  * Get robber discard threshold for a player
  * Base threshold is 7, each city wall adds +2
  * This ONLY applies to rolling a 7, NOT barbarian attacks

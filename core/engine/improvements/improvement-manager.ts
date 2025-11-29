@@ -9,7 +9,7 @@ import { getCommodityForImprovement, hasCommodities, removeCommodities } from '@
  * Key rules:
  * - Three improvement tracks: science, trade, politics
  * - Each track has 5 levels (0-5)
- * - Costs to upgrade: 1, 1, 2, 3, 4 commodities for levels 0→1, 1→2, 2→3, 3→4, 4→5
+ * - Costs to upgrade: 1, 2, 3, 4, 5 commodities for levels 0→1, 1→2, 2→3, 3→4, 4→5
  * - Each track uses a specific commodity: science→paper, trade→cloth, politics→coin
  * - Level 3+ allows drawing progress cards when event die matches the category
  * - Level 4 allows building a metropolis for that category
@@ -34,13 +34,15 @@ export function initializeImprovements(player: PlayerState): void {
  * Get the cost to upgrade an improvement from current level to next level
  *
  * @param currentLevel - Current improvement level (0-4)
- * @returns Number of commodities required
+ * @param discount - Optional discount to apply (e.g., Crane progress card)
+ * @returns Number of commodities required after discount
  */
-export function getUpgradeCost(currentLevel: number): number {
+export function getUpgradeCost(currentLevel: number, discount: number = 0): number {
     if (currentLevel < 0 || currentLevel >= CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL) {
         return 0; // Already at max level or invalid
     }
-    return IMPROVEMENT_UPGRADE_COSTS[currentLevel] || 0;
+    const baseCost = IMPROVEMENT_UPGRADE_COSTS[currentLevel] || 0;
+    return Math.max(0, baseCost - discount);
 }
 
 /**
@@ -48,15 +50,24 @@ export function getUpgradeCost(currentLevel: number): number {
  *
  * @param player - Player state
  * @param improvement - Improvement type to upgrade
+ * @param discount - Optional discount to apply (e.g., Crane progress card)
  * @returns true if player has enough commodities
  */
-export function canAffordImprovement(player: PlayerState, improvement: ImprovementType): boolean {
-    if (!player.improvements || !player.commodities) return false;
+export function canAffordImprovement(
+    player: PlayerState,
+    improvement: ImprovementType,
+    discount: number = 0
+): boolean {
+    if (!player.improvements) return false;
 
     const currentLevel = player.improvements[improvement] || 0;
     if (currentLevel >= CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL) return false;
 
-    const cost = getUpgradeCost(currentLevel);
+    const cost = getUpgradeCost(currentLevel, discount);
+    if (cost === 0) {
+        return true;
+    }
+    if (!player.commodities) return false;
     const commodity = getCommodityForImprovement(improvement);
 
     return hasCommodities(player, { [commodity]: cost });
@@ -68,13 +79,21 @@ export function canAffordImprovement(player: PlayerState, improvement: Improveme
  *
  * @param player - Player state
  * @param improvement - Improvement type to upgrade
+ * @param discount - Optional discount to apply (e.g., Crane progress card)
  * @returns New improvement level, or -1 if upgrade failed
  */
-export function upgradeImprovement(player: PlayerState, improvement: ImprovementType): number {
+export function upgradeImprovement(
+    player: PlayerState,
+    improvement: ImprovementType,
+    discount: number = 0
+): number {
     // Initialize if needed
     initializeImprovements(player);
 
-    if (!player.improvements || !player.commodities) return -1;
+    if (!player.improvements) return -1;
+    if (!player.commodities) {
+        player.commodities = { paper: 0, cloth: 0, coin: 0 };
+    }
 
     const currentLevel = player.improvements[improvement] || 0;
 
@@ -84,11 +103,11 @@ export function upgradeImprovement(player: PlayerState, improvement: Improvement
     }
 
     // Check affordability
-    if (!canAffordImprovement(player, improvement)) {
+    if (!canAffordImprovement(player, improvement, discount)) {
         return -1;
     }
 
-    const cost = getUpgradeCost(currentLevel);
+    const cost = getUpgradeCost(currentLevel, discount);
     const commodity = getCommodityForImprovement(improvement);
 
     // Deduct commodities

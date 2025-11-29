@@ -5,6 +5,7 @@ import { ProgressCardType } from '@/lib/types/player';
 import { ProgressCardModal } from './ProgressCardModal';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
+import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 
 interface ProgressCardHandProps {
     player: PlayerState;
@@ -14,6 +15,10 @@ interface ProgressCardHandProps {
     onStartHexSelection?: (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => void;
     onStartVertexSelection?: (cardType: 'intrigue') => void;
     onStartEdgeSelection?: (cardType: 'diplomat') => void;
+    onStartCrane?: () => void;
+    onStartEngineerSelection?: () => void;
+    isActiveTurn?: boolean;
+    isEngineerSelecting?: boolean;
 }
 
 // Build card info from the official definitions
@@ -59,7 +64,11 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     onPlayCard,
     onStartHexSelection,
     onStartVertexSelection,
-    onStartEdgeSelection
+    onStartEdgeSelection,
+    onStartCrane,
+    onStartEngineerSelection,
+    isActiveTurn,
+    isEngineerSelecting
 }) => {
     const [isPending, startTransition] = useTransition();
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
@@ -70,6 +79,16 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     }
 
     const handlePlayCard = (cardType: ProgressCardType) => {
+        if (cardType === 'crane' && onStartCrane) {
+            onStartCrane();
+            return;
+        }
+
+        if (cardType === 'engineer' && onStartEngineerSelection) {
+            onStartEngineerSelection();
+            return;
+        }
+
         // Check for board selection cards first
         if (onStartHexSelection && (cardType === 'merchant' || cardType === 'irrigation' || cardType === 'mining' || cardType === 'inventor')) {
             onStartHexSelection(cardType);
@@ -120,6 +139,8 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     }
 
     const cardCount = allCards.length;
+    const engineerTargets = getEligibleCityWallVertices(gameState, player.id, { ignoreCost: true });
+    const hasEngineerTarget = engineerTargets.length > 0;
     const isEmpty = cardCount === 0;
 
     return (
@@ -136,6 +157,12 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                     </div>
                 </div>
 
+                {isActiveTurn && cardCount > 4 && (
+                    <div className="relative z-10 px-4 py-2 bg-amber-900/50 border-b border-amber-600 text-xs text-amber-100">
+                        <span className="font-semibold">Hand limit is 4 at end of your turn.</span>
+                    </div>
+                )}
+
                 {/* Card List */}
                 <div className="relative z-10 max-h-64 overflow-y-auto">
                     {isEmpty ? (
@@ -146,13 +173,19 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                 const info = PROGRESS_CARD_INFO[cardType];
                                 const icon = CATEGORY_ICONS[info.category];
 
+                                const isEngineer = cardType === 'engineer';
+                                const engineerDisabled = isEngineer && !hasEngineerTarget;
+                                const isEngineerActive = isEngineer && !!isEngineerSelecting;
                                 return (
                                     <button
                                         key={`${cardType}-${index}`}
                                         onClick={() => handlePlayCard(cardType)}
-                                        disabled={isPending}
-                                        className="relative group w-full text-left px-4 py-3 hover:bg-slate-700/50 transition-colors disabled:opacity-50 border-b border-slate-700/50 last:border-b-0"
-                                        title={info.description}
+                                        disabled={isPending || engineerDisabled}
+                                        className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isEngineerActive
+                                            ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
+                                            : 'hover:bg-slate-700/50'
+                                            } ${engineerDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        title={isEngineer && engineerDisabled ? 'No cities without walls are available for Engineering' : info.description}
                                     >
                                         <div className="flex items-center gap-2">
                                             <span className="text-lg">{icon}</span>

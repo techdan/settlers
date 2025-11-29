@@ -27,7 +27,6 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const canAffordCity = resources.ore >= 3 && resources.wheat >= 2;
     const canAffordDevCard = resources.sheep >= 1 && resources.wheat >= 1 && resources.ore >= 1;
     const canAffordKnight = resources.sheep >= 1 && resources.ore >= 1;
-    const canAffordCityWall = resources.brick >= 2;
     const deckSize = gameState.devCardDeck?.length || 0;
 
     const handleBuyDevCard = () => {
@@ -46,11 +45,17 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const knightsCount = player?.knights?.length || 0;
     const knightsRemaining = Math.max(0, MAX_KNIGHTS - knightsCount);
 
-    const wallsCount = Object.values(gameState.board.vertices).filter(v => v.owner === playerId && v.hasCityWall).length;
+    const playerVertices = Object.values(gameState.board.vertices);
+    const wallsCount = playerVertices.filter(v => v.owner === playerId && v.hasCityWall).length;
     const wallsRemaining = Math.max(0, MAX_WALLS - wallsCount);
+    const hasEligibleCityForWall = playerVertices.some(
+        v => v.owner === playerId &&
+            (v.structure === 'city' || v.structure === 'metropolis') &&
+            !v.hasCityWall
+    );
 
     const canBuildKnight = canAffordKnight && knightsRemaining > 0;
-    const canBuildCityWall = canAffordCityWall && wallsRemaining > 0;
+    const canBuildCityWall = resources.brick >= 2 && wallsRemaining > 0 && hasEligibleCityForWall;
 
     if (!isMyTurn || gameState.phase !== 'main_phase') return null;
 

@@ -9,19 +9,23 @@ interface ProgressCardDiscardDialogProps {
     maxCards: number;
     onDiscard: (cardsToDiscard: ProgressCardType[]) => Promise<void>;
     onClose: () => void;
+    turnContext: 'own_turn' | 'other_turn';
 }
 
 export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps> = ({
     cards,
     maxCards,
     onDiscard,
-    onClose
+    onClose,
+    turnContext
 }) => {
     const [selectedCards, setSelectedCards] = useState<ProgressCardType[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string>('');
 
     const cardsToDiscard = cards.length - maxCards;
+    const isOtherTurn = turnContext === 'other_turn';
+    const allowDeferral = !isOtherTurn;
 
     const toggleCard = (card: ProgressCardType) => {
         if (selectedCards.includes(card)) {
@@ -58,6 +62,12 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
 
                 <p className="text-slate-300 mb-4">
                     You have {cards.length} progress cards but can only keep {maxCards} at the end of your turn.
+                    <br />
+                    {isOtherTurn ? (
+                        <strong className="text-amber-400">You gained an extra card on another player's turn. Discard now to return to {maxCards}.</strong>
+                    ) : (
+                        <strong className="text-amber-400">You can briefly hold a 5th card on your turn, but must be at {maxCards} or fewer before ending it.</strong>
+                    )}
                     <br />
                     <strong className="text-amber-400">Select {cardsToDiscard} card{cardsToDiscard !== 1 ? 's' : ''} to discard:</strong>
                 </p>
@@ -118,10 +128,24 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                     >
                         {isSubmitting ? 'Discarding...' : `Discard ${selectedCards.length}/${cardsToDiscard}`}
                     </button>
+
+                    {allowDeferral && (
+                        <button
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                            className="
+                                px-4 py-3 rounded-lg font-bold transition-all
+                                bg-slate-700 text-slate-200 hover:bg-slate-600 cursor-pointer
+                                disabled:opacity-50 disabled:cursor-not-allowed
+                            "
+                        >
+                            Keep Playing
+                        </button>
+                    )}
                 </div>
 
                 <p className="text-xs text-slate-400 mt-4 text-center">
-                    Note: You can hold up to 5 cards during other players' turns
+                    Progress card hand limit is 4. If you gain a 5th on someone else's turn, discard immediately. On your turn, discard or play cards before ending.
                 </p>
             </div>
         </div>
