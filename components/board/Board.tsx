@@ -34,6 +34,7 @@ interface BoardProps {
     selectingVertexForCard?: 'intrigue' | null;
     selectingEdgeForCard?: 'diplomat' | null;
     selectingCityForEngineer?: boolean;
+    inventorSelection?: { firstHexId?: string; secondHexId?: string } | null;
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
@@ -54,6 +55,7 @@ export const Board: React.FC<BoardProps> = ({
     selectingVertexForCard,
     selectingEdgeForCard,
     selectingCityForEngineer,
+    inventorSelection,
     onHexSelected,
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
@@ -323,8 +325,12 @@ export const Board: React.FC<BoardProps> = ({
                     break;
 
                 case 'inventor':
-                    // Any hex with a number token
-                    if (hex.numberToken && hex.terrain !== 'desert') {
+                    // Any non-restricted hex with a number token (not 2,6,8,12 and not desert/ocean)
+                    const restrictedNumbers = [2, 6, 8, 12];
+                    const token = hex.numberToken;
+                    const isRestrictedToken = token ? restrictedNumbers.includes(token) : true;
+                    const isRestrictedTerrain = hex.terrain === 'desert' || hex.terrain === 'ocean';
+                    if (!isRestrictedToken && !isRestrictedTerrain) {
                         valid.add(hex.id);
                     }
                     break;
@@ -660,6 +666,14 @@ export const Board: React.FC<BoardProps> = ({
                                     {/* Hex Grid */}
                                     {sortedTiles.map((tile) => {
                                         const isRolled = gameState.diceRoll && tile.numberToken === gameState.diceRoll.total;
+                                        const selectionState =
+                                            tile.id === inventorSelection?.firstHexId
+                                                ? 'primary'
+                                                : tile.id === inventorSelection?.secondHexId
+                                                    ? 'secondary'
+                                                    : null;
+                                        const selectionVariant = selectingHexForCard === 'inventor' ? 'cursor' : 'glow';
+
                                         return (
                                             <TileComponent
                                                 key={tile.id}
@@ -670,7 +684,9 @@ export const Board: React.FC<BoardProps> = ({
                                                 size={HEX_SIZE}
                                                 onClick={() => handleHexClick(tile.id)}
                                                 isRolled={isRolled}
-                                                isValid={validHexes.has(tile.id)}
+                                                isSelectable={validHexes.has(tile.id)}
+                                                selectionVariant={selectionVariant}
+                                                selectionState={selectionState}
                                             />
                                         );
                                     })}

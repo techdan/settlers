@@ -3,7 +3,7 @@ import { ProgressCardType } from '@/lib/types/player';
 import { CK_CONSTANTS, ImprovementType, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
-import { ResourceType } from '@/core/rules/board-constants';
+import { ResourceType, TOKEN_PIPS } from '@/core/rules/board-constants';
 import { displaceKnight } from '@/core/engine/knights/knight-manager';
 import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
 import {
@@ -549,25 +549,33 @@ function executeInventor(gameState: GameState, player: PlayerState, options?: an
         throw new Error('Invalid hex IDs');
     }
 
-    if (!hex1.number || !hex2.number) {
+    const token1 = hex1.numberToken;
+    const token2 = hex2.numberToken;
+
+    if (!token1 || !token2) {
         throw new Error('Cannot swap desert or ocean hexes');
     }
 
     // Check numbers are not restricted (2, 6, 8, 12)
     const restrictedNumbers = [2, 6, 8, 12];
-    if (restrictedNumbers.includes(hex1.number) || restrictedNumbers.includes(hex2.number)) {
+    if (restrictedNumbers.includes(token1) || restrictedNumbers.includes(token2)) {
         throw new Error('Cannot swap number tokens 2, 6, 8, or 12');
     }
 
     // Swap the number tokens
-    const tempNumber = hex1.number;
-    hex1.number = hex2.number;
-    hex2.number = tempNumber;
+    hex1.numberToken = token2;
+    hex2.numberToken = token1;
+    if (typeof hex1.pips === 'number') {
+        hex1.pips = TOKEN_PIPS[token2] ?? hex1.pips;
+    }
+    if (typeof hex2.pips === 'number') {
+        hex2.pips = TOKEN_PIPS[token1] ?? hex2.pips;
+    }
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} swapped number tokens between two hexes (${hex2.number} ↔ ${hex1.number})`,
+        message: `${player.name} swapped number tokens between two hexes (${token2} <-> ${token1})`,
         playerId: player.id
     });
 }

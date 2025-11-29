@@ -33,6 +33,7 @@ import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
 import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
 import { ConnectionStatusIndicator } from './ConnectionStatus';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
+import { ProgressCardType } from '@/lib/types/player';
 
 interface GameControllerProps {
     roomId: string;
@@ -53,7 +54,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
     const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | null>(null);
     const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<'diplomat' | null>(null);
-    const [cardSelectionData, setCardSelectionData] = useState<any>(null); // Stores partial data (e.g., selected hexes for inventor)
+    const [inventorSelection, setInventorSelection] = useState<{ firstHexId?: string; firstValue?: number; secondHexId?: string; secondValue?: number }>({});
+    const [isInventorConfirmOpen, setIsInventorConfirmOpen] = useState(false);
+    const [inventorError, setInventorError] = useState<string | null>(null);
     const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
     const [progressDiscardContext, setProgressDiscardContext] = useState<'own_turn' | 'other_turn'>('own_turn');
     const [selectingCityForEngineer, setSelectingCityForEngineer] = useState(false);
@@ -89,6 +92,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleStartCraneDialog = () => {
+        if (isCraneDialogOpen) {
+            handleCancelSelection();
+            return;
+        }
         handleCancelSelection();
         setIsCraneDialogOpen(true);
         setSelectedCityId(null);
@@ -166,11 +173,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleStartHexSelection = (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => {
+        if (selectingHexForCard === cardType) {
+            handleCancelSelection();
+            return;
+        }
+        handleCancelSelection();
         setSelectingHexForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
-        setCardSelectionData(null);
+        setInventorSelection({});
+        setInventorError(null);
+        setIsInventorConfirmOpen(false);
     };
 
     const handleHexSelected = async (hexId: string) => {
@@ -178,22 +192,47 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
         // Handle multi-step selection (e.g. Inventor needs 2 hexes)
         if (selectingHexForCard === 'inventor') {
-            if (!cardSelectionData) {
-                // First hex selected
-                setCardSelectionData({ hex1Id: hexId });
-                return;
-            } else {
-                // Second hex selected
-                await handlePlayProgressCard('inventor', { hex1Id: cardSelectionData.hex1Id, hex2Id: hexId });
-                setSelectingHexForCard(null);
-                setCardSelectionData(null);
+            if (isInventorConfirmOpen) return;
+
+            const selectedHex = gameState.board.hexes.find(h => h.id === hexId);
+            const tokenValue = selectedHex?.numberToken;
+            if (!selectedHex || !tokenValue) return;
+
+            // First selection or reselection
+            if (!inventorSelection.firstHexId || inventorSelection.firstHexId === hexId) {
+                setInventorSelection({ firstHexId: hexId, firstValue: tokenValue });
+                setInventorError(null);
                 return;
             }
+
+            // Second selection (must be different)
+            if (inventorSelection.firstHexId === hexId) return;
+
+            setInventorSelection(prev => ({ ...prev, secondHexId: hexId, secondValue: tokenValue }));
+            setInventorError(null);
+            setIsInventorConfirmOpen(true);
+            return;
         }
 
         // Single hex selection cards
         await handlePlayProgressCard(selectingHexForCard, { hexId });
         setSelectingHexForCard(null);
+    };
+
+    const handleConfirmInventorSwap = async () => {
+        if (!inventorSelection.firstHexId || !inventorSelection.secondHexId) return;
+        try {
+            await handlePlayProgressCard('inventor', {
+                hex1Id: inventorSelection.firstHexId,
+                hex2Id: inventorSelection.secondHexId
+            });
+            setIsInventorConfirmOpen(false);
+            setInventorSelection({});
+            handleCancelSelection();
+        } catch (e: any) {
+            const message = e?.message || 'Failed to swap number tokens';
+            setInventorError(message);
+        }
     };
 
     const handleEngineerCitySelected = async (vertexId: string) => {
@@ -206,21 +245,29 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleStartVertexSelection = (cardType: 'intrigue') => {
+        if (selectingVertexForCard === cardType) {
+            handleCancelSelection();
+            return;
+        }
+        handleCancelSelection();
         setSelectingVertexForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
         setSelectingEdgeForCard(null);
-        setCardSelectionData(null);
     };
 
     const handleStartEdgeSelection = (cardType: 'diplomat') => {
+        if (selectingEdgeForCard === cardType) {
+            handleCancelSelection();
+            return;
+        }
+        handleCancelSelection();
         setSelectingEdgeForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
         setSelectingVertexForCard(null);
-        setCardSelectionData(null);
     };
 
     const handleStartEngineerSelection = () => {
@@ -276,11 +323,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSelectingHexForCard(null);
         setSelectingVertexForCard(null);
         setSelectingEdgeForCard(null);
-        setCardSelectionData(null);
+        setInventorSelection({});
+        setInventorError(null);
+        setIsInventorConfirmOpen(false);
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
         setSelectingCityForEngineer(false);
+        setIsCraneDialogOpen(false);
     };
 
     const handleDiscardProgressCards = async (cardsToDiscard: any[]) => {
@@ -415,6 +465,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         await endTurn(roomId, playerId);
     };
 
+    const activeProgressCard: ProgressCardType | null = (() => {
+        if (selectingHexForCard) return selectingHexForCard;
+        if (selectingVertexForCard) return selectingVertexForCard;
+        if (selectingEdgeForCard) return selectingEdgeForCard;
+        if (selectingCityForEngineer) return 'engineer';
+        if (isCraneDialogOpen) return 'crane';
+        return null;
+    })();
+
     return (
         <div className="relative h-screen w-screen overflow-hidden">
             {/* Connection Status Indicator */}
@@ -435,6 +494,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingVertexForCard={selectingVertexForCard}
                 selectingEdgeForCard={selectingEdgeForCard}
                 selectingCityForEngineer={selectingCityForEngineer}
+                inventorSelection={inventorSelection}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
                 onEdgeSelectedForCard={handleEdgeSelected}
@@ -443,6 +503,41 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
             />
+
+            {isInventorConfirmOpen && inventorSelection.firstValue !== undefined && inventorSelection.secondValue !== undefined && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={handleCancelSelection} />
+                    <div
+                        className="relative bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-6 w-[360px] space-y-4 pointer-events-auto"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <h3 className="text-lg font-bold">Confirm Inventor Swap</h3>
+                        <p className="text-sm text-slate-200">
+                            Swap <span className="font-semibold text-emerald-300">#{inventorSelection.firstValue}</span> with{' '}
+                            <span className="font-semibold text-cyan-300">#{inventorSelection.secondValue}</span>?
+                        </p>
+                        {inventorError && (
+                            <div className="text-sm text-red-200 bg-red-900/50 border border-red-600 rounded-md px-3 py-2">
+                                {inventorError}
+                            </div>
+                        )}
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                className="px-4 py-2 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+                                onClick={handleCancelSelection}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow cursor-pointer"
+                                onClick={handleConfirmInventorSwap}
+                            >
+                                Confirm Swap
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <DiscardModal gameState={gameState} playerId={playerId} />
 
@@ -626,6 +721,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     onStartEngineerSelection={handleStartEngineerSelection}
                                     isActiveTurn={isActiveTurn}
                                     isEngineerSelecting={selectingCityForEngineer}
+                                    activeFollowupCard={activeProgressCard}
+                                    onCancelFollowupCard={handleCancelSelection}
                                 />
                             </>
                         )}

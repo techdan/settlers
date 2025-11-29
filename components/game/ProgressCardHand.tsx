@@ -19,6 +19,8 @@ interface ProgressCardHandProps {
     onStartEngineerSelection?: () => void;
     isActiveTurn?: boolean;
     isEngineerSelecting?: boolean;
+    activeFollowupCard?: ProgressCardType | null;
+    onCancelFollowupCard?: () => void;
 }
 
 // Build card info from the official definitions
@@ -53,6 +55,8 @@ const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
     'saboteur'
 ];
 
+const BOARD_SELECTION_CARDS: ProgressCardType[] = ['merchant', 'irrigation', 'mining', 'inventor', 'intrigue', 'diplomat'];
+
 function requiresParameters(cardType: ProgressCardType): boolean {
     return CARDS_REQUIRING_PARAMETERS.includes(cardType);
 }
@@ -68,10 +72,13 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     onStartCrane,
     onStartEngineerSelection,
     isActiveTurn,
-    isEngineerSelecting
+    isEngineerSelecting,
+    activeFollowupCard,
+    onCancelFollowupCard
 }) => {
     const [isPending, startTransition] = useTransition();
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
+    const currentActiveFollowup = modalCard ?? activeFollowupCard ?? null;
 
     // Only show in C&K mode
     if (!player.progressCards) {
@@ -79,6 +86,24 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     }
 
     const handlePlayCard = (cardType: ProgressCardType) => {
+        const isBoardSelectionCard = BOARD_SELECTION_CARDS.includes(cardType);
+        const hasFollowupStep =
+            isBoardSelectionCard || requiresParameters(cardType) || cardType === 'crane' || cardType === 'engineer';
+
+        if (hasFollowupStep && currentActiveFollowup === cardType) {
+            if (modalCard === cardType) {
+                setModalCard(null);
+            }
+            onCancelFollowupCard?.();
+            return;
+        }
+
+        if (hasFollowupStep && currentActiveFollowup && currentActiveFollowup !== cardType) {
+            onCancelFollowupCard?.();
+        } else if (!hasFollowupStep && currentActiveFollowup) {
+            onCancelFollowupCard?.();
+        }
+
         if (cardType === 'crane' && onStartCrane) {
             onStartCrane();
             return;
@@ -175,13 +200,19 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
 
                                 const isEngineer = cardType === 'engineer';
                                 const engineerDisabled = isEngineer && !hasEngineerTarget;
-                                const isEngineerActive = isEngineer && !!isEngineerSelecting;
+                                const hasFollowup =
+                                    requiresParameters(cardType) ||
+                                    BOARD_SELECTION_CARDS.includes(cardType) ||
+                                    isEngineer ||
+                                    cardType === 'crane';
+                                const isFollowupActive =
+                                    hasFollowup && (currentActiveFollowup === cardType || (isEngineer && isEngineerSelecting));
                                 return (
                                     <button
                                         key={`${cardType}-${index}`}
                                         onClick={() => handlePlayCard(cardType)}
                                         disabled={isPending || engineerDisabled}
-                                        className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isEngineerActive
+                                        className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
                                             ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
                                             : 'hover:bg-slate-700/50'
                                             } ${engineerDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}

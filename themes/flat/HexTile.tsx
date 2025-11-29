@@ -13,7 +13,9 @@ interface HexTileProps {
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
-    isValid?: boolean;
+    isSelectable?: boolean;
+    selectionVariant?: 'glow' | 'cursor';
+    selectionState?: 'primary' | 'secondary' | null;
 }
 
 const TERRAIN_COLORS: Record<TerrainType, string> = {
@@ -34,8 +36,20 @@ const TERRAIN_ICONS: Record<TerrainType, React.ElementType> = {
     desert: Sun,
 };
 
-export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled, isValid }) => {
+export const HexTile: React.FC<HexTileProps> = ({
+    hex,
+    terrain,
+    numberToken,
+    hasRobber,
+    size,
+    onClick,
+    isRolled,
+    isSelectable,
+    selectionVariant = 'glow',
+    selectionState = null
+}) => {
     const { x, y } = hexToPixel(hex, size);
+    const shouldGlow = !!isSelectable && selectionVariant === 'glow';
 
     // Calculate points for pointy-topped hex
     const points = [];
@@ -49,7 +63,11 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, has
     const Icon = TERRAIN_ICONS[terrain];
 
     return (
-        <g transform={`translate(${x}, ${y})`} onClick={isValid ? onClick : undefined} className={isValid ? "cursor-pointer" : ""}>
+        <g
+            transform={`translate(${x}, ${y})`}
+            onClick={isSelectable ? onClick : undefined}
+            className={isSelectable ? "cursor-pointer" : ""}
+        >
             <style>
                 {`
                     @keyframes flash {
@@ -73,9 +91,9 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, has
             <polygon
                 points={pointsStr}
                 fill={TERRAIN_COLORS[terrain]}
-                stroke={isValid ? "#4ade80" : "#e5e7eb"}
-                strokeWidth={isValid ? "6" : "4"}
-                className={`transition-all ${isValid ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid' : ''}`}
+                stroke={shouldGlow ? "#4ade80" : "#e5e7eb"}
+                strokeWidth={shouldGlow ? "6" : "4"}
+                className={`transition-all ${isSelectable ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${shouldGlow ? 'animate-pulse-valid' : ''}`}
             />
 
             {/* Resource Icon */}
@@ -85,7 +103,7 @@ export const HexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, has
 
             {numberToken && (
                 <g transform={`translate(0, ${size * 0.3})`}>
-                    <NumberToken number={numberToken} />
+                    <NumberToken number={numberToken} highlight={selectionState ?? undefined} />
                 </g>
             )}
 

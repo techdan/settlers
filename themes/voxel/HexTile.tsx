@@ -13,7 +13,9 @@ interface HexTileProps {
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
-    isValid?: boolean;
+    isSelectable?: boolean;
+    selectionVariant?: 'glow' | 'cursor';
+    selectionState?: 'primary' | 'secondary' | null;
 }
 
 const TERRAIN_COLORS: Record<TerrainType, string> = {
@@ -34,9 +36,21 @@ const TERRAIN_COMPONENTS: Record<TerrainType, React.ElementType> = {
     desert: VoxelDesert,
 };
 
-export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken, hasRobber, size, onClick, isRolled, isValid }) => {
+export const VoxelHexTile: React.FC<HexTileProps> = ({
+    hex,
+    terrain,
+    numberToken,
+    hasRobber,
+    size,
+    onClick,
+    isRolled,
+    isSelectable,
+    selectionVariant = 'glow',
+    selectionState = null
+}) => {
     const { x, y } = hexToPixel(hex, size);
     const DEPTH = 15;
+    const shouldGlow = !!isSelectable && selectionVariant === 'glow';
 
     // Calculate points for flat hex (Base)
     const points = [];
@@ -70,7 +84,11 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
     const baseColor = TERRAIN_COLORS[terrain];
 
     return (
-        <g transform={`translate(${x}, ${y})`} onClick={isValid ? onClick : undefined} className={isValid ? "cursor-pointer" : ""}>
+        <g
+            transform={`translate(${x}, ${y})`}
+            onClick={isSelectable ? onClick : undefined}
+            className={isSelectable ? "cursor-pointer" : ""}
+        >
             {/* Defs for gradients/patterns could go here or globally, but for simplicity we use simple fills/filters */}
             <style>
                 {`
@@ -104,10 +122,10 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
                 <polygon
                     points={topPointsStr}
                     fill={baseColor}
-                    stroke={isValid ? "#4ade80" : "#fff"}
-                    strokeWidth={isValid ? "3" : "1"}
-                    strokeOpacity={isValid ? "1" : "0.3"}
-                    className={`transition-all ${isValid ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${isValid ? 'animate-pulse-valid-voxel' : ''}`}
+                    stroke={shouldGlow ? "#4ade80" : "#fff"}
+                    strokeWidth={shouldGlow ? "3" : "1"}
+                    strokeOpacity={shouldGlow ? "1" : "0.3"}
+                    className={`transition-all ${isSelectable ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${shouldGlow ? 'animate-pulse-valid-voxel' : ''}`}
                 />
                 {/* Simple texture overlay (noise or pattern could be added here) */}
                 <polygon points={topPointsStr} fill="url(#noise)" opacity="0.1" style={{ pointerEvents: 'none' }} />
@@ -122,7 +140,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({ hex, terrain, numberToken
 
                 {numberToken && (
                     <g transform={`translate(0, ${size * 0.3})`}>
-                        <VoxelNumberToken number={numberToken} />
+                        <VoxelNumberToken number={numberToken} highlight={selectionState ?? undefined} />
                     </g>
                 )}
 

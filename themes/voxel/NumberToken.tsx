@@ -2,14 +2,28 @@ import React from 'react';
 
 interface NumberTokenProps {
     number: number;
+    highlight?: 'primary' | 'secondary';
 }
 
-export const VoxelNumberToken: React.FC<NumberTokenProps> = ({ number }) => {
+export const VoxelNumberToken: React.FC<NumberTokenProps> = ({ number, highlight }) => {
     const isRed = number === 6 || number === 8;
     const dots = getDots(number);
+    const highlightColor = highlight === 'secondary' ? '#22d3ee' : '#22c55e';
 
     return (
         <g transform="translate(0, -5)">
+            {highlight && (
+                <ellipse
+                    cx="0"
+                    cy="-2"
+                    rx="28"
+                    ry="18"
+                    fill="none"
+                    stroke={highlightColor}
+                    strokeWidth="3"
+                    opacity="0.85"
+                />
+            )}
             {/* 3D Edge (Cylinder side) */}
             <ellipse cx="0" cy="4" rx="20" ry="12" fill="#d1d1a5" stroke="#333" strokeWidth="1" />
 
