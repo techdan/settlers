@@ -11,7 +11,7 @@ interface ProgressCardModalProps {
     cardType: ProgressCardType | null;
     gameState: GameState;
     currentPlayer: PlayerState;
-    onPlay: (cardType: ProgressCardType, options: any) => void;
+    onPlay: (cardType: ProgressCardType, options: any) => Promise<void>;
 }
 
 export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
@@ -23,37 +23,43 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     onPlay
 }) => {
     // State for various card parameters
-    const [fromResource, setFromResource] = useState<ResourceType | ''>('');
-    const [toResource, setToResource] = useState<ResourceType | ''>('');
+    const [chosenDice1, setChosenDice1] = useState<number>(0);
+    const [chosenDice2, setChosenDice2] = useState<number>(0);
     const [resource, setResource] = useState<ResourceType | ''>('');
     const [commodity, setCommodity] = useState<CommodityType | ''>('');
     const [knightId, setKnightId] = useState<string>('');
     const [opponentId, setOpponentId] = useState<string>('');
     const [stolenCard, setStolenCard] = useState<ProgressCardType | ''>('');
+    const [error, setError] = useState<string>('');
 
     if (!isOpen || !cardType) return null;
 
     const cardMeta = PROGRESS_CARD_DEFINITIONS[cardType];
     const resources: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
     const commodities: CommodityType[] = ['paper', 'cloth', 'coin'];
+    const alchemyLocked = cardType === 'alchemist' && gameState.phase !== 'waiting_for_roll';
 
-    const handlePlay = () => {
+    const handlePlay = async () => {
         let options: any = {};
+        setError(''); // Clear previous errors
+
+        if (alchemyLocked) {
+            setError('Alchemy can only be played before rolling dice.');
+            return;
+        }
 
         switch (cardType) {
             case 'alchemist':
-                if (!fromResource || !toResource) {
-                    alert('Please select both resources');
+                if (chosenDice1 === 0 || chosenDice2 === 0) {
+                    setError('Please select both dice values (1-6)');
                     return;
                 }
-                options = { fromResource, toResource };
-                break;
-
+                options = { chosenDice1, chosenDice2 };
                 break;
 
             case 'resource_monopoly':
                 if (!resource) {
-                    alert('Please select a resource');
+                    setError('Please select a resource');
                     return;
                 }
                 options = { resource };
@@ -61,7 +67,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             case 'trade_monopoly':
                 if (!commodity) {
-                    alert('Please select a commodity');
+                    setError('Please select a commodity');
                     return;
                 }
                 options = { commodity };
@@ -69,7 +75,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             case 'smith':
                 if (!knightId) {
-                    alert('Please select a knight');
+                    setError('Please select a knight');
                     return;
                 }
                 options = { knightId };
@@ -77,7 +83,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             case 'treason':
                 if (!opponentId || !knightId) {
-                    alert('Please select an opponent and their knight');
+                    setError('Please select an opponent and their knight');
                     return;
                 }
                 options = { opponentId, knightId };
@@ -85,7 +91,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             case 'saboteur':
                 if (!opponentId) {
-                    alert('Please select an opponent');
+                    setError('Please select an opponent');
                     return;
                 }
                 options = { opponentId };
@@ -93,7 +99,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             case 'espionage':
                 if (!opponentId || !stolenCard) {
-                    alert('Please select an opponent and a card to steal');
+                    setError('Please select an opponent and a card to steal');
                     return;
                 }
                 options = { opponentId, stolenCard };
@@ -106,24 +112,28 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'merchant':
             case 'diplomat':
             case 'intrigue':
-                alert('This card requires board interaction. Close this dialog and click on the board to select the target. Feature coming soon!');
-                onClose();
+                setError('This card requires board interaction. Close this dialog and click on the board to select the target. Feature coming soon!');
                 return;
         }
 
-        onPlay(cardType, options);
-        onClose();
-        resetState();
+        try {
+            await onPlay(cardType, options);
+            onClose();
+            resetState();
+        } catch (e: any) {
+            setError(e.message || 'Failed to play card');
+        }
     };
 
     const resetState = () => {
-        setFromResource('');
-        setToResource('');
+        setChosenDice1(0);
+        setChosenDice2(0);
         setResource('');
         setCommodity('');
         setKnightId('');
         setOpponentId('');
         setStolenCard('');
+        setError('');
     };
 
     const getOwnKnights = () => currentPlayer.knights || [];
@@ -143,25 +153,25 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 return (
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium block mb-1">Convert from (2x):</label>
+                            <label className="text-sm font-medium block mb-1">Red Die (1-6):</label>
                             <select
-                                value={fromResource}
-                                onChange={(e) => setFromResource(e.target.value as ResourceType)}
+                                value={chosenDice1}
+                                onChange={(e) => setChosenDice1(Number(e.target.value))}
                                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
                             >
-                                <option value="">Select resource</option>
-                                {resources.map(r => <option key={r} value={r}>{r}</option>)}
+                                <option value="0">Select value</option>
+                                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-sm font-medium block mb-1">Convert to (1x):</label>
+                            <label className="text-sm font-medium block mb-1">Yellow Die (1-6):</label>
                             <select
-                                value={toResource}
-                                onChange={(e) => setToResource(e.target.value as ResourceType)}
+                                value={chosenDice2}
+                                onChange={(e) => setChosenDice2(Number(e.target.value))}
                                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
                             >
-                                <option value="">Select resource</option>
-                                {resources.map(r => <option key={r} value={r}>{r}</option>)}
+                                <option value="0">Select value</option>
+                                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
                         </div>
                     </div>
@@ -321,30 +331,57 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 pointer-events-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 pointer-events-auto">
             <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 max-w-md w-full mx-4 text-white">
                 {/* Header */}
-                <div className="p-6 border-b border-slate-700">
-                    <h2 className="text-xl font-bold">{cardMeta.name}</h2>
-                    <p className="text-sm text-slate-300 mt-1">{cardMeta.description}</p>
+                <div className="p-6 border-b border-slate-700 flex justify-between items-start">
+                    <div>
+                        <h2 className="text-xl font-bold">{cardMeta.name}</h2>
+                        <p className="text-sm text-slate-300 mt-1">{cardMeta.description}</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none"
+                        aria-label="Close"
+                    >
+                        ×
+                    </button>
                 </div>
 
                 {/* Body */}
                 <div className="p-6">
                     {renderCardForm()}
+
+                    {alchemyLocked && (
+                        <div className="mt-4 p-3 bg-amber-900/30 border border-amber-500 rounded text-amber-200 text-sm">
+                            Alchemy can only be played before rolling dice. Wait until the start of your turn.
+                        </div>
+                    )}
+
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mt-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm">
+                            {error}
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
                 <div className="p-6 border-t border-slate-700 flex gap-3 justify-end">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+                        className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white transition-colors cursor-pointer"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handlePlay}
-                        className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white font-medium transition-colors"
+                        disabled={alchemyLocked}
+                        className={`px-4 py-2 rounded font-medium transition-colors ${
+                            alchemyLocked
+                                ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
+                                : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                        }`}
                     >
                         Play Card
                     </button>

@@ -68,11 +68,11 @@ export function drawProgressCard(
         }
         player.progressCards.push(card);
 
-        // Log regular card draw
+        // Log regular card draw (hide specific card name; category only)
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `${player.name} drew a ${category} progress card: ${cardMeta.name}`,
+            message: `${player.name} drew a ${category} progress card`,
             playerId
         });
     }
@@ -108,13 +108,15 @@ export function playProgressCard(
 
     const cardMeta = getCardMetadata(cardType);
 
-    // Log card play
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `${player.name} played ${cardMeta.name}`,
-        playerId
-    });
+    // Log card play (Alchemy handled inside its effect for combined roll/play message)
+    if (cardType !== 'alchemist') {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} played ${cardMeta.name}`,
+            playerId
+        });
+    }
 
     // Execute card effect
     if (isCardImplemented(cardType)) {
@@ -261,10 +263,6 @@ function executeProgressCardEffect(
 
 function executeAlchemist(gameState: GameState, player: PlayerState, options?: any): void {
     // Choose the dice results before rolling
-    // This card is played BEFORE the dice roll, not after
-    // The implementation sets a flag that the dice roll handler will check
-    // The actual dice manipulation happens in the rollDice action
-
     const { chosenDice1, chosenDice2 } = options || {};
     if (chosenDice1 === undefined || chosenDice2 === undefined) {
         throw new Error('Alchemist requires chosenDice1 and chosenDice2 (1-6 each)');
@@ -274,24 +272,116 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
         throw new Error('Dice values must be between 1 and 6');
     }
 
-    // Set game state flag for the next dice roll
-    if (!gameState.activeEffects) {
-        gameState.activeEffects = [];
+    if (gameState.phase !== 'waiting_for_roll') {
+        throw new Error('Alchemy can only be played before rolling dice');
     }
 
-    gameState.activeEffects.push({
-        type: 'alchemist',
-        playerId: player.id,
-        chosenDice1,
-        chosenDice2,
-    });
+    const d1 = chosenDice1;
+    const d2 = chosenDice2;
+    const total = d1 + d2;
 
+    // Log the Alchemy play before downstream effects (event die, resource distribution, etc.)
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} played Alchemist and chose the dice results`,
+        message: `${player.name} played ${getCardMetadata('alchemist').name} and chose ${chosenDice1} + ${chosenDice2} = ${total}`,
         playerId: player.id
     });
+
+    // Immediately resolve the dice roll using the chosen values
+    const { rollEventDie, processEventDieRoll, getCategoryFromColor, getEligiblePlayersForCardDraw } = require('@/core/engine/dice/event-die-manager');
+    const { distributeResources, getTotalResources } = require('@/core/engine/resources/resource-manager');
+    const { distributeCommodities, getTotalCommodities } = require('@/core/engine/resources/commodity-manager');
+    const { getRobberDiscardThreshold } = require('@/core/utils/city-wall-utils');
+
+    gameState.diceRoll = { d1, d2, total };
+
+    // Roll and process event die (C&K expansion only)
+    if (gameState.gameMode === 'cities_and_knights') {
+        const eventDieResult = rollEventDie();
+        processEventDieRoll(gameState, eventDieResult, d1);
+
+        if (eventDieResult !== 'ship') {
+            const category = getCategoryFromColor(eventDieResult);
+            const eligiblePlayerIds = getEligiblePlayersForCardDraw(gameState, category, d1);
+            eligiblePlayerIds.forEach(id => {
+                drawProgressCard(gameState, id, category);
+            });
+        }
+    }
+
+    // Handle robber (7)
+    if (total === 7) {
+        const playersToDiscard = gameState.players.filter(p => {
+            const threshold = getRobberDiscardThreshold(gameState, p.id);
+            return getTotalResources(p) > threshold;
+        });
+
+        if (playersToDiscard.length > 0) {
+            gameState.phase = 'discarding';
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `Players exceeding their hand limit must discard half`
+            });
+        } else {
+            if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+                gameState.phase = 'main_phase';
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `7 rolled, but the robber stays in the desert until the first barbarian attack.`
+                });
+            } else {
+                gameState.phase = 'robber_placement';
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `${player.name} must move the robber`
+                });
+            }
+        }
+    } else {
+        // Snapshot resources/commodities for Aqueduct check
+        const initialTotals: Record<string, number> = {};
+        gameState.players.forEach(p => {
+            initialTotals[p.id] = getTotalResources(p) + getTotalCommodities(p);
+        });
+
+        // Distribute resources and commodities
+        distributeResources(gameState, total);
+        distributeCommodities(gameState, total);
+
+        if (gameState.gameMode === 'cities_and_knights') {
+            const eligibleForAqueduct: string[] = [];
+            gameState.players.forEach(p => {
+                if ((p.improvements?.science || 0) >= 3) {
+                    const currentTotal = getTotalResources(p) + getTotalCommodities(p);
+                    if (currentTotal === initialTotals[p.id]) {
+                        eligibleForAqueduct.push(p.id);
+                    }
+                }
+            });
+
+            if (eligibleForAqueduct.length > 0) {
+                gameState.pendingAqueduct = eligibleForAqueduct;
+                if (gameState.phase === 'waiting_for_roll' || gameState.phase === 'main_phase') {
+                    gameState.phase = 'aqueduct_selection';
+                    const names = eligibleForAqueduct.map(id => gameState.players.find(p => p.id === id)?.name).join(', ');
+                    gameState.logs.push({
+                        id: `${Date.now()}-${Math.random()}`,
+                        timestamp: Date.now(),
+                        message: `Aqueduct triggered! ${names} can choose a resource.`,
+                    });
+                }
+            }
+        }
+
+        if (gameState.phase === 'waiting_for_roll') {
+            gameState.phase = 'main_phase';
+        }
+    }
+
 }
 
 function executeCrane(gameState: GameState, player: PlayerState, options?: any): void {

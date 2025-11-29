@@ -18,14 +18,65 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
 
 export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
-    const [selected, setSelected] = useState<Record<ResourceType, number>>({
-        wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0
-    });
+    const initialSelection: Record<ResourceType, number> = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+    const resourceOrder: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
+    const [selected, setSelected] = useState<Record<ResourceType, number>>(initialSelection);
     const [isPending, startTransition] = useTransition();
+
+    const totalResources = player ? Object.values(player.resources).reduce((a, b) => a + b, 0) : 0;
+    const requiredDiscard = player ? Math.floor(totalResources / 2) : 0;
+
+    // Reset/clamp selection whenever discard phase changes or resources update to avoid stale/negative counts.
+    React.useEffect(() => {
+        if (!player) return;
+
+        setSelected(prev => {
+            const shouldReset = gameState.phase !== 'discarding' || player.discardedThisTurn;
+            if (shouldReset) return initialSelection;
+
+            let next = { ...prev };
+            let changed = false;
+
+            // Clamp to available resources
+            resourceOrder.forEach(res => {
+                const max = player.resources[res] || 0;
+                if (next[res] > max) {
+                    next[res] = max;
+                    changed = true;
+                }
+            });
+
+            // Prevent selecting more than required discard after clamping
+            const totalSelected = resourceOrder.reduce((sum, res) => sum + next[res], 0);
+            if (totalSelected > requiredDiscard) {
+                let excess = totalSelected - requiredDiscard;
+                for (const res of resourceOrder) {
+                    if (excess === 0) break;
+                    const reducible = Math.min(next[res], excess);
+                    if (reducible > 0) {
+                        next[res] -= reducible;
+                        excess -= reducible;
+                        changed = true;
+                    }
+                }
+            }
+
+            if (!changed) return prev;
+            return next;
+        });
+    }, [
+        gameState.phase,
+        player?.discardedThisTurn,
+        player?.resources.wood,
+        player?.resources.brick,
+        player?.resources.sheep,
+        player?.resources.wheat,
+        player?.resources.ore,
+        requiredDiscard
+    ]);
 
     if (!player || gameState.phase !== 'discarding') return null;
 
-    const totalResources = Object.values(player.resources).reduce((a, b) => a + b, 0);
     if (totalResources <= 7 || player.discardedThisTurn) {
         // Show waiting message if others are discarding
         return (
@@ -40,7 +91,6 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         );
     }
 
-    const requiredDiscard = Math.floor(totalResources / 2);
     const currentSelected = Object.values(selected).reduce((a, b) => a + b, 0);
 
     const handleIncrement = (res: ResourceType) => {

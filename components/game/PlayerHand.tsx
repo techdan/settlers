@@ -35,11 +35,11 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
         ? Object.values(player.commodities).reduce((a, b) => a + b, 0)
         : 0;
 
-    // Check for active theft highlight (within 10 seconds)
+    // Check for active theft highlight (within 5 seconds)
     const getHighlightClass = (res: string) => {
         if (!lastTheft) return '';
 
-        const isRecent = Date.now() - lastTheft.timestamp < 10000;
+        const isRecent = Date.now() - lastTheft.timestamp < 5000;
         if (!isRecent) return '';
 
         if (lastTheft.resource === res) {

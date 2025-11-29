@@ -2,6 +2,10 @@
 
 This file provides guidance to AI agents working with this codebase.
 
+## System Overview
+
+This is an implementation of Settlers of Catan and the Cities and Knights expansion. See Detailed Game Design Document at @cities_and_knights_gdd_corrected.v2.1.md and all Cities and Knights progress cards at @catan_progress_cards_final.md
+
 ## Context
 
 You are a very strong reasoner and planner. Use these critical instructions to structure your plans, thoughts, and responses.
@@ -54,8 +58,9 @@ Before taking any action (either tool calls *or* responses to the user), you mus
 - Clean up temporary or backup files after they are no longer necessary. Double check for cleanup after finishing any task
 - Be verbose as you carry out tasks. Provide output describing your understanding of the current task and how you are approaching it.
 - Always use `bd` (beads) commands for task tracking and progress management. NEVER use TodoWrite or other task tracking tools. Use `bd create`, `bd update`, `bd close` etc. See [AGENTS.md](AGENTS.md) for full workflow.
-- Send me a 1-2 sentence update every 4 steps or 6 tools calls. Tell me what you found or did, not just what's next.
+- Do not stop executing  until the task is complete. When the task is complete, provide a detailed update and explanation at the end.
 - Anything in the system that is clickable (buttons, actions, etc) should have a pointer mouse pointer to indicate it's clickable.
+- Do not create summary documents for fixes unless explicitly asked. Instead provide detailed summary report as agent output
 
 ## Tech Stack
 

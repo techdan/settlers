@@ -19,6 +19,7 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
 }) => {
     const [selectedCards, setSelectedCards] = useState<ProgressCardType[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string>('');
 
     const cardsToDiscard = cards.length - maxCards;
 
@@ -36,12 +37,13 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
         if (selectedCards.length !== cardsToDiscard) return;
 
         setIsSubmitting(true);
+        setError('');
         try {
             await onDiscard(selectedCards);
             onClose();
-        } catch (error) {
-            console.error('Failed to discard cards:', error);
-            alert('Failed to discard cards. Please try again.');
+        } catch (e: any) {
+            console.error('Failed to discard cards:', e);
+            setError(e.message || 'Failed to discard cards. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -95,7 +97,14 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                     })}
                 </div>
 
-                <div className="flex gap-3">
+                {/* Error Message */}
+                {error && (
+                    <div className="mt-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm">
+                        {error}
+                    </div>
+                )}
+
+                <div className="flex gap-3 mt-4">
                     <button
                         onClick={handleSubmit}
                         disabled={selectedCards.length !== cardsToDiscard || isSubmitting}

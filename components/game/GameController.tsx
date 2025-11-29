@@ -135,9 +135,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ playerId, cardType, options: options || {} })
             });
-            if (!res.ok) throw new Error('Failed to play progress card');
-        } catch (e) {
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Failed to play progress card');
+            }
+        } catch (e: any) {
             console.error('Error playing progress card:', e);
+            throw e; // Re-throw so calling code can handle it
         }
     };
 

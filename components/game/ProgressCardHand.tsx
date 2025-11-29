@@ -1,7 +1,10 @@
 import React, { useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { PlayerState, GameState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
 import { ProgressCardModal } from './ProgressCardModal';
+import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
+import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 
 interface ProgressCardHandProps {
     player: PlayerState;
@@ -13,39 +16,14 @@ interface ProgressCardHandProps {
     onStartEdgeSelection?: (cardType: 'diplomat') => void;
 }
 
-// Card descriptions for tooltip/display
-const PROGRESS_CARD_INFO: Record<ProgressCardType, { name: string; description: string; category: 'science' | 'trade' | 'politics' }> = {
-    // Science cards (green)
-    alchemist: { name: 'Alchemist', description: 'Convert 2 resources of one type into 1 resource of any type', category: 'science' },
-    crane: { name: 'Crane', description: 'Build up to 2 city walls during your turn', category: 'science' },
-    engineer: { name: 'Engineer', description: 'Move 1 city wall to any other city', category: 'science' },
-    inventor: { name: 'Inventor', description: 'Swap the number tokens of any 2 terrain hexes', category: 'science' },
-    irrigation: { name: 'Irrigation', description: 'Receive resources from 1 field hex regardless of the roll', category: 'science' },
-    medicine: { name: 'Medicine', description: 'Worth 1 victory point', category: 'science' },
-    mining: { name: 'Mining', description: 'Receive resources from 1 mountain hex regardless of the roll', category: 'science' },
-    printer: { name: 'Printer', description: 'Worth 1 victory point', category: 'science' },
-    road_building_progress: { name: 'Road Building', description: 'Build 2 roads for free', category: 'science' },
-    smith: { name: 'Smith', description: 'Upgrade 1 knight to the next level for free', category: 'science' },
-
-    // Trade cards (yellow)
-    commercial_harbor: { name: 'Commercial Harbor', description: 'Offer 1 resource to each player; each must give you 1 commodity if they have one', category: 'trade' },
-    guild_dues: { name: 'Guild Dues', description: 'Choose a player with more VPs than you. Look at their hand and take any 2 cards', category: 'trade' },
-    merchant: { name: 'Merchant', description: 'Place merchant on a hex adjacent to your settlement/city (2:1 trade + 1 VP)', category: 'trade' },
-    merchant_fleet: { name: 'Merchant Fleet', description: 'Choose 1 resource or commodity. Trade it at 2:1 for the rest of this turn', category: 'trade' },
-    resource_monopoly: { name: 'Resource Monopoly', description: 'Name a resource. Each player must give you up to 2 of that resource', category: 'trade' },
-    trade_monopoly: { name: 'Trade Monopoly', description: 'Name a commodity. Each player must give you 1 of that commodity if they have it', category: 'trade' },
-
-    // Politics cards (blue)
-    taxation: { name: 'Taxation', description: 'Move the robber. Steal 1 random card from each player with a building on that hex', category: 'politics' },
-    constitution: { name: 'Constitution', description: 'Worth 1 victory point', category: 'politics' },
-    treason: { name: 'Treason', description: 'Choose a player; they remove a knight. You place a knight of equal or lower strength', category: 'politics' },
-    diplomat: { name: 'Diplomat', description: 'Remove an open road. If it is yours, you may rebuild one road for free', category: 'politics' },
-    intrigue: { name: 'Intrigue', description: 'Displace a knight on an intersection connected to one of your routes', category: 'politics' },
-    saboteur: { name: 'Sabotage', description: 'Players with equal or more VPs discard half their resource/commodity cards', category: 'politics' },
-    espionage: { name: 'Espionage', description: 'Look at another player\'s progress cards; take 1', category: 'politics' },
-    encouragement: { name: 'Encouragement', description: 'Activate all your knights for free', category: 'politics' },
-    wedding: { name: 'Wedding', description: 'Each player with more VPs than you must give you 2 cards of their choice', category: 'politics' }
-};
+// Build card info from the official definitions
+const PROGRESS_CARD_INFO: Record<ProgressCardType, { name: string; description: string; category: ProgressCardCategory }> =
+    Object.fromEntries(
+        Object.entries(PROGRESS_CARD_DEFINITIONS).map(([type, meta]) => [
+            type,
+            { name: meta.name, description: meta.description, category: meta.category }
+        ])
+    ) as Record<ProgressCardType, { name: string; description: string; category: ProgressCardCategory }>;
 
 const CATEGORY_COLORS = {
     science: 'bg-green-600',
@@ -190,24 +168,18 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                 </div>
             </div>
 
-            {modalCard && (
+            {modalCard && typeof window !== 'undefined' && createPortal(
                 <ProgressCardModal
                     cardType={modalCard}
                     isOpen={!!modalCard}
                     onClose={() => setModalCard(null)}
-                    onPlay={(options) => {
-                        startTransition(async () => {
-                            try {
-                                await onPlayCard(modalCard, options);
-                                setModalCard(null);
-                            } catch (e) {
-                                console.error('Failed to play card', e);
-                            }
-                        });
+                    onPlay={async (cardType, options) => {
+                        await onPlayCard(cardType, options);
                     }}
                     gameState={gameState}
                     currentPlayer={player}
-                />
+                />,
+                document.body
             )}
         </>
     );

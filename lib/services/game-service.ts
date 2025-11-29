@@ -5,7 +5,7 @@ import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
-import { rollEventDie, processEventDieRoll } from '@/core/engine/dice/event-die-manager';
+import { rollEventDie, processEventDieRoll, getCategoryFromColor, getEligiblePlayersForCardDraw } from '@/core/engine/dice/event-die-manager';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board-generator';
@@ -13,6 +13,7 @@ import { createDevCardDeck } from '@/core/engine/development/dev-card-manager';
 import { getCanonicalVertexId, getCanonicalEdgeId } from '@/lib/hex';
 import { randomUUID } from 'crypto';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
+import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
 
 /**
  * Game Service
@@ -225,6 +226,15 @@ export async function rollDice(
         const eventDieResult = rollEventDie();
         processEventDieRoll(gameState, eventDieResult, d1); // d1 is the red die
         // Note: processEventDieRoll may change phase to 'barbarian_attack'
+
+        // Handle progress card draws immediately when a color is rolled
+        if (eventDieResult !== 'ship') {
+            const category = getCategoryFromColor(eventDieResult);
+            const eligiblePlayerIds = getEligiblePlayersForCardDraw(gameState, category, d1);
+            eligiblePlayerIds.forEach(id => {
+                drawProgressCard(gameState, id, category);
+            });
+        }
     }
 
     // Handle robber (7)
