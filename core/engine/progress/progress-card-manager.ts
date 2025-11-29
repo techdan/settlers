@@ -706,10 +706,8 @@ function executeGuildDues(gameState: GameState, player: PlayerState, options?: a
     });
 }
 
-// ===== POLITICS CARD EFFECTS =====
-
 function executeDiplomat(gameState: GameState, player: PlayerState, options?: any): void {
-    // Remove an open road and place it as your own
+    // Remove an open road and optionally place it as your own
     const { edgeId, newEdgeId } = options || {};
     if (!edgeId) {
         throw new Error('Diplomat requires edgeId (road to remove)');
@@ -720,11 +718,52 @@ function executeDiplomat(gameState: GameState, player: PlayerState, options?: an
         throw new Error('Invalid edge or no road present');
     }
 
-    // Check if road is "open" (has at least one end not connected to a settlement/city)
-    // This validation should be done in the service layer
-    // For now, we'll trust the input is valid
+    const roadOwner = edge.owner;
 
-    const originalOwner = edge.owner;
+    // Validate the road is "open" (at least one endpoint has no same-color piece)
+    const [q, r, d] = edgeId.split(',').map(Number);
+    const endpoints = getEdgeEndpoints(q, r, d);
+    if (!endpoints || endpoints.length !== 2) {
+        throw new Error('Invalid edge endpoints');
+    }
+
+    const [vertex1Id, vertex2Id] = endpoints;
+
+    const isEndOpen = (vertexId: string): boolean => {
+        const vertex = gameState.board.vertices[vertexId];
+        if (!vertex) return false;
+
+        // Same-color building/metropolis blocks the end
+        if (vertex.owner === roadOwner && vertex.structure) {
+            return false;
+        }
+
+        // Same-color knight blocks the end
+        const knight = gameState.players
+            .flatMap(p => p.knights || [])
+            .find(k => k.vertexId === vertexId);
+        if (knight && knight.playerId === roadOwner) {
+            return false;
+        }
+
+        // Same-color roads on other adjacent edges block the end
+        const [q, r, d] = vertexId.split(',').map(Number);
+        const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+        const otherRoads = adjacentEdges.filter(adjEdgeId => {
+            if (adjEdgeId === edgeId) return false;
+            const e = gameState.board.edges[adjEdgeId];
+            return e && e.owner === roadOwner && e.structure === 'road';
+        });
+
+        return otherRoads.length === 0;
+    };
+
+    const end1Open = isEndOpen(vertex1Id);
+    const end2Open = isEndOpen(vertex2Id);
+
+    if (!end1Open && !end2Open) {
+        throw new Error('Road is not \"open\" - must be at the end of a road chain with no same-color pieces at that end');
+    }
 
     // Remove the road
     edge.owner = null;

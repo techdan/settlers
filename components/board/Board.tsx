@@ -31,8 +31,8 @@ interface BoardProps {
     movingKnightId?: string | null;
     buildingMetropolisType?: 'science' | 'trade' | 'politics' | null;
     selectingHexForCard?: 'merchant' | 'irrigation' | 'mining' | 'inventor' | null;
-    selectingVertexForCard?: 'intrigue' | 'diplomat' | null;
-    selectingEdgeForCard?: null;
+    selectingVertexForCard?: 'intrigue' | null;
+    selectingEdgeForCard?: 'diplomat' | null;
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
@@ -171,18 +171,6 @@ export const Board: React.FC<BoardProps> = ({
             return valid;
         }
 
-        // Progress Card Vertex Selection (Diplomat)
-        if (selectingVertexForCard === 'diplomat') {
-            // Diplomat: Move own knight to any own settlement or city
-            // Valid vertices are those with player's own settlements or cities
-            vertices.forEach(v => {
-                const vertex = gameState.board.vertices[v.id];
-                if (vertex && vertex.structure && vertex.owner === playerId) {
-                    valid.add(v.id);
-                }
-            });
-            return valid;
-        }
 
         if (gameState.phase.startsWith('setup')) {
             vertices.forEach(v => {
@@ -226,6 +214,18 @@ export const Board: React.FC<BoardProps> = ({
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
         if (gameState.currentTurn !== playerId) return valid;
+
+        // Progress Card Edge Selection (Diplomat)
+        if (selectingEdgeForCard === 'diplomat') {
+            // Diplomat: Remove an open road
+            // Highlight all roads - backend will validate if they're "open"
+            edges.forEach(e => {
+                if (e.structure === 'road' && e.owner) {
+                    valid.add(e.id);
+                }
+            });
+            return valid;
+        }
 
         if (gameState.phase.startsWith('setup')) {
             edges.forEach(e => {

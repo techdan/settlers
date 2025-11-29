@@ -9,7 +9,8 @@ interface ProgressCardHandProps {
     gameState: GameState;
     onPlayCard: (cardType: ProgressCardType, options?: any) => Promise<void>;
     onStartHexSelection?: (cardType: 'merchant' | 'irrigation' | 'mining' | 'inventor') => void;
-    onStartVertexSelection?: (cardType: 'intrigue' | 'diplomat') => void;
+    onStartVertexSelection?: (cardType: 'intrigue') => void;
+    onStartEdgeSelection?: (cardType: 'diplomat') => void;
 }
 
 // Card descriptions for tooltip/display
@@ -79,7 +80,8 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     gameState,
     onPlayCard,
     onStartHexSelection,
-    onStartVertexSelection
+    onStartVertexSelection,
+    onStartEdgeSelection
 }) => {
     const [isPending, startTransition] = useTransition();
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
@@ -96,8 +98,13 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
-        if (onStartVertexSelection && (cardType === 'intrigue' || cardType === 'diplomat')) {
+        if (onStartVertexSelection && cardType === 'intrigue') {
             onStartVertexSelection(cardType);
+            return;
+        }
+
+        if (onStartEdgeSelection && cardType === 'diplomat') {
+            onStartEdgeSelection(cardType);
             return;
         }
 

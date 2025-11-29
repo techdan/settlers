@@ -49,8 +49,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     // Progress card board selection states
     const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'irrigation' | 'mining' | 'inventor' | null>(null);
-    const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | 'diplomat' | null>(null);
-    const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<null>(null);
+    const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | null>(null);
+    const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<'diplomat' | null>(null);
     const [cardSelectionData, setCardSelectionData] = useState<any>(null); // Stores partial data (e.g., selected hexes for inventor)
 
     const router = useRouter();
@@ -172,11 +172,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSelectingHexForCard(null);
     };
 
-    const handleStartVertexSelection = (cardType: 'intrigue' | 'diplomat') => {
+    const handleStartVertexSelection = (cardType: 'intrigue') => {
         setSelectingVertexForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
+        setSelectingEdgeForCard(null);
+        setCardSelectionData(null);
+    };
+
+    const handleStartEdgeSelection = (cardType: 'diplomat') => {
+        setSelectingEdgeForCard(cardType);
+        setBuildMode(null);
+        setMovingKnightId(null);
+        setBuildingMetropolisType(null);
+        setSelectingVertexForCard(null);
         setCardSelectionData(null);
     };
 
@@ -195,22 +205,31 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     targetVertexId: vertexId
                 });
             }
-        } else if (selectingVertexForCard === 'diplomat') {
-            // Diplomat: Move own knight to this location (own settlement/city)
-            // Backend expects knightId and targetVertexId
-            // TODO: Add UI to select which knight to move
-            await handlePlayProgressCard(selectingVertexForCard, {
-                targetVertexId: vertexId
-            });
         }
 
         setSelectingVertexForCard(null);
+    };
+
+    const handleEdgeSelected = async (edgeId: string) => {
+        if (!selectingEdgeForCard) return;
+
+        if (selectingEdgeForCard === 'diplomat') {
+            // Diplomat: Select an open road to remove
+            // For now, just remove it (no replacement)
+            // TODO: Add second step to allow rebuilding road if it was player's own
+            await handlePlayProgressCard(selectingEdgeForCard, {
+                edgeId: edgeId
+            });
+        }
+
+        setSelectingEdgeForCard(null);
     };
 
 
     const handleCancelSelection = () => {
         setSelectingHexForCard(null);
         setSelectingVertexForCard(null);
+        setSelectingEdgeForCard(null);
         setCardSelectionData(null);
         setBuildMode(null);
         setMovingKnightId(null);
@@ -325,9 +344,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 buildingMetropolisType={buildingMetropolisType}
                 selectingHexForCard={selectingHexForCard}
                 selectingVertexForCard={selectingVertexForCard}
-                selectingEdgeForCard={null}
+                selectingEdgeForCard={selectingEdgeForCard}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
+                onEdgeSelectedForCard={handleEdgeSelected}
                 onCityClick={handleCityClick}
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
@@ -496,6 +516,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     onPlayCard={handlePlayProgressCard}
                                     onStartHexSelection={handleStartHexSelection}
                                     onStartVertexSelection={handleStartVertexSelection}
+                                    onStartEdgeSelection={handleStartEdgeSelection}
                                 />
                             </>
                         )}
