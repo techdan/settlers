@@ -80,7 +80,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
                 <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ItemCategory)}
-                    className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:outline-none focus:border-red-400"
+                    className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:outline-none focus:border-red-400 cursor-pointer"
                     disabled={isPending}
                 >
                     <option value="resource">Resource</option>
@@ -91,7 +91,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
                 <select
                     value={selectedItem}
                     onChange={(e) => setSelectedItem(e.target.value)}
-                    className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:outline-none focus:border-red-400 flex-1 min-w-0"
+                    className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:outline-none focus:border-red-400 flex-1 min-w-0 cursor-pointer"
                     disabled={isPending}
                 >
                     <option value="">Select item...</option>
@@ -105,7 +105,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
                 <button
                     onClick={handleGive}
                     disabled={isPending || !selectedItem}
-                    className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-3 py-1 rounded font-semibold transition-colors"
+                    className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-3 py-1 rounded font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed"
                 >
                     Give
                 </button>

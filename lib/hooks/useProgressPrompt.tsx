@@ -121,10 +121,10 @@ export function useProgressPrompt(cardType: string, externalActive = false): Use
     const isVisible = !entry.forceHide && (externalActive || entry.pending);
 
     useEffect(() => {
-        if (externalActive) {
+        if (externalActive && entry.pending) {
             ctx.complete(cardType);
         }
-    }, [cardType, ctx, externalActive]);
+    }, [cardType, ctx, externalActive, entry.pending]);
 
     return {
         isVisible,

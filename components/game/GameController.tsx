@@ -65,6 +65,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
     const [progressDiscardContext, setProgressDiscardContext] = useState<'own_turn' | 'other_turn'>('own_turn');
     const [selectingCityForEngineer, setSelectingCityForEngineer] = useState(false);
+    const [selectedEngineerCityId, setSelectedEngineerCityId] = useState<string | null>(null);
+    const [isEngineerSubmitting, setIsEngineerSubmitting] = useState(false);
     const [selectingCityForMedicine, setSelectingCityForMedicine] = useState(false);
     const [selectingKnightsForSmith, setSelectingKnightsForSmith] = useState(false);
     const [selectedSmithKnightIds, setSelectedSmithKnightIds] = useState<string[]>([]);
@@ -78,6 +80,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         clearSelectedCard
     } = useProgressCardSelectionDecorator();
     const [lastVPAcknowledgedAt, setLastVPAcknowledgedAt] = useState<number | null>(null);
+    const engineeringPrompt = useProgressPrompt('engineer', selectingCityForEngineer);
 
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
@@ -267,12 +270,33 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     };
 
-    const handleEngineerCitySelected = async (vertexId: string) => {
+    const handleEngineerCitySelected = (vertexId: string) => {
+        if (isEngineerSubmitting) return;
+        if (selectedEngineerCityId === vertexId) {
+            setSelectedEngineerCityId(null);
+            engineeringPrompt.setStatus('Select a city without a wall for Engineering');
+            return;
+        }
+        setSelectedEngineerCityId(vertexId);
+        engineeringPrompt.setStatus('City selected. Click Build to confirm.');
+    };
+
+    const handleConfirmEngineerBuild = async () => {
+        if (!selectedEngineerCityId) return;
+        setIsEngineerSubmitting(true);
+        engineeringPrompt.setStatus('Building city wall...');
         try {
-            await handlePlayProgressCard('engineer', { vertexId });
+            await handlePlayProgressCard('engineer', { vertexId: selectedEngineerCityId });
             setSelectingCityForEngineer(false);
-        } catch (e) {
+            setSelectedEngineerCityId(null);
+            engineeringPrompt.clear();
+            clearSelectedCard();
+        } catch (e: any) {
+            const message = e?.message || 'Failed to build city wall with Engineering';
+            engineeringPrompt.setStatus(message);
             console.error('Failed to build city wall with Engineering', e);
+        } finally {
+            setIsEngineerSubmitting(false);
         }
     };
 
@@ -364,7 +388,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleStartEngineerSelection = () => {
-        if (!baseGameState) return;
+        if (!baseGameState || !isActiveTurn) return;
         const effectiveState = getOptimisticState(baseGameState);
         const eligible = getEligibleCityWallVertices(effectiveState, playerId, { ignoreCost: true });
         if (eligible.length === 0) return;
@@ -373,6 +397,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
         handleCancelSelection();
+        setSelectedEngineerCityId(null);
+        engineeringPrompt.begin('Select a city without a wall for Engineering');
         setSelectingCityForEngineer(true);
     };
 
@@ -497,12 +523,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
         setSelectingCityForEngineer(false);
+        setSelectedEngineerCityId(null);
+        setIsEngineerSubmitting(false);
         setSelectingKnightsForSmith(false);
         setSelectedSmithKnightIds([]);
         setSmithError(null);
         setSelectingCityForMedicine(false);
         setIsCraneDialogOpen(false);
         clearSelectedCard();
+        engineeringPrompt.clear();
     };
 
     const handleCancelFollowupCard = () => {
@@ -692,6 +721,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         (roadBuildingCompleted
             ? `Placed ${roadBuildingPlacedCount}/2. Finish or cancel to undo both.`
             : `Placed ${roadBuildingPlacedCount}/2 roads.`);
+    const showEngineeringPrompt = engineeringPrompt.isVisible && !!isActiveTurn;
+    const engineeringPromptStatus =
+        engineeringPrompt.status || 'Select a city without a wall to add a free city wall.';
 
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
@@ -708,6 +740,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     const activeProgressCard: ProgressCardType | null = (() => {
         if (showRoadBuildingPrompt) return 'road_building_progress';
+        if (showEngineeringPrompt) return 'engineer';
         if (selectingHexForCard) return selectingHexForCard;
         if (selectingVertexForCard) return selectingVertexForCard;
         if (selectingEdgeForCard) return selectingEdgeForCard;
@@ -718,7 +751,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         if (selectedProgressCard) return selectedProgressCard;
         return null;
     })();
-    const promptBlocksUI = showRoadBuildingPrompt;
+    const promptBlocksUI = showRoadBuildingPrompt || showEngineeringPrompt;
+    const engineerSelectionActive = showEngineeringPrompt || selectingCityForEngineer;
 
     return (
         <div className="relative h-screen w-screen overflow-hidden">
@@ -773,6 +807,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingVertexForCard={selectingVertexForCard}
                 selectingEdgeForCard={selectingEdgeForCard}
                 selectingCityForEngineer={selectingCityForEngineer}
+                selectedEngineerCityId={selectedEngineerCityId}
                 selectingCityForMedicine={selectingCityForMedicine}
                 selectingKnightsForSmith={selectingKnightsForSmith}
                 smithSelectableKnightIds={smithEligibleVertexIds}
@@ -790,6 +825,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
             />
+
+            {showEngineeringPrompt && (
+                <BoardSelectionPrompt
+                    title="Engineering"
+                    description="Click one of your cities without a wall to add a free city wall."
+                    status={engineeringPromptStatus}
+                    onCancel={handleCancelSelection}
+                    onFinish={handleConfirmEngineerBuild}
+                    finishLabel="Build"
+                    finishDisabled={!selectedEngineerCityId || isEngineerSubmitting}
+                />
+            )}
 
             {showRoadBuildingPrompt && (
                 <BoardSelectionPrompt
@@ -999,7 +1046,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
                 {/* Left Sidebar: Game Log & Debug Panel */}
                 {/* Positioned below Map Controls (approx top-20) */}
-                <div className="absolute top-48 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto">
+                <div className="absolute top-48 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto z-30">
                     <div className="flex-1 min-h-0 overflow-y-auto">
                         <GameLog logs={gameState.logs || []} />
                     </div>
@@ -1054,7 +1101,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     onStartSmithSelection={handleStartSmithSelection}
                                     onStartMedicineSelection={handleStartMedicineSelection}
                                     isActiveTurn={isActiveTurn}
-                                    isEngineerSelecting={selectingCityForEngineer}
+                                    isEngineerSelecting={engineerSelectionActive}
                                     isSmithSelecting={selectingKnightsForSmith}
                                     isMedicineSelecting={selectingCityForMedicine}
                                     activeFollowupCard={activeProgressCard}

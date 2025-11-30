@@ -1,5 +1,5 @@
 import React, { useState, useTransition } from 'react';
-import { GameState, PlayerState } from '@/lib/types';
+import { GameState } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { discardCards } from '@/app/actions';
 
@@ -8,49 +8,86 @@ interface DiscardModalProps {
     playerId: string;
 }
 
+const RESOURCE_ORDER: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
+const INITIAL_SELECTION: Record<ResourceType, number> = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+
+function selectionsEqual(a: Record<ResourceType, number>, b: Record<ResourceType, number>): boolean {
+    return RESOURCE_ORDER.every(res => a[res] === b[res]);
+}
+
+function normalizeResources(resources?: Record<ResourceType, number>): Record<ResourceType, number> {
+    return RESOURCE_ORDER.reduce((acc, res) => {
+        const value = resources?.[res];
+        acc[res] = Number.isFinite(value) ? Math.max(0, value as number) : 0;
+        return acc;
+    }, { ...INITIAL_SELECTION });
+}
+
 const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: '🌲',
-    brick: '🧱',
-    sheep: '🐑',
-    wheat: '🌾',
-    ore: '🪨'
+    wood: 'wood',
+    brick: 'brick',
+    sheep: 'sheep',
+    wheat: 'wheat',
+    ore: 'ore'
 };
 
 export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
-    const initialSelection: Record<ResourceType, number> = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
-    const resourceOrder: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
-    const [selected, setSelected] = useState<Record<ResourceType, number>>(initialSelection);
+    const [selected, setSelected] = useState<Record<ResourceType, number>>(INITIAL_SELECTION);
     const [isPending, startTransition] = useTransition();
 
-    const totalResources = player ? Object.values(player.resources).reduce((a, b) => a + b, 0) : 0;
-    const requiredDiscard = player ? Math.floor(totalResources / 2) : 0;
+    const safeResources = React.useMemo(
+        () => normalizeResources(player?.resources),
+        [
+            player?.resources?.wood,
+            player?.resources?.brick,
+            player?.resources?.sheep,
+            player?.resources?.wheat,
+            player?.resources?.ore,
+            player?.id
+        ]
+    );
+
+    const totalResources = React.useMemo(
+        () => RESOURCE_ORDER.reduce((sum, res) => sum + safeResources[res], 0),
+        [safeResources]
+    );
+    const requiredDiscard = player ? Math.max(0, Math.floor(totalResources / 2)) : 0;
 
     // Reset/clamp selection whenever discard phase changes or resources update to avoid stale/negative counts.
     React.useEffect(() => {
-        if (!player) return;
+        if (!player) {
+            setSelected(prev => (selectionsEqual(prev, INITIAL_SELECTION) ? prev : INITIAL_SELECTION));
+            return;
+        }
+
+        if (gameState.phase !== 'discarding' || player.discardedThisTurn) {
+            setSelected(prev => (selectionsEqual(prev, INITIAL_SELECTION) ? prev : INITIAL_SELECTION));
+            return;
+        }
 
         setSelected(prev => {
-            const shouldReset = gameState.phase !== 'discarding' || player.discardedThisTurn;
-            if (shouldReset) return initialSelection;
-
             let next = { ...prev };
             let changed = false;
 
             // Clamp to available resources
-            resourceOrder.forEach(res => {
-                const max = player.resources[res] || 0;
+            RESOURCE_ORDER.forEach(res => {
+                const max = safeResources[res];
                 if (next[res] > max) {
                     next[res] = max;
+                    changed = true;
+                }
+                if (next[res] < 0) {
+                    next[res] = 0;
                     changed = true;
                 }
             });
 
             // Prevent selecting more than required discard after clamping
-            const totalSelected = resourceOrder.reduce((sum, res) => sum + next[res], 0);
-            if (totalSelected > requiredDiscard) {
+            const totalSelected = RESOURCE_ORDER.reduce((sum, res) => sum + next[res], 0);
+            if (requiredDiscard > 0 && totalSelected > requiredDiscard) {
                 let excess = totalSelected - requiredDiscard;
-                for (const res of resourceOrder) {
+                for (const res of RESOURCE_ORDER) {
                     if (excess === 0) break;
                     const reducible = Math.min(next[res], excess);
                     if (reducible > 0) {
@@ -61,17 +98,17 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                 }
             }
 
-            if (!changed) return prev;
-            return next;
+            return changed ? next : prev;
         });
     }, [
         gameState.phase,
+        player?.id,
         player?.discardedThisTurn,
-        player?.resources.wood,
-        player?.resources.brick,
-        player?.resources.sheep,
-        player?.resources.wheat,
-        player?.resources.ore,
+        safeResources.wood,
+        safeResources.brick,
+        safeResources.sheep,
+        safeResources.wheat,
+        safeResources.ore,
         requiredDiscard
     ]);
 
@@ -91,10 +128,11 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         );
     }
 
-    const currentSelected = Object.values(selected).reduce((a, b) => a + b, 0);
+    const currentSelected = RESOURCE_ORDER.reduce((sum, res) => sum + selected[res], 0);
 
     const handleIncrement = (res: ResourceType) => {
-        if (selected[res] < player.resources[res] && currentSelected < requiredDiscard) {
+        const max = safeResources[res];
+        if (selected[res] < max && currentSelected < requiredDiscard) {
             setSelected(prev => ({ ...prev, [res]: prev[res] + 1 }));
         }
     };
@@ -120,14 +158,14 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="bg-slate-900 p-6 rounded-xl border border-red-500/50 shadow-2xl max-w-lg w-full">
-                <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">Robber Attack! 🏴‍☠️</h2>
+                <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">Robber Attack!</h2>
                 <p className="text-slate-300 text-center mb-6">
                     You have {totalResources} cards. You must discard <span className="font-bold text-white">{requiredDiscard}</span> cards.
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
-                        const max = player.resources[res] || 0;
+                    {(RESOURCE_ORDER as ResourceType[]).map(res => {
+                        const max = safeResources[res];
                         if (max === 0) return null;
 
                         return (
@@ -168,7 +206,7 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                         disabled={currentSelected !== requiredDiscard || isPending}
                         className="w-full bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors"
                     >
-                        {isPending ? 'Discarding...' : 'Confirm Discard 🗑️'}
+                        {isPending ? 'Discarding...' : 'Confirm Discard'}
                     </button>
                 </div>
             </div>

@@ -34,6 +34,7 @@ interface BoardProps {
     selectingVertexForCard?: 'intrigue' | null;
     selectingEdgeForCard?: 'diplomat' | null;
     selectingCityForEngineer?: boolean;
+    selectedEngineerCityId?: string | null;
     selectingCityForMedicine?: boolean;
     selectingKnightsForSmith?: boolean;
     smithSelectableKnightIds?: string[];
@@ -69,6 +70,7 @@ export const Board: React.FC<BoardProps> = ({
     selectingVertexForCard,
     selectingEdgeForCard,
     selectingCityForEngineer,
+    selectedEngineerCityId,
     selectingCityForMedicine,
     selectingKnightsForSmith,
     smithSelectableKnightIds,
@@ -400,7 +402,6 @@ export const Board: React.FC<BoardProps> = ({
             startTransition(async () => {
                 try {
                     await onEngineerCitySelected?.(vertexId);
-                    onCancelBuild();
                 } catch (e) {
                     console.error('Failed to build city wall with Engineering', e);
                 }
@@ -747,9 +748,10 @@ export const Board: React.FC<BoardProps> = ({
                                         const ownerColor = knight
                                             ? gameState.players.find(p => p.id === knight.playerId)?.color
                                             : gameState.players.find(p => p.id === vertex.owner)?.color;
-                                        const isEngineerCancel = !!selectingCityForEngineer && validVertices.has(vertex.id);
+                                        const isEngineerCancel = false;
                                         const isMedicineCancel = !!selectingCityForMedicine && validVertices.has(vertex.id);
                                         const isSmithCancel = !!selectingKnightsForSmith && validVertices.has(vertex.id);
+                                        const isEngineerSelected = !!(selectingCityForEngineer && selectedEngineerCityId === vertex.id);
                                         const isSmithSelected = !!(selectingKnightsForSmith && knight && smithSelectedKnightIds?.includes(knight.id));
                                         return (
                                             <VertexRenderer
@@ -766,13 +768,11 @@ export const Board: React.FC<BoardProps> = ({
                                                 currentPlayerId={playerId}
                                                 showCancelIcon={isEngineerCancel || isMedicineCancel || isSmithCancel}
                                                 cancelIconTitle={
-                                                    isEngineerCancel
-                                                        ? 'Cancel Engineering'
-                                                        : isMedicineCancel
-                                                            ? 'Cancel Medicine'
-                                                            : 'Cancel Smithing'
+                                                    isMedicineCancel
+                                                        ? 'Cancel Medicine'
+                                                        : 'Cancel Smithing'
                                                 }
-                                                isSelectedForAction={isSmithSelected}
+                                                isSelectedForAction={isEngineerSelected || isSmithSelected}
                                                 onCancelIconClick={onCancelBuild}
                                             />
                                         );
