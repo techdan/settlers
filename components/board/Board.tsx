@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { HexTile as FlatHexTile } from '@/themes/flat/HexTile';
 import { VoxelHexTile } from '@/themes/voxel/HexTile';
@@ -8,7 +9,8 @@ import { FlatPort } from '@/themes/flat/Port';
 import { VoxelPort } from '@/themes/voxel/Port';
 import { useThemeStore } from '@/lib/theme-store';
 import { generatePorts } from '@/engine/generatePorts';
-import { GameState } from '@/lib/types';
+import { DiceStatsPanel } from '@/components/game/DiceStatsPanel';
+import { GameState, EMPTY_DICE_STATS } from '@/lib/types';
 import { Knight, ProgressCardType } from '@/lib/types/player';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
@@ -22,6 +24,7 @@ import { useOptimisticAction } from '@/lib/hooks/useOptimisticGameState';
 import { getAdjacentEdgesForVertex, getEdgeEndpoints, getAdjacentVertexIds, getCanonicalVertexId } from '@/lib/hex';
 
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
+import { getOpenRoadIds } from '@/core/validation/diplomat-validator';
 
 interface BoardProps {
     gameState: GameState;
@@ -30,12 +33,15 @@ interface BoardProps {
     onCancelBuild: () => void;
     movingKnightId?: string | null;
     buildingMetropolisType?: 'science' | 'trade' | 'politics' | null;
-    selectingHexForCard?: 'merchant' | 'inventor' | null;
-    selectingVertexForCard?: 'intrigue' | null;
+    selectingHexForCard?: 'merchant' | 'inventor' | 'taxation' | null;
+    selectingVertexForCard?: 'intrigue' | 'treason_remove' | 'treason_place' | null;
+    treasonSelectedKnightId?: string | null;
+    treasonSelectedPlacementVertexId?: string | null;
     selectingEdgeForCard?: 'diplomat' | null;
     selectingCityForEngineer?: boolean;
     selectedEngineerCityId?: string | null;
     selectingCityForMedicine?: boolean;
+    intrigueSelectedKnightId?: string | null;
     selectingKnightsForSmith?: boolean;
     smithSelectableKnightIds?: string[];
     smithSelectedKnightIds?: string[];
@@ -44,6 +50,10 @@ interface BoardProps {
     progressPromptReady?: boolean;
     inventorSelection?: { firstHexId?: string; secondHexId?: string } | null;
     merchantSelectedHexId?: string | null;
+    taxationSelectedHexId?: string | null;
+    diplomatStage?: 'remove' | 'rebuild' | null;
+    diplomatRemovedEdgeId?: string | null;
+    diplomatRelocatedEdgeId?: string | null;
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
@@ -73,6 +83,9 @@ export const Board: React.FC<BoardProps> = ({
     selectingCityForEngineer,
     selectedEngineerCityId,
     selectingCityForMedicine,
+    treasonSelectedKnightId,
+    treasonSelectedPlacementVertexId,
+    intrigueSelectedKnightId,
     selectingKnightsForSmith,
     smithSelectableKnightIds,
     smithSelectedKnightIds,
@@ -81,6 +94,10 @@ export const Board: React.FC<BoardProps> = ({
     progressPromptReady,
     inventorSelection,
     merchantSelectedHexId,
+    taxationSelectedHexId,
+    diplomatStage,
+    diplomatRemovedEdgeId,
+    diplomatRelocatedEdgeId,
     onHexSelected,
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
@@ -99,6 +116,20 @@ export const Board: React.FC<BoardProps> = ({
     const vertices = Object.values(gameState.board.vertices);
     const edges = Object.values(gameState.board.edges);
 
+    const renderEdges = useMemo(() => {
+        if (selectingEdgeForCard !== 'diplomat' || !diplomatStage) return edges;
+
+        return edges.map(edge => {
+            if (diplomatStage === 'rebuild' && diplomatRemovedEdgeId && edge.id === diplomatRemovedEdgeId) {
+                return { ...edge, owner: null, structure: null };
+            }
+            if (diplomatStage === 'rebuild' && diplomatRelocatedEdgeId && edge.id === diplomatRelocatedEdgeId) {
+                return { ...edge, owner: playerId, structure: 'road' as const };
+            }
+            return edge;
+        });
+    }, [edges, diplomatStage, diplomatRemovedEdgeId, diplomatRelocatedEdgeId, playerId, selectingEdgeForCard]);
+
     // Sort tiles for Voxel rendering (Painter's Algorithm: Top -> Bottom)
     const sortedTiles = [...tiles].sort((a, b) => {
         if (a.hex.r !== b.hex.r) return a.hex.r - b.hex.r;
@@ -111,6 +142,14 @@ export const Board: React.FC<BoardProps> = ({
     const [isPending, startTransition] = useTransition();
     const [isPlacingBonusRoad, setIsPlacingBonusRoad] = useState(false);
     const performOptimisticAction = useOptimisticAction();
+    const [showDiceStats, setShowDiceStats] = useState(false);
+    const diceStats = useMemo(
+        () => ({
+            ...EMPTY_DICE_STATS,
+            ...(gameState.diceStats || {})
+        }),
+        [gameState.diceStats]
+    );
 
     const knightsMap = useMemo(() => {
         const map = new Map<string, Knight>();
@@ -139,6 +178,29 @@ export const Board: React.FC<BoardProps> = ({
         if (gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId)) {
             vertices.forEach(v => {
                 if (v.owner === playerId && v.structure === 'city') {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
+
+        // Treason (targeted player selects knight) - allow even when not current turn
+        if (selectingVertexForCard === 'treason_remove') {
+            vertices.forEach(v => {
+                const knight = gameState.players
+                    .flatMap(p => p.knights || [])
+                    .find(k => k.vertexId === v.id);
+                if (knight && knight.playerId === playerId) {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
+
+        // Treason placement selection (initiator) - allowed even if not current turn due to active effect
+        if (selectingVertexForCard === 'treason_place') {
+            vertices.forEach(v => {
+                if (isValidKnightPlacement(gameState, v.id, playerId)) {
                     valid.add(v.id);
                 }
             });
@@ -268,17 +330,51 @@ export const Board: React.FC<BoardProps> = ({
         return valid;
     }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer, selectingCityForMedicine, selectingKnightsForSmith, smithSelectableKnightIds]);
 
+    const diplomatPlacementState = useMemo(() => {
+        if (selectingEdgeForCard !== 'diplomat' || diplomatStage !== 'rebuild' || !diplomatRemovedEdgeId) {
+            return null;
+        }
+
+        if (!gameState) return null;
+
+        const removedEdge = gameState.board.edges[diplomatRemovedEdgeId];
+        if (!removedEdge) return null;
+
+        return {
+            ...gameState,
+            board: {
+                ...gameState.board,
+                edges: {
+                    ...gameState.board.edges,
+                    [diplomatRemovedEdgeId]: { ...removedEdge, owner: null, structure: null }
+                }
+            }
+        };
+    }, [diplomatRemovedEdgeId, diplomatStage, gameState, selectingEdgeForCard]);
+
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
         if (gameState.currentTurn !== playerId) return valid;
 
         // Progress Card Edge Selection (Diplomat)
         if (selectingEdgeForCard === 'diplomat') {
-            // Diplomat: Remove an open road
-            // Highlight all roads - backend will validate if they're "open"
-            edges.forEach(e => {
-                if (e.structure === 'road' && e.owner) {
-                    valid.add(e.id);
+            if (diplomatStage === 'rebuild') {
+                const stateForPlacement = diplomatPlacementState ?? gameState;
+                Object.values(stateForPlacement.board.edges).forEach(edge => {
+                    if (isValidMainPhaseRoad(stateForPlacement, edge.id, playerId)) {
+                        valid.add(edge.id);
+                    }
+                });
+            } else {
+                getOpenRoadIds(gameState).forEach(id => valid.add(id));
+            }
+            return valid;
+        }
+
+        if (selectingVertexForCard === 'treason_place') {
+            vertices.forEach(v => {
+                if (isValidKnightPlacement(gameState, v.id, playerId)) {
+                    valid.add(v.id);
                 }
             });
             return valid;
@@ -304,7 +400,7 @@ export const Board: React.FC<BoardProps> = ({
             });
         }
         return valid;
-    }, [gameState, playerId, buildMode, edges, selectingEdgeForCard]);
+    }, [gameState, playerId, buildMode, edges, selectingEdgeForCard, diplomatStage, diplomatPlacementState]);
 
     // Valid hexes for progress card selection
 
@@ -346,6 +442,12 @@ export const Board: React.FC<BoardProps> = ({
                     const isRestrictedToken = token ? restrictedNumbers.includes(token) : true;
                     const isRestrictedTerrain = hex.terrain === 'desert' || hex.terrain === 'ocean';
                     if (!isRestrictedToken && !isRestrictedTerrain) {
+                        valid.add(hex.id);
+                    }
+                    break;
+
+                case 'taxation':
+                    if (hex.terrain !== 'ocean' && hex.id !== gameState.robberHexId) {
                         valid.add(hex.id);
                     }
                     break;
@@ -607,6 +709,12 @@ export const Board: React.FC<BoardProps> = ({
         }
     };
 
+    const handleDiceStatsToggle = (event: React.MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setShowDiceStats(current => !current);
+    };
+
     const handleHexClick = (hexId: string) => {
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
@@ -641,52 +749,63 @@ export const Board: React.FC<BoardProps> = ({
                 maxScale={1.3}
                 centerOnInit
                 limitToBounds={false}
-                onTransformed={(ref) => {
-                    setZoomLevel(ref.state.scale);
-                }}
-            >
-                {({ zoomIn, zoomOut, resetTransform, setTransform }) => (
-                    <>
-                        {/* Theme Toggle & Zoom Controls */}
-                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 pointer-events-auto">
-                            <details className="group" open>
-                                <summary className="list-none cursor-pointer bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold flex items-center gap-2 w-fit">
-                                    <span>Map Controls</span>
-                                    <span className="group-open:rotate-180 transition-transform">▼</span>
-                                </summary>
-                                <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
-                                    <div className="flex items-center gap-2 justify-between w-full">
+                        onTransformed={(ref) => {
+                            setZoomLevel(ref.state.scale);
+                        }}
+                    >
+                        {({ zoomIn, zoomOut, resetTransform, setTransform }) => (
+                            <>
+                                {/* Theme Toggle & Zoom Controls */}
+                                <div className="absolute top-4 left-4 z-10 pointer-events-auto flex flex-col gap-2">
+                                    <div className="flex items-start gap-2">
+                    <details className="group" open>
+                        <summary className="list-none cursor-pointer bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold flex items-center gap-2 w-fit">
+                            <span>Map Controls</span>
+                            <span className="group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 justify-between w-full">
+                                <button onClick={() => zoomIn()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors" title="Zoom In">+</button>
+                                <button onClick={() => zoomOut()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors" title="Zoom Out">-</button>
+                                <button onClick={() => resetTransform()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors" title="Reset View">⟳</button>
+                            </div>
+                            <button onClick={toggleTheme} className="bg-slate-800 text-white px-4 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold">
+                                {theme === 'flat' ? 'Switch to 3D' : 'Switch to 2D'}
+                            </button>
+                        </div>
+                    </details>
                                         <button
-                                            onClick={() => zoomIn()}
-                                            className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors"
-                                            title="Zoom In"
+                                            type="button"
+                                            onClick={handleDiceStatsToggle}
+                                            aria-pressed={showDiceStats}
+                                            title={showDiceStats ? 'Hide dice stats' : 'Show dice stats'}
+                                            className={`h-full px-3 py-2 bg-slate-800 text-white rounded shadow-lg border font-semibold text-sm transition-colors cursor-pointer ${
+                                                showDiceStats
+                                                    ? 'border-amber-400 text-amber-200'
+                                                    : 'border-slate-600 hover:border-amber-300 hover:text-amber-200'
+                                            }`}
                                         >
-                                            ➕
-                                        </button>
-                                        <button
-                                            onClick={() => zoomOut()}
-                                            className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors"
-                                            title="Zoom Out"
-                                        >
-                                            ➖
-                                        </button>
-                                        <button
-                                            onClick={() => resetTransform()}
-                                            className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors"
-                                            title="Reset View"
-                                        >
-                                            🔄
+                                            Dice
                                         </button>
                                     </div>
-                                    <button
-                                        onClick={toggleTheme}
-                                        className="bg-slate-800 text-white px-4 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
-                                    >
-                                        {theme === 'flat' ? 'Switch to 3D' : 'Switch to 2D'}
-                                    </button>
                                 </div>
-                            </details>
-                        </div>
+
+                                {showDiceStats &&
+                                    createPortal(
+                                        <div className="fixed inset-0 z-40 flex items-start justify-center pt-24 pointer-events-none">
+                                            <div
+                                                className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
+                                                onClick={() => setShowDiceStats(false)}
+                                            />
+                                            <div className="relative z-10 pointer-events-auto">
+                                                <DiceStatsPanel
+                                                    stats={diceStats}
+                                                    onClose={() => setShowDiceStats(false)}
+                                                />
+                                            </div>
+                                        </div>,
+                                        document.body
+                                    )}
 
                         <TransformComponent
                             wrapperClass="w-full h-full"
@@ -706,9 +825,11 @@ export const Board: React.FC<BoardProps> = ({
                                                     ? 'secondary'
                                                     : selectingHexForCard === 'merchant' && merchantSelectedHexId === tile.id
                                                         ? 'primary'
-                                                        : null;
+                                                        : selectingHexForCard === 'taxation' && taxationSelectedHexId === tile.id
+                                                            ? 'primary'
+                                                            : null;
                                         const selectionVariant =
-                                            selectingHexForCard === 'inventor' || selectingHexForCard === 'merchant'
+                                            selectingHexForCard === 'inventor' || selectingHexForCard === 'merchant' || selectingHexForCard === 'taxation'
                                                 ? 'cursor'
                                                 : 'glow';
 
@@ -736,7 +857,7 @@ export const Board: React.FC<BoardProps> = ({
                                     ))}
 
                                     {/* Edges (Roads) */}
-                                    {edges.map(edge => (
+                                    {renderEdges.map(edge => (
                                         <EdgeRenderer
                                             key={edge.id}
                                             edge={edge}
@@ -761,6 +882,10 @@ export const Board: React.FC<BoardProps> = ({
                                         const isSmithCancel = !!selectingKnightsForSmith && validVertices.has(vertex.id);
                                         const isEngineerSelected = !!(selectingCityForEngineer && selectedEngineerCityId === vertex.id);
                                         const isSmithSelected = !!(selectingKnightsForSmith && knight && smithSelectedKnightIds?.includes(knight.id));
+                                        const isIntrigueSelected = !!(selectingVertexForCard === 'intrigue' && knight && intrigueSelectedKnightId === knight.id);
+                                        const isTreasonSelected = !!(selectingVertexForCard === 'treason_remove' && knight && treasonSelectedKnightId === knight.id);
+                                        const isTreasonPlacementSelected = !!(selectingVertexForCard === 'treason_place' && treasonSelectedPlacementVertexId === vertex.id);
+                                        const highlightVariant = selectingVertexForCard === 'treason_place' ? 'treason' : 'default';
                                         return (
                                             <VertexRenderer
                                                 key={vertex.id}
@@ -780,7 +905,8 @@ export const Board: React.FC<BoardProps> = ({
                                                         ? 'Cancel Medicine'
                                                         : 'Cancel Smithing'
                                                 }
-                                                isSelectedForAction={isEngineerSelected || isSmithSelected}
+                                                isSelectedForAction={isEngineerSelected || isSmithSelected || isIntrigueSelected || isTreasonSelected || isTreasonPlacementSelected}
+                                                highlightVariant={highlightVariant}
                                                 onCancelIconClick={onCancelBuild}
                                             />
                                         );

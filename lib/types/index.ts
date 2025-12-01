@@ -15,6 +15,8 @@ export type {
     GameLogEntry,
     TradeOffer,
     DiceRoll,
+    DiceStats,
+    DiceTotal,
     GameState
 } from './game';
 

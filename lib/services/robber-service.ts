@@ -10,6 +10,23 @@ import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
  * Orchestrates robber-related operations
  */
 
+function getRequiredDiscardCount(gameState: GameState, playerId: string): number {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return 0;
+
+    const totalResources = getTotalResources(player);
+    const context = gameState.discardContext;
+
+    if (context?.type === 'sabotage') {
+        if (!context.targetIds?.includes(playerId)) return 0;
+        return Math.floor(totalResources / 2);
+    }
+
+    const discardThreshold = getRobberDiscardThreshold(gameState, playerId);
+    if (totalResources <= discardThreshold) return 0;
+    return Math.floor(totalResources / 2);
+}
+
 /**
  * Move the robber to a new hex and optionally steal from a player
  *
@@ -81,13 +98,14 @@ export async function moveRobber(
             const stolenResource = stealRandomResource(victim);
             if (stolenResource) {
                 thief.resources[stolenResource]++;
-                stealLog = ` and stole 1 ${stolenResource} from ${victim.name}`;
+                stealLog = ` and stole a card from ${victim.name}`;
 
                 // Record theft for UI highlighting
                 gameState.lastTheft = {
                     victimId: victim.id,
                     thiefId: thief.id,
                     items: [{ type: 'resource', value: stolenResource, count: 1 }],
+                    victims: [{ victimId: victim.id, items: [{ type: 'resource', value: stolenResource, count: 1 }] }],
                     timestamp: Date.now()
                 };
             } else {
@@ -142,19 +160,13 @@ export async function discardCards(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    const currentTotal = getTotalResources(player);
-
-    // City walls increase the discard threshold for robber/7
-    // Base threshold is 7, each wall adds +2
-    const discardThreshold = getRobberDiscardThreshold(gameState, playerId);
-
-    // If player has <= threshold cards, they shouldn't be discarding
-    if (currentTotal <= discardThreshold) {
+    const requiredDiscard = getRequiredDiscardCount(gameState, playerId);
+    if (requiredDiscard === 0) {
         throw new Error('No need to discard');
     }
 
+    const currentTotal = getTotalResources(player);
     const discardCount = Object.values(resources).reduce((a, b) => a + b, 0);
-    const requiredDiscard = Math.floor(currentTotal / 2);
 
     if (discardCount !== requiredDiscard) {
         throw new Error(`Must discard exactly ${requiredDiscard} cards`);
@@ -186,29 +198,38 @@ export async function discardCards(
 
     // Check if everyone is done
     const pendingPlayers = gameState.players.filter(p => {
-        const total = getTotalResources(p);
-        const threshold = getRobberDiscardThreshold(gameState, p.id);
-        if (total <= threshold) return false;
+        const needed = getRequiredDiscardCount(gameState, p.id);
+        if (needed === 0) return false;
         return !p.discardedThisTurn;
     });
 
     if (pendingPlayers.length === 0) {
-        // C&K Rule: Robber doesn't move until first barbarian attack
-        if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+        if (gameState.discardContext?.type === 'sabotage') {
             gameState.phase = 'main_phase';
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
                 timestamp: Date.now(),
-                message: `All discards complete. Robber stays in desert (no barbarian attack yet).`
+                message: `All Sabotage discards complete. Play continues.`
             });
         } else {
-            gameState.phase = 'robber_placement';
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `All discards complete. Move the robber.`
-            });
+            // C&K Rule: Robber doesn't move until first barbarian attack
+            if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+                gameState.phase = 'main_phase';
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `All discards complete. Robber stays in desert (no barbarian attack yet).`
+                });
+            } else {
+                gameState.phase = 'robber_placement';
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `All discards complete. Move the robber.`
+                });
+            }
         }
+        gameState.discardContext = undefined;
         // Reset flags
         gameState.players.forEach(p => p.discardedThisTurn = false);
     }

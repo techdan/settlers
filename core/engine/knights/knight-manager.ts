@@ -3,6 +3,7 @@ import { Knight } from '@/lib/types/player';
 import { KnightLevel, CK_CONSTANTS } from '@/core/rules/commodity-constants';
 import { getCanonicalEdgeId, getAdjacentVertexIds, getAdjacentEdgesForVertex, getEdgeEndpoints, getHexesForVertex } from '@/lib/hex';
 import { GamePhase } from '@/lib/types';
+import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
 
 /**
  * Knight Manager (Cities & Knights Expansion)
@@ -193,6 +194,9 @@ export function moveKnight(
 
     // Update cached knight strength
     updateActiveKnightCount(player);
+
+    // Update longest road (knight may now block opponent roads at T-intersection)
+    updateLongestRoad(gameState);
 
     // Log movement
     gameState.logs.push({
@@ -519,6 +523,9 @@ export function relocateKnight(
             playerId
         });
     }
+
+    // Update longest road (knight relocation may affect road blocking)
+    updateLongestRoad(gameState);
 
     // Restore phase
     gameState.phase = gameState.pendingDisplacement.previousPhase;

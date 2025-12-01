@@ -15,13 +15,14 @@ interface ProgressCardHandProps {
     roomId: string;
     gameState: GameState;
     onPlayCard: (cardType: ProgressCardType, options?: any) => Promise<void>;
-    onStartHexSelection?: (cardType: 'merchant' | 'inventor') => void;
+    onStartHexSelection?: (cardType: 'merchant' | 'inventor' | 'taxation') => void;
     onStartVertexSelection?: (cardType: 'intrigue') => void;
     onStartEdgeSelection?: (cardType: 'diplomat') => void;
     onStartCrane?: () => void;
     onStartEngineerSelection?: () => void;
     onStartSmithSelection?: () => void;
     onStartMedicineSelection?: () => void;
+    onStartTreasonSelection?: () => void;
     isActiveTurn?: boolean;
     isEngineerSelecting?: boolean;
     isSmithSelecting?: boolean;
@@ -65,13 +66,11 @@ const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
     'merchant_fleet',
     'resource_monopoly',
     'trade_monopoly',
-    'espionage',
-    'treason',
-    'saboteur'
+    'espionage'
 ];
 
-const BOARD_SELECTION_CARDS: ProgressCardType[] = ['merchant', 'inventor', 'intrigue', 'diplomat'];
-const CONFIRMATION_MODAL_CARDS: ProgressCardType[] = ['irrigation', 'mining'];
+const BOARD_SELECTION_CARDS: ProgressCardType[] = ['merchant', 'inventor', 'intrigue', 'diplomat', 'taxation'];
+const CONFIRMATION_MODAL_CARDS: ProgressCardType[] = ['irrigation', 'mining', 'encouragement', 'wedding', 'saboteur'];
 const ROAD_PLACEMENT_CARDS: ProgressCardType[] = ['road_building_progress'];
 
 function requiresParameters(cardType: ProgressCardType): boolean {
@@ -90,6 +89,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     onStartEngineerSelection,
     onStartSmithSelection,
     onStartMedicineSelection,
+    onStartTreasonSelection,
     isActiveTurn,
     isEngineerSelecting,
     isSmithSelecting,
@@ -157,8 +157,13 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
+        if (cardType === 'treason' && onStartTreasonSelection) {
+            onStartTreasonSelection();
+            return;
+        }
+
         // Check for board selection cards first
-        if (onStartHexSelection && (cardType === 'merchant' || cardType === 'inventor')) {
+        if (onStartHexSelection && (cardType === 'merchant' || cardType === 'inventor' || cardType === 'taxation')) {
             onStartHexSelection(cardType);
             return;
         }
@@ -278,13 +283,14 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                 const isEngineer = cardType === 'engineer';
                                 const isSmith = cardType === 'smith';
                                 const isMedicine = cardType === 'medicine';
-                                const isAlchemist = cardType === 'alchemist';
-                                const isCommercialHarbor = cardType === 'commercial_harbor';
+        const isAlchemist = cardType === 'alchemist';
+        const isCommercialHarbor = cardType === 'commercial_harbor';
+        const isTreason = cardType === 'treason';
 
-                                // Phase validation
-                                const wrongPhase = isAlchemist
-                                    ? gameState.phase !== 'waiting_for_roll'
-                                    : gameState.phase !== 'main_phase';
+        // Phase validation
+        const wrongPhase = isAlchemist
+            ? gameState.phase !== 'waiting_for_roll'
+            : gameState.phase !== 'main_phase';
                                 const notPlayerTurn = !isActiveTurn;
                                 const phaseDisabled = notPlayerTurn || wrongPhase;
 
@@ -303,6 +309,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     isEngineer ||
                                     isSmith ||
                                     isMedicine ||
+                                    isTreason ||
                                     cardType === 'crane';
                                 const isFollowupActive =
                                     hasFollowup && (

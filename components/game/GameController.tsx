@@ -43,6 +43,12 @@ import { ProgressCardType } from '@/lib/types/player';
 import { ProgressPromptProvider, useProgressPrompt } from '@/lib/hooks/useProgressPrompt';
 import { MerchantPlacementModal } from './MerchantPlacementModal';
 import { ResourceType, TerrainType } from '@/core/rules/board-constants';
+import { TaxationPlacementModal } from './TaxationPlacementModal';
+import { getCanonicalVertexId } from '@/lib/hex';
+import { TreasonPlacementModal } from './TreasonPlacementModal';
+import { TreasonEffect } from '@/lib/types/game';
+import { isValidKnightPlacement } from '@/core/validation/knight-validator';
+import { WeddingGiftModal } from './WeddingGiftModal';
 
 interface GameControllerProps {
     roomId: string;
@@ -60,15 +66,34 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [isCraneDialogOpen, setIsCraneDialogOpen] = useState(false);
 
     // Progress card board selection states
-    const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'inventor' | null>(null);
-    const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | null>(null);
+    const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'inventor' | 'taxation' | null>(null);
+    const [selectingVertexForCard, setSelectingVertexForCard] = useState<'intrigue' | 'treason_remove' | 'treason_place' | null>(null);
     const [selectingEdgeForCard, setSelectingEdgeForCard] = useState<'diplomat' | null>(null);
+    const [intrigueTarget, setIntrigueTarget] = useState<{ knightId: string; opponentId: string; vertexId: string } | null>(null);
+    const [intrigueError, setIntrigueError] = useState<string | null>(null);
+    const [isSubmittingIntrigue, setIsSubmittingIntrigue] = useState(false);
     const [inventorSelection, setInventorSelection] = useState<{ firstHexId?: string; firstValue?: number; secondHexId?: string; secondValue?: number }>({});
     const [isInventorConfirmOpen, setIsInventorConfirmOpen] = useState(false);
     const [inventorError, setInventorError] = useState<string | null>(null);
     const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false);
     const [selectedMerchantHexId, setSelectedMerchantHexId] = useState<string | null>(null);
     const [merchantError, setMerchantError] = useState<string | null>(null);
+    const [isTaxationModalOpen, setIsTaxationModalOpen] = useState(false);
+    const [selectedTaxationHexId, setSelectedTaxationHexId] = useState<string | null>(null);
+    const [taxationError, setTaxationError] = useState<string | null>(null);
+    const [diplomatStage, setDiplomatStage] = useState<'remove' | 'rebuild' | null>(null);
+    const [diplomatSelectedEdgeId, setDiplomatSelectedEdgeId] = useState<string | null>(null);
+    const [diplomatSelectedEdgeOwner, setDiplomatSelectedEdgeOwner] = useState<string | null>(null);
+    const [diplomatRelocateEdgeId, setDiplomatRelocateEdgeId] = useState<string | null>(null);
+    const [diplomatError, setDiplomatError] = useState<string | null>(null);
+    const [isSubmittingDiplomat, setIsSubmittingDiplomat] = useState(false);
+    const [isTreasonModalOpen, setIsTreasonModalOpen] = useState(false);
+    const [treasonMode, setTreasonMode] = useState<'select_opponent' | 'waiting_for_knight' | 'select_knight' | 'place_knight' | null>(null);
+    const [treasonSelectedOpponentId, setTreasonSelectedOpponentId] = useState<string | null>(null);
+    const [treasonSelectedKnightId, setTreasonSelectedKnightId] = useState<string | null>(null);
+    const [treasonSelectedPlacementVertexId, setTreasonSelectedPlacementVertexId] = useState<string | null>(null);
+    const [treasonError, setTreasonError] = useState<string | null>(null);
+    const [isSubmittingTreason, setIsSubmittingTreason] = useState(false);
     const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
     const [progressDiscardContext, setProgressDiscardContext] = useState<'own_turn' | 'other_turn'>('own_turn');
     const [selectingCityForEngineer, setSelectingCityForEngineer] = useState(false);
@@ -89,6 +114,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [lastVPAcknowledgedAt, setLastVPAcknowledgedAt] = useState<number | null>(null);
     const engineeringPrompt = useProgressPrompt('engineer', selectingCityForEngineer);
     const merchantPrompt = useProgressPrompt('merchant', selectingHexForCard === 'merchant');
+    const taxationPrompt = useProgressPrompt('taxation', selectingHexForCard === 'taxation');
 
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
@@ -232,7 +258,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     };
 
-    const handleStartHexSelection = (cardType: 'merchant' | 'inventor') => {
+    const handleStartHexSelection = (cardType: 'merchant' | 'inventor' | 'taxation') => {
         if (selectingHexForCard === cardType) {
             handleCancelSelection();
             return;
@@ -251,6 +277,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
 
+        if (cardType === 'taxation') {
+            setSelectingHexForCard('taxation');
+            setIsTaxationModalOpen(true);
+            setSelectedTaxationHexId(null);
+            setTaxationError(null);
+            taxationPrompt.begin('Select a hex to move the robber.');
+            setBuildMode(null);
+            setMovingKnightId(null);
+            setBuildingMetropolisType(null);
+            return;
+        }
+
         setSelectingHexForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
@@ -261,7 +299,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleHexSelected = async (hexId: string) => {
-        if (!selectingHexForCard) return;
+        if (!selectingHexForCard || !gameState) return;
 
         // Handle multi-step selection (e.g. Inventor needs 2 hexes)
         if (selectingHexForCard === 'inventor') {
@@ -298,6 +336,29 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
 
+        if (selectingHexForCard === 'taxation') {
+            setSelectedTaxationHexId(hexId);
+            setTaxationError(null);
+
+            const [q, r] = hexId.split(',').map(Number);
+            const adjacentVertices = Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
+            const opponents = adjacentVertices
+                .map(id => gameState.board.vertices[id])
+                .filter(v => v && v.owner && v.owner !== playerId && v.structure);
+            const opponentNames = Array.from(
+                new Set(
+                    opponents
+                        .map(v => gameState.players.find(p => p.id === v?.owner)?.name)
+                        .filter((name): name is string => !!name)
+                )
+            );
+            const status = opponentNames.length > 0
+                ? `Robber will target ${opponentNames.join(', ')}.`
+                : 'No opponent buildings on this hex.';
+            taxationPrompt.setStatus(status);
+            return;
+        }
+
         // Single hex selection cards
         await handlePlayProgressCard(selectingHexForCard, { hexId });
         setSelectingHexForCard(null);
@@ -331,6 +392,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             const message = e?.message || 'Failed to place Merchant';
             setMerchantError(message);
             merchantPrompt.setStatus(message);
+        }
+    };
+
+    const handleConfirmTaxationPlacement = async () => {
+        if (!selectedTaxationHexId) return;
+        setTaxationError(null);
+        taxationPrompt.setStatus('Moving robber and stealing...');
+        try {
+            await handlePlayProgressCard('taxation', { hexId: selectedTaxationHexId });
+            taxationPrompt.clear();
+            handleCancelSelection();
+        } catch (e: any) {
+            const message = e?.message || 'Failed to resolve Taxation';
+            setTaxationError(message);
+            taxationPrompt.setStatus(message);
         }
     };
 
@@ -384,6 +460,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
         setSelectingEdgeForCard(null);
+        setIntrigueTarget(null);
+        setIntrigueError(null);
+        setIsSubmittingIntrigue(false);
     };
 
     const handleStartEdgeSelection = (cardType: 'diplomat') => {
@@ -392,6 +471,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
         handleCancelSelection();
+        setDiplomatStage('remove');
+        setDiplomatSelectedEdgeId(null);
+        setDiplomatSelectedEdgeOwner(null);
+        setDiplomatRelocateEdgeId(null);
+        setDiplomatError(null);
         setSelectingEdgeForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
@@ -540,39 +624,260 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSelectingCityForMedicine(true);
     };
 
+    const resetTreasonLocalState = (keepModal = false) => {
+        if (!keepModal) setIsTreasonModalOpen(false);
+        setTreasonMode(null);
+        setTreasonSelectedOpponentId(null);
+        setTreasonSelectedKnightId(null);
+        setTreasonSelectedPlacementVertexId(null);
+        setTreasonError(null);
+        setIsSubmittingTreason(false);
+    };
+
+    const handleStartTreasonSelection = () => {
+        // Clear other selection modes, then start treason opponent selection
+        handleCancelSelection();
+        setIsTreasonModalOpen(true);
+        setTreasonMode('select_opponent');
+        setTreasonSelectedOpponentId(null);
+        setTreasonError(null);
+    };
+
     const handleVertexSelected = async (vertexId: string) => {
         if (!selectingVertexForCard) return;
 
-        if (selectingVertexForCard === 'intrigue') {
-            // Intrigue: Move opponent's knight to this location
-            const targetKnight = baseGameState?.players
+        if (selectingVertexForCard === 'treason_remove') {
+            const knightAtVertex = gameState?.players
                 .flatMap(p => p.knights || [])
                 .find(k => k.vertexId === vertexId);
 
-            if (targetKnight) {
-                await handlePlayProgressCard(selectingVertexForCard, {
-                    knightId: targetKnight.id,
-                    targetVertexId: vertexId
-                });
+            if (!knightAtVertex || knightAtVertex.playerId !== playerId) {
+                setTreasonError('Select one of your knights to remove.');
+                setTreasonSelectedKnightId(null);
+                return;
             }
+
+            setTreasonError(null);
+            setTreasonSelectedKnightId(prev => (prev === knightAtVertex.id ? null : knightAtVertex.id));
+            return;
+        }
+
+        if (selectingVertexForCard === 'treason_place') {
+            setTreasonError(null);
+            setTreasonSelectedPlacementVertexId(prev => (prev === vertexId ? null : vertexId));
+            return;
+        }
+
+        if (selectingVertexForCard === 'intrigue') {
+            const targetPlayer = gameState?.players.find(p => (p.knights || []).some(k => k.vertexId === vertexId));
+            const targetKnight = targetPlayer?.knights?.find(k => k.vertexId === vertexId);
+
+            if (!targetPlayer || !targetKnight || targetPlayer.id === playerId) {
+                setIntrigueError('Select an opponent knight adjacent to your roads.');
+                setIntrigueTarget(null);
+                return;
+            }
+
+            setIntrigueError(null);
+            setIntrigueTarget(prev => {
+                if (prev?.knightId === targetKnight.id) {
+                    return null;
+                }
+                return {
+                    knightId: targetKnight.id,
+                    opponentId: targetPlayer.id,
+                    vertexId
+                };
+            });
+            return;
         }
 
         setSelectingVertexForCard(null);
     };
 
-    const handleEdgeSelected = async (edgeId: string) => {
-        if (!selectingEdgeForCard) return;
+    const handleEdgeSelected = (edgeId: string) => {
+        if (!selectingEdgeForCard || selectingEdgeForCard !== 'diplomat') return;
 
-        if (selectingEdgeForCard === 'diplomat') {
-            // Diplomat: Select an open road to remove
-            // For now, just remove it (no replacement)
-            // TODO: Add second step to allow rebuilding road if it was player's own
-            await handlePlayProgressCard(selectingEdgeForCard, {
-                edgeId: edgeId
-            });
+        // Stage: selecting a road to remove
+        if (diplomatStage !== 'rebuild') {
+            const edge = gameState?.board.edges[edgeId];
+            setDiplomatSelectedEdgeId(edgeId);
+            setDiplomatSelectedEdgeOwner(edge?.owner ?? null);
+            setDiplomatError(null);
+            return;
         }
 
-        setSelectingEdgeForCard(null);
+        // Stage: selecting where to rebuild
+        setDiplomatRelocateEdgeId(edgeId);
+        setDiplomatError(null);
+    };
+
+    const handleConfirmDiplomatRemove = async () => {
+        if (!diplomatSelectedEdgeId || diplomatStage !== 'remove') return;
+        setIsSubmittingDiplomat(true);
+        try {
+            if (diplomatSelectedEdgeOwner && diplomatSelectedEdgeOwner !== playerId) {
+                await handlePlayProgressCard('diplomat', { edgeId: diplomatSelectedEdgeId });
+                handleCancelSelection();
+                return;
+            }
+
+            if (diplomatSelectedEdgeOwner === playerId) {
+                setDiplomatStage('rebuild');
+                setDiplomatRelocateEdgeId(null);
+                setDiplomatError(null);
+                return;
+            }
+
+            setDiplomatError('Select an open road to remove.');
+        } catch (e: any) {
+            setDiplomatError(e?.message || 'Failed to resolve Diplomat');
+        } finally {
+            setIsSubmittingDiplomat(false);
+        }
+    };
+
+    const handleConfirmDiplomatRebuild = async () => {
+        if (diplomatStage !== 'rebuild' || !diplomatSelectedEdgeId || !diplomatRelocateEdgeId) return;
+        setIsSubmittingDiplomat(true);
+        try {
+            await handlePlayProgressCard('diplomat', {
+                edgeId: diplomatSelectedEdgeId,
+                newEdgeId: diplomatRelocateEdgeId
+            });
+            handleCancelSelection();
+        } catch (e: any) {
+            setDiplomatError(e?.message || 'Failed to rebuild road with Diplomat');
+        } finally {
+            setIsSubmittingDiplomat(false);
+        }
+    };
+
+    const handleConfirmIntrigueDisplacement = async () => {
+        if (!intrigueTarget) return;
+        setIsSubmittingIntrigue(true);
+        try {
+            await handlePlayProgressCard('intrigue', {
+                opponentId: intrigueTarget.opponentId,
+                knightId: intrigueTarget.knightId
+            });
+            handleCancelSelection();
+        } catch (e: any) {
+            setIntrigueError(e?.message || 'Failed to displace knight');
+        } finally {
+            setIsSubmittingIntrigue(false);
+        }
+    };
+
+    const handleConfirmTreasonOpponent = async () => {
+        if (!treasonSelectedOpponentId) {
+            setTreasonError('Select an opponent with at least one knight.');
+            return;
+        }
+        setIsSubmittingTreason(true);
+        setTreasonError(null);
+        try {
+            await handlePlayProgressCard('treason', { opponentId: treasonSelectedOpponentId });
+            setTreasonMode('waiting_for_knight');
+        } catch (e: any) {
+            setTreasonError(e?.message || 'Failed to start Treason');
+        } finally {
+            setIsSubmittingTreason(false);
+        }
+    };
+
+    const handleConfirmTreasonKnightRemoval = async () => {
+        if (!treasonSelectedKnightId) {
+            setTreasonError('Select a knight to remove.');
+            return;
+        }
+        setIsSubmittingTreason(true);
+        setTreasonError(null);
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card/treason`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerId,
+                    action: 'remove_knight',
+                    knightId: treasonSelectedKnightId
+                })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Failed to remove knight');
+            }
+            // Target is done after removing their knight
+            if (isTreasonTarget) {
+                resetTreasonLocalState();
+                setSelectingVertexForCard(prev => (prev === 'treason_remove' ? null : prev));
+            }
+        } catch (e: any) {
+            setTreasonError(e?.message || 'Failed to remove knight');
+        } finally {
+            setIsSubmittingTreason(false);
+        }
+    };
+
+    const handleConfirmTreasonPlacement = async () => {
+        const shouldRequireVertex = treasonSupplyAvailable && treasonHasLegalPlacement;
+        const chosenVertex = shouldRequireVertex ? treasonSelectedPlacementVertexId : null;
+
+        if (shouldRequireVertex && !chosenVertex) {
+            setTreasonError('Select an empty intersection connected to your road.');
+            return;
+        }
+        setIsSubmittingTreason(true);
+        setTreasonError(null);
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card/treason`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerId,
+                    action: 'place_knight',
+                    vertexId: chosenVertex
+                })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Failed to place knight');
+            }
+            resetTreasonLocalState();
+            setSelectingVertexForCard(prev => (prev === 'treason_place' ? null : prev));
+        } catch (e: any) {
+            setTreasonError(e?.message || 'Failed to place knight');
+        } finally {
+            setIsSubmittingTreason(false);
+        }
+    };
+
+    const handleCancelTreasonPlacement = async () => {
+        if (treasonMode !== 'place_knight') {
+            handleCancelSelection();
+            return;
+        }
+        setIsSubmittingTreason(true);
+        setTreasonError(null);
+        try {
+            const res = await fetch(`/api/game/${roomId}/progress-card/treason`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerId,
+                    action: 'cancel'
+                })
+            });
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Failed to cancel Treason');
+            }
+            handleCancelSelection();
+        } catch (e: any) {
+            setTreasonError(e?.message || 'Failed to cancel Treason');
+        } finally {
+            setIsSubmittingTreason(false);
+        }
     };
 
 
@@ -589,6 +894,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setIsMerchantModalOpen(false);
         setSelectedMerchantHexId(null);
         setMerchantError(null);
+        setIsTaxationModalOpen(false);
+        setSelectedTaxationHexId(null);
+        setTaxationError(null);
         setSelectingCityForEngineer(false);
         setSelectedEngineerCityId(null);
         setIsEngineerSubmitting(false);
@@ -597,9 +905,23 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSmithError(null);
         setSelectingCityForMedicine(false);
         setIsCraneDialogOpen(false);
+        setDiplomatStage(null);
+        setDiplomatSelectedEdgeId(null);
+        setDiplomatSelectedEdgeOwner(null);
+        setDiplomatRelocateEdgeId(null);
+        setDiplomatError(null);
+        setIsSubmittingDiplomat(false);
+        setIntrigueTarget(null);
+        setIntrigueError(null);
+        setIsSubmittingIntrigue(false);
+        if (!treasonEffect || treasonMode === 'select_opponent') {
+            resetTreasonLocalState(false);
+            setSelectingVertexForCard(prev => (prev === 'treason_remove' || prev === 'treason_place' ? null : prev));
+        }
         clearSelectedCard();
         engineeringPrompt.clear();
         merchantPrompt.clear();
+        taxationPrompt.clear();
     };
 
     const handleCancelFollowupCard = () => {
@@ -611,6 +933,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
     const handleDiscardProgressCards = async (cardsToDiscard: any[]) => {
+        const shouldAutoEndTurn = progressDiscardContext === 'own_turn';
+
         try {
             const res = await fetch(`/api/game/${roomId}/progress-card/discard`, {
                 method: 'POST',
@@ -621,6 +945,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 const error = await res.json();
                 throw new Error(error.error || 'Failed to discard cards');
             }
+
+            if (shouldAutoEndTurn) {
+                await endTurn(roomId, playerId);
+            }
+
             setShowProgressCardDiscard(false);
             setProgressDiscardContext('own_turn');
         } catch (e) {
@@ -748,7 +1077,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             selectingCityForEngineer ||
             selectingCityForMedicine ||
             selectingKnightsForSmith ||
-            isCraneDialogOpen;
+            isCraneDialogOpen ||
+            treasonMode !== null ||
+            isTreasonModalOpen;
 
         if (!hasActiveLocalSelection) {
             clearSelectedCard();
@@ -762,14 +1093,33 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         selectingEdgeForCard,
         selectingHexForCard,
         selectingKnightsForSmith,
-        selectingVertexForCard
+        selectingVertexForCard,
+        treasonMode,
+        isTreasonModalOpen
     ]);
 
     // Apply optimistic updates on top of base state (null-safe for hook order)
     const gameState = baseGameState ? getOptimisticState(baseGameState) : null;
 
+    const treasonEffect = gameState?.activeEffects?.find(
+        (effect: any): effect is TreasonEffect => effect?.type === 'treason'
+    );
+    const treasonInitiatorId = treasonEffect?.initiatorId;
+    const treasonInitiatorName = treasonInitiatorId
+        ? gameState.players.find(p => p.id === treasonInitiatorId)?.name
+        : undefined;
+    const treasonTargetId = treasonEffect?.targetPlayerId;
+    const isTreasonInitiator = treasonInitiatorId === playerId;
+    const isTreasonTarget = treasonTargetId === playerId;
+
     const smithEligibleKnights = selectingKnightsForSmith && gameState ? getPromotableKnights(gameState, playerId) : [];
     const smithEligibleVertexIds = smithEligibleKnights.map(k => k.vertexId).filter(Boolean);
+    const intrigueSelectedKnight = intrigueTarget && gameState
+        ? gameState.players.flatMap(p => p.knights || []).find(k => k.id === intrigueTarget.knightId)
+        : null;
+    const intrigueOpponentName = intrigueTarget && gameState
+        ? gameState.players.find(p => p.id === intrigueTarget.opponentId)?.name
+        : null;
 
     const currentPlayer = gameState?.players.find(p => p.id === playerId);
     const isCitiesAndKnights = gameState?.gameMode === 'cities_and_knights';
@@ -789,6 +1139,27 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         (roadBuildingCompleted
             ? `Placed ${roadBuildingPlacedCount}/2. Finish or cancel to undo both.`
             : `Placed ${roadBuildingPlacedCount}/2 roads.`);
+    const showDiplomatPrompt = selectingEdgeForCard === 'diplomat' && diplomatStage !== null;
+    const diplomatOwnerName = diplomatSelectedEdgeOwner && gameState
+        ? gameState.players.find(p => p.id === diplomatSelectedEdgeOwner)?.name || 'Opponent'
+        : null;
+    const diplomatPromptStatus =
+        diplomatError ||
+        (diplomatStage === 'rebuild'
+            ? (diplomatRelocateEdgeId ? 'New road position selected. Click Rebuild to place it.' : 'Select a highlighted edge to rebuild your road.')
+            : diplomatSelectedEdgeId
+                ? (diplomatSelectedEdgeOwner === playerId
+                    ? 'Selected your road. Remove to relocate it.'
+                    : `Selected ${diplomatOwnerName || 'an opponent'}'s road. Remove to return it.`)
+                : 'Click any highlighted open road to select it.');
+    const showIntriguePrompt = selectingVertexForCard === 'intrigue';
+    const intriguePromptStatus =
+        intrigueError ||
+        (isSubmittingIntrigue
+            ? 'Displacing selected knight...'
+            : intrigueSelectedKnight
+                ? `Selected ${intrigueOpponentName || 'opponent'}'s ${intrigueSelectedKnight.level} knight. Click Displace to force relocation.`
+                : 'Click a highlighted opponent knight adjacent to your roads.');
     const showEngineeringPrompt = engineeringPrompt.isVisible && !!isActiveTurn;
     const engineeringPromptStatus =
         engineeringPrompt.status || 'Select a city without a wall to add a free city wall.';
@@ -797,8 +1168,116 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         : null;
     const selectedMerchantResource = selectedMerchantHex ? resourceForTerrain(selectedMerchantHex.terrain) : null;
     const showMerchantModal = isMerchantModalOpen && merchantPrompt.isVisible;
+    const showTaxationModal = isTaxationModalOpen && taxationPrompt.isVisible;
+    const taxationPromptStatus =
+        taxationPrompt.status || 'Select any land hex to move the robber and steal 1 card from each opponent on it.';
+
+    // Manage Treason staged flow UI based on active effect
+    useEffect(() => {
+        if (!treasonEffect) {
+            if (treasonMode !== 'select_opponent') {
+                resetTreasonLocalState();
+            }
+            if (selectingVertexForCard === 'treason_remove' || selectingVertexForCard === 'treason_place') {
+                setSelectingVertexForCard(null);
+            }
+            return;
+        }
+
+        setIsTreasonModalOpen(true);
+            if (treasonEffect.stage === 'awaiting_knight') {
+                setTreasonSelectedPlacementVertexId(null);
+                if (isTreasonTarget) {
+                    setTreasonMode('select_knight');
+                    setSelectingVertexForCard('treason_remove');
+                } else if (isTreasonInitiator) {
+                setTreasonMode('waiting_for_knight');
+                if (selectingVertexForCard === 'treason_remove' || selectingVertexForCard === 'treason_place') {
+                    setSelectingVertexForCard(null);
+                }
+            } else {
+                setTreasonMode('waiting_for_knight');
+            }
+        } else if (treasonEffect.stage === 'awaiting_placement') {
+            setTreasonSelectedKnightId(null);
+            setTreasonSelectedPlacementVertexId(null);
+            if (isTreasonInitiator) {
+                setTreasonMode('place_knight');
+                setSelectingVertexForCard('treason_place');
+                setSelectingEdgeForCard(null);
+                setSelectingHexForCard(null);
+                setBuildMode(null);
+                setMovingKnightId(null);
+                setBuildingMetropolisType(null);
+                setIsTreasonModalOpen(true);
+            } else {
+                // Target is done once they remove a knight
+                resetTreasonLocalState();
+                setSelectingVertexForCard(prev => (prev === 'treason_remove' || prev === 'treason_place' ? null : prev));
+            }
+        }
+    }, [isTreasonInitiator, isTreasonTarget, selectingVertexForCard, treasonEffect, treasonMode]);
 
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
+
+    const treasonOpponents = gameState.players
+        .filter(p => p.id !== playerId)
+        .map(p => {
+            const knightCount = (p.knights || []).length;
+            return {
+                id: p.id,
+                name: p.name,
+                color: p.color ? p.color : undefined,
+                knightCount,
+                hasKnights: knightCount > 0
+            };
+        });
+
+    const treasonEffectLevel = treasonEffect?.removedKnight?.level;
+    const treasonSupplyAvailable = (() => {
+        if (!treasonEffectLevel || !gameState || !isTreasonInitiator) return true;
+        const knightCount = (gameState.players.find(p => p.id === playerId)?.knights || []).filter(k => k.level === treasonEffectLevel).length;
+        return knightCount < 2;
+    })();
+    const treasonHasLegalPlacement = (() => {
+        if (!gameState || !isTreasonInitiator) return true;
+        return Object.keys(gameState.board.vertices).some(vId =>
+            isValidKnightPlacement(gameState, vId, playerId)
+        );
+    })();
+
+    const treasonStatus = (() => {
+        if (treasonMode === 'waiting_for_knight' && treasonTargetId) {
+            const targetName = gameState.players.find(p => p.id === treasonTargetId)?.name || 'opponent';
+            return `Waiting for ${targetName} to remove a knight.`;
+        }
+        if (treasonMode === 'select_knight') {
+            return treasonSelectedKnightId ? 'Selected knight. Click Remove to continue.' : 'Click one of your knights to remove it.';
+        }
+        if (treasonMode === 'place_knight') {
+            if (!treasonSupplyAvailable) {
+                return `No ${treasonEffectLevel || ''} knight pieces remain in your supply. Resolve to end Treason without placement.`;
+            }
+            if (!treasonHasLegalPlacement) {
+                return 'No legal intersections connected to your roads. Resolve to end Treason without placement.';
+            }
+            return treasonSelectedPlacementVertexId
+                ? 'Selected intersection. Click Place to finish.'
+                : 'Click an empty intersection connected to your roads.';
+        }
+        return undefined;
+    })();
+
+    const showTreasonPlacePrompt =
+        treasonMode === 'place_knight' &&
+        selectingVertexForCard === 'treason_place' &&
+        treasonSupplyAvailable &&
+        treasonHasLegalPlacement;
+    const showTreasonModal =
+        isTreasonModalOpen &&
+        treasonMode &&
+        (treasonMode !== 'place_knight' || !treasonSupplyAvailable || !treasonHasLegalPlacement);
+
 
     const handleEndTurnClick = async () => {
         const cardCount = currentPlayer?.progressCards?.length ?? 0;
@@ -815,20 +1294,28 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         if (showRoadBuildingPrompt) return 'road_building_progress';
         if (showEngineeringPrompt) return 'engineer';
         if (selectingHexForCard) return selectingHexForCard;
-        if (selectingVertexForCard) return selectingVertexForCard;
+        if (selectingVertexForCard === 'intrigue') return 'intrigue';
+        if (selectingVertexForCard === 'treason_remove' || selectingVertexForCard === 'treason_place') return 'treason';
         if (selectingEdgeForCard) return selectingEdgeForCard;
         if (selectingKnightsForSmith) return 'smith';
         if (selectingCityForMedicine) return 'medicine';
         if (selectingCityForEngineer) return 'engineer';
         if (isCraneDialogOpen) return 'crane';
+        if (treasonMode) return 'treason';
         if (selectedProgressCard) return selectedProgressCard;
         return null;
     })();
-    const promptBlocksUI = showRoadBuildingPrompt || showEngineeringPrompt;
+    const promptBlocksUI =
+        showRoadBuildingPrompt ||
+        showEngineeringPrompt ||
+        showDiplomatPrompt ||
+        showIntriguePrompt ||
+        treasonMode === 'select_knight' ||
+        treasonMode === 'place_knight';
     const engineerSelectionActive = showEngineeringPrompt || selectingCityForEngineer;
 
     return (
-        <div className="relative h-screen w-screen overflow-hidden">
+        <div className="relative h-screen w-screen overflow-x-visible overflow-y-hidden">
             {/* Connection Status Indicator */}
             <ConnectionStatusIndicator
                 status={connectionStatus.status}
@@ -882,14 +1369,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingCityForEngineer={selectingCityForEngineer}
                 selectedEngineerCityId={selectedEngineerCityId}
                 selectingCityForMedicine={selectingCityForMedicine}
+                intrigueSelectedKnightId={intrigueTarget?.knightId ?? null}
                 selectingKnightsForSmith={selectingKnightsForSmith}
                 smithSelectableKnightIds={smithEligibleVertexIds}
                 smithSelectedKnightIds={selectedSmithKnightIds}
+                treasonSelectedKnightId={treasonSelectedKnightId}
+                treasonSelectedPlacementVertexId={treasonSelectedPlacementVertexId}
                 progressPromptCardType={showRoadBuildingPrompt ? 'road_building_progress' : null}
                 progressPromptVisible={showRoadBuildingPrompt}
                 progressPromptReady={isRoadBuildingProgressActive}
                 inventorSelection={inventorSelection}
                 merchantSelectedHexId={selectedMerchantHexId}
+                taxationSelectedHexId={selectedTaxationHexId}
+                diplomatStage={diplomatStage}
+                diplomatRemovedEdgeId={diplomatStage === 'rebuild' ? diplomatSelectedEdgeId : null}
+                diplomatRelocatedEdgeId={diplomatRelocateEdgeId}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
                 onEdgeSelectedForCard={handleEdgeSelected}
@@ -900,6 +1394,30 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
             />
 
+            {showIntriguePrompt && (
+                <BoardSelectionPrompt
+                    title="Intrigue"
+                    description="Select an opponent knight adjacent to your road network."
+                    status={intriguePromptStatus}
+                    onCancel={handleCancelSelection}
+                    onFinish={handleConfirmIntrigueDisplacement}
+                    finishLabel="Displace"
+                    finishDisabled={!intrigueTarget || isSubmittingIntrigue}
+                />
+            )}
+
+            {showTreasonPlacePrompt && (
+                <BoardSelectionPrompt
+                    title="Treason"
+                    description="Place the captured knight on any empty intersection connected to your roads."
+                    status={treasonStatus}
+                    onCancel={handleCancelTreasonPlacement}
+                    onFinish={handleConfirmTreasonPlacement}
+                    finishLabel="Place"
+                    finishDisabled={!treasonSelectedPlacementVertexId || isSubmittingTreason}
+                />
+            )}
+
             {showMerchantModal && (
                 <MerchantPlacementModal
                     isOpen={showMerchantModal}
@@ -908,6 +1426,74 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     error={merchantError}
                     onCancel={handleCancelSelection}
                     onPlace={handleConfirmMerchantPlacement}
+                />
+            )}
+
+            {showTreasonModal && (
+                <TreasonPlacementModal
+                    isOpen={showTreasonModal}
+                    mode={treasonMode}
+                    opponents={treasonOpponents}
+                    selectedOpponentId={treasonSelectedOpponentId}
+                    initiatorName={treasonInitiatorName}
+                    status={treasonStatus}
+                    error={treasonError}
+                    hasSelection={
+                        treasonMode === 'select_opponent'
+                            ? !!treasonSelectedOpponentId
+                            : treasonMode === 'select_knight'
+                                ? !!treasonSelectedKnightId
+                                : treasonMode === 'place_knight'
+                                    ? (treasonSupplyAvailable && treasonHasLegalPlacement
+                                        ? !!treasonSelectedPlacementVertexId
+                                        : true)
+                                    : false
+                    }
+                    onSelectOpponent={
+                        treasonMode === 'select_opponent'
+                            ? (id) => {
+                                setTreasonSelectedOpponentId(prev => (prev === id ? null : id));
+                                setTreasonError(null);
+                            }
+                            : undefined
+                    }
+                    onConfirm={
+                        treasonMode === 'select_opponent'
+                            ? handleConfirmTreasonOpponent
+                            : treasonMode === 'select_knight'
+                                ? handleConfirmTreasonKnightRemoval
+                                : treasonMode === 'place_knight'
+                                    ? handleConfirmTreasonPlacement
+                                    : undefined
+                    }
+                    confirmLabel={
+                        treasonMode === 'select_opponent'
+                            ? 'Confirm'
+                            : treasonMode === 'select_knight'
+                                ? 'Remove'
+                                : treasonMode === 'place_knight'
+                                    ? (treasonSupplyAvailable && treasonHasLegalPlacement ? 'Place' : 'Resolve')
+                                    : undefined
+                    }
+                    disableConfirm={isSubmittingTreason}
+                    onCancel={
+                        treasonMode === 'select_opponent'
+                            ? () => resetTreasonLocalState()
+                            : treasonMode === 'place_knight'
+                                ? handleCancelTreasonPlacement
+                                : undefined
+                    }
+                />
+            )}
+
+            {showTaxationModal && (
+                <TaxationPlacementModal
+                    isOpen={showTaxationModal}
+                    status={taxationPromptStatus}
+                    error={taxationError}
+                    hasSelection={!!selectedTaxationHexId}
+                    onCancel={handleCancelSelection}
+                    onPlace={handleConfirmTaxationPlacement}
                 />
             )}
 
@@ -931,6 +1517,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     onCancel={handleCancelRoadBuildingProgress}
                     onFinish={handleFinalizeRoadBuildingProgress}
                     finishLabel="Build"
+                />
+            )}
+
+            {showDiplomatPrompt && (
+                <BoardSelectionPrompt
+                    title="Diplomat"
+                    description={diplomatStage === 'rebuild' ? 'Place your moved road on any legal edge.' : 'Select an open road to remove.'}
+                    status={diplomatPromptStatus}
+                    onCancel={handleCancelSelection}
+                    onFinish={diplomatStage === 'rebuild' ? handleConfirmDiplomatRebuild : handleConfirmDiplomatRemove}
+                    finishLabel={diplomatStage === 'rebuild' ? 'Rebuild' : 'Remove'}
+                    finishDisabled={
+                        isSubmittingDiplomat ||
+                        (diplomatStage === 'rebuild' ? !diplomatRelocateEdgeId : !diplomatSelectedEdgeId)
+                    }
                 />
             )}
 
@@ -1068,6 +1669,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 <CommercialHarborModal gameState={gameState} playerId={playerId} roomId={roomId} />
             )}
 
+            {gameState.pendingWedding && (
+                <WeddingGiftModal gameState={gameState} playerId={playerId} roomId={roomId} />
+            )}
+
             {/* Barbarian City Selection UI */}
             {gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId) && (
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
@@ -1149,7 +1754,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 </div>
 
                 {/* Right Sidebar: Status + C&K Components */}
-                <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto max-h-[calc(100vh-2rem)] overflow-y-auto">
+                <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-visible">
                     <GameStatus
                         gameState={gameState}
                         currentPlayerId={playerId}
@@ -1192,6 +1797,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     onStartEngineerSelection={handleStartEngineerSelection}
                                     onStartSmithSelection={handleStartSmithSelection}
                                     onStartMedicineSelection={handleStartMedicineSelection}
+                                    onStartTreasonSelection={handleStartTreasonSelection}
                                     isActiveTurn={isActiveTurn}
                                     isEngineerSelecting={engineerSelectionActive}
                                     isSmithSelecting={selectingKnightsForSmith}

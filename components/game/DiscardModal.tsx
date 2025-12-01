@@ -2,6 +2,7 @@ import React, { useState, useTransition } from 'react';
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { discardCards } from '@/app/actions';
+import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 
 interface DiscardModalProps {
     gameState: GameState;
@@ -23,18 +24,13 @@ function normalizeResources(resources?: Record<ResourceType, number>): Record<Re
     }, { ...INITIAL_SELECTION });
 }
 
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: 'wood',
-    brick: 'brick',
-    sheep: 'sheep',
-    wheat: 'wheat',
-    ore: 'ore'
-};
-
 export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
     const [selected, setSelected] = useState<Record<ResourceType, number>>(INITIAL_SELECTION);
     const [isPending, startTransition] = useTransition();
+    const discardContext = gameState.discardContext;
+    const isSabotage = discardContext?.type === 'sabotage';
+    const isTarget = isSabotage ? discardContext.targetIds?.includes(playerId) : true;
 
     const safeResources = React.useMemo(
         () => normalizeResources(player?.resources),
@@ -52,7 +48,17 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         () => RESOURCE_ORDER.reduce((sum, res) => sum + safeResources[res], 0),
         [safeResources]
     );
-    const requiredDiscard = player ? Math.max(0, Math.floor(totalResources / 2)) : 0;
+    const discardThreshold = React.useMemo(
+        () => (player ? getRobberDiscardThreshold(gameState, playerId) : 7),
+        [gameState, player?.id, playerId]
+    );
+    const requiredDiscard = React.useMemo(() => {
+        if (!player) return 0;
+        if (!isTarget) return 0;
+        if (isSabotage) return Math.max(0, Math.floor(totalResources / 2));
+        if (totalResources <= discardThreshold) return 0;
+        return Math.max(0, Math.floor(totalResources / 2));
+    }, [discardThreshold, isSabotage, isTarget, player, totalResources]);
 
     // Reset/clamp selection whenever discard phase changes or resources update to avoid stale/negative counts.
     React.useEffect(() => {
@@ -114,7 +120,7 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
 
     if (!player || gameState.phase !== 'discarding') return null;
 
-    if (totalResources <= 7 || player.discardedThisTurn) {
+    if (requiredDiscard === 0 || player.discardedThisTurn) {
         // Show waiting message if others are discarding
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -155,10 +161,12 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         });
     };
 
+    const heading = isSabotage ? 'Sabotage!' : 'Robber Attack!';
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="bg-slate-900 p-6 rounded-xl border border-red-500/50 shadow-2xl max-w-lg w-full">
-                <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">Robber Attack!</h2>
+                <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">{heading}</h2>
                 <p className="text-slate-300 text-center mb-6">
                     You have {totalResources} cards. You must discard <span className="font-bold text-white">{requiredDiscard}</span> cards.
                 </p>
@@ -170,8 +178,7 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
 
                         return (
                             <div key={res} className="bg-slate-800 p-3 rounded-lg flex flex-col items-center border border-slate-700">
-                                <div className="text-2xl mb-1">{RESOURCE_ICONS[res]}</div>
-                                <div className="text-xs text-slate-300 uppercase mb-2">{res}</div>
+                                <div className="text-lg font-semibold text-white mb-2 capitalize">{res}</div>
 
                                 <div className="flex items-center gap-3">
                                     <button

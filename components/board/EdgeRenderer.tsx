@@ -39,6 +39,18 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                     <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={color || 'gray'} stroke="black" strokeWidth={1} />
                 )
             )}
+            {edge.structure === 'road' && isValid && (
+                <rect
+                    x={-6}
+                    y={-size * 0.32}
+                    width={12}
+                    height={size * 0.64}
+                    fill="none"
+                    stroke="rgb(251 191 36)"
+                    strokeWidth={2}
+                    className="animate-pulse"
+                />
+            )}
             {!edge.structure && isValid && (
                 <rect x={-4} y={-size * 0.25} width={8} height={size * 0.5} fill="rgba(255, 255, 255, 0.6)" stroke="white" strokeWidth={1} className="hover:fill-white transition-colors" />
             )}

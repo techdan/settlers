@@ -45,16 +45,24 @@ export function calculateLongestRoad(gameState: GameState, playerId: string): nu
 
         for (const { edgeId, neighborVertexId } of neighbors) {
             if (!visitedEdgeIds.has(edgeId)) {
-                // Check if neighbor is blocked by opponent
-                // Note: We check the TARGET vertex. If it is blocked, we cannot continue THROUGH it.
-                // But we can still count the edge leading TO it (unless we are blocked from entering? No, Catan rules allow building TO a settlement).
-                // However, the user's specification says: "if neighbor is not blocked ... DFS".
-                // This implies if it IS blocked, we don't recurse.
-                // By not recursing, we return 0 for this branch.
-                // The caller adds 1 + 0 = 1. So the edge is counted, but the path stops.
-
+                // Check if neighbor is blocked by opponent building
                 const neighborVertex = gameState.board.vertices[neighborVertexId];
-                const isBlocked = neighborVertex && neighborVertex.owner && neighborVertex.owner !== playerId;
+                const isBlockedByBuilding = neighborVertex && neighborVertex.owner && neighborVertex.owner !== playerId;
+
+                // Check if neighbor is blocked by opponent knight (Cities & Knights)
+                let isBlockedByKnight = false;
+                if (gameState.gameMode === 'cities_and_knights') {
+                    for (const player of gameState.players) {
+                        if (!player.knights || player.id === playerId) continue;
+                        const knightAtVertex = player.knights.find(k => k.vertexId === neighborVertexId);
+                        if (knightAtVertex) {
+                            isBlockedByKnight = true;
+                            break;
+                        }
+                    }
+                }
+
+                const isBlocked = isBlockedByBuilding || isBlockedByKnight;
 
                 if (!isBlocked) {
                     visitedEdgeIds.add(edgeId);

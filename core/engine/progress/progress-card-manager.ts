@@ -1,10 +1,11 @@
 import { GameState, PlayerState } from '@/lib/types';
+import { TreasonEffect, WeddingGiftItem, WeddingGiftRequest, WeddingSelection } from '@/lib/types/game';
 import { ProgressCardType } from '@/lib/types/player';
 import { CK_CONSTANTS, CommodityType, ImprovementType, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
-import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
+import { addResources, getTotalResources, removeResources, stealRandomResource } from '@/core/engine/resources/resource-manager';
 import { ResourceType, TOKEN_PIPS } from '@/core/rules/board-constants';
-import { displaceKnight, upgradeKnight } from '@/core/engine/knights/knight-manager';
+import { displaceKnight, updateActiveKnightCount, upgradeKnight } from '@/core/engine/knights/knight-manager';
 import { getAdjacentEdgesForVertex, getCanonicalVertexId, getEdgeEndpoints } from '@/lib/hex';
 import {
     canAffordImprovement,
@@ -14,9 +15,10 @@ import {
 } from '@/core/engine/improvements/improvement-manager';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { getCityWallCount } from '@/core/utils/city-wall-utils';
-import { isValidMainPhaseCity } from '@/core/validation/building-validator';
+import { isValidMainPhaseCity, isValidMainPhaseRoad } from '@/core/validation/building-validator';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { isKnightPromotable } from '@/core/utils/knight-upgrade-utils';
+import { isOpenRoad } from '@/core/validation/diplomat-validator';
 
 const MEDICINE_COST: Partial<Record<ResourceType, number>> = {
     ore: 2,
@@ -32,6 +34,12 @@ function getVertexIdsForHex(hexId: string): string[] {
     const [q, r] = hexId.split(',').map(Number);
     if (Number.isNaN(q) || Number.isNaN(r)) return [];
     return Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
+}
+
+function getTotalCardCount(player: PlayerState): number {
+    const resourceCount = Object.values(player.resources || {}).reduce((sum, n) => sum + (n || 0), 0);
+    const commodityCount = Object.values(player.commodities || {}).reduce((sum, n) => sum + (n || 0), 0);
+    return resourceCount + commodityCount;
 }
 
 /**
@@ -51,6 +59,11 @@ export function drawProgressCard(
         // Lazy-create decks if missing (e.g., legacy game state)
         const { createProgressDecks } = require('@/core/engine/progress/progress-card-definitions');
         gameState.progressDecks = createProgressDecks();
+    }
+
+    // TypeScript needs this reassurance that progressDecks exists
+    if (!gameState.progressDecks) {
+        throw new Error('Failed to initialize progress decks');
     }
 
     const deck = gameState.progressDecks[category];
@@ -466,13 +479,14 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
         if (eventDieResult !== 'ship') {
             const category = getCategoryFromColor(eventDieResult);
             const eligiblePlayerIds = getEligiblePlayersForCardDraw(gameState, category, d1);
-            eligiblePlayerIds.forEach(id => {
+            eligiblePlayerIds.forEach((id: string) => {
                 drawProgressCard(gameState, id, category);
             });
         }
     }
 
     // Handle robber (7)
+    gameState.discardContext = undefined;
     if (total === 7) {
         const playersToDiscard = gameState.players.filter(p => {
             const threshold = getRobberDiscardThreshold(gameState, p.id);
@@ -480,6 +494,7 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
         });
 
         if (playersToDiscard.length > 0) {
+            gameState.discardContext = { type: 'robber' };
             gameState.phase = 'discarding';
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
@@ -670,7 +685,7 @@ function executeSmith(gameState: GameState, player: PlayerState, options?: any):
             ? [options.knightId]
             : [];
 
-    const knightIds = Array.from(new Set(rawIds.filter(Boolean)));
+    const knightIds = Array.from(new Set(rawIds.filter(Boolean))) as string[];
 
     if (knightIds.length === 0) {
         throw new Error('Smithing requires selecting at least one of your knights to promote');
@@ -685,7 +700,7 @@ function executeSmith(gameState: GameState, player: PlayerState, options?: any):
     }
 
     // Validate all selections before mutating state to avoid partial upgrades
-    const knightsToUpgrade = knightIds.map((id: string) => {
+    const knightsToUpgrade = knightIds.map((id) => {
         const knight = player.knights?.find(k => k.id === id);
         if (!knight) {
             throw new Error('Selected knight does not belong to you');
@@ -1146,6 +1161,113 @@ export function respondToCommercialHarbor(
     }
 }
 
+/**
+ * Opponent responds to Wedding by selecting cards to give
+ */
+export function respondToWedding(
+    gameState: GameState,
+    playerId: string,
+    selections: WeddingSelection[]
+): void {
+    const pendingWedding = gameState.pendingWedding;
+    if (!pendingWedding) {
+        throw new Error('No active Wedding requests');
+    }
+
+    const request = pendingWedding.requests.find(r => r.playerId === playerId);
+    if (!request || request.status !== 'pending') {
+        throw new Error('You are not required to give cards for Wedding');
+    }
+
+    const initiator = gameState.players.find(p => p.id === pendingWedding.initiatorId);
+    const giver = gameState.players.find(p => p.id === playerId);
+
+    if (!initiator || !giver) {
+        throw new Error('Player not found');
+    }
+
+    const required = request.requiredCards;
+    if (required <= 0) {
+        throw new Error('No cards required for this Wedding request');
+    }
+    if (!Array.isArray(selections) || selections.length !== required) {
+        throw new Error(`Select ${required} card${required === 1 ? '' : 's'} to give`);
+    }
+
+    const selectionCounts: Record<string, number> = {};
+    for (const pick of selections) {
+        if (!pick || (pick.type !== 'resource' && pick.type !== 'commodity') || !pick.value) {
+            throw new Error('Invalid selection');
+        }
+        const key = `${pick.type}:${pick.value}`;
+        selectionCounts[key] = (selectionCounts[key] || 0) + 1;
+    }
+
+    // Validate availability
+    for (const [key, count] of Object.entries(selectionCounts)) {
+        const [type, rawValue] = key.split(':');
+        if (type === 'resource') {
+            const available = giver.resources?.[rawValue as ResourceType] ?? 0;
+            if (available < count) {
+                throw new Error(`You don't have enough ${rawValue}`);
+            }
+        } else {
+            const available = giver.commodities?.[rawValue as CommodityType] ?? 0;
+            if (available < count) {
+                throw new Error(`You don't have enough ${rawValue}`);
+            }
+        }
+    }
+
+    const givenItems: WeddingGiftItem[] = [];
+
+    // Transfer cards
+    for (const [key, count] of Object.entries(selectionCounts)) {
+        const [type, rawValue] = key.split(':');
+
+        if (type === 'resource') {
+            const resource = rawValue as ResourceType;
+            removeResources(giver, { [resource]: count });
+            addResources(initiator, { [resource]: count });
+        } else {
+            if (!giver.commodities) giver.commodities = { paper: 0, cloth: 0, coin: 0 };
+            if (!initiator.commodities) initiator.commodities = { paper: 0, cloth: 0, coin: 0 };
+            giver.commodities[rawValue as CommodityType] -= count;
+            initiator.commodities[rawValue as CommodityType] += count;
+        }
+
+        givenItems.push({
+            type: type as 'resource' | 'commodity',
+            value: rawValue as ResourceType | CommodityType,
+            count
+        });
+    }
+
+    request.status = 'completed';
+    request.given = givenItems;
+
+    const totalGiven = selections.length;
+    gameState.lastTheft = {
+        victimId: giver.id,
+        thiefId: initiator.id,
+        items: givenItems,
+        victims: [{ victimId: giver.id, items: givenItems }],
+        timestamp: Date.now()
+    };
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${giver.name} gave ${totalGiven} card${totalGiven === 1 ? '' : 's'} to ${initiator.name} with Wedding`,
+        playerId: initiator.id
+    });
+
+    const hasPending = pendingWedding.requests.some(r => r.status === 'pending');
+    if (!hasPending) {
+        gameState.pendingWedding = undefined;
+    }
+}
+
 function executeCommercialHarbor(gameState: GameState, player: PlayerState, options?: any): void {
     // Initialize Commercial Harbor - modal will appear for player to make offers
     gameState.pendingCommercialHarbor = {
@@ -1221,13 +1343,15 @@ function executeGuildDues(gameState: GameState, player: PlayerState, options?: a
     }
 
     const takenCount = requested.length;
+    const stolenItems = Object.entries(requestedCounts).map(([key, count]) => {
+        const [type, value] = key.split(':');
+        return { type: type as 'resource' | 'commodity', value: value as ResourceType | CommodityType, count };
+    });
     gameState.lastTheft = {
         victimId: opponent.id,
         thiefId: player.id,
-        items: Object.entries(requestedCounts).map(([key, count]) => {
-            const [type, value] = key.split(':');
-            return { type: type as 'resource' | 'commodity', value: value as ResourceType | CommodityType, count };
-        }),
+        items: stolenItems,
+        victims: [{ victimId: opponent.id, items: stolenItems }],
         timestamp: Date.now()
     };
     gameState.logs.push({
@@ -1252,49 +1376,35 @@ function executeDiplomat(gameState: GameState, player: PlayerState, options?: an
 
     const roadOwner = edge.owner;
 
-    // Validate the road is "open" (at least one endpoint has no same-color piece)
-    const [q, r, d] = edgeId.split(',').map(Number);
-    const endpoints = getEdgeEndpoints(q, r, d);
-    if (!endpoints || endpoints.length !== 2) {
-        throw new Error('Invalid edge endpoints');
+    if (!isOpenRoad(gameState, edgeId)) {
+        throw new Error('Road is not "open" - must be at the end of a road chain with no same-color pieces at that end');
     }
 
-    const [vertex1Id, vertex2Id] = endpoints;
+    if (newEdgeId && roadOwner !== player.id) {
+        throw new Error('Cannot rebuild after removing another player\'s road');
+    }
 
-    const isEndOpen = (vertexId: string): boolean => {
-        const vertex = gameState.board.vertices[vertexId];
-        if (!vertex) return false;
+    if (newEdgeId) {
+        const simulatedEdges = {
+            ...gameState.board.edges,
+            [edgeId]: { ...edge, owner: null, structure: null }
+        };
+        const simulatedState: GameState = {
+            ...gameState,
+            board: {
+                ...gameState.board,
+                edges: simulatedEdges
+            }
+        };
 
-        // Same-color building/metropolis blocks the end
-        if (vertex.owner === roadOwner && vertex.structure) {
-            return false;
+        if (!isValidMainPhaseRoad(simulatedState, newEdgeId, player.id)) {
+            throw new Error('Invalid new edge location');
         }
 
-        // Same-color knight blocks the end
-        const knight = gameState.players
-            .flatMap(p => p.knights || [])
-            .find(k => k.vertexId === vertexId);
-        if (knight && knight.playerId === roadOwner) {
-            return false;
+        const newEdge = gameState.board.edges[newEdgeId];
+        if (!newEdge || newEdge.owner !== null) {
+            throw new Error('Invalid new edge location');
         }
-
-        // Same-color roads on other adjacent edges block the end
-        const [q, r, d] = vertexId.split(',').map(Number);
-        const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
-        const otherRoads = adjacentEdges.filter(adjEdgeId => {
-            if (adjEdgeId === edgeId) return false;
-            const e = gameState.board.edges[adjEdgeId];
-            return e && e.owner === roadOwner && e.structure === 'road';
-        });
-
-        return otherRoads.length === 0;
-    };
-
-    const end1Open = isEndOpen(vertex1Id);
-    const end2Open = isEndOpen(vertex2Id);
-
-    if (!end1Open && !end2Open) {
-        throw new Error('Road is not \"open\" - must be at the end of a road chain with no same-color pieces at that end');
     }
 
     // Remove the road
@@ -1314,7 +1424,7 @@ function executeDiplomat(gameState: GameState, player: PlayerState, options?: an
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `${player.name} removed a road from another player and placed it elsewhere`,
+            message: `${player.name} moved their road to a new location with Diplomat`,
             playerId: player.id
         });
     } else {
@@ -1358,53 +1468,40 @@ function executeEspionage(gameState: GameState, player: PlayerState, options?: a
 }
 
 function executeTreason(gameState: GameState, player: PlayerState, options?: any): void {
-    // Choose a player; they remove a knight. You place a knight of equal or lower strength with same status
-    const { opponentId, knightId, newKnightLevel, newKnightVertexId } = options || {};
-    if (!opponentId || !knightId) {
-        throw new Error('Treason requires opponentId and knightId');
+    // Choose a player; they remove a knight. You place a knight of equal strength and same status on your road network
+    const { opponentId } = options || {};
+    if (!opponentId) {
+        throw new Error('Treason requires opponentId');
     }
 
     const opponent = gameState.players.find(p => p.id === opponentId);
     if (!opponent) throw new Error('Opponent not found');
 
-    if (!opponent.knights) throw new Error('Opponent has no knights');
-
-    const knightIndex = opponent.knights.findIndex(k => k.id === knightId);
-    if (knightIndex === -1) throw new Error('Knight not found');
-
-    const knight = opponent.knights[knightIndex];
-
-    // Remove knight from opponent
-    opponent.knights.splice(knightIndex, 1);
-
-    // Add knight to player's army (equal or lower strength, same active status)
-    if (!player.knights) player.knights = [];
-
-    // Determine knight level (use provided level or default to same level)
-    const levelMap = { basic: 0, strong: 1, mighty: 2 };
-    const levelNames: ('basic' | 'strong' | 'mighty')[] = ['basic', 'strong', 'mighty'];
-    const targetLevel = newKnightLevel || knight.level;
-
-    // Validate level is equal or lower
-    if (levelMap[targetLevel as 'basic' | 'strong' | 'mighty'] > levelMap[knight.level]) {
-        throw new Error('New knight must be equal or lower strength');
+    if (!opponent.knights || opponent.knights.length === 0) {
+        throw new Error('Opponent has no knights to remove');
     }
 
-    // Create new knight for player with same active status
-    const newKnight = {
-        id: `${Date.now()}-${Math.random()}`,
-        playerId: player.id,
-        level: targetLevel as 'basic' | 'strong' | 'mighty',
-        active: knight.active, // Preserve active/inactive status
-        vertexId: newKnightVertexId || knight.vertexId,
+    // Initialize active effects
+    if (!gameState.activeEffects) gameState.activeEffects = [];
+
+    // Remove any prior Treason effect for this initiator to avoid duplicates
+    gameState.activeEffects = gameState.activeEffects.filter(
+        (effect: any) => !(effect?.type === 'treason' && effect.initiatorId === player.id)
+    );
+
+    const treasonEffect: TreasonEffect = {
+        type: 'treason',
+        initiatorId: player.id,
+        targetPlayerId: opponentId,
+        stage: 'awaiting_knight'
     };
 
-    player.knights.push(newKnight);
+    gameState.activeEffects.push(treasonEffect);
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} used Treason: removed ${opponent.name}'s ${knight.level} knight and placed a ${targetLevel} knight (${knight.active ? 'active' : 'inactive'})`,
+        message: `${player.name} played Treason targeting ${opponent.name}. Waiting for knight selection.`,
         playerId: player.id
     });
 }
@@ -1489,152 +1586,152 @@ function executeTaxation(gameState: GameState, player: PlayerState, options?: an
     }
 
     // Each opponent gives 1 random resource
-    let totalStolen = 0;
+    const theftVictims: { victimId: string; resource: ResourceType }[] = [];
     for (const opponentId of opponentsOnHex) {
         const opponent = gameState.players.find(p => p.id === opponentId);
         if (!opponent) continue;
 
-        // Get all available resources
-        const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
-        const availableResources: ResourceType[] = [];
-        for (const resourceType of resourceTypes) {
-            if (opponent.resources[resourceType] > 0) {
-                availableResources.push(resourceType);
-            }
-        }
-
-        if (availableResources.length > 0) {
-            // Pick a random resource
-            const randomIndex = Math.floor(Math.random() * availableResources.length);
-            const resourceType = availableResources[randomIndex];
-            removeResources(opponent, { [resourceType]: 1 });
-            addResources(player, { [resourceType]: 1 });
-            totalStolen++;
+        const stolenResource = stealRandomResource(opponent);
+        if (stolenResource) {
+            addResources(player, { [stolenResource]: 1 });
+            theftVictims.push({ victimId: opponentId, resource: stolenResource });
         }
     }
 
+    if (theftVictims.length > 0) {
+        gameState.lastTheft = {
+            victimId: theftVictims.length === 1 ? theftVictims[0].victimId : undefined,
+            thiefId: player.id,
+            items: theftVictims.map(theft => ({
+                type: 'resource',
+                value: theft.resource,
+                count: 1
+            })),
+            victims: theftVictims.map(theft => ({
+                victimId: theft.victimId,
+                items: [{
+                    type: 'resource',
+                    value: theft.resource,
+                    count: 1
+                }]
+            })),
+            timestamp: Date.now()
+        };
+    } else {
+        gameState.lastTheft = undefined;
+    }
+
+    const victimNames = theftVictims
+        .map(({ victimId }) => gameState.players.find(p => p.id === victimId)?.name)
+        .filter((name): name is string => !!name);
+    const victimSummary = victimNames.length > 0 ? victimNames.join(', ') : 'an opponent';
+    const theftLogMessage =
+        theftVictims.length > 0
+            ? `${player.name} stole a card from ${victimSummary}`
+            : `${player.name} played Taxation but no opponents had cards on that hex`;
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} moved the robber and stole ${totalStolen} resources`,
+        message: theftLogMessage,
         playerId: player.id
     });
 }
 
-function executeSaboteur(gameState: GameState, player: PlayerState, options?: any): void {
-    // Players with equal or more VPs discard half their cards (resources AND commodities)
-    let totalDiscarded = 0;
+function executeSaboteur(gameState: GameState, player: PlayerState): void {
+    const cardName = getCardMetadata('saboteur').name;
+    const playerVP = player.victoryPoints ?? 0;
+    const targets = gameState.players.filter(p => p.id !== player.id && (p.victoryPoints ?? 0) > playerVP);
 
-    for (const opponent of gameState.players) {
-        if (opponent.id === player.id) continue;
+    // Clear any stale discard tracking/context before applying a new one
+    gameState.discardContext = undefined;
+    gameState.players.forEach(p => p.discardedThisTurn = false);
 
-        // Check if opponent has equal or more VP (should calculate VP here)
-        // For now, we'll trust validation is done in service layer
-
-        // Count total cards (resources + commodities)
-        const totalResources = Object.values(opponent.resources).reduce((sum, count) => sum + count, 0);
-        const totalCommodities = opponent.commodities ?
-            Object.values(opponent.commodities).reduce((sum, count) => sum + count, 0) : 0;
-        const totalCards = totalResources + totalCommodities;
-
-        if (totalCards === 0) continue;
-
-        // Calculate how many to discard (half, rounded down)
-        const discardCount = Math.floor(totalCards / 2);
-
-        // For simplicity, discard proportionally
-        // In real game, opponent chooses which cards to discard
-        const resourcesToDiscard: Partial<Record<ResourceType, number>> = {};
-        let remaining = discardCount;
-
-        const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
-        for (const resourceType of resourceTypes) {
-            const count = opponent.resources[resourceType];
-            const proportion = count / totalCards;
-            const toDiscard = Math.min(Math.floor(proportion * discardCount), remaining, count);
-
-            if (toDiscard > 0) {
-                resourcesToDiscard[resourceType] = toDiscard;
-                remaining -= toDiscard;
-            }
-        }
-
-        // Discard commodities if needed
-        if (remaining > 0 && opponent.commodities) {
-            const commodityTypes: ('paper' | 'cloth' | 'coin')[] = ['paper', 'cloth', 'coin'];
-            for (const commodityType of commodityTypes) {
-                const count = opponent.commodities[commodityType];
-                const toDiscard = Math.min(remaining, count);
-
-                if (toDiscard > 0) {
-                    opponent.commodities[commodityType] -= toDiscard;
-                    remaining -= toDiscard;
-                }
-            }
-        }
-
-        // Remove resources
-        if (Object.keys(resourcesToDiscard).length > 0) {
-            removeResources(opponent, resourcesToDiscard);
-        }
-
-        totalDiscarded += discardCount;
+    if (targets.length === 0) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} played ${cardName} but no opponents have more victory points`,
+            playerId: player.id
+        });
+        return;
     }
 
+    const targetsWithCards = targets.filter(opponent => getTotalResources(opponent) > 0);
+    if (targetsWithCards.length === 0) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} played ${cardName} but higher-VP opponents have no resource cards to discard`,
+            playerId: player.id
+        });
+        return;
+    }
+
+    gameState.discardContext = {
+        type: 'sabotage',
+        initiatorId: player.id,
+        targetIds: targets.map(t => t.id)
+    };
+    gameState.phase = 'discarding';
+
+    const targetNames = targets.map(t => t.name).join(', ');
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} forced opponents to discard ${totalDiscarded} total cards`,
+        message: `${player.name} played ${cardName}. ${targetNames} must discard half their resource cards.`,
         playerId: player.id
     });
 }
 
 function executeWedding(gameState: GameState, player: PlayerState): void {
-    // Each opponent with more VP gives 2 cards of their choice (or as many as they have)
-    let totalReceived = 0;
+    // Each opponent with more VP chooses up to 2 cards to give
+    const playerVP = player.victoryPoints ?? 0;
+    const higherVPOpponents = gameState.players.filter(p => p.id !== player.id && (p.victoryPoints ?? 0) > playerVP);
 
-    for (const opponent of gameState.players) {
-        if (opponent.id === player.id) continue;
+    // Clear any stale Wedding state before creating a new one
+    gameState.pendingWedding = undefined;
 
-        // Check if opponent has more VP (should calculate VP here)
-        // For now, we'll trust validation is done in service layer
-
-        // Opponent gives up to 2 cards (they choose)
-        // For simplicity, take first 2 available resources/commodities
-        const resourceTypes: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
-        let cardsGiven = 0;
-
-        // Try to give 2 cards total
-        for (const resourceType of resourceTypes) {
-            while (cardsGiven < 2 && opponent.resources[resourceType] > 0) {
-                removeResources(opponent, { [resourceType]: 1 });
-                addResources(player, { [resourceType]: 1 });
-                totalReceived++;
-                cardsGiven++;
-            }
-            if (cardsGiven >= 2) break;
-        }
-
-        // If still need cards and opponent has commodities
-        if (cardsGiven < 2 && opponent.commodities) {
-            const commodityTypes: ('paper' | 'cloth' | 'coin')[] = ['paper', 'cloth', 'coin'];
-            for (const commodityType of commodityTypes) {
-                while (cardsGiven < 2 && opponent.commodities[commodityType] > 0) {
-                    opponent.commodities[commodityType] -= 1;
-                    if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
-                    player.commodities[commodityType] += 1;
-                    totalReceived++;
-                    cardsGiven++;
-                }
-                if (cardsGiven >= 2) break;
-            }
-        }
+    if (higherVPOpponents.length === 0) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} played Wedding but no opponents have more victory points`,
+            playerId: player.id
+        });
+        return;
     }
+
+    const requests: WeddingGiftRequest[] = higherVPOpponents.map(opponent => {
+        const availableCards = getTotalCardCount(opponent);
+        const requiredCards = Math.min(2, availableCards);
+        return {
+            playerId: opponent.id,
+            requiredCards,
+            status: requiredCards === 0 ? 'skipped' : 'pending'
+        };
+    });
+
+    const pendingCount = requests.filter(r => r.status === 'pending').length;
+
+    if (pendingCount === 0) {
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} played Wedding but eligible opponents have no cards to give`,
+            playerId: player.id
+        });
+        return;
+    }
+
+    gameState.pendingWedding = {
+        initiatorId: player.id,
+        requests
+    };
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} received ${totalReceived} cards from Wedding (2 per opponent with more VP)`,
+        message: `${player.name} played Wedding. Waiting for ${pendingCount} opponent${pendingCount === 1 ? '' : 's'} with more VP to give cards.`,
         playerId: player.id
     });
 }
@@ -1652,6 +1749,9 @@ function executeEncouragement(gameState: GameState, player: PlayerState): void {
             activatedCount++;
         }
     }
+
+    // Refresh cached barbarian defense strength after activation
+    updateActiveKnightCount(player);
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,

@@ -5,6 +5,7 @@ import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
 import { getCanonicalVertexId } from '@/lib/hex';
+import { GuildSelectionList, SelectionMap, getSelectionCount } from './GuildSelectionList';
 
 function calculateIrrigationGain(gameState: GameState, playerId: string) {
     let fieldCount = 0;
@@ -81,11 +82,10 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const [resource, setResource] = useState<ResourceType | ''>('');
     const [commodity, setCommodity] = useState<CommodityType | ''>('');
     const [merchantFleetChoice, setMerchantFleetChoice] = useState<ResourceType | CommodityType | ''>('');
-    const [knightId, setKnightId] = useState<string>('');
     const [opponentId, setOpponentId] = useState<string>('');
     const [stolenCard, setStolenCard] = useState<ProgressCardType | ''>('');
     const [error, setError] = useState<string>('');
-    const [guildSelections, setGuildSelections] = useState<Record<string, number>>({});
+    const [guildSelections, setGuildSelections] = useState<SelectionMap>({});
 
     if (!isOpen || !cardType) return null;
 
@@ -142,20 +142,11 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 setError('Select knights directly on the board to use Smithing.');
                 return;
 
-            case 'treason':
-                if (!opponentId || !knightId) {
-                    setError('Please select an opponent and their knight');
-                    return;
-                }
-                options = { opponentId, knightId };
-                break;
+            case 'intrigue':
+                setError('Select an opponent knight on the board to displace with Intrigue.');
+                return;
 
             case 'saboteur':
-                if (!opponentId) {
-                    setError('Please select an opponent');
-                    return;
-                }
-                options = { opponentId };
                 break;
 
             case 'espionage':
@@ -209,8 +200,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'inventor':
             case 'merchant':
             case 'diplomat':
-            case 'intrigue':
-                setError('This card requires board interaction. Close this dialog and click on the board to select the target. Feature coming soon!');
+                setError('This card requires board interaction. Close this dialog and click on the board to select the target.');
                 return;
         }
 
@@ -229,7 +219,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         setResource('');
         setCommodity('');
         setMerchantFleetChoice('');
-        setKnightId('');
         setOpponentId('');
         setStolenCard('');
         setGuildSelections({});
@@ -238,10 +227,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
     const getOwnKnights = () => currentPlayer.knights || [];
     const getOpponents = () => gameState.players.filter(p => p.id !== currentPlayer.id);
-    const getOpponentKnights = (oppId: string) => {
-        const opponent = gameState.players.find(p => p.id === oppId);
-        return opponent?.knights || [];
-    };
     const getOpponentCards = (oppId: string) => {
         const opponent = gameState.players.find(p => p.id === oppId);
         return opponent?.progressCards || [];
@@ -273,10 +258,18 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     };
     const getOpponentHandSize = (oppId: string) =>
         getOpponentHandCounts(oppId).reduce((sum, item) => sum + item.available, 0);
+    const getOpponentResourceCount = (oppId: string) => {
+        const opponent = gameState.players.find(p => p.id === oppId);
+        if (!opponent) return 0;
+        return resources.reduce((sum, res) => sum + (opponent.resources?.[res] ?? 0), 0);
+    };
     const eligibleGuildOpponents = gameState.players.filter(
         p => p.id !== currentPlayer.id && p.victoryPoints > currentPlayer.victoryPoints
     );
-    const guildSelectedCount = Object.values(guildSelections).reduce((sum, n) => sum + n, 0);
+    const guildSelectedCount = getSelectionCount(guildSelections);
+    const higherVPOpponents = gameState.players.filter(
+        p => p.id !== currentPlayer.id && (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0)
+    );
 
     const renderCardForm = () => {
         switch (cardType) {
@@ -362,58 +355,45 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             case 'saboteur':
                 return (
-                    <div>
-                        <label className="text-sm font-medium block mb-1">Select opponent (must have 4+ resources):</label>
-                        <select
-                            value={opponentId}
-                            onChange={(e) => setOpponentId(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                        >
-                            <option value="">Select opponent</option>
-                            {getOpponents().map(p => {
-                                const totalRes = Object.values(p.resources).reduce((sum, count) => sum + count, 0);
-                                return (
-                                    <option key={p.id} value={p.id} disabled={totalRes < 4}>
-                                        {p.name} ({totalRes} resources)
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </div>
-                );
-
-            case 'treason':
-                return (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium block mb-1">Select opponent:</label>
-                            <select
-                                value={opponentId}
-                                onChange={(e) => setOpponentId(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                            >
-                                <option value="">Select opponent</option>
-                                {getOpponents().map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-200">
+                            All opponents with more victory points must discard half of their <span className="font-semibold text-emerald-300">resource cards</span> (rounded down), just like a 7 roll.
+                        </p>
+                        <div className="space-y-2">
+                            {gameState.players
+                                .filter(p => p.id !== currentPlayer.id)
+                                .map(p => {
+                                    const hasMoreVP = (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0);
+                                    const resourceCount = getOpponentResourceCount(p.id);
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800"
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-white">{p.name}</span>
+                                                <span className="text-xs text-slate-300">{p.victoryPoints} VP</span>
+                                            </div>
+                                            <div className="text-right text-sm">
+                                                {hasMoreVP ? (
+                                                    resourceCount > 0 ? (
+                                                        <span className="text-emerald-300 font-semibold">
+                                                            Discards {Math.floor(resourceCount / 2)} / {resourceCount} resources
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-amber-200">Ahead of you but has no resources</span>
+                                                    )
+                                                ) : (
+                                                    <span className="text-slate-400">Not affected</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                         </div>
-                        {opponentId && (
-                            <div>
-                                <label className="text-sm font-medium block mb-1">Select knight to remove:</label>
-                                <select
-                                    value={knightId}
-                                    onChange={(e) => setKnightId(e.target.value)}
-                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                                >
-                                    <option value="">Select knight</option>
-                                    {getOpponentKnights(opponentId)
-                                        .map(k => (
-                                            <option key={k.id} value={k.id}>
-                                                {k.level} knight (vertex {k.vertexId})
-                                            </option>
-                                        ))}
-                                </select>
+                        {higherVPOpponents.length === 0 && (
+                            <div className="text-xs text-amber-300 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
+                                No opponents currently have more victory points. Playing Saboteur will have no effect.
                             </div>
                         )}
                     </div>
@@ -493,12 +473,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 );
 
             case 'guild_dues': {
-                const grouped = opponentId
-                    ? getOpponentHandCounts(opponentId).map(item => ({
-                        ...item,
-                        selected: guildSelections[`${item.type}:${item.value}`] || 0
-                    }))
-                    : [];
+                const grouped = opponentId ? getOpponentHandCounts(opponentId) : [];
                 const totalAvailable = opponentId ? getOpponentHandSize(opponentId) : 0;
                 const requiredPicks = totalAvailable === 0 ? 0 : Math.min(2, totalAvailable);
                 return (
@@ -535,89 +510,83 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                 ) : (
                                     <div className="text-sm text-amber-200">This opponent has no cards to take.</div>
                                 )}
-                                <div className="space-y-2">
-                                    {grouped.map(item => {
-                                        const key = `${item.type}:${item.value}`;
-                                        const selected = guildSelections[key] || 0;
-                                        const remaining = item.available - selected;
-                                        const disableMinus = selected === 0;
-                                        const disablePlus = remaining === 0 || guildSelectedCount >= requiredPicks;
-                                        return (
-                                            <div
-                                                key={key}
-                                                className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800 text-sm"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span
-                                                        className={`capitalize ${
-                                                            selected > 0 ? 'text-red-200' : 'text-slate-100'
-                                                        }`}
-                                                    >
-                                                        {item.value} ({remaining})
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        type="button"
-                                                        className={`w-8 h-8 rounded border text-lg leading-none font-bold transition-colors ${
-                                                            disableMinus
-                                                                ? 'border-slate-700 text-slate-600 cursor-not-allowed'
-                                                                : 'border-slate-500 text-white hover:bg-slate-700 cursor-pointer'
-                                                        }`}
-                                                        onClick={() => {
-                                                            if (disableMinus) return;
-                                                            setGuildSelections(prev => {
-                                                                const next = { ...prev };
-                                                                next[key] = Math.max(0, (next[key] || 0) - 1);
-                                                                if (next[key] === 0) delete next[key];
-                                                                return next;
-                                                            });
-                                                            setError('');
-                                                        }}
-                                                        disabled={disableMinus}
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <span className="text-sm text-slate-200 w-5 text-center">{selected}</span>
-                                                    <button
-                                                        type="button"
-                                                        className={`w-8 h-8 rounded border text-lg leading-none font-bold transition-colors ${
-                                                            disablePlus
-                                                                ? 'border-slate-700 text-slate-600 cursor-not-allowed'
-                                                                : 'border-emerald-400 text-white hover:bg-emerald-600 cursor-pointer'
-                                                        }`}
-                                                        onClick={() => {
-                                                            if (disablePlus) return;
-                                                            setGuildSelections(prev => ({
-                                                                ...prev,
-                                                                [key]: (prev[key] || 0) + 1
-                                                            }));
-                                                            setError('');
-                                                        }}
-                                                        disabled={disablePlus}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {guildSelectedCount > 0 && (
-                                    <div className="text-xs text-slate-300">
-                                        Selected: {Object.entries(guildSelections)
-                                            .map(([key, count]) => `${key.split(':')[1]} x${count}`)
-                                            .join(', ')}
-                                    </div>
-                                )}
-                                {totalAvailable === 0 && (
-                                    <div className="text-xs text-amber-300">Opponent has no resources or commodities to take.</div>
-                                )}
+                                <GuildSelectionList
+                                    items={grouped}
+                                    required={requiredPicks}
+                                    selections={guildSelections}
+                                    onChange={(next) => {
+                                        setGuildSelections(next);
+                                        setError('');
+                                    }}
+                                    emptyMessage="Opponent has no resources or commodities to take."
+                                />
                             </div>
                         )}
                     </div>
                 );
             }
+
+            case 'wedding': {
+                const otherPlayers = gameState.players.filter(p => p.id !== currentPlayer.id);
+                const higherVPPlayers = otherPlayers.filter(p => (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0));
+                return (
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-200">
+                            Each opponent with more victory points chooses <span className="font-semibold text-emerald-300">two cards</span>{' '}
+                            (resources or commodities) to give you. They will make their selection right after you play this card.
+                        </p>
+                        <div className="space-y-2">
+                            {otherPlayers.map(p => {
+                                const hasMoreVP = (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0);
+                                const totalCards = getOpponentHandSize(p.id);
+                                const owed = hasMoreVP ? Math.min(2, totalCards) : 0;
+                                return (
+                                    <div
+                                        key={p.id}
+                                        className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800"
+                                    >
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-white">{p.name}</span>
+                                            <span className="text-xs text-slate-300">{p.victoryPoints} VP</span>
+                                        </div>
+                                        <div className="text-right text-sm">
+                                            {hasMoreVP ? (
+                                                owed > 0 ? (
+                                                    <span className="text-emerald-300 font-semibold">
+                                                        Will give {owed} card{owed === 1 ? '' : 's'} ({totalCards} in hand)
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-amber-200">Ahead of you but has no cards</span>
+                                                )
+                                            ) : (
+                                                <span className="text-slate-400">No cards owed</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {higherVPPlayers.length === 0 && (
+                            <div className="text-xs text-amber-300 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
+                                No opponents currently have more victory points. Playing Wedding will have no effect.
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            case 'encouragement':
+                return (
+                    <div className="space-y-3">
+                        <p className="text-sm text-slate-200">
+                            Activate all of your knights for free. This immediately boosts your defense strength
+                            against the barbarians and lets those knights move or displace as usual.
+                        </p>
+                        <p className="text-xs text-slate-300">
+                            Knights that are already active stay active. No wheat is spent.
+                        </p>
+                    </div>
+                );
 
             default:
                 return (
@@ -631,6 +600,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const isGuildDues = cardType === 'guild_dues';
     const requiresMerchantFleetSelection = cardType === 'merchant_fleet';
     const merchantFleetReady = !requiresMerchantFleetSelection || !!merchantFleetChoice;
+    const higherVPBlocked = (cardType === 'wedding' || cardType === 'saboteur') && higherVPOpponents.length === 0;
     const guildRequiredPicks =
         isGuildDues && opponentId
             ? (() => {
@@ -640,7 +610,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             })()
             : 0;
     const guildReady = !isGuildDues || (opponentId && guildRequiredPicks > 0 && guildSelectedCount === guildRequiredPicks);
-    const disablePlay = alchemyLocked || !guildReady || !merchantFleetReady;
+    const disablePlay = alchemyLocked || !guildReady || !merchantFleetReady || higherVPBlocked;
     const playTooltip =
         !guildReady && isGuildDues
             ? guildRequiredPicks === 0
@@ -650,7 +620,21 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     : 'Select 2 resources or commodities'
         : !merchantFleetReady && requiresMerchantFleetSelection
             ? 'Select a resource or commodity'
+            : higherVPBlocked
+                ? 'No opponents have more victory points'
             : undefined;
+    const actionLabel =
+        cardType === 'guild_dues'
+            ? 'Take Cards'
+            : cardType === 'espionage'
+                ? 'Take'
+                : cardType === 'irrigation' || cardType === 'mining'
+                    ? 'Confirm'
+                    : cardType === 'encouragement'
+                        ? 'Activate'
+                        : cardType === 'merchant_fleet'
+                            ? 'Select'
+                            : 'Play Card';
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 pointer-events-auto">
@@ -706,13 +690,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                 : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
                         }`}
                     >
-                        {cardType === 'guild_dues'
-                            ? 'Take Cards'
-                            : cardType === 'irrigation' || cardType === 'mining'
-                                ? 'Confirm'
-                                : cardType === 'merchant_fleet'
-                                    ? 'Select'
-                                    : 'Play Card'}
+                    {actionLabel}
                     </button>
                 </div>
             </div>

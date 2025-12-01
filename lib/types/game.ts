@@ -1,7 +1,8 @@
 import { ResourceType } from '../board-data';
-import { PlayerState, DevCardType, ProgressCardType } from './player';
+import { PlayerState, DevCardType, ProgressCardType, Knight } from './player';
 import { BoardState } from './board';
 import type { MetropolisType, EventDieFace, CommodityType } from '@/core/rules/commodity-constants';
+import type { ResourceType } from '@/core/engine/board/board-generator';
 
 /**
  * Game mode selection
@@ -62,6 +63,16 @@ export interface DiceRoll {
     total: number;
 }
 
+export type DiceTotal = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+export type DiceStats = Record<DiceTotal, number>;
+
+export const DICE_TOTALS: readonly DiceTotal[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+export const EMPTY_DICE_STATS: DiceStats = DICE_TOTALS.reduce((acc, total) => {
+    acc[total] = 0;
+    return acc;
+}, {} as DiceStats);
+
 /**
  * Cities & Knights - Event die result
  */
@@ -103,6 +114,46 @@ export interface CommercialHarborState {
     }[];
 }
 
+export interface TreasonEffect {
+    type: 'treason';
+    initiatorId: string;
+    targetPlayerId: string;
+    stage: 'awaiting_knight' | 'awaiting_placement';
+    removedKnight?: {
+        id: string;
+        level: Knight['level'];
+        active: boolean;
+        vertexId: string;
+    };
+}
+
+export type WeddingGiftItem = {
+    type: 'resource' | 'commodity';
+    value: ResourceType | CommodityType;
+    count: number;
+};
+
+export type WeddingSelection = {
+    type: 'resource' | 'commodity';
+    value: ResourceType | CommodityType;
+};
+
+export interface WeddingGiftRequest {
+    playerId: string;
+    requiredCards: number;
+    status: 'pending' | 'completed' | 'skipped';
+    given?: WeddingGiftItem[];
+}
+
+export interface WeddingState {
+    initiatorId: string;
+    requests: WeddingGiftRequest[];
+}
+
+export type DiscardContext =
+    | { type: 'robber' }
+    | { type: 'sabotage'; initiatorId: string; targetIds: string[] };
+
 /**
  * Complete game state
  */
@@ -118,6 +169,7 @@ export interface GameState {
     lastPlacedSettlementId: string | null; // For setup phase road validation
     robberHexId: string | null; // ID of the hex where the robber is
     diceRoll?: DiceRoll;
+    diceStats?: DiceStats;
     devCardDeck: DevCardType[];
     tradeOffer?: TradeOffer | null;
     longestRoadOwner: string | null;
@@ -145,11 +197,17 @@ export interface GameState {
     pendingAqueduct?: string[]; // List of player IDs eligible for Aqueduct (must choose a resource)
     pendingBarbarianVictims?: string[]; // List of player IDs who must choose a city to lose to barbarians
     pendingCommercialHarbor?: CommercialHarborState; // Pending Commercial Harbor trades awaiting responses
+    pendingWedding?: WeddingState; // Pending Wedding gifts awaiting opponent selections
     lastTheft?: {
-        victimId: string;
+        victimId?: string;
         thiefId: string;
-        items: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
+        items?: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
+        victims?: {
+            victimId: string;
+            items: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
+        }[];
         timestamp: number;
     };
     lastVPCardGain?: VictoryPointCardGain;
+    discardContext?: DiscardContext;
 }

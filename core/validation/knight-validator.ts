@@ -165,7 +165,8 @@ export function isValidKnightMovement(
 
 /**
  * Check if a knight can move to a target vertex
- * Target must be adjacent and connected via player's road
+ * Uses BFS to find a path along player's roads
+ * Knights can pass through intermediate nodes occupied by friendly units
  *
  * @param gameState - Current game state
  * @param knight - Knight to move
@@ -182,24 +183,58 @@ export function canMoveKnightToVertex(
     const currentVertexId = knight.vertexId;
     if (currentVertexId === targetVertexId) return false; // Can't move to same vertex
 
-    // Get adjacent edges for current vertex
-    const [q, r, d] = currentVertexId.split(',').map(Number);
-    const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
+    // BFS to find path along player's roads
+    const queue: string[] = [currentVertexId];
+    const visited = new Set<string>([currentVertexId]);
 
-    // Check each adjacent edge
-    for (const edgeId of adjacentEdges) {
-        const edge = gameState.board.edges[edgeId];
+    while (queue.length > 0) {
+        const vertexId = queue.shift()!;
 
-        // Must be player's road
-        if (!edge || edge.owner !== playerId) continue;
+        // Get adjacent edges for current vertex
+        const [q, r, d] = vertexId.split(',').map(Number);
+        const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
 
-        // Get the other endpoint of this edge
-        const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
-        const otherVertex = endpoints.find(v => v !== currentVertexId);
+        for (const edgeId of adjacentEdges) {
+            const edge = gameState.board.edges[edgeId];
 
-        // If this other vertex is the target, movement is valid
-        if (otherVertex === targetVertexId) {
-            return true;
+            // Must be player's road
+            if (!edge || edge.owner !== playerId) continue;
+
+            // Get the other endpoint of this edge
+            const endpoints = getEdgeEndpoints(edge.q, edge.r, edge.d);
+            const neighborVertexId = endpoints.find(v => v !== vertexId);
+
+            if (!neighborVertexId || visited.has(neighborVertexId)) continue;
+
+            // Found the target!
+            if (neighborVertexId === targetVertexId) {
+                return true;
+            }
+
+            // Check if we can pass through this vertex
+            // We can pass through vertices with:
+            // 1. No structure (empty)
+            // 2. Friendly structures (buildings or knights)
+            const vertex = gameState.board.vertices[neighborVertexId];
+            const hasEnemyBuilding = vertex && vertex.owner && vertex.owner !== playerId;
+
+            // Check for knights at this vertex
+            let hasEnemyKnight = false;
+            for (const player of gameState.players) {
+                if (!player.knights || player.id === playerId) continue;
+                const knightAtVertex = player.knights.find(k => k.vertexId === neighborVertexId);
+                if (knightAtVertex) {
+                    hasEnemyKnight = true;
+                    break;
+                }
+            }
+
+            // Cannot pass through enemy buildings or enemy knights
+            if (hasEnemyBuilding || hasEnemyKnight) continue;
+
+            // Add to queue for further exploration
+            visited.add(neighborVertexId);
+            queue.push(neighborVertexId);
         }
     }
 

@@ -1,4 +1,4 @@
-import { GameState, PlayerState } from '@/lib/types';
+import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/repositories/game-repository';
 import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
@@ -19,6 +19,20 @@ import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
  * Game Service
  * Orchestrates core game operations (dice, turns, etc.)
  */
+
+const createEmptyDiceStats = () => ({ ...EMPTY_DICE_STATS });
+
+const normalizeDiceStats = (stats?: GameState['diceStats']) => ({
+    ...EMPTY_DICE_STATS,
+    ...(stats || {})
+});
+
+const toDiceTotal = (total: number): DiceTotal => {
+    if (total < 2 || total > 12) {
+        throw new Error(`Invalid dice total ${total}`);
+    }
+    return total as DiceTotal;
+};
 
 /**
  * Create and initialize a new game
@@ -146,6 +160,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         winner: null,
         lastPlacedSettlementId: null,
         robberHexId: desertHexId,
+        diceStats: createEmptyDiceStats(),
         devCardDeck,
         longestRoadOwner: null,
         longestRoadLength: 0,
@@ -207,6 +222,9 @@ export async function rollDice(
     const total = d1 + d2;
 
     gameState.diceRoll = { d1, d2, total };
+    const totalKey = toDiceTotal(total);
+    gameState.diceStats = normalizeDiceStats(gameState.diceStats);
+    gameState.diceStats[totalKey] = (gameState.diceStats[totalKey] || 0) + 1;
 
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
@@ -237,6 +255,9 @@ export async function rollDice(
         }
     }
 
+    // Clear any stale discard context before handling the new roll
+    gameState.discardContext = undefined;
+
     // Handle robber (7)
     if (total === 7) {
         // Check if any players need to discard
@@ -247,6 +268,7 @@ export async function rollDice(
         });
 
         if (playersToDiscard.length > 0) {
+            gameState.discardContext = { type: 'robber' };
             gameState.phase = 'discarding';
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
