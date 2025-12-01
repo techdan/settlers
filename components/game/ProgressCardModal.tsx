@@ -80,10 +80,12 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const [chosenDice2, setChosenDice2] = useState<number>(0);
     const [resource, setResource] = useState<ResourceType | ''>('');
     const [commodity, setCommodity] = useState<CommodityType | ''>('');
+    const [merchantFleetChoice, setMerchantFleetChoice] = useState<ResourceType | CommodityType | ''>('');
     const [knightId, setKnightId] = useState<string>('');
     const [opponentId, setOpponentId] = useState<string>('');
     const [stolenCard, setStolenCard] = useState<ProgressCardType | ''>('');
     const [error, setError] = useState<string>('');
+    const [guildSelections, setGuildSelections] = useState<Record<string, number>>({});
 
     if (!isOpen || !cardType) return null;
 
@@ -128,6 +130,14 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = { commodity };
                 break;
 
+            case 'merchant_fleet':
+                if (!merchantFleetChoice) {
+                    setError('Please select a resource or commodity');
+                    return;
+                }
+                options = { tradeItem: merchantFleetChoice };
+                break;
+
             case 'smith':
                 setError('Select knights directly on the board to use Smithing.');
                 return;
@@ -154,6 +164,37 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     return;
                 }
                 options = { opponentId, stolenCard };
+                break;
+
+            case 'guild_dues':
+                if (!opponentId) {
+                    setError('Please select an opponent with more VPs than you.');
+                    return;
+                }
+                {
+                    const totalAvailable = getOpponentHandSize(opponentId);
+                    if (totalAvailable === 0) {
+                        setError('Opponent has no cards to take.');
+                        return;
+                    }
+                    const required = Math.min(2, Math.max(1, totalAvailable));
+                    const selectionsArray = Object.entries(guildSelections).flatMap(([key, count]) => {
+                        const [type, value] = key.split(':');
+                        return Array.from({ length: count }, () => ({ type, value }));
+                    });
+                    if (selectionsArray.length !== required) {
+                        setError(required === 1 ? 'Select 1 card to take.' : 'Select 2 cards to take.');
+                        return;
+                    }
+                    options = {
+                        opponentId,
+                        card1Type: selectionsArray[0].type,
+                        card1Value: selectionsArray[0].value,
+                        ...(selectionsArray[1]
+                            ? { card2Type: selectionsArray[1].type, card2Value: selectionsArray[1].value }
+                            : {})
+                    };
+                }
                 break;
 
             case 'irrigation':
@@ -187,9 +228,11 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         setChosenDice2(0);
         setResource('');
         setCommodity('');
+        setMerchantFleetChoice('');
         setKnightId('');
         setOpponentId('');
         setStolenCard('');
+        setGuildSelections({});
         setError('');
     };
 
@@ -203,6 +246,37 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         const opponent = gameState.players.find(p => p.id === oppId);
         return opponent?.progressCards || [];
     };
+    const getOpponentHandCounts = (oppId: string) => {
+        const opponent = gameState.players.find(p => p.id === oppId);
+        if (!opponent) return [];
+
+        const entries: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; available: number }[] = [];
+        Object.entries(opponent.resources || {}).forEach(([res, count]) => {
+            if ((count || 0) > 0) {
+                entries.push({ type: 'resource', value: res as ResourceType, available: count || 0 });
+            }
+        });
+        Object.entries(opponent.commodities || {}).forEach(([com, count]) => {
+            if ((count || 0) > 0) {
+                entries.push({ type: 'commodity', value: com as CommodityType, available: count || 0 });
+            }
+        });
+        return entries;
+    };
+    const getAvailableCount = (oppId: string, type: 'resource' | 'commodity', value: ResourceType | CommodityType) => {
+        const opponent = gameState.players.find(p => p.id === oppId);
+        if (!opponent) return 0;
+        if (type === 'resource') {
+            return opponent.resources?.[value as ResourceType] ?? 0;
+        }
+        return opponent.commodities?.[value as CommodityType] ?? 0;
+    };
+    const getOpponentHandSize = (oppId: string) =>
+        getOpponentHandCounts(oppId).reduce((sum, item) => sum + item.available, 0);
+    const eligibleGuildOpponents = gameState.players.filter(
+        p => p.id !== currentPlayer.id && p.victoryPoints > currentPlayer.victoryPoints
+    );
+    const guildSelectedCount = Object.values(guildSelections).reduce((sum, n) => sum + n, 0);
 
     const renderCardForm = () => {
         switch (cardType) {
@@ -262,6 +336,27 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             <option value="">Select commodity</option>
                             {commodities.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
+                    </div>
+                );
+
+            case 'merchant_fleet':
+                return (
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-sm font-medium block mb-1">Select the type to trade at 2:1 this turn:</label>
+                            <select
+                                value={merchantFleetChoice}
+                                onChange={(e) => setMerchantFleetChoice(e.target.value as ResourceType | CommodityType)}
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                            >
+                                <option value="">Select resource or commodity</option>
+                                {resources.map(r => <option key={r} value={r}>{r}</option>)}
+                                {commodities.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <p className="text-xs text-slate-300">
+                            The chosen type will trade with the bank at 2:1 for the rest of your turn, including bank trades and port trades.
+                        </p>
                     </div>
                 );
 
@@ -397,6 +492,133 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </div>
                 );
 
+            case 'guild_dues': {
+                const grouped = opponentId
+                    ? getOpponentHandCounts(opponentId).map(item => ({
+                        ...item,
+                        selected: guildSelections[`${item.type}:${item.value}`] || 0
+                    }))
+                    : [];
+                const totalAvailable = opponentId ? getOpponentHandSize(opponentId) : 0;
+                const requiredPicks = totalAvailable === 0 ? 0 : Math.min(2, totalAvailable);
+                return (
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-sm font-medium block mb-1">Select opponent (must have more VPs than you):</label>
+                            <select
+                                value={opponentId}
+                                onChange={(e) => {
+                                    setOpponentId(e.target.value);
+                                    setGuildSelections({});
+                                    setError('');
+                                }}
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                            >
+                                <option value="">Select opponent</option>
+                                {eligibleGuildOpponents.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name} ({p.victoryPoints} VP, {getOpponentHandSize(p.id)} cards)
+                                    </option>
+                                ))}
+                            </select>
+                            {eligibleGuildOpponents.length === 0 && (
+                                <p className="text-xs text-amber-300 mt-1">No opponents have more victory points than you.</p>
+                            )}
+                        </div>
+
+                        {opponentId && (
+                            <div className="space-y-3">
+                                {requiredPicks > 0 ? (
+                                    <div className="text-sm text-slate-200">
+                                        Choose {requiredPicks === 2 ? 'any 2 cards' : 'the only card available'} from {gameState.players.find(p => p.id === opponentId)?.name}'s hand.
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-amber-200">This opponent has no cards to take.</div>
+                                )}
+                                <div className="space-y-2">
+                                    {grouped.map(item => {
+                                        const key = `${item.type}:${item.value}`;
+                                        const selected = guildSelections[key] || 0;
+                                        const remaining = item.available - selected;
+                                        const disableMinus = selected === 0;
+                                        const disablePlus = remaining === 0 || guildSelectedCount >= requiredPicks;
+                                        return (
+                                            <div
+                                                key={key}
+                                                className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800 text-sm"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span
+                                                        className={`capitalize ${
+                                                            selected > 0 ? 'text-red-200' : 'text-slate-100'
+                                                        }`}
+                                                    >
+                                                        {item.value} ({remaining})
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className={`w-8 h-8 rounded border text-lg leading-none font-bold transition-colors ${
+                                                            disableMinus
+                                                                ? 'border-slate-700 text-slate-600 cursor-not-allowed'
+                                                                : 'border-slate-500 text-white hover:bg-slate-700 cursor-pointer'
+                                                        }`}
+                                                        onClick={() => {
+                                                            if (disableMinus) return;
+                                                            setGuildSelections(prev => {
+                                                                const next = { ...prev };
+                                                                next[key] = Math.max(0, (next[key] || 0) - 1);
+                                                                if (next[key] === 0) delete next[key];
+                                                                return next;
+                                                            });
+                                                            setError('');
+                                                        }}
+                                                        disabled={disableMinus}
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="text-sm text-slate-200 w-5 text-center">{selected}</span>
+                                                    <button
+                                                        type="button"
+                                                        className={`w-8 h-8 rounded border text-lg leading-none font-bold transition-colors ${
+                                                            disablePlus
+                                                                ? 'border-slate-700 text-slate-600 cursor-not-allowed'
+                                                                : 'border-emerald-400 text-white hover:bg-emerald-600 cursor-pointer'
+                                                        }`}
+                                                        onClick={() => {
+                                                            if (disablePlus) return;
+                                                            setGuildSelections(prev => ({
+                                                                ...prev,
+                                                                [key]: (prev[key] || 0) + 1
+                                                            }));
+                                                            setError('');
+                                                        }}
+                                                        disabled={disablePlus}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {guildSelectedCount > 0 && (
+                                    <div className="text-xs text-slate-300">
+                                        Selected: {Object.entries(guildSelections)
+                                            .map(([key, count]) => `${key.split(':')[1]} x${count}`)
+                                            .join(', ')}
+                                    </div>
+                                )}
+                                {totalAvailable === 0 && (
+                                    <div className="text-xs text-amber-300">Opponent has no resources or commodities to take.</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
             default:
                 return (
                     <p className="text-sm text-slate-300">
@@ -405,6 +627,30 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 );
         }
     };
+
+    const isGuildDues = cardType === 'guild_dues';
+    const requiresMerchantFleetSelection = cardType === 'merchant_fleet';
+    const merchantFleetReady = !requiresMerchantFleetSelection || !!merchantFleetChoice;
+    const guildRequiredPicks =
+        isGuildDues && opponentId
+            ? (() => {
+                const size = getOpponentHandSize(opponentId);
+                if (size === 0) return 0;
+                return Math.min(2, size);
+            })()
+            : 0;
+    const guildReady = !isGuildDues || (opponentId && guildRequiredPicks > 0 && guildSelectedCount === guildRequiredPicks);
+    const disablePlay = alchemyLocked || !guildReady || !merchantFleetReady;
+    const playTooltip =
+        !guildReady && isGuildDues
+            ? guildRequiredPicks === 0
+                ? 'Opponent has no cards to take'
+                : guildRequiredPicks === 1
+                    ? 'Select 1 resource or commodity'
+                    : 'Select 2 resources or commodities'
+        : !merchantFleetReady && requiresMerchantFleetSelection
+            ? 'Select a resource or commodity'
+            : undefined;
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 pointer-events-auto">
@@ -452,14 +698,21 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     </button>
                     <button
                         onClick={handlePlay}
-                        disabled={alchemyLocked}
+                        disabled={disablePlay}
+                        title={playTooltip}
                         className={`px-4 py-2 rounded font-medium transition-colors ${
-                            alchemyLocked
+                            disablePlay
                                 ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
                                 : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
                         }`}
                     >
-                        {cardType === 'irrigation' || cardType === 'mining' ? 'Confirm' : 'Play Card'}
+                        {cardType === 'guild_dues'
+                            ? 'Take Cards'
+                            : cardType === 'irrigation' || cardType === 'mining'
+                                ? 'Confirm'
+                                : cardType === 'merchant_fleet'
+                                    ? 'Select'
+                                    : 'Play Card'}
                     </button>
                 </div>
             </div>

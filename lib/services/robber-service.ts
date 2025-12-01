@@ -87,7 +87,7 @@ export async function moveRobber(
                 gameState.lastTheft = {
                     victimId: victim.id,
                     thiefId: thief.id,
-                    resource: stolenResource,
+                    items: [{ type: 'resource', value: stolenResource, count: 1 }],
                     timestamp: Date.now()
                 };
             } else {

@@ -43,6 +43,7 @@ interface BoardProps {
     progressPromptVisible?: boolean;
     progressPromptReady?: boolean;
     inventorSelection?: { firstHexId?: string; secondHexId?: string } | null;
+    merchantSelectedHexId?: string | null;
     onHexSelected?: (hexId: string) => void;
     onVertexSelectedForCard?: (vertexId: string) => void;
     onEdgeSelectedForCard?: (edgeId: string) => void;
@@ -79,6 +80,7 @@ export const Board: React.FC<BoardProps> = ({
     progressPromptVisible,
     progressPromptReady,
     inventorSelection,
+    merchantSelectedHexId,
     onHexSelected,
     onVertexSelectedForCard,
     onEdgeSelectedForCard,
@@ -702,8 +704,13 @@ export const Board: React.FC<BoardProps> = ({
                                                 ? 'primary'
                                                 : tile.id === inventorSelection?.secondHexId
                                                     ? 'secondary'
-                                                    : null;
-                                        const selectionVariant = selectingHexForCard === 'inventor' ? 'cursor' : 'glow';
+                                                    : selectingHexForCard === 'merchant' && merchantSelectedHexId === tile.id
+                                                        ? 'primary'
+                                                        : null;
+                                        const selectionVariant =
+                                            selectingHexForCard === 'inventor' || selectingHexForCard === 'merchant'
+                                                ? 'cursor'
+                                                : 'glow';
 
                                         return (
                                             <TileComponent
@@ -712,6 +719,7 @@ export const Board: React.FC<BoardProps> = ({
                                                 terrain={tile.terrain}
                                                 numberToken={tile.numberToken}
                                                 hasRobber={gameState.robberHexId === tile.id}
+                                                hasMerchant={gameState.merchantHexId === tile.id}
                                                 size={HEX_SIZE}
                                                 onClick={() => handleHexClick(tile.id)}
                                                 isRolled={isRolled}

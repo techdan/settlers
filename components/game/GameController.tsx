@@ -18,6 +18,8 @@ import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { BoardSelectionPrompt } from './BoardSelectionPrompt';
 import { buildCityWall, endTurn } from '@/app/actions';
 import { AqueductModal } from './AqueductModal';
+import { CommercialHarborModal } from './CommercialHarborModal';
+import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDialog';
 
 // Cities & Knights components
 import { CityManagementDialog } from './CityManagementDialog';
@@ -39,6 +41,8 @@ import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-util
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 import { ProgressCardType } from '@/lib/types/player';
 import { ProgressPromptProvider, useProgressPrompt } from '@/lib/hooks/useProgressPrompt';
+import { MerchantPlacementModal } from './MerchantPlacementModal';
+import { ResourceType, TerrainType } from '@/core/rules/board-constants';
 
 interface GameControllerProps {
     roomId: string;
@@ -62,6 +66,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [inventorSelection, setInventorSelection] = useState<{ firstHexId?: string; firstValue?: number; secondHexId?: string; secondValue?: number }>({});
     const [isInventorConfirmOpen, setIsInventorConfirmOpen] = useState(false);
     const [inventorError, setInventorError] = useState<string | null>(null);
+    const [isMerchantModalOpen, setIsMerchantModalOpen] = useState(false);
+    const [selectedMerchantHexId, setSelectedMerchantHexId] = useState<string | null>(null);
+    const [merchantError, setMerchantError] = useState<string | null>(null);
     const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
     const [progressDiscardContext, setProgressDiscardContext] = useState<'own_turn' | 'other_turn'>('own_turn');
     const [selectingCityForEngineer, setSelectingCityForEngineer] = useState(false);
@@ -81,6 +88,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     } = useProgressCardSelectionDecorator();
     const [lastVPAcknowledgedAt, setLastVPAcknowledgedAt] = useState<number | null>(null);
     const engineeringPrompt = useProgressPrompt('engineer', selectingCityForEngineer);
+    const merchantPrompt = useProgressPrompt('merchant', selectingHexForCard === 'merchant');
 
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
@@ -114,6 +122,23 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         if (!res.ok) {
             const error = await res.json();
             throw new Error(error.error || 'Failed to upgrade improvement');
+        }
+    };
+
+    const resourceForTerrain = (terrain: TerrainType): ResourceType | null => {
+        switch (terrain) {
+            case 'forest':
+                return 'wood';
+            case 'hill':
+                return 'brick';
+            case 'pasture':
+                return 'sheep';
+            case 'field':
+                return 'wheat';
+            case 'mountain':
+                return 'ore';
+            default:
+                return null;
         }
     };
 
@@ -213,6 +238,19 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
         handleCancelSelection();
+
+        if (cardType === 'merchant') {
+            setSelectingHexForCard('merchant');
+            setIsMerchantModalOpen(true);
+            setSelectedMerchantHexId(null);
+            setMerchantError(null);
+            merchantPrompt.begin('Select a resource hex.');
+            setBuildMode(null);
+            setMovingKnightId(null);
+            setBuildingMetropolisType(null);
+            return;
+        }
+
         setSelectingHexForCard(cardType);
         setBuildMode(null);
         setMovingKnightId(null);
@@ -249,6 +287,17 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
 
+        if (selectingHexForCard === 'merchant') {
+            setSelectedMerchantHexId(hexId);
+            setMerchantError(null);
+
+            const selectedHex = gameState.board.hexes.find(h => h.id === hexId);
+            const resource = selectedHex ? resourceForTerrain(selectedHex.terrain) : null;
+            const resourceStatus = resource ? `Selected ${resource}.` : 'Select a resource hex.';
+            merchantPrompt.setStatus(resourceStatus);
+            return;
+        }
+
         // Single hex selection cards
         await handlePlayProgressCard(selectingHexForCard, { hexId });
         setSelectingHexForCard(null);
@@ -267,6 +316,21 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         } catch (e: any) {
             const message = e?.message || 'Failed to swap number tokens';
             setInventorError(message);
+        }
+    };
+
+    const handleConfirmMerchantPlacement = async () => {
+        if (!selectedMerchantHexId) return;
+        setMerchantError(null);
+        merchantPrompt.setStatus('Placing Merchant...');
+        try {
+            await handlePlayProgressCard('merchant', { hexId: selectedMerchantHexId });
+            merchantPrompt.clear();
+            handleCancelSelection();
+        } catch (e: any) {
+            const message = e?.message || 'Failed to place Merchant';
+            setMerchantError(message);
+            merchantPrompt.setStatus(message);
         }
     };
 
@@ -522,6 +586,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setBuildMode(null);
         setMovingKnightId(null);
         setBuildingMetropolisType(null);
+        setIsMerchantModalOpen(false);
+        setSelectedMerchantHexId(null);
+        setMerchantError(null);
         setSelectingCityForEngineer(false);
         setSelectedEngineerCityId(null);
         setIsEngineerSubmitting(false);
@@ -532,6 +599,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setIsCraneDialogOpen(false);
         clearSelectedCard();
         engineeringPrompt.clear();
+        merchantPrompt.clear();
     };
 
     const handleCancelFollowupCard = () => {
@@ -724,6 +792,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const showEngineeringPrompt = engineeringPrompt.isVisible && !!isActiveTurn;
     const engineeringPromptStatus =
         engineeringPrompt.status || 'Select a city without a wall to add a free city wall.';
+    const selectedMerchantHex = selectedMerchantHexId && gameState
+        ? gameState.board.hexes.find(hex => hex.id === selectedMerchantHexId)
+        : null;
+    const selectedMerchantResource = selectedMerchantHex ? resourceForTerrain(selectedMerchantHex.terrain) : null;
+    const showMerchantModal = isMerchantModalOpen && merchantPrompt.isVisible;
 
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
@@ -816,6 +889,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 progressPromptVisible={showRoadBuildingPrompt}
                 progressPromptReady={isRoadBuildingProgressActive}
                 inventorSelection={inventorSelection}
+                merchantSelectedHexId={selectedMerchantHexId}
                 onHexSelected={handleHexSelected}
                 onVertexSelectedForCard={handleVertexSelected}
                 onEdgeSelectedForCard={handleEdgeSelected}
@@ -825,6 +899,17 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
             />
+
+            {showMerchantModal && (
+                <MerchantPlacementModal
+                    isOpen={showMerchantModal}
+                    selectedResource={selectedMerchantResource}
+                    status={merchantPrompt.status}
+                    error={merchantError}
+                    onCancel={handleCancelSelection}
+                    onPlace={handleConfirmMerchantPlacement}
+                />
+            )}
 
             {showEngineeringPrompt && (
                 <BoardSelectionPrompt
@@ -976,6 +1061,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 <AqueductModal gameState={gameState} playerId={playerId} />
             )}
 
+            {/* Commercial Harbor - Initiator Dialog (rendered from ProgressCardHand) */}
+
+            {/* Commercial Harbor - Opponent Response Modal */}
+            {gameState.pendingCommercialHarbor && (
+                <CommercialHarborModal gameState={gameState} playerId={playerId} roomId={roomId} />
+            )}
+
             {/* Barbarian City Selection UI */}
             {gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId) && (
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
@@ -1046,7 +1138,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
                 {/* Left Sidebar: Game Log & Debug Panel */}
                 {/* Positioned below Map Controls (approx top-20) */}
-                <div className="absolute top-48 left-4 bottom-24 w-80 flex flex-col gap-4 pointer-events-auto z-30">
+                <div className="absolute top-48 left-4 bottom-36 w-80 flex flex-col gap-4 pointer-events-auto z-30">
                     <div className="flex-1 min-h-0 overflow-y-auto">
                         <GameLog logs={gameState.logs || []} />
                     </div>

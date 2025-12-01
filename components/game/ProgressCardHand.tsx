@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { PlayerState, GameState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
 import { ProgressCardModal } from './ProgressCardModal';
+import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDialog';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
@@ -60,6 +61,8 @@ const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
 // Cards that require parameter selection
 const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
     'alchemist',
+    'guild_dues',
+    'merchant_fleet',
     'resource_monopoly',
     'trade_monopoly',
     'espionage',
@@ -170,6 +173,13 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
+        // Commercial Harbor opens modal without playing card yet
+        // Card will be played when offers are submitted
+        if (cardType === 'commercial_harbor') {
+            setModalCard(cardType);
+            return;
+        }
+
         if (isRoadPlacementCard) {
             setManualFollowupCard(cardType);
             (async () => {
@@ -268,9 +278,24 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                 const isEngineer = cardType === 'engineer';
                                 const isSmith = cardType === 'smith';
                                 const isMedicine = cardType === 'medicine';
+                                const isAlchemist = cardType === 'alchemist';
+                                const isCommercialHarbor = cardType === 'commercial_harbor';
+
+                                // Phase validation
+                                const wrongPhase = isAlchemist
+                                    ? gameState.phase !== 'waiting_for_roll'
+                                    : gameState.phase !== 'main_phase';
+                                const notPlayerTurn = !isActiveTurn;
+                                const phaseDisabled = notPlayerTurn || wrongPhase;
+
                                 const engineerDisabled = isEngineer && !hasEngineerTarget;
                                 const smithDisabled = isSmith && !hasSmithTarget;
                                 const medicineDisabled = isMedicine && (!canAffordMedicine || !hasMedicineTarget);
+
+                                // Disable Commercial Harbor if there's already an active session
+                                const commercialHarborDisabled = isCommercialHarbor &&
+                                    gameState.pendingCommercialHarbor !== undefined &&
+                                    gameState.pendingCommercialHarbor.offers.length > 0;
                                 const hasFollowup =
                                     requiresParameters(cardType) ||
                                     BOARD_SELECTION_CARDS.includes(cardType) ||
@@ -286,13 +311,28 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                         (isSmith && isSmithSelecting) ||
                                         (isMedicine && isMedicineSelecting)
                                     );
-                                const disabledTitle = isEngineer && engineerDisabled
-                                    ? 'No cities without walls are available for Engineering'
-                                    : isSmith && smithDisabled
-                                        ? 'No knights can be promoted'
-                                    : isMedicine && medicineDisabled
-                                        ? 'Need 2 ore + 1 wheat, a city piece, and an upgradeable settlement for Medicine'
-                                        : info.description;
+                                // Build tooltip: show description + any restrictions
+                                let tooltipParts: string[] = [info.description];
+
+                                if (notPlayerTurn) {
+                                    tooltipParts.push('\n⚠️ Can only play on your turn');
+                                } else if (wrongPhase) {
+                                    tooltipParts.push(isAlchemist
+                                        ? '\n⚠️ Can only be played before rolling dice'
+                                        : '\n⚠️ Can only be played after rolling dice');
+                                }
+
+                                if (isEngineer && engineerDisabled) {
+                                    tooltipParts.push('\n❌ No cities without walls available');
+                                } else if (isSmith && smithDisabled) {
+                                    tooltipParts.push('\n❌ No knights can be promoted');
+                                } else if (isMedicine && medicineDisabled) {
+                                    tooltipParts.push('\n❌ Need 2 ore + 1 wheat, a city piece, and an upgradeable settlement');
+                                } else if (isCommercialHarbor && commercialHarborDisabled) {
+                                    tooltipParts.push('\n❌ Commercial Harbor already in progress');
+                                }
+
+                                const disabledTitle = tooltipParts.join('');
                                 const onCardClick = decorateCardHandler
                                     ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
                                     : () => handlePlayCard(cardType);
@@ -300,11 +340,11 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     <button
                                         key={`${cardType}-${index}`}
                                         onClick={onCardClick}
-                                        disabled={isPending || engineerDisabled || smithDisabled || medicineDisabled}
+                                        disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled}
                                         className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
                                             ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
                                             : 'hover:bg-slate-700/50'
-                                            } ${engineerDisabled || smithDisabled || medicineDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                            } ${phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                         title={disabledTitle}
                                     >
                                         <div className="flex items-center gap-2">
@@ -322,16 +362,25 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             </div>
 
             {modalCard && typeof window !== 'undefined' && createPortal(
-                <ProgressCardModal
-                    cardType={modalCard}
-                    isOpen={!!modalCard}
-                    onClose={() => setModalCard(null)}
-                    onPlay={async (cardType, options) => {
-                        await onPlayCard(cardType, options);
-                    }}
-                    gameState={gameState}
-                    currentPlayer={player}
-                />,
+                modalCard === 'commercial_harbor' ? (
+                    <CommercialHarborInitiatorDialog
+                        gameState={gameState}
+                        playerId={player.id}
+                        roomId={roomId}
+                        onClose={() => setModalCard(null)}
+                    />
+                ) : (
+                    <ProgressCardModal
+                        cardType={modalCard}
+                        isOpen={!!modalCard}
+                        onClose={() => setModalCard(null)}
+                        onPlay={async (cardType, options) => {
+                            await onPlayCard(cardType, options);
+                        }}
+                        gameState={gameState}
+                        currentPlayer={player}
+                    />
+                ),
                 document.body
             )}
         </>

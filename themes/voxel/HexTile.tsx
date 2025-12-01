@@ -4,12 +4,14 @@ import { TerrainType } from '@/core/rules/board-constants';
 import { VoxelNumberToken } from './NumberToken';
 import { VoxelRobber } from './Robber';
 import { VoxelTree, VoxelMountain, VoxelWheat, VoxelBrick, VoxelSheep, VoxelDesert } from './Resources';
+import { VoxelMerchant } from './Merchant';
 
 interface HexTileProps {
     hex: Hex;
     terrain: TerrainType;
     numberToken: number | null;
     hasRobber: boolean;
+    hasMerchant?: boolean;
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
@@ -41,6 +43,7 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({
     terrain,
     numberToken,
     hasRobber,
+    hasMerchant,
     size,
     onClick,
     isRolled,
@@ -147,6 +150,12 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({
                 {hasRobber && (
                     <g transform="translate(0, -10)">
                         <VoxelRobber />
+                    </g>
+                )}
+
+                {hasMerchant && (
+                    <g transform="translate(0, -10)">
+                        <VoxelMerchant />
                     </g>
                 )}
             </g>

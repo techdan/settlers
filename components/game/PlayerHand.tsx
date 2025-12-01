@@ -9,7 +9,7 @@ interface PlayerHandProps {
     lastTheft?: {
         victimId: string;
         thiefId: string;
-        resource: ResourceType;
+        items: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
         timestamp: number;
     };
 }
@@ -36,20 +36,20 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
         : 0;
 
     // Check for active theft highlight (within 5 seconds)
-    const getHighlightClass = (res: string) => {
+    const getHighlightClass = (type: 'resource' | 'commodity', value: string) => {
         if (!lastTheft) return '';
 
         const isRecent = Date.now() - lastTheft.timestamp < 5000;
         if (!isRecent) return '';
 
-        if (lastTheft.resource === res) {
-            if (lastTheft.victimId === player.id) {
-                // I lost this resource -> Red highlight
-                return 'bg-red-500/50 animate-pulse rounded ring-2 ring-red-500';
-            } else if (lastTheft.thiefId === player.id) {
-                // I stole this resource -> Green highlight
-                return 'bg-green-500/50 animate-pulse rounded ring-2 ring-green-500';
-            }
+        const wasInvolved = lastTheft.items.some(item => item.type === type && item.value === value);
+        if (!wasInvolved) return '';
+
+        if (lastTheft.victimId === player.id) {
+            return 'bg-red-500/40 animate-pulse rounded ring-2 ring-red-500';
+        }
+        if (lastTheft.thiefId === player.id) {
+            return 'bg-green-500/40 animate-pulse rounded ring-2 ring-green-500';
         }
         return '';
     };
@@ -62,7 +62,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
             {/* Resources */}
             <div className="relative z-10 flex items-center gap-1">
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
-                    <div key={res} className={`flex items-center gap-1 px-2 transition-all duration-300 ${getHighlightClass(res)}`}>
+                    <div key={res} className={`flex items-center gap-1 px-2 transition-all duration-300 ${getHighlightClass('resource', res)}`}>
                         <div className="text-xl">{RESOURCE_ICONS[res]}</div>
                         <div className="font-bold">{player.resources[res] || 0}</div>
                     </div>
@@ -78,7 +78,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
                     <div className="relative z-10 h-8 border-l border-slate-600"></div>
                     <div className="relative z-10 flex items-center gap-1">
                         {(['paper', 'cloth', 'coin'] as CommodityType[]).map(commodity => (
-                            <div key={commodity} className="flex items-center gap-1 px-2">
+                            <div key={commodity} className={`flex items-center gap-1 px-2 transition-all duration-300 ${getHighlightClass('commodity', commodity)}`}>
                                 <div className="text-xl">{COMMODITY_ICONS[commodity]}</div>
                                 <div className="font-bold">{player.commodities![commodity] || 0}</div>
                             </div>

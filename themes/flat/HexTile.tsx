@@ -4,12 +4,14 @@ import { TerrainType } from '@/core/rules/board-constants';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
 import { TreePine, Square, Cloud, Wheat, Mountain, Sun } from 'lucide-react';
+import { Merchant } from './Merchant';
 
 interface HexTileProps {
     hex: Hex;
     terrain: TerrainType;
     numberToken: number | null;
     hasRobber: boolean;
+    hasMerchant?: boolean;
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
@@ -41,6 +43,7 @@ export const HexTile: React.FC<HexTileProps> = ({
     terrain,
     numberToken,
     hasRobber,
+    hasMerchant,
     size,
     onClick,
     isRolled,
@@ -108,6 +111,7 @@ export const HexTile: React.FC<HexTileProps> = ({
             )}
 
             {hasRobber && <Robber />}
+            {hasMerchant && <Merchant />}
         </g>
     );
 };

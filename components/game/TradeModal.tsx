@@ -29,6 +29,14 @@ const ALL_TYPES = [
     'paper', 'cloth', 'coin'
 ] as const;
 
+const createEmptyOffer = (): Record<ResourceType, number> => ({
+    wood: 0,
+    brick: 0,
+    sheep: 0,
+    wheat: 0,
+    ore: 0
+});
+
 function isCommodity(type: string): type is CommodityType {
     return ['paper', 'cloth', 'coin'].includes(type);
 }
@@ -43,25 +51,60 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'bank' | 'domestic'>('bank');
 
+    type MerchantFleetEffect = {
+        type: 'merchant_fleet';
+        playerId: string;
+        tradeItem: ResourceType | CommodityType;
+    };
+
+    const terrainToResource: Record<string, ResourceType | null> = {
+        forest: 'wood',
+        hill: 'brick',
+        pasture: 'sheep',
+        field: 'wheat',
+        mountain: 'ore',
+        desert: null,
+        ocean: null
+    };
+
+    const merchantHexResource = gameState.merchantHexId
+        ? terrainToResource[gameState.board.hexes.find(h => h.id === gameState.merchantHexId)?.terrain || ''] ?? null
+        : null;
+
+    const merchantFleetEffect = (gameState.activeEffects || []).find(
+        (effect): effect is MerchantFleetEffect =>
+            !!effect &&
+            effect.type === 'merchant_fleet' &&
+            effect.playerId === playerId &&
+            typeof effect.tradeItem === 'string'
+    );
+    const merchantFleetTradeItem = merchantFleetEffect?.tradeItem;
+
     // Bank State
     const [giveRes, setGiveRes] = useState<ResourceType | CommodityType>('wood');
     const [getRes, setGetRes] = useState<ResourceType | CommodityType>('brick');
 
     // Domestic State
-    const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
-    const [offerGet, setOfferGet] = useState<Record<ResourceType, number>>({ wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 });
+    const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>(() => createEmptyOffer());
+    const [offerGet, setOfferGet] = useState<Record<ResourceType, number>>(() => createEmptyOffer());
 
     if (!player) return null;
 
     // Bank Logic
     let ratio = 4;
 
-    if (isCommodity(giveRes)) {
+    if (merchantFleetTradeItem === giveRes) {
+        ratio = 2;
+    } else if (isCommodity(giveRes)) {
         // Trading House ability (Trade Level 3+)
         if ((player.improvements?.trade || 0) >= 3) {
             ratio = 2;
         }
     } else {
+        if (gameState.activeMerchant === playerId && merchantHexResource === giveRes) {
+            ratio = 2;
+        }
+
         for (const vertexId in gameState.board.vertices) {
             const vertex = gameState.board.vertices[vertexId];
             if (vertex.owner === playerId && vertex.structure) {
@@ -87,7 +130,6 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
         startTransition(async () => {
             try {
                 await tradeWithBank(gameState.roomId, playerId, giveRes, getRes);
-                onClose();
             } catch (e) {
                 console.error("Failed to trade", e);
             }
@@ -99,7 +141,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
         startTransition(async () => {
             try {
                 await offerTrade(gameState.roomId, playerId, offerGive, offerGet);
-                onClose();
+                setOfferGive(createEmptyOffer());
+                setOfferGet(createEmptyOffer());
             } catch (e) {
                 console.error("Failed to offer trade", e);
             }
@@ -128,11 +171,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                     <div className="flex gap-2">
                         <button
                             onClick={() => setMode('bank')}
-                            className={`px-4 py-1 rounded-full text-sm font-bold ${mode === 'bank' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
+                            className={`px-4 py-1 rounded-full text-sm font-bold cursor-pointer ${mode === 'bank' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
                         >Bank</button>
                         <button
                             onClick={() => setMode('domestic')}
-                            className={`px-4 py-1 rounded-full text-sm font-bold ${mode === 'domestic' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
+                            className={`px-4 py-1 rounded-full text-sm font-bold cursor-pointer ${mode === 'domestic' ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400'}`}
                         >Players</button>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer">✕</button>
@@ -183,13 +226,26 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             <div className="text-3xl font-bold text-white">
                                 {ratio} : 1
                             </div>
-                            {ratio < 4 && <div className="text-xs text-green-400 mt-1">Port Bonus Active!</div>}
+                            {ratio < 4 && (
+                                <div className="text-xs text-green-400 mt-1">
+                                    {merchantFleetTradeItem === giveRes
+                                        ? 'Merchant Fleet active'
+                                        : gameState.activeMerchant === playerId && merchantHexResource === giveRes
+                                            ? 'Merchant discount'
+                                            : 'Port / Trading House bonus'}
+                                </div>
+                            )}
+                            {merchantFleetTradeItem && (
+                                <div className="text-xs text-amber-200 mt-2">
+                                    Merchant Fleet: {merchantFleetTradeItem} trades at 2:1 this turn.
+                                </div>
+                            )}
                         </div>
 
                         <button
                             onClick={handleBankTrade}
                             disabled={!canAffordBank || giveRes === getRes || isPending}
-                            className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                            className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed"
                         >
                             {isPending ? 'Trading...' : `Trade ${ratio} ${giveRes} for 1 ${getRes}`}
                         </button>
@@ -267,7 +323,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                         <button
                             onClick={handleOfferTrade}
                             disabled={isPending}
-                            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed"
                         >
                             {isPending ? 'Offering...' : 'Offer Trade 🤝'}
                         </button>

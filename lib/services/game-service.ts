@@ -352,6 +352,16 @@ export async function endTurn(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
+    // Cities & Knights: Check Commercial Harbor responses are complete
+    if (gameState.pendingCommercialHarbor) {
+        const pendingResponses = gameState.pendingCommercialHarbor.offers.filter(
+            o => o.offeredResource !== null && o.response === undefined
+        ).length;
+        if (pendingResponses > 0) {
+            throw new Error(`Cannot end turn while ${pendingResponses} Commercial Harbor response${pendingResponses === 1 ? ' is' : 's are'} pending`);
+        }
+    }
+
     // Cities & Knights: Check progress card hand limit (max 4 at end of turn)
     if (gameState.gameMode === 'cities_and_knights' && player.progressCards) {
         if (player.progressCards.length > 4) {
@@ -382,6 +392,13 @@ export async function endTurn(
 
     // Clear trade offer
     gameState.tradeOffer = null;
+
+    // Clear any Merchant Fleet effects from the ending player
+    if (gameState.activeEffects) {
+        gameState.activeEffects = gameState.activeEffects.filter(
+            (effect: any) => !(effect?.type === 'merchant_fleet' && effect.playerId === playerId)
+        );
+    }
 
     // Reset dev card flags and move bought cards to hand
     player.hasPlayedDevCard = false;

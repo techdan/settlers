@@ -1,6 +1,6 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
-import { CK_CONSTANTS, ImprovementType, ProgressCardCategory } from '@/core/rules/commodity-constants';
+import { CK_CONSTANTS, CommodityType, ImprovementType, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
 import { ResourceType, TOKEN_PIPS } from '@/core/rules/board-constants';
@@ -145,7 +145,8 @@ export function playProgressCard(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    const deferRemoval = cardType === 'road_building_progress';
+    // Defer removal for cards that can be cancelled or have multi-step completion
+    const deferRemoval = cardType === 'road_building_progress' || cardType === 'commercial_harbor';
 
     // Pre-validate cards that need additional data before removal
     if (cardType === 'crane') {
@@ -158,6 +159,14 @@ export function playProgressCard(
 
     if (cardType === 'medicine') {
         validateMedicinePlayable(gameState, player, options);
+    }
+
+    if (cardType === 'merchant_fleet') {
+        const tradeItem = options?.tradeItem as ResourceType | CommodityType | undefined;
+        const validItems: (ResourceType | CommodityType)[] = ['wood', 'brick', 'sheep', 'wheat', 'ore', 'paper', 'cloth', 'coin'];
+        if (!tradeItem || !validItems.includes(tradeItem)) {
+            throw new Error('Merchant Fleet requires selecting a resource or commodity');
+        }
     }
 
     if (cardType === 'road_building_progress') {
@@ -350,7 +359,7 @@ function executeProgressCardEffect(
             break;
 
         case 'merchant_fleet':
-            executeMerchantFleet(gameState, player);
+            executeMerchantFleet(gameState, player, options);
             break;
 
         case 'resource_monopoly':
@@ -854,12 +863,33 @@ function executeMerchant(gameState: GameState, player: PlayerState, options?: an
     });
 }
 
-function executeMerchantFleet(gameState: GameState, player: PlayerState): void {
-    // Trade any resources at 2:1 ratio this turn
+function executeMerchantFleet(gameState: GameState, player: PlayerState, options?: any): void {
+    const tradeItem = options?.tradeItem as ResourceType | CommodityType | undefined;
+    const validItems: (ResourceType | CommodityType)[] = ['wood', 'brick', 'sheep', 'wheat', 'ore', 'paper', 'cloth', 'coin'];
+
+    if (!tradeItem || !validItems.includes(tradeItem)) {
+        throw new Error('Merchant Fleet requires selecting a resource or commodity');
+    }
+
+    if (!gameState.activeEffects) {
+        gameState.activeEffects = [];
+    }
+
+    gameState.activeEffects = gameState.activeEffects.filter(
+        (effect: any) => !(effect?.type === 'merchant_fleet' && effect.playerId === player.id)
+    );
+
+    gameState.activeEffects.push({
+        type: 'merchant_fleet',
+        playerId: player.id,
+        tradeItem,
+        expiresAfterTurn: player.id
+    });
+
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} can trade any resources at 2:1 ratio this turn`,
+        message: `${player.name} chose ${tradeItem} for Merchant Fleet (2:1 with the bank this turn)`,
         playerId: player.id
     });
 }
@@ -872,16 +902,21 @@ function executeResourceMonopoly(gameState: GameState, player: PlayerState, opti
     }
 
     let totalTaken = 0;
+    const perPlayerAmounts: string[] = [];
     for (const otherPlayer of gameState.players) {
         if (otherPlayer.id === player.id) continue;
 
         const amount = otherPlayer.resources[resource as ResourceType] || 0;
-        if (amount > 0) {
-            // Take up to 2 cards per player (2 if ≥2, 1 if =1, 0 if =0)
-            const amountToTake = Math.min(amount, 2);
-            removeResources(otherPlayer, { [resource]: amountToTake });
-            totalTaken += amountToTake;
-        }
+        const amountToTake = Math.min(amount, 2);
+
+        // Track per-player amounts so the log shows who had fewer than 2
+        perPlayerAmounts.push(`${otherPlayer.name}: ${amountToTake}`);
+
+        if (amountToTake === 0) continue;
+
+        // Take up to 2 cards per player (2 if ≥2, 1 if =1, 0 if =0)
+        removeResources(otherPlayer, { [resource]: amountToTake });
+        totalTaken += amountToTake;
     }
 
     if (totalTaken > 0) {
@@ -891,7 +926,7 @@ function executeResourceMonopoly(gameState: GameState, player: PlayerState, opti
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} took ${totalTaken} ${resource} from other players (up to 2 per player)`,
+        message: `${player.name} took ${totalTaken} ${resource} from other players (up to 2 per player) [${perPlayerAmounts.join(', ')}]`,
         playerId: player.id
     });
 }
@@ -904,17 +939,23 @@ function executeTradeMonopoly(gameState: GameState, player: PlayerState, options
     }
 
     let totalTaken = 0;
+    const perPlayerAmounts: string[] = [];
     for (const otherPlayer of gameState.players) {
         if (otherPlayer.id === player.id) continue;
 
         if (!otherPlayer.commodities) continue;
 
         const amount = otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] || 0;
-        if (amount > 0) {
-            // Only take 1 commodity per player, not all
-            otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] -= 1;
-            totalTaken += 1;
-        }
+        const amountToTake = Math.min(amount, 1);
+
+        // Track per-player amounts to show who had none
+        perPlayerAmounts.push(`${otherPlayer.name}: ${amountToTake}`);
+
+        if (amountToTake === 0) continue;
+
+        // Only take 1 commodity per player, not all
+        otherPlayer.commodities[commodity as 'paper' | 'cloth' | 'coin'] -= amountToTake;
+        totalTaken += amountToTake;
     }
 
     if (totalTaken > 0) {
@@ -927,112 +968,272 @@ function executeTradeMonopoly(gameState: GameState, player: PlayerState, options
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} took ${totalTaken} ${commodity} from other players (1 per player)`,
+        message: `${player.name} took ${totalTaken} ${commodity} from other players (1 per player) [${perPlayerAmounts.join(', ')}]`,
         playerId: player.id
     });
 }
 
-function executeCommercialHarbor(gameState: GameState, player: PlayerState, options?: any): void {
-    // Offer 1 resource to each player; each must give you 1 commodity if they have one. Otherwise, you take your resource back.
-    const { offeredResource } = options || {};
-    if (!offeredResource) {
-        throw new Error('Commercial Harbor requires offeredResource');
+/**
+ * Make batch offers with Commercial Harbor
+ */
+export function makeCommercialHarborOffers(
+    gameState: GameState,
+    initiatorId: string,
+    offers: { targetPlayerId: string; offeredResource: ResourceType | null }[]
+): void {
+    if (!gameState.pendingCommercialHarbor) {
+        throw new Error('No active Commercial Harbor session');
     }
 
-    // Check player has the resource to offer
-    if (!player.resources[offeredResource as ResourceType] ||
-        player.resources[offeredResource as ResourceType] < gameState.players.length - 1) {
-        throw new Error(`You need ${gameState.players.length - 1} ${offeredResource} to offer to all other players`);
+    const harbor = gameState.pendingCommercialHarbor;
+
+    if (harbor.initiatorId !== initiatorId) {
+        throw new Error('Only the initiator can make offers');
     }
 
-    let totalCommoditiesReceived = 0;
-    let resourcesReturned = 0;
+    if (harbor.offers && harbor.offers.length > 0) {
+        throw new Error('Offers have already been made');
+    }
 
-    for (const opponent of gameState.players) {
-        if (opponent.id === player.id) continue;
+    const initiator = gameState.players.find(p => p.id === initiatorId);
+    if (!initiator) {
+        throw new Error('Player not found');
+    }
 
-        // Check if opponent has any commodity
-        const hasCommodity = opponent.commodities &&
-            (opponent.commodities.paper > 0 || opponent.commodities.cloth > 0 || opponent.commodities.coin > 0);
+    // Validate all offers
+    const resourcesNeeded: Partial<Record<ResourceType, number>> = {};
+    for (const offer of offers) {
+        if (offer.offeredResource === null) continue; // "No Trade"
 
-        if (hasCommodity) {
-            // Opponent must give 1 commodity (they choose which one)
-            // For simplicity, take first available commodity
-            const commodityTypes: ('paper' | 'cloth' | 'coin')[] = ['paper', 'cloth', 'coin'];
-            for (const commodityType of commodityTypes) {
-                if (opponent.commodities && opponent.commodities[commodityType] > 0) {
-                    // Execute trade: player gives resource, receives commodity
-                    removeResources(player, { [offeredResource]: 1 });
-                    opponent.commodities[commodityType] -= 1;
-                    addResources(opponent, { [offeredResource]: 1 });
-                    if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
-                    player.commodities[commodityType] += 1;
-                    totalCommoditiesReceived++;
-                    break;
-                }
-            }
-        } else {
-            // Opponent has no commodities, resource is returned (do nothing)
-            resourcesReturned++;
+        if (offer.targetPlayerId === initiatorId) {
+            throw new Error('Cannot trade with yourself');
         }
+
+        const target = gameState.players.find(p => p.id === offer.targetPlayerId);
+        if (!target) {
+            throw new Error(`Player ${offer.targetPlayerId} not found`);
+        }
+
+        resourcesNeeded[offer.offeredResource] = (resourcesNeeded[offer.offeredResource] || 0) + 1;
+    }
+
+    // Check initiator has all required resources
+    for (const [resource, count] of Object.entries(resourcesNeeded)) {
+        if ((initiator.resources[resource as ResourceType] || 0) < count) {
+            throw new Error(`You need ${count} ${resource} but only have ${initiator.resources[resource as ResourceType] || 0}`);
+        }
+    }
+
+    // Set offers
+    harbor.offers = offers.map(o => ({ ...o }));
+
+    const tradeCount = offers.filter(o => o.offeredResource !== null).length;
+
+    if (tradeCount === 0) {
+        // All offers are "No Trade" - cancel the card
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${initiator.name} cancelled Commercial Harbor`,
+            playerId: initiatorId
+        });
+        gameState.pendingCommercialHarbor = undefined;
+        return;
     }
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} offered ${offeredResource} to all players with Commercial Harbor: received ${totalCommoditiesReceived} commodities (${resourcesReturned} returned)`,
+        message: `${initiator.name} made ${tradeCount} offer${tradeCount === 1 ? '' : 's'} with Commercial Harbor`,
+        playerId: initiatorId
+    });
+}
+
+/**
+ * Respond to a Commercial Harbor offer
+ */
+export function respondToCommercialHarbor(
+    gameState: GameState,
+    playerId: string,
+    commodity: 'paper' | 'cloth' | 'coin' | null
+): void {
+    if (!gameState.pendingCommercialHarbor) {
+        throw new Error('No active Commercial Harbor offer');
+    }
+
+    const harbor = gameState.pendingCommercialHarbor;
+
+    // Find this player's offer
+    const offer = harbor.offers.find(o => o.targetPlayerId === playerId);
+    if (!offer || offer.offeredResource === null) {
+        throw new Error('No offer for you');
+    }
+
+    if (offer.response !== undefined) {
+        throw new Error('You have already responded');
+    }
+
+    const player = gameState.players.find(p => p.id === playerId);
+    const initiator = gameState.players.find(p => p.id === harbor.initiatorId);
+
+    if (!player || !initiator) {
+        throw new Error('Player not found');
+    }
+
+    const offeredResource = offer.offeredResource;
+
+    if (commodity) {
+        // Player has commodities and is giving one
+        if (!player.commodities || player.commodities[commodity] <= 0) {
+            throw new Error(`You don't have any ${commodity} to give`);
+        }
+
+        // Execute the trade
+        player.commodities[commodity] -= 1;
+        removeResources(initiator, { [offeredResource]: 1 });
+        addResources(player, { [offeredResource]: 1 });
+
+        if (!initiator.commodities) {
+            initiator.commodities = { paper: 0, cloth: 0, coin: 0 };
+        }
+        initiator.commodities[commodity] += 1;
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} gave ${commodity} in exchange for ${offeredResource}`,
+            playerId
+        });
+    } else {
+        // Player has no commodities - resource is returned (no trade happens)
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${player.name} had no commodities - ${offeredResource} returned to ${initiator.name}`,
+            playerId
+        });
+    }
+
+    // Record response
+    offer.response = commodity;
+
+    // Check if all offers have been responded to
+    const allResponded = harbor.offers.every(o =>
+        o.offeredResource === null || o.response !== undefined
+    );
+
+    if (allResponded) {
+        const tradesCompleted = harbor.offers.filter(o => o.response).length;
+        const commoditiesReceived = harbor.offers.filter(o => o.response !== null && o.response !== undefined).length;
+
+        // Remove card from player's hand
+        const initiatorPlayer = gameState.players.find(p => p.id === harbor.initiatorId);
+        if (initiatorPlayer && initiatorPlayer.progressCards) {
+            const cardIndex = initiatorPlayer.progressCards.indexOf('commercial_harbor');
+            if (cardIndex !== -1) {
+                initiatorPlayer.progressCards.splice(cardIndex, 1);
+            }
+        }
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `Commercial Harbor complete: ${initiator.name} received ${commoditiesReceived} commodities from ${tradesCompleted} trades`,
+            playerId: harbor.initiatorId
+        });
+
+        gameState.pendingCommercialHarbor = undefined;
+    }
+}
+
+function executeCommercialHarbor(gameState: GameState, player: PlayerState, options?: any): void {
+    // Initialize Commercial Harbor - modal will appear for player to make offers
+    gameState.pendingCommercialHarbor = {
+        initiatorId: player.id,
+        offers: []
+    };
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name} played Commercial Harbor`,
         playerId: player.id
     });
 }
 
 function executeGuildDues(gameState: GameState, player: PlayerState, options?: any): void {
-    // Take 2 cards from opponent with more VP
+    // Take up to 2 cards from opponent with more VP (2 normally, 1 if opponent only has 1 card)
     const { opponentId, card1Type, card1Value, card2Type, card2Value } = options || {};
-    if (!opponentId || !card1Type || !card2Type) {
-        throw new Error('Guild Dues requires opponentId, card1Type, card2Type, and their values');
+    if (!opponentId || !card1Type || card1Value === undefined) {
+        throw new Error('Guild Dues requires opponentId and at least one selected card');
     }
 
     const opponent = gameState.players.find(p => p.id === opponentId);
     if (!opponent) throw new Error('Opponent not found');
 
-    // Check opponent has more VP (validation should be in service layer)
-    // For now we'll trust the input
-
-    // Take cards from opponent
-    if (card1Type === 'resource') {
-        if (opponent.resources[card1Value as ResourceType] < 1) {
-            throw new Error('Opponent does not have that resource');
-        }
-        removeResources(opponent, { [card1Value]: 1 });
-        addResources(player, { [card1Value]: 1 });
-    } else if (card1Type === 'commodity') {
-        if (!opponent.commodities || opponent.commodities[card1Value as 'paper' | 'cloth' | 'coin'] < 1) {
-            throw new Error('Opponent does not have that commodity');
-        }
-        opponent.commodities[card1Value as 'paper' | 'cloth' | 'coin'] -= 1;
-        if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
-        player.commodities[card1Value as 'paper' | 'cloth' | 'coin'] += 1;
+    const availableCards =
+        Object.values(opponent.resources || {}).reduce((sum, n) => sum + (n || 0), 0) +
+        Object.values(opponent.commodities || {}).reduce((sum, n) => sum + (n || 0), 0);
+    if (availableCards === 0) {
+        throw new Error('Opponent has no cards to take');
     }
 
-    if (card2Type === 'resource') {
-        if (opponent.resources[card2Value as ResourceType] < 1) {
-            throw new Error('Opponent does not have that resource');
-        }
-        removeResources(opponent, { [card2Value]: 1 });
-        addResources(player, { [card2Value]: 1 });
-    } else if (card2Type === 'commodity') {
-        if (!opponent.commodities || opponent.commodities[card2Value as 'paper' | 'cloth' | 'coin'] < 1) {
-            throw new Error('Opponent does not have that commodity');
-        }
-        opponent.commodities[card2Value as 'paper' | 'cloth' | 'coin'] -= 1;
-        if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
-        player.commodities[card2Value as 'paper' | 'cloth' | 'coin'] += 1;
+    const requested = [
+        { type: card1Type as 'resource' | 'commodity', value: card1Value },
+        ...(card2Type ? [{ type: card2Type as 'resource' | 'commodity', value: card2Value }] : [])
+    ];
+    const requiredCount = Math.min(2, availableCards);
+    if (requested.length !== requiredCount) {
+        throw new Error(`Guild Dues requires selecting ${requiredCount} card${requiredCount === 1 ? '' : 's'} from opponent's hand`);
     }
 
+    const requestedCounts: Record<string, number> = {};
+    for (const pick of requested) {
+        const key = `${pick.type}:${pick.value}`;
+        requestedCounts[key] = (requestedCounts[key] || 0) + 1;
+    }
+
+    for (const [key, count] of Object.entries(requestedCounts)) {
+        const [type, rawValue] = key.split(':');
+        if (type === 'resource') {
+            const available = opponent.resources[rawValue as ResourceType] ?? 0;
+            if (available < count) {
+                throw new Error('Opponent does not have that resource');
+            }
+        } else {
+            const available = opponent.commodities?.[rawValue as 'paper' | 'cloth' | 'coin'] ?? 0;
+            if (available < count) {
+                throw new Error('Opponent does not have that commodity');
+            }
+        }
+    }
+
+    for (const pick of requested) {
+        if (pick.type === 'resource') {
+            removeResources(opponent, { [pick.value]: 1 });
+            addResources(player, { [pick.value]: 1 });
+        } else {
+            if (!opponent.commodities) opponent.commodities = { paper: 0, cloth: 0, coin: 0 };
+            if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
+            opponent.commodities[pick.value as 'paper' | 'cloth' | 'coin'] -= 1;
+            player.commodities[pick.value as 'paper' | 'cloth' | 'coin'] += 1;
+        }
+    }
+
+    const takenCount = requested.length;
+    gameState.lastTheft = {
+        victimId: opponent.id,
+        thiefId: player.id,
+        items: Object.entries(requestedCounts).map(([key, count]) => {
+            const [type, value] = key.split(':');
+            return { type: type as 'resource' | 'commodity', value: value as ResourceType | CommodityType, count };
+        }),
+        timestamp: Date.now()
+    };
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} took 2 cards from ${opponent.name}'s hand`,
+        message: `${player.name} took ${takenCount} card${takenCount === 1 ? '' : 's'} from ${opponent.name}'s hand`,
         playerId: player.id
     });
 }

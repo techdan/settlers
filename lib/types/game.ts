@@ -1,7 +1,7 @@
 import { ResourceType } from '../board-data';
 import { PlayerState, DevCardType, ProgressCardType } from './player';
 import { BoardState } from './board';
-import type { MetropolisType, EventDieFace } from '@/core/rules/commodity-constants';
+import type { MetropolisType, EventDieFace, CommodityType } from '@/core/rules/commodity-constants';
 
 /**
  * Game mode selection
@@ -94,6 +94,15 @@ export interface ProgressDeck {
     politics: ProgressCardType[];
 }
 
+export interface CommercialHarborState {
+    initiatorId: string;
+    offers: {
+        targetPlayerId: string;
+        offeredResource: ResourceType | null; // null means "No Trade"
+        response?: CommodityType | null; // undefined = not responded yet, null = no commodities
+    }[];
+}
+
 /**
  * Complete game state
  */
@@ -135,10 +144,11 @@ export interface GameState {
     pendingDefenderCardDraws?: string[]; // List of player IDs who need to draw a progress card (tied defenders)
     pendingAqueduct?: string[]; // List of player IDs eligible for Aqueduct (must choose a resource)
     pendingBarbarianVictims?: string[]; // List of player IDs who must choose a city to lose to barbarians
+    pendingCommercialHarbor?: CommercialHarborState; // Pending Commercial Harbor trades awaiting responses
     lastTheft?: {
         victimId: string;
         thiefId: string;
-        resource: ResourceType;
+        items: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
         timestamp: number;
     };
     lastVPCardGain?: VictoryPointCardGain;
