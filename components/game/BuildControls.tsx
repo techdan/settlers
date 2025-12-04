@@ -1,6 +1,7 @@
 import React, { useTransition } from 'react';
 import { GameState } from '@/lib/types';
 import { buyDevCard } from '@/app/actions';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface BuildControlsProps {
     gameState: GameState;
@@ -61,6 +62,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
 
     return (
         <div className="flex gap-2 bg-slate-800/80 p-2 rounded-xl backdrop-blur-sm border border-slate-700 pointer-events-auto">
+            {/* ROAD */}
             <button
                 onClick={() => onSetBuildMode(buildMode === 'road' ? null : 'road')}
                 disabled={!canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
@@ -72,9 +74,19 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
             >
-                <span>Road 🛣️ ({player?.roadsRemaining ?? 0})</span>
-                <span className="text-xs font-normal opacity-80">1🧱 1🌲</span>
+                <div className="flex items-center gap-1.5">
+                    <GameIcon type="road" size={18} playerColor={buildMode === 'road' ? '#fff' : '#94a3b8'} />
+                    <span>Road ({player?.roadsRemaining ?? 0})</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                    <GameIcon type="brick" size={14} />
+                    <span>1</span>
+                    <GameIcon type="wood" size={14} />
+                    <span>1</span>
+                </div>
             </button>
+
+            {/* SETTLEMENT */}
             <button
                 onClick={() => onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
                 disabled={!canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
@@ -86,9 +98,19 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
             >
-                <span>Settlement 🏠 ({player?.settlementsRemaining ?? 0})</span>
-                <span className="text-xs font-normal opacity-80">1🧱 1🌲 1🐑 1🌾</span>
+                <div className="flex items-center gap-1.5">
+                    <GameIcon type="settlement" size={18} playerColor={buildMode === 'settlement' ? '#fff' : '#94a3b8'} />
+                    <span>Settlement ({player?.settlementsRemaining ?? 0})</span>
+                </div>
+                <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
+                    <GameIcon type="brick" size={12} /><span>1</span>
+                    <GameIcon type="wood" size={12} /><span>1</span>
+                    <GameIcon type="sheep" size={12} /><span>1</span>
+                    <GameIcon type="wheat" size={12} /><span>1</span>
+                </div>
             </button>
+
+            {/* CITY */}
             <button
                 onClick={() => onSetBuildMode(buildMode === 'city' ? null : 'city')}
                 disabled={!canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
@@ -100,10 +122,19 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                     }`}
             >
-                <span>City 🏙️ ({player?.citiesRemaining ?? 0})</span>
-                <span className="text-xs font-normal opacity-80">3🪨 2🌾</span>
+                <div className="flex items-center gap-1.5">
+                    <GameIcon type="city" size={18} playerColor={buildMode === 'city' ? '#fff' : '#94a3b8'} />
+                    <span>City ({player?.citiesRemaining ?? 0})</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                    <GameIcon type="ore" size={14} />
+                    <span>3</span>
+                    <GameIcon type="wheat" size={14} />
+                    <span>2</span>
+                </div>
             </button>
-            {/* Dev Card (Base Game only) */}
+
+            {/* DEV CARD (Base Game only) */}
             {!isCitiesAndKnights && (
                 <button
                     onClick={handleBuyDevCard}
@@ -114,12 +145,19 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
-                    <span>Dev Card 🃏</span>
-                    <span className="text-xs font-normal opacity-80">1🐑 1🌾 1🪨</span>
+                    <div className="flex items-center gap-1.5">
+                        <GameIcon type="dice" size={18} />
+                        <span>Dev Card</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
+                        <GameIcon type="sheep" size={12} /><span>1</span>
+                        <GameIcon type="wheat" size={12} /><span>1</span>
+                        <GameIcon type="ore" size={12} /><span>1</span>
+                    </div>
                 </button>
             )}
 
-            {/* Knight (Cities & Knights only) */}
+            {/* KNIGHT (Cities & Knights only) */}
             {isCitiesAndKnights && (
                 <button
                     onClick={() => onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
@@ -132,12 +170,20 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
-                    <span>Knight ⚔️ ({knightsRemaining})</span>
-                    <span className="text-xs font-normal opacity-80">1🐑 1🪨</span>
+                    <div className="flex items-center gap-1.5">
+                        <GameIcon type="basic" size={18} />
+                        <span>Knight ({knightsRemaining})</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                        <GameIcon type="sheep" size={14} />
+                        <span>1</span>
+                        <GameIcon type="ore" size={14} />
+                        <span>1</span>
+                    </div>
                 </button>
             )}
 
-            {/* City Wall (Cities & Knights only) */}
+            {/* CITY WALL (Cities & Knights only) */}
             {isCitiesAndKnights && (
                 <button
                     onClick={() => onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
@@ -150,8 +196,14 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
-                    <span>City Wall 🏰 ({wallsRemaining})</span>
-                    <span className="text-xs font-normal opacity-80">2🧱</span>
+                    <div className="flex items-center gap-1.5">
+                        <GameIcon type="city-wall" size={18} playerColor={buildMode === 'city_wall' ? '#fff' : '#94a3b8'} />
+                        <span>City Wall ({wallsRemaining})</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                        <GameIcon type="brick" size={14} />
+                        <span>2</span>
+                    </div>
                 </button>
             )}
         </div>

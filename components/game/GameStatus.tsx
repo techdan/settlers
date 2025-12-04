@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { GameState, PlayerState } from '@/lib/types';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
+import { ImprovementIcon } from '@/components/ui/icons/GameIcon';
 
 interface GameStatusProps {
     gameState: GameState;
@@ -323,54 +324,59 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     </div>
 
                                     {/* City Improvements & Metropolises */}
-                                    <div className="grid grid-cols-3 gap-1">
+                                    <div className="flex flex-col gap-1.5 mt-2">
                                         {/* Science */}
                                         <Tooltip
                                             text={`Science Improvement Track (Green).\nLevel 3 unlocks the Aqueduct ability:\nIf you produce no resources on a dice roll (except 7), you may take any one resource of your choice.`}
-                                            className="flex items-center gap-1 bg-green-900/20 p-1 rounded cursor-help"
+                                            className="cursor-help"
                                         >
-                                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                            <span className="text-[10px] text-green-200">{player.improvements?.science || 0}</span>
-                                            {player.metropolisOwned?.includes('science') && (
-                                                <Tooltip
-                                                    text="Science Metropolis (+2 VP). You have the highest level in Science (at least level 4)."
-                                                    className="text-[10px] inline-flex cursor-help"
-                                                >
-                                                    <span>🏛️</span>
-                                                </Tooltip>
-                                            )}
+                                            <div className="flex items-center gap-1.5">
+                                                <ImprovementIcon
+                                                    type="science"
+                                                    level={player.improvements?.science || 0}
+                                                    size={16}
+                                                    className="flex-1"
+                                                />
+                                                {player.metropolisOwned?.includes('science') && (
+                                                    <span className="text-xs">🏛️</span>
+                                                )}
+                                            </div>
                                         </Tooltip>
+
                                         {/* Trade */}
                                         <Tooltip
                                             text={`Trade Improvement Track (Yellow).\nLevel 3 unlocks the Trading House ability:\nYou may trade commodities (Paper, Cloth, Coin) 2:1 with the bank.`}
-                                            className="flex items-center gap-1 bg-yellow-900/20 p-1 rounded cursor-help"
+                                            className="cursor-help"
                                         >
-                                            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                                            <span className="text-[10px] text-yellow-200">{player.improvements?.trade || 0}</span>
-                                            {player.metropolisOwned?.includes('trade') && (
-                                                <Tooltip
-                                                    text="Trade Metropolis (+2 VP). You have the highest level in Trade (at least level 4)."
-                                                    className="text-[10px] inline-flex cursor-help"
-                                                >
-                                                    <span>🏛️</span>
-                                                </Tooltip>
-                                            )}
+                                            <div className="flex items-center gap-1.5">
+                                                <ImprovementIcon
+                                                    type="trade"
+                                                    level={player.improvements?.trade || 0}
+                                                    size={16}
+                                                    className="flex-1"
+                                                />
+                                                {player.metropolisOwned?.includes('trade') && (
+                                                    <span className="text-xs">🏛️</span>
+                                                )}
+                                            </div>
                                         </Tooltip>
+
                                         {/* Politics */}
                                         <Tooltip
                                             text={`Politics Improvement Track (Blue).\nLevel 3 unlocks the Fortress ability:\nYou may promote Strong Knights to Mighty Knights.`}
-                                            className="flex items-center gap-1 bg-blue-900/20 p-1 rounded cursor-help"
+                                            className="cursor-help"
                                         >
-                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                            <span className="text-[10px] text-blue-200">{player.improvements?.politics || 0}</span>
-                                            {player.metropolisOwned?.includes('politics') && (
-                                                <Tooltip
-                                                    text="Politics Metropolis (+2 VP). You have the highest level in Politics (at least level 4)."
-                                                    className="text-[10px] inline-flex cursor-help"
-                                                >
-                                                    <span>🏛️</span>
-                                                </Tooltip>
-                                            )}
+                                            <div className="flex items-center gap-1.5">
+                                                <ImprovementIcon
+                                                    type="politics"
+                                                    level={player.improvements?.politics || 0}
+                                                    size={16}
+                                                    className="flex-1"
+                                                />
+                                                {player.metropolisOwned?.includes('politics') && (
+                                                    <span className="text-xs">🏛️</span>
+                                                )}
+                                            </div>
                                         </Tooltip>
                                     </div>
                                 </div>

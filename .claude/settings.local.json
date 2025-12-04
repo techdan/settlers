@@ -17,7 +17,17 @@
       "Bash(gh issue create:*)",
       "Bash(gh issue close:*)",
       "Bash(bd show:*)",
-      "WebSearch"
+      "WebSearch",
+      "Skill(frontend-design:frontend-design)",
+      "Bash(curl:*)",
+      "Bash(for:*)",
+      "Bash(do head -1 \"$file\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

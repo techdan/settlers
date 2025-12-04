@@ -1106,7 +1106,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     );
     const treasonInitiatorId = treasonEffect?.initiatorId;
     const treasonInitiatorName = treasonInitiatorId
-        ? gameState.players.find(p => p.id === treasonInitiatorId)?.name
+        ? gameState?.players.find(p => p.id === treasonInitiatorId)?.name
         : undefined;
     const treasonTargetId = treasonEffect?.targetPlayerId;
     const isTreasonInitiator = treasonInitiatorId === playerId;

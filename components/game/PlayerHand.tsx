@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { PlayerState } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { CommodityType } from '@/core/rules/commodity-constants';
+import { ResourceIcon, CommodityIcon } from '@/components/ui/icons/GameIcon';
+import type { ResourceType as IconResourceType, CommodityType as IconCommodityType } from '@/components/ui/icons/GameIcon';
 
 interface PlayerHandProps {
     player: PlayerState;
@@ -17,20 +19,6 @@ interface PlayerHandProps {
         timestamp: number;
     };
 }
-
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: '🌲',
-    brick: '🧱',
-    sheep: '🐑',
-    wheat: '🌾',
-    ore: '🪨'
-};
-
-const COMMODITY_ICONS: Record<CommodityType, string> = {
-    paper: '📜',
-    cloth: '🧵',
-    coin: '🪙'
-};
 
 export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastTheft }) => {
     const [visibleTheft, setVisibleTheft] = useState<PlayerHandProps['lastTheft']>();
@@ -85,40 +73,32 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
     };
 
     return (
-        <div className="relative px-6 py-3 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-3 overflow-hidden">
+        <div className="relative px-6 py-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-2 overflow-hidden">
             <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
             <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
 
-            {/* Resources */}
-            <div className="relative z-10 flex items-center gap-1">
+            {/* Resources and Commodities in one row */}
+            <div className="relative z-10 flex items-center gap-3">
+                {/* Resources */}
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
-                    <div key={res} className={`flex items-center gap-1 px-2 transition-all duration-300 ${getHighlightClass('resource', res)}`}>
-                        <div className="text-xl">{RESOURCE_ICONS[res]}</div>
-                        <div className="font-bold">{player.resources[res] || 0}</div>
+                    <div key={res} className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>
+                        <ResourceIcon type={res as IconResourceType} size={44} />
+                        <div className="font-mono font-bold text-white text-sm tabular-nums">{player.resources[res] || 0}</div>
                     </div>
                 ))}
-                <div className="text-xs text-slate-400 ml-1">
-                    ({totalResources})
-                </div>
-            </div>
 
-            {/* Commodities (if in C&K mode) */}
-            {hasCommodities && (
-                <>
-                    <div className="relative z-10 h-8 border-l border-slate-600"></div>
-                    <div className="relative z-10 flex items-center gap-1">
+                {/* Commodities (if in C&K mode) */}
+                {hasCommodities && (
+                    <>
                         {(['paper', 'cloth', 'coin'] as CommodityType[]).map(commodity => (
-                            <div key={commodity} className={`flex items-center gap-1 px-2 transition-all duration-300 ${getHighlightClass('commodity', commodity)}`}>
-                                <div className="text-xl">{COMMODITY_ICONS[commodity]}</div>
-                                <div className="font-bold">{player.commodities![commodity] || 0}</div>
+                            <div key={commodity} className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-all duration-300 ${getHighlightClass('commodity', commodity)}`}>
+                                <CommodityIcon type={commodity as IconCommodityType} size={44} />
+                                <div className="font-mono font-bold text-white text-sm tabular-nums">{player.commodities![commodity] || 0}</div>
                             </div>
                         ))}
-                        <div className="text-xs text-slate-400 ml-1">
-                            ({totalCommodities})
-                        </div>
-                    </div>
-                </>
-            )}
+                    </>
+                )}
+            </div>
         </div>
     );
 };

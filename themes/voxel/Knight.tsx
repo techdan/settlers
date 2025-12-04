@@ -11,112 +11,137 @@ export const VoxelKnight: React.FC<VoxelKnightProps> = ({ knight, color }) => {
     const level = knight.level;
     const isActive = knight.active;
 
-    // Size scales with level
-    const sizes = {
-        basic: 10,
-        strong: 12,
-        mighty: 14
-    };
-    const size = sizes[level];
-
-    // 3D depth effect
-    const DEPTH = 4;
-
     // Level indicator
     const levelNumber = CK_CONSTANTS.KNIGHT_STRENGTH[level];
 
-    // Brightness filters for 3D effect
-    const topBrightness = isActive ? 1.2 : 0.9;
-    const leftBrightness = isActive ? 0.8 : 0.6;
-    const rightBrightness = isActive ? 0.6 : 0.5;
+    // Rider box height scales with level (doubled)
+    const riderHeights = {
+        basic: 12,    // Small box
+        strong: 16,   // Medium box
+        mighty: 20    // Large box
+    };
+    const riderHeight = riderHeights[level];
+
+    // Brightness filters for 3D effect (brighter if active)
+    const horseBrightness = {
+        left: isActive ? 0.6 : 0.5,
+        right: isActive ? 0.4 : 0.35,
+        top: isActive ? 0.8 : 0.7
+    };
+
+    const riderBrightness = {
+        left: isActive ? 0.8 : 0.65,
+        right: isActive ? 0.6 : 0.5,
+        top: isActive ? 1.0 : 0.85
+    };
+
+    // Opacity for inactive knights (matching 2D implementation)
+    const knightOpacity = isActive ? 1 : 0.5;
 
     return (
-        <g transform={`translate(0, -${size + DEPTH + 4})`}>
-            {/* 3D Shield with depth */}
+        <g>
+            {/* Tooltip - transparent rect outside scaled/opacity group */}
+            <rect x={-16} y={-64} width={32} height={72} fill="transparent" pointerEvents="all">
+                <title>{level === 'basic' ? 'Basic' : level === 'strong' ? 'Strong' : 'Mighty'} Knight (Strength {levelNumber}) - {isActive ? 'Active' : 'Inactive'}</title>
+            </rect>
 
-            {/* Left side face */}
+            <g transform="translate(0, -4) scale(2)" opacity={knightOpacity} style={{ pointerEvents: 'none' }}>
+                {/* HORSE BASE */}
+            {/* Horse body - left face */}
             <path
-                d={`M -${size * 0.5} -${size * 0.6}
-                    L -${size * 0.5} -${size * 0.6 - DEPTH}
-                    L -${size * 0.5} ${size * 0.1 - DEPTH}
-                    L -${size * 0.15} ${size * 0.6 - DEPTH}
-                    L -${size * 0.15} ${size * 0.6}
-                    L -${size * 0.5} ${size * 0.1}
-                    Z`}
-                fill={color}
-                filter={`brightness(${leftBrightness})`}
-                stroke="none"
+                d="M 0 6 L -6 3 L -6 -2 L 0 1 Z"
+                fill="#5c4033"
+                filter={`brightness(${horseBrightness.left})`}
+            />
+            {/* Horse body - right face */}
+            <path
+                d="M 0 6 L 6 3 L 6 -2 L 0 1 Z"
+                fill="#5c4033"
+                filter={`brightness(${horseBrightness.right})`}
+            />
+            {/* Horse body - top */}
+            <path
+                d="M 0 1 L -6 -2 L 0 -5 L 6 -2 Z"
+                fill="#5c4033"
+                filter={`brightness(${horseBrightness.top})`}
             />
 
-            {/* Right side face */}
+            {/* Horse head/neck - front left */}
             <path
-                d={`M ${size * 0.5} -${size * 0.6}
-                    L ${size * 0.5} -${size * 0.6 - DEPTH}
-                    L ${size * 0.5} ${size * 0.1 - DEPTH}
-                    L ${size * 0.15} ${size * 0.6 - DEPTH}
-                    L ${size * 0.15} ${size * 0.6}
-                    L ${size * 0.5} ${size * 0.1}
-                    Z`}
-                fill={color}
-                filter={`brightness(${rightBrightness})`}
-                stroke="none"
+                d="M 0 1 L -2 0 L -2 -6 L 0 -5 Z"
+                fill="#5c4033"
+                filter={`brightness(${horseBrightness.left})`}
+            />
+            {/* Horse head/neck - front right */}
+            <path
+                d="M 0 1 L 2 0 L 2 -6 L 0 -5 Z"
+                fill="#5c4033"
+                filter={`brightness(${horseBrightness.right})`}
+            />
+            {/* Horse head - top */}
+            <path
+                d="M 0 -5 L -2 -6 L 0 -8 L 2 -6 Z"
+                fill="#5c4033"
+                filter={`brightness(${horseBrightness.top})`}
             />
 
-            {/* Top face (main shield) */}
+            {/* RIDER (KNIGHT) BOX */}
+            {/* Rider - left face */}
             <path
-                d={`M 0 -${size * 0.8 + DEPTH}
-                    L ${size * 0.5} -${size * 0.6 + DEPTH}
-                    L ${size * 0.5} ${size * 0.1 + DEPTH}
-                    L 0 ${size * 0.6 + DEPTH}
-                    L -${size * 0.5} ${size * 0.1 + DEPTH}
-                    L -${size * 0.5} -${size * 0.6 + DEPTH}
-                    Z`}
+                d={`M 0 -2 L -5 -4.5 L -5 -${4.5 + riderHeight} L 0 -${2 + riderHeight} Z`}
                 fill={color}
-                filter={`brightness(${topBrightness})`}
-                stroke={isActive ? '#FFD700' : '#333'}
-                strokeWidth={isActive ? 2 : 1}
+                filter={`brightness(${riderBrightness.left})`}
+            />
+            {/* Rider - right face */}
+            <path
+                d={`M 0 -2 L 5 -4.5 L 5 -${4.5 + riderHeight} L 0 -${2 + riderHeight} Z`}
+                fill={color}
+                filter={`brightness(${riderBrightness.right})`}
+            />
+            {/* Rider - top */}
+            <path
+                d={`M 0 -${2 + riderHeight} L -5 -${4.5 + riderHeight} L 0 -${7 + riderHeight} L 5 -${4.5 + riderHeight} Z`}
+                fill={color}
+                filter={`brightness(${riderBrightness.top})`}
+                stroke={isActive ? '#FFD700' : 'none'}
+                strokeWidth={isActive ? 1.5 : 0}
             />
 
             {/* Glow effect for active knights */}
             {isActive && (
                 <path
-                    d={`M 0 -${size * 0.8 + DEPTH}
-                        L ${size * 0.5} -${size * 0.6 + DEPTH}
-                        L ${size * 0.5} ${size * 0.1 + DEPTH}
-                        L 0 ${size * 0.6 + DEPTH}
-                        L -${size * 0.5} ${size * 0.1 + DEPTH}
-                        L -${size * 0.5} -${size * 0.6 + DEPTH}
-                        Z`}
+                    d={`M 0 -${2 + riderHeight} L -5 -${4.5 + riderHeight} L 0 -${7 + riderHeight} L 5 -${4.5 + riderHeight} Z`}
                     fill="none"
                     stroke="#FFD700"
-                    strokeWidth={3}
-                    opacity={0.6}
-                    filter="blur(2px)"
+                    strokeWidth={2}
+                    opacity={0.7}
+                    style={{ filter: 'blur(1.5px)' }}
                 />
             )}
 
-            {/* Level indicator circle on top face */}
+            {/* Level indicator on rider's top */}
             <circle
                 cx={0}
-                cy={DEPTH}
-                r={size * 0.35}
+                cy={-4 - riderHeight}
+                r={3}
                 fill={isActive ? '#FFD700' : '#FFF'}
                 stroke={isActive ? '#FFF' : '#000'}
-                strokeWidth={1.5}
+                strokeWidth={1}
             />
 
             {/* Level number */}
             <text
                 x={0}
-                y={DEPTH}
+                y={-4 - riderHeight}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={size * 0.5}
+                fontSize={4}
                 fontWeight="bold"
                 fill={isActive ? '#000' : '#333'}
             >
                 {levelNumber}
             </text>
+            </g>
         </g>
     );
 };
