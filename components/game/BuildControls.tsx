@@ -99,7 +99,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     }`}
             >
                 <div className="flex items-center gap-1.5">
-                    <GameIcon type="settlement" size={18} playerColor={buildMode === 'settlement' ? '#fff' : '#94a3b8'} />
+                    <img src="/icons/village.svg" alt="Settlement" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'settlement' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
                     <span>Settlement ({player?.settlementsRemaining ?? 0})</span>
                 </div>
                 <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
@@ -171,7 +171,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <GameIcon type="basic" size={18} />
+                        <img src="/icons/knight-basic.svg" alt="Knight" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'knight' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
                         <span>Knight ({knightsRemaining})</span>
                     </div>
                     <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">

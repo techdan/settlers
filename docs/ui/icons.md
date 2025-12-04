@@ -66,7 +66,7 @@ Fill in the following columns:
 ## Color Palette Reference
 
 ### Hex Tiles
-- Hills (produce brick): #71140E  OTHER OPTIONS #ca7728 # #d74315 # #b22222
+- Hills (produce brick): #ca7728 ## #71140E  OPTIONS #ca7728 # #d74315 # #b22222
 - Forest (produce wood): `#006636`
 - Mountain (produce ore): `#666d63`
 - Pasture (produce sheep): `#84b83f`
@@ -74,7 +74,7 @@ Fill in the following columns:
 
 ### Resources (Natural, Earthy)
 - Wood: `#723921` (foreground) + Stroke `#4b2619` # Extracted from wood-pile.svg
-- Brick: #CA7728 # OTHER OPTIONS  #D74315   #d35830 (foreground) + Stroke  #891e21 # Extracted from brick-pile.svg
+- Brick: #EEE4DA  #CA7728 # OTHER OPTIONS  #D74315   #d35830 (foreground) + Stroke #FFA648   #891e21 
 - Sheep: `#ded7bc` # Other (Beige)
 - Wheat: `#db8b1f` # Other (Goldenrod)
 - Ore: `#4f4a3c` # Other (Slate gray)

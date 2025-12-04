@@ -3,8 +3,9 @@ import { Hex, hexToPixel } from '@/lib/hex';
 import { TerrainType } from '@/core/rules/board-constants';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
-import { TreePine, Square, Cloud, Wheat, Mountain, Sun } from 'lucide-react';
+import { Sun } from 'lucide-react';
 import { Merchant } from './Merchant';
+import { GameIcon, ResourceType } from '@/components/ui/icons/GameIcon';
 
 interface HexTileProps {
     hex: Hex;
@@ -20,22 +21,24 @@ interface HexTileProps {
     selectionState?: 'primary' | 'secondary' | null;
 }
 
+// Hex tile background colors from icons.md (resource icon backgrounds)
 const TERRAIN_COLORS: Record<TerrainType, string> = {
-    forest: '#228B22', // ForestGreen
-    hill: '#B22222', // FireBrick
-    pasture: '#90EE90', // LightGreen
-    field: '#DAA520', // GoldenRod
-    mountain: '#708090', // SlateGray
-    desert: '#F4A460', // SandyBrown
+    forest: '#006636',  // Forest green (wood)
+    hill: '#ca7728',    // Hills orange-brown (brick)
+    pasture: '#84b83f', // Pasture green (sheep)
+    field: '#f9e26f',   // Fields yellow (wheat)
+    mountain: '#666d63', // Mountain grey (ore)
+    desert: '#F4A460',  // SandyBrown
 };
 
-const TERRAIN_ICONS: Record<TerrainType, React.ElementType> = {
-    forest: TreePine,
-    hill: Square, // Placeholder for brick
-    pasture: Cloud, // Placeholder for sheep
-    field: Wheat,
-    mountain: Mountain,
-    desert: Sun,
+// Map terrain to resource icons
+const TERRAIN_RESOURCE: Record<TerrainType, ResourceType | null> = {
+    forest: 'wood',
+    hill: 'brick',
+    pasture: 'sheep',
+    field: 'wheat',
+    mountain: 'ore',
+    desert: null, // Desert has no resource
 };
 
 export const HexTile: React.FC<HexTileProps> = ({
@@ -63,7 +66,7 @@ export const HexTile: React.FC<HexTileProps> = ({
     }
     const pointsStr = points.join(' ');
 
-    const Icon = TERRAIN_ICONS[terrain];
+    const resourceType = TERRAIN_RESOURCE[terrain];
 
     return (
         <g
@@ -100,9 +103,21 @@ export const HexTile: React.FC<HexTileProps> = ({
             />
 
             {/* Resource Icon */}
-            <g transform="translate(-16, -50)" opacity="0.4">
-                <Icon size={32} color="#000" />
-            </g>
+            {resourceType && (
+                <g transform="translate(-24, -60)">
+                    <foreignObject width="48" height="48" style={{ opacity: 0.6 }}>
+                        <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <GameIcon type={resourceType} size={48} />
+                        </div>
+                    </foreignObject>
+                </g>
+            )}
+            {/* Desert icon */}
+            {terrain === 'desert' && (
+                <g transform="translate(-16, -50)" opacity="0.4">
+                    <Sun size={32} color="#000" />
+                </g>
+            )}
 
             {numberToken && (
                 <g transform={`translate(0, ${size * 0.3})`}>
