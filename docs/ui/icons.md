@@ -19,6 +19,8 @@ Fill in the following columns:
 | barbarian-ship.svg | | | | |
 | black-knight-helm.svg | strong knight | | | |
 | brick-pile-colored.svg | brick | Pre-colored: bg=#ca7728, fg=#d35830, stroke=#891e21 | resource | Uses actual colors, no processing |
+| cactus-colored.svg | desert | Pre-colored | hex tile | Uses actual colors, no processing |
+| cactus.svg | desert (alternative) | | hex tile | Uncolored version |
 | checked-shield.svg | | | | |
 | city.svg | city | | | |
 | city-wall.svg | | | | |
@@ -33,7 +35,7 @@ Fill in the following columns:
 | dice-six-faces-six.svg | dice 6 | red, yellow | | |
 | dice-six-faces-three.svg | dice 3 | red, yellow | | |
 | dice-six-faces-two.svg | dice 2 | red, yellow | | |
-| desert.svg | Desert |  | hex |  |
+| desert.svg |  |  |  |  |
 | drakkar.svg | Barbarian Ship |  | Event Die |  |
 | folded-paper.svg |  |  |  | |
 | knight-basic.svg | basic knight | | | |

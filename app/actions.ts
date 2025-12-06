@@ -27,6 +27,9 @@ export async function createRoom(formData: FormData) {
     // Create host player using repository
     await playerRepository.createPlayer(playerId, roomId, playerName, true);
 
+    // Initialize lobby with the beginner board so hosts land on a ready-to-play setup
+    await LobbyService.setStandardBoard(roomId, playerId);
+
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
 
@@ -53,6 +56,7 @@ export async function joinRoom(formData: FormData) {
 }
 
 import { DevCardType, GameState } from '@/lib/types';
+import { PlayerColor } from '@/lib/types/player';
 import { ResourceType } from '@/lib/board-data';
 import { getHexesForVertex, getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
 import * as gameService from '@/lib/services/game-service';
@@ -313,3 +317,8 @@ export async function setLobbyStandardBoard(roomId: string, hostId: string) {
     return result;
 }
 
+export async function setLobbyPlayerColor(roomId: string, playerId: string, color: PlayerColor) {
+    const result = await LobbyService.setPlayerColor(roomId, playerId, color);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}

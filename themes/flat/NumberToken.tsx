@@ -3,32 +3,39 @@ import React from 'react';
 interface NumberTokenProps {
     number: number;
     highlight?: 'primary' | 'secondary';
+    radius?: number;
 }
 
-export const NumberToken: React.FC<NumberTokenProps> = ({ number, highlight }) => {
+export const NumberToken: React.FC<NumberTokenProps> = ({ number, highlight, radius = 25 }) => {
     const isRed = number === 6 || number === 8;
     const dots = getDots(number);
     const highlightColor = highlight === 'secondary' ? '#22d3ee' : '#22c55e';
+    const highlightRadius = radius * 1.32;
+    const fontSize = Math.max(10, Math.round(radius * 0.8));
+    const textYOffset = Math.round(radius * 0.2);
+    const dotsYOffset = Math.round(radius * 0.72);
+    const dotSpacing = radius * 0.24;
+    const dotRadius = Math.max(1, radius * 0.08);
 
     return (
         <g>
             {highlight && (
                 <circle
-                    r="33"
+                    r={highlightRadius}
                     fill="none"
                     stroke={highlightColor}
                     strokeWidth="3"
                     opacity="0.9"
                 />
             )}
-            <circle r="25" fill="#F5F5DC" stroke="#333" strokeWidth="1" />
-            <text y="5" textAnchor="middle" fill={isRed ? '#D00' : '#000'} fontSize="20" fontWeight="bold">
+            <circle r={radius} fill="#F5F5DC" stroke="#333" strokeWidth="1" />
+            <text y={textYOffset} textAnchor="middle" fill={isRed ? '#D00' : '#000'} fontSize={fontSize} fontWeight="bold">
                 {number}
             </text>
-            <g transform="translate(0, 18)">
+            <g transform={`translate(0, ${dotsYOffset})`}>
                 {/* Render dots */}
                 {Array.from({ length: dots }).map((_, i) => (
-                    <circle key={i} cx={(i - (dots - 1) / 2) * 6} r="2" fill={isRed ? '#D00' : '#000'} />
+                    <circle key={i} cx={(i - (dots - 1) / 2) * dotSpacing} r={dotRadius} fill={isRed ? '#D00' : '#000'} />
                 ))}
             </g>
         </g>

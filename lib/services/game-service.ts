@@ -1,7 +1,6 @@
 import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/repositories/game-repository';
-import { findPlayersByRoomId } from '@/lib/repositories/player-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
@@ -42,8 +41,9 @@ const toDiceTotal = (total: number): DiceTotal => {
  * @returns Created game state
  */
 export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_knights' = 'base'): Promise<GameState> {
-    // 1. Get players
-    const roomPlayers = await findPlayersByRoomId(roomId);
+    // 1. Get players with assigned colors
+    const { LobbyService } = await import('@/lib/services/lobby-service');
+    const roomPlayers = await LobbyService.getPlayersWithColors(roomId);
 
     if (roomPlayers.length < 1) throw new Error('Not enough players');
 
@@ -56,7 +56,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         const basePlayer = {
             id: p.id,
             name: p.name,
-            color: ['red', 'blue', 'white', 'orange'][i % 4] as any,
+            color: p.color as PlayerState['color'],
             resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
             devCards: { knight: 0, victory_point: 0, road_building: 0, year_of_plenty: 0, monopoly: 0 },
             settlementsRemaining: 5,
@@ -89,7 +89,6 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
 
     // 4. Generate Board
     // Check if lobby has a generated board
-    const { LobbyService } = await import('@/lib/services/lobby-service');
     const lobbyState = await LobbyService.getLobbyState(roomId);
 
     let hexes;

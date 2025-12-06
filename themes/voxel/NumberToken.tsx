@@ -3,12 +3,22 @@ import React from 'react';
 interface NumberTokenProps {
     number: number;
     highlight?: 'primary' | 'secondary';
+    radius?: number;
 }
 
-export const VoxelNumberToken: React.FC<NumberTokenProps> = ({ number, highlight }) => {
+export const VoxelNumberToken: React.FC<NumberTokenProps> = ({ number, highlight, radius = 20 }) => {
     const isRed = number === 6 || number === 8;
     const dots = getDots(number);
     const highlightColor = highlight === 'secondary' ? '#22d3ee' : '#22c55e';
+    const rx = radius;
+    const ry = radius * 0.6;
+    const highlightRx = radius * 1.4;
+    const highlightRy = radius * 0.9;
+    const fontSize = Math.max(10, Math.round(radius * 0.75));
+    const textYOffset = Math.round(radius * 0.25);
+    const dotsYOffset = Math.round(radius * 0.7);
+    const dotSpacing = radius * 0.25;
+    const dotRadius = Math.max(1, radius * 0.075);
 
     return (
         <g transform="translate(0, -5)">
@@ -16,8 +26,8 @@ export const VoxelNumberToken: React.FC<NumberTokenProps> = ({ number, highlight
                 <ellipse
                     cx="0"
                     cy="-2"
-                    rx="28"
-                    ry="18"
+                    rx={highlightRx}
+                    ry={highlightRy}
                     fill="none"
                     stroke={highlightColor}
                     strokeWidth="3"
@@ -25,18 +35,18 @@ export const VoxelNumberToken: React.FC<NumberTokenProps> = ({ number, highlight
                 />
             )}
             {/* 3D Edge (Cylinder side) */}
-            <ellipse cx="0" cy="4" rx="20" ry="12" fill="#d1d1a5" stroke="#333" strokeWidth="1" />
+            <ellipse cx="0" cy="4" rx={rx} ry={ry} fill="#d1d1a5" stroke="#333" strokeWidth="1" />
 
             {/* Top Face */}
-            <ellipse cx="0" cy="0" rx="20" ry="12" fill="#F5F5DC" stroke="#333" strokeWidth="1" />
+            <ellipse cx="0" cy="0" rx={rx} ry={ry} fill="#F5F5DC" stroke="#333" strokeWidth="1" />
 
-            <text y="5" textAnchor="middle" fill={isRed ? '#D00' : '#000'} fontSize="16" fontWeight="bold">
+            <text y={textYOffset} textAnchor="middle" fill={isRed ? '#D00' : '#000'} fontSize={fontSize} fontWeight="bold">
                 {number}
             </text>
 
-            <g transform="translate(0, 14)">
+            <g transform={`translate(0, ${dotsYOffset})`}>
                 {Array.from({ length: dots }).map((_, i) => (
-                    <circle key={i} cx={(i - (dots - 1) / 2) * 5} r="1.5" fill={isRed ? '#D00' : '#000'} />
+                    <circle key={i} cx={(i - (dots - 1) / 2) * dotSpacing} r={dotRadius} fill={isRed ? '#D00' : '#000'} />
                 ))}
             </g>
         </g>

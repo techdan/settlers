@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { GameState } from '@/lib/types';
 
 export function useGameSubscription(roomId: string, initialGameState: GameState | null) {
@@ -7,7 +7,8 @@ export function useGameSubscription(roomId: string, initialGameState: GameState 
     const [gameState, setGameState] = useState<GameState | null>(initialGameState);
 
     useEffect(() => {
-        if (!roomId) return;
+        const supabase = getSupabaseClient();
+        if (!roomId || !supabase) return;
 
         // Fetch the latest state when subscription connects to avoid race conditions
         const fetchLatestState = async () => {

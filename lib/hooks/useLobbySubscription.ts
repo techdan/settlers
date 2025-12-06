@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useMemo, useState } from 'react';
+import { getSupabaseClient } from '@/lib/supabase';
 
 type Player = {
     id: string;
     name: string;
     isHost: boolean;
     color: string | null;
+    joinedAt?: string | null;
 };
 
 type Room = {
@@ -14,12 +15,28 @@ type Room = {
     metadata: string | null;
 };
 
-export function useLobbySubscription(roomId: string, initialRoom: Room, initialPlayers: Player[]) {
+export function useLobbySubscription(
+    roomId: string,
+    initialRoom: Room,
+    initialPlayers: Player[]
+) {
     const [room, setRoom] = useState<Room>(initialRoom);
     const [players, setPlayers] = useState<Player[]>(initialPlayers);
+    const [isRealtime, setIsRealtime] = useState(false);
+    const supabase = useMemo(() => getSupabaseClient(), []);
 
     useEffect(() => {
-        if (!roomId) return;
+        if (!roomId || !supabase) return;
+
+        setIsRealtime(true);
+
+        const normalizePlayer = (player: any): Player => ({
+            id: player.id,
+            name: player.name,
+            isHost: Boolean(player.isHost ?? player.is_host ?? false),
+            color: typeof player.color === 'string' ? player.color : null,
+            joinedAt: player.joinedAt ?? player.joined_at ?? null,
+        });
 
         // Subscribe to Room updates
         const roomChannel = supabase
@@ -56,10 +73,11 @@ export function useLobbySubscription(roomId: string, initialRoom: Room, initialP
                     const { data, error } = await supabase
                         .from('players')
                         .select('*')
-                        .eq('room_id', roomId);
+                        .eq('room_id', roomId)
+                        .order('joined_at', { ascending: true });
 
                     if (data && !error) {
-                        setPlayers(data as Player[]);
+                        setPlayers(data.map(normalizePlayer));
                     }
                 }
             )
@@ -69,7 +87,7 @@ export function useLobbySubscription(roomId: string, initialRoom: Room, initialP
             supabase.removeChannel(roomChannel);
             supabase.removeChannel(playersChannel);
         };
-    }, [roomId]);
+    }, [roomId, supabase]);
 
-    return { room, players };
+    return { room, players, isRealtime };
 }

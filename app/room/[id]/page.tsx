@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { rooms, players } from '@/lib/db/schema';
+import { rooms } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { LobbyView } from '@/components/lobby-view';
@@ -9,22 +9,40 @@ export default async function RoomPage({
     searchParams,
 }: {
     params: Promise<{ id: string }>;
-    searchParams: Promise<{ playerId: string }>;
+    searchParams?: Promise<{ playerId?: string }>;
 }) {
-    const roomId = (await params).id;
-    const playerId = (await searchParams).playerId;
+    const resolvedParams = await params;
+    const resolvedSearch = searchParams ? await searchParams : {};
 
-    const room = await db.query.rooms.findFirst({
-        where: eq(rooms.id, roomId),
-    });
+    const roomId = resolvedParams.id;
+
+    if (!roomId) {
+        notFound();
+    }
+    const playerId = resolvedSearch.playerId;
+
+    let room: Awaited<ReturnType<typeof db.query.rooms.findFirst>>;
+    try {
+        room = await db.query.rooms.findFirst({
+            where: eq(rooms.id, roomId),
+        });
+    } catch (error) {
+        console.error('Failed to load room', { roomId, error });
+        notFound();
+    }
 
     if (!room) {
         notFound();
     }
 
-    const roomPlayers = await db.query.players.findMany({
-        where: eq(players.roomId, roomId),
-    });
+    const { LobbyService } = await import('@/lib/services/lobby-service');
+    let roomPlayers: Awaited<ReturnType<typeof LobbyService.getPlayersWithColors>>;
+    try {
+        roomPlayers = await LobbyService.getPlayersWithColors(roomId);
+    } catch (error) {
+        console.error('Failed to load room players', { roomId, error });
+        notFound();
+    }
 
     return (
         <LobbyView

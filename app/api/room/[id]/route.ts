@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { rooms, players } from '@/lib/db/schema';
+import { rooms } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
@@ -17,9 +17,13 @@ function generateETag(data: string): string {
 
 export async function GET(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: Promise<{ id?: string }> }
 ) {
     const roomId = (await params).id;
+
+    if (!roomId) {
+        return NextResponse.json({ error: 'Room id is required' }, { status: 400 });
+    }
 
     const room = await db.query.rooms.findFirst({
         where: eq(rooms.id, roomId),
@@ -29,9 +33,8 @@ export async function GET(
         return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
-    const roomPlayers = await db.query.players.findMany({
-        where: eq(players.roomId, roomId),
-    });
+    const { LobbyService } = await import('@/lib/services/lobby-service');
+    const roomPlayers = await LobbyService.getPlayersWithColors(roomId);
 
     const responseData = { room, players: roomPlayers };
     const etag = generateETag(JSON.stringify(responseData));

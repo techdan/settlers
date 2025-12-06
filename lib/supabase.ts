@@ -1,21 +1,31 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Check for environment variables with proper error messages
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let cachedClient: SupabaseClient | null = null;
+let initAttempted = false;
 
-if (!supabaseUrl) {
-    throw new Error(
-        'Missing NEXT_PUBLIC_SUPABASE_URL environment variable. ' +
-        'Please add it to your .env.local file.'
-    );
+/**
+ * Lazily create the Supabase client. Returns null when env vars are missing so
+ * callers can gracefully fall back (e.g., to polling).
+ */
+export function getSupabaseClient(): SupabaseClient | null {
+    if (cachedClient || initAttempted) {
+        return cachedClient;
+    }
+
+    initAttempted = true;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn('[supabase] Realtime disabled: missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+        }
+        return null;
+    }
+
+    cachedClient = createClient(supabaseUrl, supabaseAnonKey);
+    return cachedClient;
 }
 
-if (!supabaseAnonKey) {
-    throw new Error(
-        'Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable. ' +
-        'Please add it to your .env.local file.'
-    );
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = getSupabaseClient();

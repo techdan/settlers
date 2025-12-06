@@ -5,7 +5,127 @@ import { generateBoard } from '@/core/engine/board/board-generator';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
 
+const PLAYER_COLORS: PlayerColor[] = ['#ff0000', '#0000ff', '#d4b483', '#ffa500'];
+const LEGACY_COLOR_MAP: Record<string, PlayerColor> = {
+    red: '#ff0000',
+    blue: '#0000ff',
+    orange: '#ffa500',
+    white: '#d4b483',
+    beige: '#d4b483',
+};
+
+const normalizeColor = (color: string | null | undefined): PlayerColor => {
+    if (!color) return PLAYER_COLORS[0];
+
+    // Standardize casing for comparison
+    const normalizedInput = color.toLowerCase();
+
+    if (PLAYER_COLORS.includes(normalizedInput as PlayerColor)) {
+        return normalizedInput as PlayerColor;
+    }
+
+    const legacy = LEGACY_COLOR_MAP[normalizedInput];
+    if (legacy) return legacy;
+
+    return PLAYER_COLORS[0];
+};
+
 export class LobbyService {
+    /**
+     * Ensure all players in a room have valid, unique colors.
+     * Assigns defaults when missing or duplicated and persists updates.
+     */
+    private static async ensurePlayerColors(roomId: string) {
+        const roomPlayers = await db.query.players.findMany({
+            where: eq(players.roomId, roomId),
+            orderBy: (playersTable, { asc }) => asc(playersTable.joinedAt)
+        });
+
+        const availableColors = [...PLAYER_COLORS];
+        const updates: Array<{ id: string; color: PlayerColor }> = [];
+        const normalizedPlayers = roomPlayers.map(player => {
+            const normalizedExisting = normalizeColor(player.color as string | null);
+            const hasValidColor = PLAYER_COLORS.includes(normalizedExisting);
+
+            if (hasValidColor && availableColors.includes(normalizedExisting)) {
+                availableColors.splice(availableColors.indexOf(normalizedExisting), 1);
+                if (normalizedExisting !== player.color) {
+                    updates.push({ id: player.id, color: normalizedExisting });
+                }
+                return { ...player, color: normalizedExisting };
+            }
+
+            const assignedColor = availableColors.shift() ?? PLAYER_COLORS[0];
+
+            if (assignedColor !== normalizedExisting || assignedColor !== player.color) {
+                updates.push({ id: player.id, color: assignedColor });
+            }
+
+            return { ...player, color: assignedColor };
+        });
+
+        if (updates.length > 0) {
+            await Promise.all(
+                updates.map(update =>
+                    db.update(players)
+                        .set({ color: update.color })
+                        .where(eq(players.id, update.id))
+                )
+            );
+        }
+
+        return normalizedPlayers;
+    }
+
+    /**
+     * Normalize lobby players by ensuring exactly one host is present.
+     * If preferredHostId exists in the room, it becomes the host; otherwise pick the first player.
+     */
+    private static async normalizeLobbyPlayers(roomId: string, preferredHostId?: string) {
+        const colorNormalized = await this.ensurePlayerColors(roomId);
+
+        if (colorNormalized.length === 0) {
+            return { players: colorNormalized, hostId: '' };
+        }
+
+        const preferredHost = preferredHostId
+            ? colorNormalized.find(p => p.id === preferredHostId)
+            : null;
+
+        const hostCandidates = colorNormalized.filter(p => p.isHost);
+        const canonicalHost = preferredHost ?? hostCandidates[0] ?? colorNormalized[0];
+        const hostId = canonicalHost.id;
+
+        const hostUpdates = colorNormalized
+            .filter(p => (p.id === hostId && !p.isHost) || (p.id !== hostId && p.isHost))
+            .map(p => ({ id: p.id, isHost: p.id === hostId }));
+
+        if (hostUpdates.length > 0) {
+            await Promise.all(
+                hostUpdates.map(update =>
+                    db.update(players)
+                        .set({ isHost: update.isHost })
+                        .where(eq(players.id, update.id))
+                )
+            );
+        }
+
+        const normalizedPlayers = colorNormalized.map(p => ({
+            ...p,
+            isHost: p.id === hostId
+        }));
+
+        return { players: normalizedPlayers, hostId };
+    }
+
+    /**
+     * Public helper to fetch players with guaranteed colors assigned.
+     */
+    static async getPlayersWithColors(roomId: string) {
+        const { players } = await this.normalizeLobbyPlayers(roomId);
+        return players;
+    }
+
     /**
      * Get the current lobby state for a room
      */
@@ -33,24 +153,20 @@ export class LobbyService {
      */
     private static async getOrInitLobbyState(roomId: string, hostId?: string): Promise<LobbyState> {
         let state = await this.getLobbyState(roomId);
+        const { players: dbPlayers, hostId: enforcedHostId } = await this.normalizeLobbyPlayers(
+            roomId,
+            (state?.hostId || hostId) || undefined
+        );
+
+        if (hostId && !dbPlayers.find(p => p.id === hostId)) {
+            throw new Error('Host not found in room');
+        }
 
         if (!state) {
             // Initialize state from DB players if it doesn't exist
-            const dbPlayers = await db.query.players.findMany({
-                where: eq(players.roomId, roomId)
-            });
-
             // If hostId is provided, ensure they are in the room
-            if (hostId) {
-                const hostPlayer = dbPlayers.find(p => p.id === hostId);
-                if (!hostPlayer) {
-                    throw new Error('Host not found in room');
-                }
-            }
-
             // Find actual host from DB if hostId not provided or just to be safe
-            const actualHost = dbPlayers.find(p => p.isHost);
-            const effectiveHostId = actualHost ? actualHost.id : (hostId || '');
+            const effectiveHostId = enforcedHostId || hostId || '';
 
             state = {
                 roomId,
@@ -58,7 +174,7 @@ export class LobbyService {
                 players: dbPlayers.map(p => ({
                     id: p.id,
                     name: p.name,
-                    color: (p.color as PlayerColor) || 'red',
+                    color: normalizeColor(p.color as string | null),
                     isHost: p.isHost,
                     isReady: false
                 })),
@@ -68,6 +184,40 @@ export class LobbyService {
             };
 
             // Save initial state
+            await this.updateLobbyState(roomId, state);
+            return state;
+        }
+
+        // Keep lobby players in sync with DB (including new joins and color corrections)
+        const lobbyPlayers = dbPlayers.map(p => ({
+            id: p.id,
+            name: p.name,
+            color: normalizeColor(p.color as string | null),
+            isHost: p.isHost,
+            isReady: state?.players.find(sp => sp.id === p.id)?.isReady ?? false
+        }));
+
+        const effectiveHostId = enforcedHostId || state.hostId || hostId || '';
+
+        const filteredPendingRequests = state.pendingRequests.filter(id => dbPlayers.some(p => p.id === id));
+
+        const hasPlayerDifferences =
+            state.players.length !== lobbyPlayers.length ||
+            state.players.some((p, idx) =>
+                p.id !== lobbyPlayers[idx]?.id ||
+                p.color !== lobbyPlayers[idx]?.color ||
+                p.name !== lobbyPlayers[idx]?.name
+            );
+
+        const needsUpdate = hasPlayerDifferences || state.hostId !== effectiveHostId || filteredPendingRequests.length !== state.pendingRequests.length;
+
+        if (needsUpdate) {
+            state = {
+                ...state,
+                hostId: effectiveHostId,
+                players: lobbyPlayers,
+                pendingRequests: filteredPendingRequests
+            };
             await this.updateLobbyState(roomId, state);
         }
 
@@ -97,6 +247,48 @@ export class LobbyService {
         // Save
         await this.updateLobbyState(roomId, state);
 
+        return state;
+    }
+
+    /**
+     * Update a player's color selection in the lobby.
+     */
+    static async setPlayerColor(roomId: string, playerId: string, color: PlayerColor): Promise<LobbyState> {
+        const normalizedColor = normalizeColor(color);
+
+        if (!PLAYER_COLORS.includes(normalizedColor)) {
+            throw new Error('Invalid color selection');
+        }
+
+        const dbPlayers = await this.ensurePlayerColors(roomId);
+        const player = dbPlayers.find(p => p.id === playerId);
+
+        if (!player) {
+            throw new Error('Player not found in room');
+        }
+
+        const colorTaken = dbPlayers.some(p =>
+            p.id !== playerId && normalizeColor(p.color as string | null) === normalizedColor
+        );
+        if (colorTaken) {
+            throw new Error('Color already taken');
+        }
+
+        await db.update(players)
+            .set({ color: normalizedColor })
+            .where(eq(players.id, playerId));
+
+        const state = await this.getOrInitLobbyState(roomId);
+        const updatedPlayers = state.players.map(p => {
+            const normalizedExisting = normalizeColor(p.color as string | null);
+            return p.id === playerId
+                ? { ...p, color: normalizedColor }
+                : { ...p, color: normalizedExisting };
+        });
+
+        state.players = updatedPlayers;
+
+        await this.updateLobbyState(roomId, state);
         return state;
     }
 

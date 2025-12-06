@@ -1,20 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { startGame } from '@/app/actions';
+import { setLobbyPlayerColor, startGame } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ConnectionStatus';
+import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
 
 import { BoardPreview } from './lobby/BoardPreview';
 import { GeneratorControls } from './lobby/GeneratorControls';
 import { LobbyState } from '@/lib/types/lobby';
+import { PlayerColor } from '@/lib/types/player';
 
 type Player = {
     id: string;
     name: string;
     isHost: boolean;
-    color: string | null;
+    color: PlayerColor | null;
+    joinedAt?: string | null;
 };
 
 type Room = {
@@ -34,13 +37,56 @@ export function LobbyView({
     roomId: string,
     currentPlayerId: string
 }) {
-    const [players, setPlayers] = useState<Player[]>(initialPlayers);
+    const normalizePlayerColor = useCallback((color: PlayerColor | string | null | undefined): PlayerColor => {
+        const colorKey = typeof color === 'string' ? color.toLowerCase() : '';
+        const map: Record<string, PlayerColor> = {
+            '#ff0000': '#ff0000',
+            '#0000ff': '#0000ff',
+            '#ffa500': '#ffa500',
+            '#d4b483': '#d4b483',
+            red: '#ff0000',
+            blue: '#0000ff',
+            orange: '#ffa500',
+            white: '#d4b483',
+            beige: '#d4b483',
+        };
+
+        return map[colorKey] ?? '#ff0000';
+    }, []);
+
+    const normalizePlayers = useCallback((list: Player[]) => {
+        const mapped = list.map(p => ({
+            ...p,
+            color: p.color ? normalizePlayerColor(p.color) : null
+        }));
+
+        // Enforce stable ordering by join time, then id (prevents UI shuffling on updates)
+        return mapped.sort((a, b) => {
+            const aJoin = a.joinedAt ?? '';
+            const bJoin = b.joinedAt ?? '';
+            if (aJoin && bJoin && aJoin !== bJoin) {
+                return aJoin < bJoin ? -1 : 1;
+            }
+            if (aJoin && !bJoin) return -1;
+            if (!aJoin && bJoin) return 1;
+            return a.id.localeCompare(b.id);
+        });
+    }, [normalizePlayerColor]);
+
+    const [players, setPlayers] = useState<Player[]>(normalizePlayers(initialPlayers));
     const [room, setRoom] = useState<Room>(initialRoom);
-    const [etag, setEtag] = useState<string | null>(null);
     const [gameMode, setGameMode] = useState<'base' | 'cities_and_knights'>('base');
+    const [colorError, setColorError] = useState<string | null>(null);
+    const [isColorPending, startColorTransition] = useTransition();
     const router = useRouter();
     const connectionStatus = useConnectionStatus();
     const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
+    const { room: realtimeRoom, players: realtimePlayers, isRealtime } = useLobbySubscription(
+        roomId,
+        initialRoom,
+        initialPlayers
+    );
+    const fetchWithRetryRef = useRef(fetchWithRetry);
 
     const isHost = players.find(p => p.id === currentPlayerId)?.isHost ?? false;
 
@@ -51,16 +97,50 @@ export function LobbyView({
     const pendingRequests = lobbyState?.pendingRequests ?? [];
 
     useEffect(() => {
-        const interval = setInterval(async () => {
-            try {
-                const headers: HeadersInit = {};
-                if (etag) {
-                    headers['If-None-Match'] = etag;
-                }
+        fetchWithRetryRef.current = fetchWithRetry;
+    }, [fetchWithRetry]);
 
-                const data = await fetchWithRetry<{ room: Room; players: Player[] }>(
+    const playersEqual = useCallback((a: Player[], b: Player[]) => {
+        if (a.length !== b.length) return false;
+        const sortById = (x: Player, y: Player) => x.id.localeCompare(y.id);
+        const sortedA = [...a].sort(sortById);
+        const sortedB = [...b].sort(sortById);
+        return sortedA.every((p, idx) =>
+            p.id === sortedB[idx].id &&
+            p.name === sortedB[idx].name &&
+            p.isHost === sortedB[idx].isHost &&
+            p.color === sortedB[idx].color
+        );
+    }, []);
+
+    const roomsEqual = useCallback((a: Room, b: Room) =>
+        a.id === b.id && a.status === b.status && a.metadata === b.metadata, []);
+
+    // Supabase realtime flow
+    useEffect(() => {
+        if (!isRealtime) return;
+
+        const normalizedRealtimePlayers = normalizePlayers(realtimePlayers);
+
+        setPlayers(prev => playersEqual(prev, normalizedRealtimePlayers) ? prev : normalizedRealtimePlayers);
+        setRoom(prev => roomsEqual(prev, realtimeRoom) ? prev : realtimeRoom);
+
+        if (realtimeRoom.status === 'in_progress') {
+            router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
+        }
+    }, [isRealtime, realtimePlayers, realtimeRoom, normalizePlayers, playersEqual, roomsEqual, router, roomId, currentPlayerId]);
+
+    // Polling fallback when realtime is unavailable
+    useEffect(() => {
+        if (isRealtime) return;
+
+        let cancelled = false;
+
+        const fetchRoom = async () => {
+            try {
+                const data = await fetchWithRetryRef.current<{ room: Room; players: Player[] }>(
                     `/api/room/${roomId}`,
-                    { headers },
+                    {},
                     {
                         maxRetries: 5,
                         onRetry: (attempt, delay) => {
@@ -69,22 +149,50 @@ export function LobbyView({
                     }
                 );
 
-                if (data) {
-                    setPlayers(data.players);
-                    setRoom(data.room);
+                if (!data || cancelled) return;
 
-                    if (data.room.status === 'in_progress') {
-                        router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
-                    }
+                const normalizedPlayers = normalizePlayers(data.players);
+                setPlayers(prev => playersEqual(prev, normalizedPlayers) ? prev : normalizedPlayers);
+                setRoom(prev => roomsEqual(prev, data.room) ? prev : data.room);
+
+                if (data.room.status === 'in_progress') {
+                    router.push(`/board/flat?roomId=${roomId}&playerId=${currentPlayerId}`);
                 }
             } catch (e) {
-                console.error("Failed to fetch room after retries", e);
+                if (!cancelled) {
+                    console.error("Failed to fetch room after retries", e);
+                }
                 // Keep showing last known state
             }
-        }, 2000);
+        };
 
-        return () => clearInterval(interval);
-    }, [roomId, currentPlayerId, router, etag, fetchWithRetry]);
+        fetchRoom();
+        const interval = setInterval(fetchRoom, 5000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [isRealtime, roomId, currentPlayerId, router, normalizePlayers, playersEqual, roomsEqual]);
+
+    const colorOptions: { value: PlayerColor; swatch: string; label: string }[] = [
+        { value: '#ff0000', swatch: '#ff0000', label: 'Red' },
+        { value: '#0000ff', swatch: '#0000ff', label: 'Blue' },
+        { value: '#d4b483', swatch: '#d4b483', label: 'Beige' },
+        { value: '#ffa500', swatch: '#ffa500', label: 'Orange' },
+    ];
+
+    const handleColorChange = (playerId: string, color: PlayerColor) => {
+        setColorError(null);
+        startColorTransition(async () => {
+            try {
+                await setLobbyPlayerColor(roomId, playerId, color);
+                setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, color } : p));
+            } catch (err) {
+                setColorError(err instanceof Error ? err.message : 'Failed to update color');
+            }
+        });
+    };
 
     return (
         <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
@@ -112,19 +220,81 @@ export function LobbyView({
                         <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-xs">{players.length}/4</span>
                     </h2>
                     <ul className="space-y-3">
-                        {players.map(player => (
-                            <li key={player.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${player.isHost ? 'bg-amber-500' : 'bg-slate-400'}`}>
-                                    {player.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-medium truncate">
-                                        {player.name} {player.id === currentPlayerId && '(You)'}
+                        {players.map(player => {
+                            const isSelf = player.id === currentPlayerId;
+                            const takenColors = new Set(
+                                players
+                                    .filter(p => p.id !== player.id && p.color)
+                                    .map(p => p.color as PlayerColor)
+                            );
+
+                            return (
+                                <li key={player.id} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${player.isHost ? 'bg-amber-500' : 'bg-slate-400'}`}>
+                                            {player.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium truncate">
+                                                {player.name} {isSelf && '(You)'}
+                                            </div>
+                                            {player.isHost && <div className="text-xs text-amber-600 font-medium">HOST</div>}
+                                        </div>
                                     </div>
-                                    {player.isHost && <div className="text-xs text-amber-600 font-medium">HOST</div>}
-                                </div>
-                            </li>
-                        ))}
+                                    <div className="mt-3 flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Color</span>
+                                        <div className="flex items-center gap-2">
+                                            {colorOptions.map(option => {
+                                                const isSelected = player.color === option.value;
+                                                const isLocked = !isSelf || takenColors.has(option.value) || isColorPending;
+                                                const shouldDim = isLocked && !isSelected;
+                                                const interactionClass = shouldDim
+                                                    ? 'opacity-50 cursor-not-allowed'
+                                                    : isLocked
+                                                        ? 'cursor-not-allowed'
+                                                        : 'cursor-pointer hover:scale-105';
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (isSelected || isLocked) return;
+                                                            handleColorChange(player.id, option.value);
+                                                        }}
+                                                        disabled={isLocked}
+                                                        aria-pressed={isSelected}
+                                                        title={
+                                                            isSelected
+                                                                ? `${option.label} selected`
+                                                                : takenColors.has(option.value)
+                                                                    ? `${option.label} already taken`
+                                                                    : isSelf
+                                                                        ? `Switch to ${option.label}`
+                                                                        : 'Only the player can change their color'
+                                                        }
+                                                        className={`w-7 h-7 rounded-full border-2 border-slate-200 dark:border-slate-700 transition-all duration-150 ${
+                                                            isSelected
+                                                                ? 'ring-2 ring-offset-2 ring-slate-900 dark:ring-white ring-offset-white dark:ring-offset-slate-800'
+                                                                : 'ring-0'
+                                                        } ${
+                                                            interactionClass
+                                                        }`}
+                                                        style={{ backgroundColor: option.swatch }}
+                                                    >
+                                                        <span className="sr-only">{option.label}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    {isSelf && colorError && (
+                                        <div className="mt-2 text-xs text-red-600">
+                                            {colorError}
+                                        </div>
+                                    )}
+                                </li>
+                            );
+                        })}
                     </ul>
                 </div>
 

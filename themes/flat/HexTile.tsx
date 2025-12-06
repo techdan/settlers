@@ -57,6 +57,9 @@ export const HexTile: React.FC<HexTileProps> = ({
 }) => {
     const { x, y } = hexToPixel(hex, size);
     const shouldGlow = !!isSelectable && selectionVariant === 'glow';
+    const iconSize = Math.max(24, Math.round(size * 0.6));
+    const iconTranslate = `translate(${-iconSize / 2}, ${-size * 0.8})`;
+    const tokenRadius = Math.max(12, Math.round(size * 0.28));
 
     // Calculate points for pointy-topped hex
     const points = [];
@@ -105,20 +108,20 @@ export const HexTile: React.FC<HexTileProps> = ({
 
             {/* Resource Icon */}
             {resourceType && (
-                <g transform="translate(-24, -60)">
-                    <foreignObject width="48" height="48" style={{ opacity: 0.6 }}>
-                        <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <GameIcon type={resourceType} size={48} />
+                <g transform={iconTranslate}>
+                    <foreignObject width={iconSize} height={iconSize} style={{ opacity: 0.6 }}>
+                        <div style={{ width: `${iconSize}px`, height: `${iconSize}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <GameIcon type={resourceType} size={iconSize} />
                         </div>
                     </foreignObject>
                 </g>
             )}
             {/* Desert icon */}
             {terrain === 'desert' && (
-                <g transform="translate(-24, -60)">
-                    <foreignObject width="48" height="48" style={{ opacity: 0.6 }}>
-                        <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src="/icons/desert.svg" alt="Desert" style={{ width: '48px', height: '48px' }} />
+                <g transform={iconTranslate}>
+                    <foreignObject width={iconSize} height={iconSize} style={{ opacity: 0.6 }}>
+                        <div style={{ width: `${iconSize}px`, height: `${iconSize}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src="/icons/cactus-colored.svg" alt="Desert" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} />
                         </div>
                     </foreignObject>
                 </g>
@@ -126,7 +129,11 @@ export const HexTile: React.FC<HexTileProps> = ({
 
             {numberToken && (
                 <g transform={`translate(0, ${size * 0.3})`}>
-                    <NumberToken number={numberToken} highlight={selectionState ?? undefined} />
+                    <NumberToken
+                        number={numberToken}
+                        highlight={selectionState ?? undefined}
+                        radius={tokenRadius}
+                    />
                 </g>
             )}
 
