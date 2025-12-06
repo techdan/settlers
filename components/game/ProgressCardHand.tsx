@@ -9,6 +9,7 @@ import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface ProgressCardHandProps {
     player: PlayerState;
@@ -344,23 +345,24 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
                                     : () => handlePlayCard(cardType);
                                 return (
-                                    <button
-                                        key={`${cardType}-${index}`}
-                                        onClick={onCardClick}
-                                        disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled}
-                                        className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
-                                            ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
-                                            : 'hover:bg-slate-700/50'
-                                            } ${phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        title={disabledTitle}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{icon}</span>
-                                            <span className="font-semibold text-white group-hover:text-blue-300 transition-colors">
-                                                {info.name}
-                                            </span>
-                                        </div>
-                                    </button>
+                                    <Tooltip content={disabledTitle || info.description} placement="left" tooltipClassName="whitespace-pre-line">
+                                        <button
+                                            key={`${cardType}-${index}`}
+                                            onClick={onCardClick}
+                                            disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled}
+                                            className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
+                                                ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
+                                                : 'hover:bg-slate-700/50'
+                                                } ${phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg">{icon}</span>
+                                                <span className="font-semibold text-white group-hover:text-blue-300 transition-colors">
+                                                    {info.name}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    </Tooltip>
                                 );
                             })}
                         </div>

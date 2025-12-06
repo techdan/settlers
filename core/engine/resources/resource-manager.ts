@@ -2,6 +2,10 @@ import { GameState, PlayerState } from '@/lib/types';
 import { ResourceType, TerrainType } from '@/core/engine/board/board-generator';
 import { getCanonicalVertexId } from '@/lib/hex';
 import { getResourceFromTerrain } from '@/core/rules/game-rules';
+import { CommodityType, TERRAIN_TO_COMMODITY } from '@/core/rules/commodity-constants';
+
+export type ResourceDistribution = Record<string, Partial<Record<ResourceType, number>>>;
+export type CommodityDistribution = Record<string, Partial<Record<CommodityType, number>>>;
 
 /**
  * Resource Manager
@@ -15,9 +19,9 @@ import { getResourceFromTerrain } from '@/core/rules/game-rules';
  * @param diceTotal - Total of dice roll
  * @returns Updated game state (mutated)
  */
-export function distributeResources(gameState: GameState, diceTotal: number): void {
+export function distributeResources(gameState: GameState, diceTotal: number): ResourceDistribution {
     // Skip if robber roll (7)
-    if (diceTotal === 7) return;
+    if (diceTotal === 7) return {};
 
     // Find all hexes with this number
     const matchingHexes = gameState.board.hexes.filter(
@@ -25,7 +29,8 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
     );
 
     // Track resources given to each player
-    const distribution: Record<string, Partial<Record<ResourceType, number>>> = {};
+    const distribution: ResourceDistribution = {};
+    const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
 
     // For each matching hex, give resources to adjacent settlements/cities
     for (const hex of matchingHexes) {
@@ -55,8 +60,10 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
             let amount = 0;
             if (vertex.structure === 'settlement') {
                 amount = 1;
-            } else if (vertex.structure === 'city') {
-                amount = 2;
+            } else if (vertex.structure === 'city' || vertex.structure === 'metropolis') {
+                // In C&K, cities on commodity-producing hexes yield 1 resource (plus 1 commodity elsewhere)
+                const isCommodityHex = isCitiesAndKnights && !!TERRAIN_TO_COMMODITY[hex.terrain as TerrainType];
+                amount = isCommodityHex ? 1 : 2;
             }
 
             if (amount > 0) {
@@ -66,22 +73,7 @@ export function distributeResources(gameState: GameState, diceTotal: number): vo
         }
     }
 
-    // Log distribution
-    Object.entries(distribution).forEach(([playerId, resources]) => {
-        const player = gameState.players.find(p => p.id === playerId);
-        if (!player) return;
-
-        const resourceParts = Object.entries(resources).map(([res, count]) => `${count} ${res}`);
-        if (resourceParts.length > 0) {
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `${player.name} received ${resourceParts.join(', ')}`,
-                playerId
-            });
-        }
-    });
-
+    return distribution;
 }
 
 /**
@@ -187,4 +179,43 @@ export function stealRandomResource(victim: PlayerState): ResourceType | null {
     victim.resources[stolenResource]--;
 
     return stolenResource;
+}
+
+/**
+ * Log combined resource and commodity distribution per player
+ * Ensures a single log entry per player for a dice roll.
+ */
+export function logDistribution(
+    gameState: GameState,
+    resourceDistribution: ResourceDistribution = {},
+    commodityDistribution: CommodityDistribution = {}
+): void {
+    const playerIds = new Set<string>([
+        ...Object.keys(resourceDistribution),
+        ...Object.keys(commodityDistribution),
+    ]);
+
+    playerIds.forEach(playerId => {
+        const player = gameState.players.find(p => p.id === playerId);
+        if (!player) return;
+
+        const parts: string[] = [];
+
+        Object.entries(resourceDistribution[playerId] || {}).forEach(([res, count]) => {
+            if (count) parts.push(`${count} ${res}`);
+        });
+
+        Object.entries(commodityDistribution[playerId] || {}).forEach(([com, count]) => {
+            if (count) parts.push(`${count} ${com}`);
+        });
+
+        if (parts.length > 0) {
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${player.name} received ${parts.join(', ')}`,
+                playerId
+            });
+        }
+    });
 }

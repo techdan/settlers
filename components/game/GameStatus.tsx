@@ -1,10 +1,10 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import { GameState, PlayerState } from '@/lib/types';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { ImprovementIcon } from '@/components/ui/icons/GameIcon';
 import { calculateMetropolisVP } from '@/core/engine/metropolis/metropolis-manager';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface GameStatusProps {
     gameState: GameState;
@@ -12,106 +12,9 @@ interface GameStatusProps {
     vpAckTimestamp?: number | null;
 }
 
-interface TooltipProps {
-    text: string;
-    children: React.ReactNode;
-    className?: string;
-    tooltipWidthClass?: string;
-}
-
-const Tooltip: React.FC<TooltipProps> = ({ text, children, className, tooltipWidthClass }) => {
-    const wrapperClass = className ? `relative inline-flex ${className}` : 'relative inline-flex';
-    const widthClass = tooltipWidthClass ?? 'min-w-[14rem] max-w-[26rem]';
-    const [visible, setVisible] = React.useState(false);
-    const [mounted, setMounted] = React.useState(false);
-    const [coords, setCoords] = React.useState<{ top: number; left: number; width: number } | null>(null);
-    const triggerRef = React.useRef<HTMLDivElement | null>(null);
-    const tooltipRef = React.useRef<HTMLDivElement | null>(null);
-
-    React.useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    const updatePosition = React.useCallback(() => {
-        const trigger = triggerRef.current;
-        const tooltip = tooltipRef.current;
-        if (!trigger) return;
-        const rect = trigger.getBoundingClientRect();
-        const tooltipWidth = tooltip?.offsetWidth ?? 260;
-
-        const margin = 8;
-        let left = rect.left - tooltipWidth - margin;
-
-        // If not enough room on the left, place on the right; clamp to viewport
-        if (left < margin) {
-            left = rect.right + margin;
-        }
-        if (left + tooltipWidth > window.innerWidth - margin) {
-            left = Math.max(margin, window.innerWidth - tooltipWidth - margin);
-        }
-
-        const top = rect.top + rect.height / 2;
-        setCoords({ top, left, width: tooltipWidth });
-    }, []);
-
-    React.useEffect(() => {
-        if (!visible) return;
-        updatePosition();
-        const handle = () => updatePosition();
-        window.addEventListener('scroll', handle, true);
-        window.addEventListener('resize', handle);
-        return () => {
-            window.removeEventListener('scroll', handle, true);
-            window.removeEventListener('resize', handle);
-        };
-    }, [visible, updatePosition]);
-
-    const handleShow = () => {
-        setVisible(true);
-        requestAnimationFrame(updatePosition);
-    };
-
-    const handleHide = () => setVisible(false);
-
-    const portalContent =
-        mounted && visible && coords
-            ? createPortal(
-                  <div
-                      ref={tooltipRef}
-                      role="tooltip"
-                      style={{
-                          position: 'fixed',
-                          top: coords.top,
-                          left: coords.left,
-                          transform: 'translateY(-50%)',
-                          zIndex: 9999,
-                          pointerEvents: 'none',
-                      }}
-                      className={`rounded-md border border-slate-700 bg-slate-950/90 px-3 py-1 text-[11px] leading-tight text-slate-100 shadow-lg ${widthClass}`}
-                  >
-                      <span className="whitespace-pre-line">{text}</span>
-                  </div>,
-                  document.body
-              )
-            : null;
-
-    return (
-        <div
-            ref={triggerRef}
-            className={wrapperClass}
-            onMouseEnter={handleShow}
-            onMouseLeave={handleHide}
-            onFocus={handleShow}
-            onBlur={handleHide}
-        >
-            {children}
-            {portalContent}
-        </div>
-    );
-};
-
 export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayerId, vpAckTimestamp }) => {
     const [vpHighlightExpiry, setVpHighlightExpiry] = React.useState<number | null>(null);
+    const tooltipClassName = 'min-w-[14rem] max-w-[26rem] whitespace-pre-line';
 
     React.useEffect(() => {
         if (!gameState.lastVPCardGain || !vpAckTimestamp) {
@@ -234,7 +137,12 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                         {isTurn && <span className="text-[10px] text-green-400 uppercase font-bold tracking-wide">Current Turn</span>}
                                     </div>
                                 </div>
-                                <Tooltip text={getVPBreakdown(player)} className="text-xl font-bold text-white cursor-help">
+                                <Tooltip
+                                    content={getVPBreakdown(player)}
+                                    className="text-xl font-bold text-white cursor-default"
+                                    tooltipClassName={tooltipClassName}
+                                    placement="left"
+                                >
                                     {player.victoryPoints} VP
                                 </Tooltip>
                             </div>
@@ -248,29 +156,46 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     ).length;
                                     const safeLimit = 7 + (cityWallCount * 2);
                                     const isDanger = stats.resourceCount > safeLimit;
-                                    const tooltipText = `Total number of Resource and Commodity cards in hand.\nSafe Limit: ${safeLimit} cards${isDanger ? '\n⚠️ DANGER: Robber will steal half your cards on a 7!' : ''}`;
+                                    const tooltipText = `Total number of Resource and Commodity cards in hand.\nSafe Limit: ${safeLimit} cards${isDanger ? '\nWARNING: Robber will steal half your cards on a 7!' : ''}`;
 
                                     return (
-                                        <Tooltip text={tooltipText} className="flex flex-col items-center cursor-help">
+                                        <Tooltip
+                                            content={tooltipText}
+                                            className="flex flex-col items-center cursor-default"
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
+                                        >
                                             <span className={`font-bold ${isDanger ? 'text-red-500' : 'text-white'}`}>{stats.resourceCount}</span>
                                             <span className={isDanger ? 'text-red-500' : ''}>Res</span>
                                         </Tooltip>
                                     );
                                 })()}
                                 {gameState.gameMode !== 'cities_and_knights' ? (
-                                    <Tooltip text="Total number of Development Cards in hand." className="flex flex-col items-center cursor-help">
+                                    <Tooltip
+                                        content="Total number of Development Cards in hand."
+                                        className="flex flex-col items-center cursor-default"
+                                        tooltipClassName={tooltipClassName}
+                                        placement="left"
+                                    >
                                         <span className="text-white font-bold">{stats.devCardCount}</span>
                                         <span>Dev</span>
                                     </Tooltip>
                                 ) : (
-                                    <Tooltip text="Total number of Progress Cards in hand." className="flex flex-col items-center cursor-help">
+                                    <Tooltip
+                                        content="Total number of Progress Cards in hand."
+                                        className="flex flex-col items-center cursor-default"
+                                        tooltipClassName={tooltipClassName}
+                                        placement="left"
+                                    >
                                         <span className="text-white font-bold">{stats.progressCardCount}</span>
                                         <span>Prog</span>
                                     </Tooltip>
                                 )}
                                 <Tooltip
-                                    text={`Current length of continuous road.\nLongest Road (>=5) grants 2 VP.${gameState.longestRoadOwner === player.id ? '\n(Currently holds Longest Road)' : ''}`}
-                                    className="flex flex-col items-center cursor-help"
+                                    content={`Current length of continuous road.\nLongest Road (>=5) grants 2 VP.${gameState.longestRoadOwner === player.id ? '\n(Currently holds Longest Road)' : ''}`}
+                                    className="flex flex-col items-center cursor-default"
+                                    tooltipClassName={tooltipClassName}
+                                    placement="left"
                                 >
                                     <span className={`font-bold ${gameState.longestRoadOwner === player.id ? 'text-orange-400' : 'text-white'}`}>
                                         {stats.longestRoad}
@@ -281,8 +206,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                 {/* Show Army for base game, Defense for C&K */}
                                 {gameState.gameMode !== 'cities_and_knights' ? (
                                     <Tooltip
-                                        text={`Total Knight cards played.\nLargest Army (>=3) grants 2 VP.${gameState.largestArmyOwner === player.id ? '\n(Currently holds Largest Army)' : ''}`}
-                                        className="flex flex-col items-center cursor-help"
+                                        content={`Total Knight cards played.\nLargest Army (>=3) grants 2 VP.${gameState.largestArmyOwner === player.id ? '\n(Currently holds Largest Army)' : ''}`}
+                                        className="flex flex-col items-center cursor-default"
+                                        tooltipClassName={tooltipClassName}
+                                        placement="left"
                                     >
                                         <span className={`font-bold ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : 'text-white'}`}>
                                             {player.knightsPlayed || 0}
@@ -291,8 +218,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     </Tooltip>
                                 ) : (
                                     <Tooltip
-                                        text="Total active Knight strength.\nUsed to defend Catan against the Barbarian attack."
-                                        className="flex flex-col items-center cursor-help"
+                                        content="Total active Knight strength.\nUsed to defend Catan against the Barbarian attack."
+                                        className="flex flex-col items-center cursor-default"
+                                        tooltipClassName={tooltipClassName}
+                                        placement="left"
                                     >
                                         <span className="text-white font-bold">
                                             {player.activeKnightCount || 0}
@@ -309,8 +238,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     <div className="flex gap-2 items-center text-xs flex-wrap">
                                         {/* Defender of Catan Tokens */}
                                         <Tooltip
-                                            text={`Defender of Catan Tokens.\nEarned by contributing the most knights to defend Catan.\nEach token is worth 1 VP.`}
-                                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${player.defenderVPTokens > 0 ? 'bg-blue-900/30' : 'bg-slate-800/30 opacity-50'}`}
+                                            content={`Defender of Catan Tokens.\nEarned by contributing the most knights to defend Catan.\nEach token is worth 1 VP.`}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-default ${player.defenderVPTokens > 0 ? 'bg-blue-900/30' : 'bg-slate-800/30 opacity-50'}`}
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
                                         >
                                             <span className="text-blue-400">🛡️</span>
                                             <span className={`font-bold ${player.defenderVPTokens > 0 ? 'text-blue-200' : 'text-slate-400'}`}>{player.defenderVPTokens} VP</span>
@@ -318,8 +249,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                                         {/* VP Progress Cards */}
                                         <Tooltip
-                                            text={`Victory Point Progress Cards (e.g., Printer, Constitution).\nEach card is worth 1 VP.\nCurrent: ${player.revealedVPCards?.join(', ') || 'None'}`}
-                                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${hasVPProgressCards ? 'bg-amber-900/30' : 'bg-slate-800/30 opacity-50'} ${vpCardGainActive ? 'ring-2 ring-amber-400 animate-pulse' : ''}`}
+                                            content={`Victory Point Progress Cards (e.g., Printer, Constitution).\nEach card is worth 1 VP.\nCurrent: ${player.revealedVPCards?.join(', ') || 'None'}`}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-default ${hasVPProgressCards ? 'bg-amber-900/30' : 'bg-slate-800/30 opacity-50'} ${vpCardGainActive ? 'ring-2 ring-amber-400 animate-pulse' : ''}`}
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
                                         >
                                             <span className="text-amber-400">📜</span>
                                             <span className={`font-bold ${hasVPProgressCards ? 'text-amber-200' : 'text-slate-400'} ${vpCardGainActive ? 'text-amber-50' : ''}`}>{player.revealedVPCards?.length || 0} VP</span>
@@ -327,8 +260,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                                         {/* Merchant */}
                                         <Tooltip
-                                            text={`The Merchant.\nGives 1 VP and allows 2:1 trading for the resource of the hex it is placed on.`}
-                                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-help ${gameState.activeMerchant === player.id ? 'bg-green-900/30' : 'bg-slate-800/30 opacity-50'}`}
+                                            content={`The Merchant.\nGives 1 VP and allows 2:1 trading for the resource of the hex it is placed on.`}
+                                            className={`flex items-center gap-1 px-2 py-1 rounded cursor-default ${gameState.activeMerchant === player.id ? 'bg-green-900/30' : 'bg-slate-800/30 opacity-50'}`}
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
                                         >
                                             <span className="text-green-400">🏪</span>
                                             <span className={`font-bold ${gameState.activeMerchant === player.id ? 'text-green-200' : 'text-slate-400'}`}>{gameState.activeMerchant === player.id ? 1 : 0} VP</span>
@@ -339,8 +274,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
                                     <div className="flex flex-col gap-1.5 mt-2">
                                         {/* Science */}
                                         <Tooltip
-                                            text={`Science Improvement Track (Green).\nLevel 3 unlocks the Aqueduct ability:\nIf you produce no resources on a dice roll (except 7), you may take any one resource of your choice.`}
-                                            className="cursor-help"
+                                            content={`Science Improvement Track (Green).\nLevel 3 unlocks the Aqueduct ability:\nIf you produce no resources on a dice roll (except 7), you may take any one resource of your choice.`}
+                                            className="cursor-default"
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
                                         >
                                             <div className="flex items-center gap-1.5">
                                                 <ImprovementIcon
@@ -357,8 +294,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                                         {/* Trade */}
                                         <Tooltip
-                                            text={`Trade Improvement Track (Yellow).\nLevel 3 unlocks the Trading House ability:\nYou may trade any 2 identical commodities for any 1 other commodity or resource.`}
-                                            className="cursor-help"
+                                            content={`Trade Improvement Track (Yellow).\nLevel 3 unlocks the Trading House ability:\nYou may trade any 2 identical commodities for any 1 other commodity or resource.`}
+                                            className="cursor-default"
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
                                         >
                                             <div className="flex items-center gap-1.5">
                                                 <ImprovementIcon
@@ -375,8 +314,10 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                                         {/* Politics */}
                                         <Tooltip
-                                            text={`Politics Improvement Track (Blue).\nLevel 3 unlocks the Fortress ability:\nYou may promote Strong Knights to Mighty Knights.`}
-                                            className="cursor-help"
+                                            content={`Politics Improvement Track (Blue).\nLevel 3 unlocks the Fortress ability:\nYou may promote Strong Knights to Mighty Knights.`}
+                                            className="cursor-default"
+                                            tooltipClassName={tooltipClassName}
+                                            placement="left"
                                         >
                                             <div className="flex items-center gap-1.5">
                                                 <ImprovementIcon
@@ -400,3 +341,4 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
         </div>
     );
 };
+

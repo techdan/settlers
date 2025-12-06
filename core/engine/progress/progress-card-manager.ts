@@ -465,7 +465,7 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
 
     // Immediately resolve the dice roll using the chosen values
     const { rollEventDie, processEventDieRoll, getCategoryFromColor, getEligiblePlayersForCardDraw } = require('@/core/engine/dice/event-die-manager');
-    const { distributeResources, getTotalResources } = require('@/core/engine/resources/resource-manager');
+    const { distributeResources, getTotalResources, logDistribution } = require('@/core/engine/resources/resource-manager');
     const { distributeCommodities, getTotalCommodities } = require('@/core/engine/resources/commodity-manager');
     const { getRobberDiscardThreshold } = require('@/core/utils/city-wall-utils');
 
@@ -526,8 +526,9 @@ function executeAlchemist(gameState: GameState, player: PlayerState, options?: a
         });
 
         // Distribute resources and commodities
-        distributeResources(gameState, total);
-        distributeCommodities(gameState, total);
+        const resourceDistribution = distributeResources(gameState, total);
+        const commodityDistribution = distributeCommodities(gameState, total);
+        logDistribution(gameState, resourceDistribution, commodityDistribution);
 
         if (gameState.gameMode === 'cities_and_knights') {
             const eligibleForAqueduct: string[] = [];

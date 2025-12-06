@@ -35,21 +35,10 @@ export function Tooltip({
     const [open, setOpen] = React.useState(false);
     const [mounted, setMounted] = React.useState(false);
     const [coords, setCoords] = React.useState<{ top: number; left: number } | null>(null);
-    const [canHover, setCanHover] = React.useState(false);
     const tooltipId = React.useId();
 
     React.useEffect(() => {
         setMounted(true);
-
-        if (typeof window === 'undefined' || !window.matchMedia) return;
-        const mql = window.matchMedia('(hover: hover)');
-        const updateHover = (event: MediaQueryListEvent | MediaQueryList) => setCanHover(event.matches);
-
-        updateHover(mql);
-        mql.addEventListener ? mql.addEventListener('change', updateHover) : mql.addListener(updateHover);
-        return () => {
-            mql.removeEventListener ? mql.removeEventListener('change', updateHover) : mql.removeListener(updateHover);
-        };
     }, []);
 
     const updatePosition = React.useCallback(() => {
@@ -58,24 +47,26 @@ export function Tooltip({
         if (!trigger || !tooltip) return;
 
         const triggerRect = trigger.getBoundingClientRect();
-        const tooltipRect = tooltip.getBoundingClientRect();
+        const tooltipRect = tooltip?.getBoundingClientRect();
         const margin = 10;
+        const tooltipWidth = tooltipRect?.width ?? 260;
+        const tooltipHeight = tooltipRect?.height ?? 60;
 
-        let top = triggerRect.top - tooltipRect.height - margin;
-        let left = triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+        let top = triggerRect.top - tooltipHeight - margin;
+        let left = triggerRect.left + triggerRect.width / 2 - tooltipWidth / 2;
 
         if (placement === 'bottom') {
             top = triggerRect.bottom + margin;
         } else if (placement === 'left') {
-            top = triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2;
-            left = triggerRect.left - tooltipRect.width - margin;
+            top = triggerRect.top + triggerRect.height / 2 - tooltipHeight / 2;
+            left = triggerRect.left - tooltipWidth - margin;
         } else if (placement === 'right') {
-            top = triggerRect.top + triggerRect.height / 2 - tooltipRect.height / 2;
+            top = triggerRect.top + triggerRect.height / 2 - tooltipHeight / 2;
             left = triggerRect.right + margin;
         }
 
-        const maxLeft = Math.max(margin, window.innerWidth - tooltipRect.width - margin);
-        const maxTop = Math.max(margin, window.innerHeight - tooltipRect.height - margin);
+        const maxLeft = Math.max(margin, window.innerWidth - tooltipWidth - margin);
+        const maxTop = Math.max(margin, window.innerHeight - tooltipHeight - margin);
         setCoords({
             top: Math.min(Math.max(top, margin), maxTop),
             left: Math.min(Math.max(left, margin), maxLeft),
@@ -92,6 +83,11 @@ export function Tooltip({
         setOpen(true);
         requestAnimationFrame(updatePosition);
     }, [updatePosition]);
+
+    React.useEffect(() => {
+        if (!open) return;
+        requestAnimationFrame(updatePosition);
+    }, [open, updatePosition]);
 
     React.useEffect(() => {
         if (!open) return;
@@ -130,7 +126,7 @@ export function Tooltip({
     }, []);
 
     const armLongPress = (event: React.PointerEvent) => {
-        if (event.pointerType === 'mouse' && canHover) return;
+        if (event.pointerType === 'mouse') return;
 
         longPressStart.current = { x: event.clientX, y: event.clientY };
         longPressArmed.current = false;
@@ -169,12 +165,10 @@ export function Tooltip({
     };
 
     const handleMouseEnter = () => {
-        if (!canHover) return;
         openTooltip();
     };
 
     const handleMouseLeave = () => {
-        if (!canHover) return;
         closeTooltip();
     };
 
@@ -189,7 +183,7 @@ export function Tooltip({
     };
 
     const portalContent =
-        mounted && open && coords
+        mounted && open
             ? createPortal(
                   <div
                       id={tooltipId}
@@ -197,8 +191,8 @@ export function Tooltip({
                       role="tooltip"
                       style={{
                           position: 'fixed',
-                          top: coords.top,
-                          left: coords.left,
+                          top: coords?.top ?? -9999,
+                          left: coords?.left ?? -9999,
                           zIndex: 60,
                       }}
                       className={cn(

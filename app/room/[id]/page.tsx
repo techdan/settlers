@@ -1,8 +1,26 @@
+import type { Metadata } from 'next';
 import { db } from '@/lib/db';
 import { rooms } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { LobbyView } from '@/components/lobby-view';
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const resolvedParams = await params;
+    const roomId = resolvedParams?.id;
+    const normalizedRoomId = roomId ? roomId.toUpperCase() : undefined;
+
+    return {
+        title: normalizedRoomId
+            ? `Settlers of Lanc | Lobby ${normalizedRoomId}`
+            : 'Settlers of Lanc | Lobby',
+        description: 'Manage players and start your Settlers of Lanc game.',
+    };
+}
 
 export default async function RoomPage({
     params,

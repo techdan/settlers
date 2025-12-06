@@ -64,13 +64,19 @@ export interface DiceRoll {
 
 export type DiceTotal = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 export type DiceStats = Record<DiceTotal, number>;
+export type EventDieStats = Record<EventDieFace, number>;
 
 export const DICE_TOTALS: readonly DiceTotal[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+export const EVENT_DIE_FACES: readonly EventDieFace[] = ['ship', 'green', 'yellow', 'blue'];
 
 export const EMPTY_DICE_STATS: DiceStats = DICE_TOTALS.reduce((acc, total) => {
     acc[total] = 0;
     return acc;
 }, {} as DiceStats);
+export const EMPTY_EVENT_DIE_STATS: EventDieStats = EVENT_DIE_FACES.reduce((acc, face) => {
+    acc[face] = 0;
+    return acc;
+}, {} as EventDieStats);
 
 /**
  * Cities & Knights - Event die result
@@ -169,6 +175,7 @@ export interface GameState {
     robberHexId: string | null; // ID of the hex where the robber is
     diceRoll?: DiceRoll;
     diceStats?: DiceStats;
+    eventDieStats?: EventDieStats;
     devCardDeck: DevCardType[];
     tradeOffer?: TradeOffer | null;
     longestRoadOwner: string | null;

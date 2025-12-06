@@ -2,6 +2,7 @@ import React, { useState, useTransition } from 'react';
 import { GameState, PlayerState, DevCardType } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { playDevCard } from '@/app/actions';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface PlayerDevCardsProps {
     gameState: GameState;
@@ -99,14 +100,15 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                                         </div>
                                     )}
 
-                                    <button
-                                        onClick={handlePlay}
-                                        disabled={isPending || gameState.currentTurn !== playerId || !canPlay}
-                                        className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-600 disabled:text-slate-400 text-white font-bold py-1 px-2 rounded transition-colors"
-                                        title={!canPlay ? "You can only play one development card per turn" : ""}
-                                    >
-                                        {isPending ? 'Playing...' : 'Play'}
-                                    </button>
+                                    <Tooltip content={!canPlay ? "You can only play one development card per turn" : "Play"} placement="top">
+                                        <button
+                                            onClick={handlePlay}
+                                            disabled={isPending || gameState.currentTurn !== playerId || !canPlay}
+                                            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-600 disabled:text-slate-400 text-white font-bold py-1 px-2 rounded transition-colors"
+                                        >
+                                            {isPending ? 'Playing...' : 'Play'}
+                                        </button>
+                                    </Tooltip>
                                 </div>
                             )}
                         </div>

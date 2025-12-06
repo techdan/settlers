@@ -6,6 +6,7 @@ import { ImprovementType, CK_CONSTANTS, CommodityType } from '@/core/rules/commo
 import { canAffordImprovement, getUpgradeCost } from '@/core/engine/improvements/improvement-manager';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface CityManagementDialogProps {
     gameState: GameState;
@@ -171,12 +172,11 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                             <div key={type} className="bg-slate-700/50 p-4 rounded border border-slate-600">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-4">
-                                        <div
-                                            className="flex items-center justify-center w-12 h-12 cursor-help"
-                                            title={IMPROVEMENT_TOOLTIPS[type]}
-                                        >
-                                            <GameIcon type={type} size={40} />
-                                        </div>
+                                        <Tooltip content={IMPROVEMENT_TOOLTIPS[type]} placement="left" tooltipClassName="whitespace-pre-line">
+                                            <div className="flex items-center justify-center w-12 h-12 cursor-default">
+                                                <GameIcon type={type} size={40} />
+                                            </div>
+                                        </Tooltip>
                                         <div>
                                             <div className="font-bold text-lg text-white">
                                                 {IMPROVEMENT_NAMES[type]}
@@ -242,13 +242,16 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                     {/* City Wall */}
                     {!isCraneMode && vertex && (
                         <div className="bg-slate-700/50 p-4 rounded border border-slate-600 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className="flex items-center justify-center w-12 h-12 cursor-help"
-                                    title="City Wall - Protects your city from the robber.\n\nCost: 2 Brick\n\nIncreases your maximum hand size by 2 cards (from 7 to 9).\n\nWhen a 7 is rolled, you only discard half your cards if you have more than 9 cards instead of 7."
-                                >
+                        <div className="flex items-center gap-4">
+                            <Tooltip
+                                content="City Wall - Protects your city from the robber.\n\nCost: 2 Brick\n\nIncreases your maximum hand size by 2 cards (from 7 to 9).\n\nWhen a 7 is rolled, you only discard half your cards if you have more than 9 cards instead of 7."
+                                placement="left"
+                                tooltipClassName="whitespace-pre-line"
+                            >
+                                <div className="flex items-center justify-center w-12 h-12 cursor-default">
                                     <GameIcon type="city-wall" size={40} playerColor="#d97706" />
                                 </div>
+                            </Tooltip>
                                 <div>
                                     <div className="font-bold text-lg text-white">
                                         City Wall

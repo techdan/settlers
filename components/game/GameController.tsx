@@ -58,6 +58,7 @@ interface GameControllerProps {
 const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
     const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
+    const [turnSubmitted, setTurnSubmitted] = useState(false);
     const [buildMode, setBuildMode] = useState<'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null>(null);
     const [movingKnightId, setMovingKnightId] = useState<string | null>(null);
     const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
@@ -121,7 +122,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const metropolisPrompt = useProgressPrompt('metropolis', !!selectingCityForMetropolis);
 
     const router = useRouter();
-    const { getOptimisticState } = useOptimisticGameState();
+    const { getOptimisticState, applyOptimisticUpdate, clearOptimisticUpdate } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
 
     // Debug mode: enabled by default in development or via NEXT_PUBLIC_DEBUG_MODE env var
@@ -1197,6 +1198,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     // Apply optimistic updates on top of base state (null-safe for hook order)
     const gameState = baseGameState ? getOptimisticState(baseGameState) : null;
 
+    // Clear local turn submission flag when it's no longer this player's turn
+    useEffect(() => {
+        if (gameState?.currentTurn !== playerId) {
+            setTurnSubmitted(false);
+        }
+    }, [gameState?.currentTurn, playerId]);
+
     const treasonEffect = gameState?.activeEffects?.find(
         (effect: any): effect is TreasonEffect => effect?.type === 'treason'
     );
@@ -1383,7 +1391,36 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             return;
         }
 
-        await endTurn(roomId, playerId);
+        const optimisticId = `end-turn-${roomId}`;
+        const effectiveState = baseGameState ? getOptimisticState(baseGameState) : null;
+        if (effectiveState && effectiveState.currentTurn === playerId) {
+            const currentIndex = effectiveState.turnOrder.indexOf(playerId);
+            const nextPlayerId = effectiveState.turnOrder[(currentIndex + 1) % effectiveState.turnOrder.length];
+            applyOptimisticUpdate(optimisticId, (state) => {
+                if (state.currentTurn !== playerId) return state;
+                const nextId = nextPlayerId || state.currentTurn;
+                return {
+                    ...state,
+                    currentTurn: nextId,
+                    phase: 'waiting_for_roll',
+                    diceRoll: undefined,
+                    tradeOffer: null
+                };
+            });
+        }
+
+        setTurnSubmitted(true);
+        try {
+            await endTurn(roomId, playerId);
+        } catch (e: any) {
+            const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
+            if (!message.includes('not your turn')) {
+                setTurnSubmitted(false);
+            }
+            console.error('Failed to end turn', e);
+        } finally {
+            clearOptimisticUpdate(optimisticId);
+        }
     };
 
     const activeProgressCard: ProgressCardType | 'metropolis' | null = (() => {
@@ -1933,6 +1970,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         playerId={playerId}
                         onOpenTrade={() => setShowTrade(true)}
                         onEndTurn={handleEndTurnClick}
+                        turnSubmitted={turnSubmitted}
                     />
                 </div>
             </div>

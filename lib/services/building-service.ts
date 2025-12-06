@@ -299,7 +299,7 @@ export async function placeInitialSettlement(
     updateAllVictoryPoints(gameState);
 
     // In round 2, give resources for placement
-    // Cities give 2 resources per hex, settlements give 1
+    // Setup rule: 1 resource per adjacent hex (no commodities, no double for cities)
     if (isSecondPlacement) {
         const [q, r, d] = vertexId.split(',').map(Number);
         const hexes = getHexesForVertex(q, r, d);
@@ -326,10 +326,11 @@ export async function placeInitialSettlement(
     }
 
     // Add log
+    const basePlacementMessage = `${player.name} placed a ${placeCity ? 'city' : 'settlement'}`;
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} placed a ${placeCity ? 'city' : 'settlement'}`,
+        message: basePlacementMessage,
         playerId
     });
 

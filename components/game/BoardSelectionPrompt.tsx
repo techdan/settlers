@@ -1,6 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface BoardSelectionPromptProps {
     title: string;
@@ -34,29 +35,31 @@ const BoardSelectionPromptComponent: React.FC<BoardSelectionPromptProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                     {onCancel && (
-                        <button
-                            type="button"
-                            className="px-3 py-2 rounded-md border border-red-700 bg-red-700 hover:bg-red-600 text-white font-semibold transition-colors cursor-pointer"
-                            onClick={onCancel}
-                            title="Cancel"
-                        >
-                            Cancel
-                        </button>
+                        <Tooltip content="Cancel" placement="top">
+                            <button
+                                type="button"
+                                className="px-3 py-2 rounded-md border border-red-700 bg-red-700 hover:bg-red-600 text-white font-semibold transition-colors cursor-pointer"
+                                onClick={onCancel}
+                            >
+                                Cancel
+                            </button>
+                        </Tooltip>
                     )}
                     {onFinish && (
-                        <button
-                            type="button"
-                            className={`px-3 py-2 rounded-md font-semibold shadow text-sm transition-colors ${
-                                finishDisabled
-                                    ? 'bg-emerald-800 text-white/70 cursor-not-allowed'
-                                    : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
-                            }`}
-                            onClick={onFinish}
-                            title={finishLabel}
-                            disabled={finishDisabled}
-                        >
-                            {finishLabel}
-                        </button>
+                        <Tooltip content={finishLabel} placement="top">
+                            <button
+                                type="button"
+                                className={`px-3 py-2 rounded-md font-semibold shadow text-sm transition-colors ${
+                                    finishDisabled
+                                        ? 'bg-emerald-800 text-white/70 cursor-not-allowed'
+                                        : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
+                                }`}
+                                onClick={onFinish}
+                                disabled={finishDisabled}
+                            >
+                                {finishLabel}
+                            </button>
+                        </Tooltip>
                     )}
                 </div>
             </div>

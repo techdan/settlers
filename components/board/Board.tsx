@@ -8,9 +8,10 @@ import { VoxelHexTile } from '@/themes/voxel/HexTile';
 import { FlatPort } from '@/themes/flat/Port';
 import { VoxelPort } from '@/themes/voxel/Port';
 import { useThemeStore } from '@/lib/theme-store';
+import { Tooltip } from '@/components/ui/tooltip';
 import { generatePorts } from '@/engine/generatePorts';
 import { DiceStatsPanel } from '@/components/game/DiceStatsPanel';
-import { GameState, EMPTY_DICE_STATS } from '@/lib/types';
+import { GameState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS } from '@/lib/types';
 import { Knight, ProgressCardType } from '@/lib/types/player';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
@@ -155,6 +156,13 @@ export const Board: React.FC<BoardProps> = ({
             ...(gameState.diceStats || {})
         }),
         [gameState.diceStats]
+    );
+    const eventDiceStats = useMemo(
+        () => ({
+            ...EMPTY_EVENT_DIE_STATS,
+            ...(gameState.eventDieStats || {})
+        }),
+        [gameState.eventDieStats]
     );
 
     const knightsMap = useMemo(() => {
@@ -792,9 +800,15 @@ export const Board: React.FC<BoardProps> = ({
                         </summary>
                         <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
                             <div className="flex items-center gap-2 justify-between w-full">
-                                <button onClick={() => zoomIn()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors" title="Zoom In">+</button>
-                                <button onClick={() => zoomOut()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors" title="Zoom Out">-</button>
-                                <button onClick={() => resetTransform()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors" title="Reset View">⟳</button>
+                                <Tooltip content="Zoom In" placement="top">
+                                    <button onClick={() => zoomIn()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors">+</button>
+                                </Tooltip>
+                                <Tooltip content="Zoom Out" placement="top">
+                                    <button onClick={() => zoomOut()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors">-</button>
+                                </Tooltip>
+                                <Tooltip content="Reset View" placement="top">
+                                    <button onClick={() => resetTransform()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors">⟳</button>
+                                </Tooltip>
                             </div>
                             <button onClick={toggleTheme} className="bg-slate-800 text-white px-4 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold">
                                 {theme === 'flat' ? 'Switch to 3D' : 'Switch to 2D'}
@@ -805,7 +819,6 @@ export const Board: React.FC<BoardProps> = ({
                                             type="button"
                                             onClick={handleDiceStatsToggle}
                                             aria-pressed={showDiceStats}
-                                            title={showDiceStats ? 'Hide dice stats' : 'Show dice stats'}
                                             className={`h-full px-3 py-2 bg-slate-800 text-white rounded shadow-lg border font-semibold text-sm transition-colors cursor-pointer ${
                                                 showDiceStats
                                                     ? 'border-amber-400 text-amber-200'
@@ -827,6 +840,7 @@ export const Board: React.FC<BoardProps> = ({
                                             <div className="relative z-10 pointer-events-auto">
                                                 <DiceStatsPanel
                                                     stats={diceStats}
+                                                    eventStats={eventDiceStats}
                                                     onClose={() => setShowDiceStats(false)}
                                                 />
                                             </div>

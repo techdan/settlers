@@ -1,4 +1,4 @@
-import { GameState } from '@/lib/types';
+import { EMPTY_EVENT_DIE_STATS, GameState } from '@/lib/types';
 import { EventDieFace, EVENT_COLOR_TO_CATEGORY, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { canDrawProgressCard } from '@/core/engine/improvements/improvement-manager';
 
@@ -59,6 +59,12 @@ export function rollEventDie(): EventDieFace {
 export function processEventDieRoll(gameState: GameState, dieFace: EventDieFace, redDieValue: number): void {
     // Skip if not C&K mode
     if (gameState.gameMode !== 'cities_and_knights') return;
+
+    // Ensure event die stats exist and record this roll
+    if (!gameState.eventDieStats) {
+        gameState.eventDieStats = { ...EMPTY_EVENT_DIE_STATS };
+    }
+    gameState.eventDieStats[dieFace] = (gameState.eventDieStats[dieFace] || 0) + 1;
 
     // Store the roll result
     gameState.eventDieRoll = {

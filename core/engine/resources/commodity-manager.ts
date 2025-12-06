@@ -3,6 +3,8 @@ import { getCanonicalVertexId } from '@/lib/hex';
 import { CommodityType, TERRAIN_TO_COMMODITY } from '@/core/rules/commodity-constants';
 import { TerrainType } from '@/core/rules/board-constants';
 
+export type CommodityDistribution = Record<string, Partial<Record<CommodityType, number>>>;
+
 /**
  * Commodity Manager (Cities & Knights Expansion)
  * Handles commodity distribution and calculations
@@ -30,14 +32,14 @@ export function getCommodityFromTerrain(terrain: TerrainType): CommodityType | n
  *
  * @param gameState - Current game state
  * @param diceTotal - Total of dice roll
- * @returns Updated game state (mutated)
+ * @returns Commodity distribution map
  */
-export function distributeCommodities(gameState: GameState, diceTotal: number): void {
+export function distributeCommodities(gameState: GameState, diceTotal: number): CommodityDistribution {
     // Skip if not C&K mode
-    if (gameState.gameMode !== 'cities_and_knights') return;
+    if (gameState.gameMode !== 'cities_and_knights') return {};
 
     // Skip if robber roll (7)
-    if (diceTotal === 7) return;
+    if (diceTotal === 7) return {};
 
     // Find all hexes with this number
     const matchingHexes = gameState.board.hexes.filter(
@@ -45,7 +47,7 @@ export function distributeCommodities(gameState: GameState, diceTotal: number): 
     );
 
     // Track commodities given to each player
-    const distribution: Record<string, Partial<Record<CommodityType, number>>> = {};
+    const distribution: CommodityDistribution = {};
 
     // For each matching hex, give commodities to adjacent cities
     for (const hex of matchingHexes) {
@@ -87,21 +89,7 @@ export function distributeCommodities(gameState: GameState, diceTotal: number): 
         }
     }
 
-    // Log distribution
-    Object.entries(distribution).forEach(([playerId, commodities]) => {
-        const player = gameState.players.find(p => p.id === playerId);
-        if (!player) return;
-
-        const commodityParts = Object.entries(commodities).map(([com, count]) => `${count} ${com}`);
-        if (commodityParts.length > 0) {
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `${player.name} received ${commodityParts.join(', ')}`,
-                playerId
-            });
-        }
-    });
+    return distribution;
 }
 
 /**

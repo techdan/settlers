@@ -2,6 +2,7 @@ import React, { useTransition } from 'react';
 import { GameState } from '@/lib/types';
 import { buyDevCard } from '@/app/actions';
 import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface BuildControlsProps {
     gameState: GameState;
@@ -63,148 +64,178 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     return (
         <div className="flex gap-2 bg-slate-800/80 p-2 rounded-xl backdrop-blur-sm border border-slate-700 pointer-events-auto">
             {/* ROAD */}
-            <button
-                onClick={() => onSetBuildMode(buildMode === 'road' ? null : 'road')}
-                disabled={!canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
-                title={`Build a Road (1 Brick, 1 Wood)\nConnects settlements and cities.\nRemaining: ${player?.roadsRemaining ?? 0}`}
-                className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'road'
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
-                        ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    }`}
+            <Tooltip
+                content={`Build a Road (1 Brick, 1 Wood)\nConnects settlements and cities.\nRemaining: ${player?.roadsRemaining ?? 0}`}
+                placement="top"
+                tooltipClassName="whitespace-pre-line"
             >
-                <div className="flex items-center gap-1.5">
-                    <GameIcon type="road" size={18} playerColor={buildMode === 'road' ? '#fff' : '#94a3b8'} />
-                    <span>Road ({player?.roadsRemaining ?? 0})</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                    <GameIcon type="brick" size={14} />
-                    <span>1</span>
-                    <GameIcon type="wood" size={14} />
-                    <span>1</span>
-                </div>
-            </button>
-
-            {/* SETTLEMENT */}
-            <button
-                onClick={() => onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
-                disabled={!canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
-                title={`Build a Settlement (1 Brick, 1 Wood, 1 Sheep, 1 Wheat)\nGathers 1 resource from adjacent hexes.\nRemaining: ${player?.settlementsRemaining ?? 0}`}
-                className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'settlement'
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
-                        ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    }`}
-            >
-                <div className="flex items-center gap-1.5">
-                    <img src="/icons/village.svg" alt="Settlement" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'settlement' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
-                    <span>Settlement ({player?.settlementsRemaining ?? 0})</span>
-                </div>
-                <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
-                    <GameIcon type="brick" size={12} /><span>1</span>
-                    <GameIcon type="wood" size={12} /><span>1</span>
-                    <GameIcon type="sheep" size={12} /><span>1</span>
-                    <GameIcon type="wheat" size={12} /><span>1</span>
-                </div>
-            </button>
-
-            {/* CITY */}
-            <button
-                onClick={() => onSetBuildMode(buildMode === 'city' ? null : 'city')}
-                disabled={!canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
-                title={`Build a City (3 Ore, 2 Wheat)\nUpgrades a settlement. Gathers 2 resources/commodities.\nRemaining: ${player?.citiesRemaining ?? 0}`}
-                className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city'
-                    ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                    : canAffordCity && (player?.citiesRemaining ?? 0) > 0
-                        ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                    }`}
-            >
-                <div className="flex items-center gap-1.5">
-                    <GameIcon type="city" size={18} playerColor={buildMode === 'city' ? '#fff' : '#94a3b8'} />
-                    <span>City ({player?.citiesRemaining ?? 0})</span>
-                </div>
-                <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                    <GameIcon type="ore" size={14} />
-                    <span>3</span>
-                    <GameIcon type="wheat" size={14} />
-                    <span>2</span>
-                </div>
-            </button>
-
-            {/* DEV CARD (Base Game only) */}
-            {!isCitiesAndKnights && (
                 <button
-                    onClick={handleBuyDevCard}
-                    disabled={!canAffordDevCard || deckSize === 0 || isPending}
-                    title={`Buy a Development Card (1 Sheep, 1 Wheat, 1 Ore)\nGrants special abilities or VP.\nCards in deck: ${deckSize}`}
-                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
-                        ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                        : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                    onClick={() => onSetBuildMode(buildMode === 'road' ? null : 'road')}
+                    disabled={!canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
+                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'road'
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                        : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <GameIcon type="dice" size={18} />
-                        <span>Dev Card</span>
+                        <GameIcon type="road" size={18} playerColor={buildMode === 'road' ? '#fff' : '#94a3b8'} />
+                        <span>Road ({player?.roadsRemaining ?? 0})</span>
                     </div>
-                    <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
-                        <GameIcon type="sheep" size={12} /><span>1</span>
-                        <GameIcon type="wheat" size={12} /><span>1</span>
-                        <GameIcon type="ore" size={12} /><span>1</span>
+                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                        <GameIcon type="brick" size={14} />
+                        <span>1</span>
+                        <GameIcon type="wood" size={14} />
+                        <span>1</span>
                     </div>
                 </button>
+            </Tooltip>
+
+            {/* SETTLEMENT */}
+            <Tooltip
+                content={`Build a Settlement (1 Brick, 1 Wood, 1 Sheep, 1 Wheat)\nGathers 1 resource from adjacent hexes.\nRemaining: ${player?.settlementsRemaining ?? 0}`}
+                placement="top"
+                tooltipClassName="whitespace-pre-line"
+            >
+                <button
+                    onClick={() => onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
+                    disabled={!canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
+                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'settlement'
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                        : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
+                >
+                    <div className="flex items-center gap-1.5">
+                        <img src="/icons/village.svg" alt="Settlement" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'settlement' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
+                        <span>Settlement ({player?.settlementsRemaining ?? 0})</span>
+                    </div>
+                    <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
+                        <GameIcon type="brick" size={12} /><span>1</span>
+                        <GameIcon type="wood" size={12} /><span>1</span>
+                        <GameIcon type="sheep" size={12} /><span>1</span>
+                        <GameIcon type="wheat" size={12} /><span>1</span>
+                    </div>
+                </button>
+            </Tooltip>
+
+            {/* CITY */}
+            <Tooltip
+                content={`Build a City (3 Ore, 2 Wheat)\nUpgrades a settlement. Gathers 2 resources/commodities.\nRemaining: ${player?.citiesRemaining ?? 0}`}
+                placement="top"
+                tooltipClassName="whitespace-pre-line"
+            >
+                <button
+                    onClick={() => onSetBuildMode(buildMode === 'city' ? null : 'city')}
+                    disabled={!canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
+                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city'
+                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                        : canAffordCity && (player?.citiesRemaining ?? 0) > 0
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
+                >
+                    <div className="flex items-center gap-1.5">
+                        <GameIcon type="city" size={18} playerColor={buildMode === 'city' ? '#fff' : '#94a3b8'} />
+                        <span>City ({player?.citiesRemaining ?? 0})</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                        <GameIcon type="ore" size={14} />
+                        <span>3</span>
+                        <GameIcon type="wheat" size={14} />
+                        <span>2</span>
+                    </div>
+                </button>
+            </Tooltip>
+
+            {/* DEV CARD (Base Game only) */}
+            {!isCitiesAndKnights && (
+                <Tooltip
+                    content={`Buy a Development Card (1 Sheep, 1 Wheat, 1 Ore)\nGrants special abilities or VP.\nCards in deck: ${deckSize}`}
+                    placement="top"
+                    tooltipClassName="whitespace-pre-line"
+                >
+                    <button
+                        onClick={handleBuyDevCard}
+                        disabled={!canAffordDevCard || deckSize === 0 || isPending}
+                        className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            }`}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <GameIcon type="dice" size={18} />
+                            <span>Dev Card</span>
+                        </div>
+                        <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
+                            <GameIcon type="sheep" size={12} /><span>1</span>
+                            <GameIcon type="wheat" size={12} /><span>1</span>
+                            <GameIcon type="ore" size={12} /><span>1</span>
+                        </div>
+                    </button>
+                </Tooltip>
             )}
 
             {/* KNIGHT (Cities & Knights only) */}
             {isCitiesAndKnights && (
-                <button
-                    onClick={() => onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
-                    disabled={!canBuildKnight}
-                    title={`Hire a Knight (1 Sheep, 1 Ore)\nDefends against barbarians and can displace opponents.\nRemaining: ${knightsRemaining}`}
-                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
-                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                        : canBuildKnight
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                        }`}
+                <Tooltip
+                    content={`Hire a Knight (1 Sheep, 1 Ore)\nDefends against barbarians and can displace opponents.\nRemaining: ${knightsRemaining}`}
+                    placement="top"
+                    tooltipClassName="whitespace-pre-line"
                 >
-                    <div className="flex items-center gap-1.5">
-                        <img src="/icons/knight-basic.svg" alt="Knight" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'knight' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
-                        <span>Knight ({knightsRemaining})</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                        <GameIcon type="sheep" size={14} />
-                        <span>1</span>
-                        <GameIcon type="ore" size={14} />
-                        <span>1</span>
-                    </div>
-                </button>
+                    <button
+                        onClick={() => onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
+                        disabled={!canBuildKnight}
+                        className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
+                            ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                            : canBuildKnight
+                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                                : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            }`}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <img src="/icons/knight-basic.svg" alt="Knight" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'knight' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
+                            <span>Knight ({knightsRemaining})</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                            <GameIcon type="sheep" size={14} />
+                            <span>1</span>
+                            <GameIcon type="ore" size={14} />
+                            <span>1</span>
+                        </div>
+                    </button>
+                </Tooltip>
             )}
 
             {/* CITY WALL (Cities & Knights only) */}
             {isCitiesAndKnights && (
-                <button
-                    onClick={() => onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
-                    disabled={!canBuildCityWall}
-                    title={`Build a City Wall (2 Brick)\nIncreases hand limit by 2 and protects against robber.\nRemaining: ${wallsRemaining}`}
-                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
-                        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
-                        : canBuildCityWall
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
-                        }`}
+                <Tooltip
+                    content={`Build a City Wall (2 Brick)\nIncreases hand limit by 2 and protects against robber.\nRemaining: ${wallsRemaining}`}
+                    placement="top"
+                    tooltipClassName="whitespace-pre-line"
                 >
-                    <div className="flex items-center gap-1.5">
-                        <GameIcon type="city-wall" size={18} playerColor={buildMode === 'city_wall' ? '#fff' : '#94a3b8'} />
-                        <span>City Wall ({wallsRemaining})</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                        <GameIcon type="brick" size={14} />
-                        <span>2</span>
-                    </div>
-                </button>
+                    <button
+                        onClick={() => onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
+                        disabled={!canBuildCityWall}
+                        className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
+                            ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+                            : canBuildCityWall
+                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                                : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            }`}
+                    >
+                        <div className="flex items-center gap-1.5">
+                            <GameIcon type="city-wall" size={18} playerColor={buildMode === 'city_wall' ? '#fff' : '#94a3b8'} />
+                            <span>City Wall ({wallsRemaining})</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
+                            <GameIcon type="brick" size={14} />
+                            <span>2</span>
+                        </div>
+                    </button>
+                </Tooltip>
             )}
         </div>
     );

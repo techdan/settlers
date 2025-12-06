@@ -1,8 +1,8 @@
-import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS } from '@/lib/types';
+import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/repositories/game-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
-import { distributeResources, getTotalResources } from '@/core/engine/resources/resource-manager';
+import { distributeResources, getTotalResources, logDistribution } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { rollEventDie, processEventDieRoll, getCategoryFromColor, getEligiblePlayersForCardDraw } from '@/core/engine/dice/event-die-manager';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
@@ -20,9 +20,14 @@ import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
  */
 
 const createEmptyDiceStats = () => ({ ...EMPTY_DICE_STATS });
+const createEmptyEventDieStats = () => ({ ...EMPTY_EVENT_DIE_STATS });
 
 const normalizeDiceStats = (stats?: GameState['diceStats']) => ({
     ...EMPTY_DICE_STATS,
+    ...(stats || {})
+});
+const normalizeEventDieStats = (stats?: GameState['eventDieStats']) => ({
+    ...EMPTY_EVENT_DIE_STATS,
     ...(stats || {})
 });
 
@@ -160,6 +165,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         lastPlacedSettlementId: null,
         robberHexId: desertHexId,
         diceStats: createEmptyDiceStats(),
+        eventDieStats: createEmptyEventDieStats(),
         devCardDeck,
         longestRoadOwner: null,
         longestRoadLength: 0,
@@ -224,6 +230,7 @@ export async function rollDice(
     const totalKey = toDiceTotal(total);
     gameState.diceStats = normalizeDiceStats(gameState.diceStats);
     gameState.diceStats[totalKey] = (gameState.diceStats[totalKey] || 0) + 1;
+    gameState.eventDieStats = normalizeEventDieStats(gameState.eventDieStats);
 
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
@@ -300,10 +307,13 @@ export async function rollDice(
         });
 
         // Distribute resources
-        distributeResources(gameState, total);
+        const resourceDistribution = distributeResources(gameState, total);
 
         // Distribute commodities (C&K expansion only)
-        distributeCommodities(gameState, total);
+        const commodityDistribution = distributeCommodities(gameState, total);
+
+        // Combine resource/commodity logs so each player gets a single entry
+        logDistribution(gameState, resourceDistribution, commodityDistribution);
 
         // Check Aqueduct (Science level 3)
         if (gameState.gameMode === 'cities_and_knights') {
