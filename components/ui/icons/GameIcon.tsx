@@ -53,10 +53,10 @@ const ICON_COLORS = {
   cloth: '#ecd998', // Cloth yellow
   coin: '#707c79', // Coin grey
 
-  // City Improvements (category colors)
-  science: '#16a34a', // Green-600 (alchemy/nature)
-  trade: '#f59e0b', // Amber-500 (gold/commerce)
-  politics: '#3b82f6', // Blue-500 (royal/authority)
+  // City Improvements (category colors from icons.md)
+  science: '#6bb97f', // Science green
+  trade: '#c6daa4', // Trade light green/yellow
+  politics: '#d7dfd1', // Politics light grey/blue
 
   // Knights (martial progression)
   basic: '#CD7F32', // Bronze
@@ -66,7 +66,7 @@ const ICON_COLORS = {
   // Special pieces
   robber: '#1a1a1a', // Near black (menacing)
   merchant: '#16a34a', // Green (trade)
-  'barbarian-ship': '#7f1d1d', // Dark red (danger)
+  'barbarian-ship': '#ffffff', // White foreground
   dice: '#1e293b', // Slate-900 (neutral)
 
   // Structures (use player color, these are fallbacks)
@@ -124,14 +124,14 @@ const ICON_PATHS: Record<IconType, string> = {
   mighty: '/icons/mounted-knight.svg',
 
   // Improvements
-  science: '/icons/science.svg',
-  trade: '/icons/trade.svg',
-  politics: '/icons/shaking-hands.svg',
+  science: '/icons/freemasonry-colored.svg',
+  trade: '/icons/scales-colored.svg',
+  politics: '/icons/shaking-hands-colored.svg',
 
   // Special
   robber: '/icons/robber.svg',
   merchant: '/icons/merchant.svg',
-  'barbarian-ship': '/icons/barbarian-ship.svg',
+  'barbarian-ship': '/icons/drakkar-colored.svg',
   dice: '/icons/dice.svg',
 };
 
@@ -145,6 +145,10 @@ const ICON_FALLBACKS: Partial<Record<IconType, string>> = {
   paper: '/icons/folded-paper.svg',
   cloth: '/icons/cloth.svg',
   coin: '/icons/coin.svg',
+  science: '/icons/freemasonry.svg',
+  trade: '/icons/scales.svg',
+  politics: '/icons/shaking-hands.svg',
+  'barbarian-ship': '/icons/drakkar.svg',
 };
 
 /**

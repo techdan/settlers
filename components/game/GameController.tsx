@@ -64,6 +64,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
     const [selectedKnightId, setSelectedKnightId] = useState<string | null>(null);
     const [isCraneDialogOpen, setIsCraneDialogOpen] = useState(false);
+    const [selectingCityForMetropolis, setSelectingCityForMetropolis] = useState<'science' | 'trade' | 'politics' | null>(null);
+    const [selectedMetropolisCityId, setSelectedMetropolisCityId] = useState<string | null>(null);
+    const [isMetropolisSubmitting, setIsMetropolisSubmitting] = useState(false);
 
     // Progress card board selection states
     const [selectingHexForCard, setSelectingHexForCard] = useState<'merchant' | 'inventor' | 'taxation' | null>(null);
@@ -115,6 +118,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const engineeringPrompt = useProgressPrompt('engineer', selectingCityForEngineer);
     const merchantPrompt = useProgressPrompt('merchant', selectingHexForCard === 'merchant');
     const taxationPrompt = useProgressPrompt('taxation', selectingHexForCard === 'taxation');
+    const metropolisPrompt = useProgressPrompt('metropolis', !!selectingCityForMetropolis);
 
     const router = useRouter();
     const { getOptimisticState } = useOptimisticGameState();
@@ -148,6 +152,92 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         if (!res.ok) {
             const error = await res.json();
             throw new Error(error.error || 'Failed to upgrade improvement');
+        }
+
+        // Check if player reached level 4 or 5 and is eligible for metropolis
+        if (gameState) {
+            const player = gameState.players.find(p => p.id === playerId);
+            const newLevel = (player?.improvements?.[improvement] || 0) + 1;
+            const metropolis = gameState.metropolises?.[improvement];
+            const metropolisOwner = metropolis?.owner;
+            const metropolisOwnerPlayer = metropolisOwner ? gameState.players.find(p => p.id === metropolisOwner) : null;
+            const metropolisOwnerLevel = metropolisOwnerPlayer?.improvements?.[improvement] || 0;
+
+            // Check if player has cities
+            const playerCities = Object.values(gameState.board.vertices).filter(v =>
+                v.owner === playerId && v.structure === 'city'
+            );
+
+            // Only show metropolis selection if:
+            // 1. Level 4 and metropolis is unclaimed (first build), OR
+            // 2. Level 5 and can steal from someone at level 4
+            // Note: Securing your own metropolis at level 5 does NOT require selection - it stays in place
+            const canClaimMetropolis = newLevel === 4 && !metropolisOwner;
+            const canStealMetropolis = newLevel === 5 && metropolisOwner && metropolisOwner !== playerId && metropolisOwnerLevel < 5;
+
+            if ((canClaimMetropolis || canStealMetropolis) && playerCities.length > 0) {
+                setSelectedCityId(null); // Close city management
+                handleStartMetropolisSelection(improvement);
+            }
+        }
+    };
+
+    const handleStartMetropolisSelection = (improvement: 'science' | 'trade' | 'politics') => {
+        if (!baseGameState) return;
+        const playerCities = Object.values(baseGameState.board.vertices).filter(v =>
+            v.owner === playerId && v.structure === 'city'
+        );
+        if (playerCities.length === 0) return;
+
+        handleCancelSelection();
+        setSelectedMetropolisCityId(null);
+        const improvementName = improvement === 'science' ? 'Science' : improvement === 'trade' ? 'Trade' : 'Politics';
+        metropolisPrompt.begin(`Select a city to upgrade to ${improvementName} Metropolis`);
+        setSelectingCityForMetropolis(improvement);
+    };
+
+    const handleMetropolisCitySelected = (vertexId: string) => {
+        if (isMetropolisSubmitting) return;
+        if (selectedMetropolisCityId === vertexId) {
+            setSelectedMetropolisCityId(null);
+            const improvementName = selectingCityForMetropolis === 'science' ? 'Science' : selectingCityForMetropolis === 'trade' ? 'Trade' : 'Politics';
+            metropolisPrompt.setStatus(`Select a city to upgrade to ${improvementName} Metropolis`);
+            return;
+        }
+        setSelectedMetropolisCityId(vertexId);
+        metropolisPrompt.setStatus('City selected. Click Confirm to upgrade to Metropolis.');
+    };
+
+    const handleConfirmMetropolisBuild = async () => {
+        if (!selectedMetropolisCityId || !selectingCityForMetropolis) return;
+        setIsMetropolisSubmitting(true);
+        metropolisPrompt.setStatus('Upgrading to metropolis...');
+        try {
+            const res = await fetch(`/api/game/${roomId}/metropolis`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    playerId,
+                    action: 'select_city',
+                    vertexId: selectedMetropolisCityId,
+                    improvementType: selectingCityForMetropolis
+                })
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.error || 'Failed to select metropolis city');
+            }
+
+            setSelectingCityForMetropolis(null);
+            setSelectedMetropolisCityId(null);
+            metropolisPrompt.clear();
+        } catch (e: any) {
+            const message = e?.message || 'Failed to upgrade to metropolis';
+            metropolisPrompt.setStatus(message);
+            console.error('Failed to upgrade to metropolis', e);
+        } finally {
+            setIsMetropolisSubmitting(false);
         }
     };
 
@@ -900,6 +990,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSelectingCityForEngineer(false);
         setSelectedEngineerCityId(null);
         setIsEngineerSubmitting(false);
+        setSelectingCityForMetropolis(null);
+        setSelectedMetropolisCityId(null);
+        setIsMetropolisSubmitting(false);
         setSelectingKnightsForSmith(false);
         setSelectedSmithKnightIds([]);
         setSmithError(null);
@@ -922,6 +1015,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         engineeringPrompt.clear();
         merchantPrompt.clear();
         taxationPrompt.clear();
+        metropolisPrompt.clear();
     };
 
     const handleCancelFollowupCard = () => {
@@ -1076,6 +1170,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             !!selectingEdgeForCard ||
             selectingCityForEngineer ||
             selectingCityForMedicine ||
+            selectingCityForMetropolis ||
             selectingKnightsForSmith ||
             isCraneDialogOpen ||
             treasonMode !== null ||
@@ -1090,6 +1185,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         selectedProgressCard,
         selectingCityForEngineer,
         selectingCityForMedicine,
+        selectingCityForMetropolis,
         selectingEdgeForCard,
         selectingHexForCard,
         selectingKnightsForSmith,
@@ -1290,7 +1386,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         await endTurn(roomId, playerId);
     };
 
-    const activeProgressCard: ProgressCardType | null = (() => {
+    const activeProgressCard: ProgressCardType | 'metropolis' | null = (() => {
         if (showRoadBuildingPrompt) return 'road_building_progress';
         if (showEngineeringPrompt) return 'engineer';
         if (selectingHexForCard) return selectingHexForCard;
@@ -1300,6 +1396,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         if (selectingKnightsForSmith) return 'smith';
         if (selectingCityForMedicine) return 'medicine';
         if (selectingCityForEngineer) return 'engineer';
+        if (selectingCityForMetropolis) return 'metropolis';
         if (isCraneDialogOpen) return 'crane';
         if (treasonMode) return 'treason';
         if (selectedProgressCard) return selectedProgressCard;
@@ -1369,6 +1466,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 selectingCityForEngineer={selectingCityForEngineer}
                 selectedEngineerCityId={selectedEngineerCityId}
                 selectingCityForMedicine={selectingCityForMedicine}
+                selectingCityForMetropolis={selectingCityForMetropolis}
+                selectedMetropolisCityId={selectedMetropolisCityId}
                 intrigueSelectedKnightId={intrigueTarget?.knightId ?? null}
                 selectingKnightsForSmith={selectingKnightsForSmith}
                 smithSelectableKnightIds={smithEligibleVertexIds}
@@ -1389,6 +1488,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onEdgeSelectedForCard={handleEdgeSelected}
                 onEngineerCitySelected={handleEngineerCitySelected}
                 onMedicineCitySelected={handleMedicineCitySelected}
+                onMetropolisCitySelected={handleMetropolisCitySelected}
                 onCityClick={handleCityClick}
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
@@ -1635,6 +1735,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 />
             )}
 
+            {/* Metropolis Selection Prompt (C&K) - No cancel, must select a city */}
+            {selectingCityForMetropolis && metropolisPrompt.isVisible && (
+                <BoardSelectionPrompt
+                    title={`${selectingCityForMetropolis === 'science' ? 'Science' : selectingCityForMetropolis === 'trade' ? 'Trade' : 'Politics'} Metropolis`}
+                    description={`You must select one of your cities to upgrade to a ${selectingCityForMetropolis === 'science' ? 'Science' : selectingCityForMetropolis === 'trade' ? 'Trade' : 'Politics'} Metropolis.`}
+                    status={metropolisPrompt.status || 'Select a city to upgrade to Metropolis.'}
+                    onFinish={handleConfirmMetropolisBuild}
+                    finishLabel="Confirm"
+                    finishDisabled={!selectedMetropolisCityId || isMetropolisSubmitting}
+                />
+            )}
+
             {/* Progress Card Discard Dialog (C&K) */}
             {isCitiesAndKnights && currentPlayer && currentPlayer.progressCards && currentPlayer.progressCards.length > 4 && showProgressCardDiscard && (
                 <ProgressCardDiscardDialog
@@ -1802,7 +1914,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                     isEngineerSelecting={engineerSelectionActive}
                                     isSmithSelecting={selectingKnightsForSmith}
                                     isMedicineSelecting={selectingCityForMedicine}
-                                    activeFollowupCard={activeProgressCard}
+                                    activeFollowupCard={activeProgressCard === 'metropolis' ? null : activeProgressCard}
                                     onCancelFollowupCard={handleCancelFollowupCard}
                                     decorateCardHandler={decorateCardHandler}
                                 />

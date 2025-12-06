@@ -4,6 +4,7 @@ import { GameState, PlayerState } from '@/lib/types';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { ImprovementIcon } from '@/components/ui/icons/GameIcon';
+import { calculateMetropolisVP } from '@/core/engine/metropolis/metropolis-manager';
 
 interface GameStatusProps {
     gameState: GameState;
@@ -156,6 +157,17 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
             const armyVP = gameState.largestArmyOwner === player.id ? GAME_CONSTANTS.VP_FROM_LARGEST_ARMY : 0;
             if (armyVP > 0) parts.push(`Largest Army (${armyVP} VP)`);
         } else {
+            // C&K: Metropolises
+            const metropolisVP = calculateMetropolisVP(player);
+            if (metropolisVP > 0) {
+                const metropolisNames: string[] = [];
+                if (player.metropolisOwned?.includes('science')) metropolisNames.push('Science');
+                if (player.metropolisOwned?.includes('trade')) metropolisNames.push('Trade');
+                if (player.metropolisOwned?.includes('politics')) metropolisNames.push('Politics');
+                const metropolisText = metropolisNames.length > 0 ? ` (${metropolisNames.join(', ')})` : '';
+                parts.push(`Metropolis${metropolisText} (${metropolisVP} VP)`);
+            }
+
             // C&K: Defender tokens
             if (player.defenderVPTokens > 0) {
                 parts.push(`Defender Tokens (${player.defenderVPTokens} VP)`);
@@ -345,7 +357,7 @@ export const GameStatus: React.FC<GameStatusProps> = ({ gameState, currentPlayer
 
                                         {/* Trade */}
                                         <Tooltip
-                                            text={`Trade Improvement Track (Yellow).\nLevel 3 unlocks the Trading House ability:\nYou may trade commodities (Paper, Cloth, Coin) 2:1 with the bank.`}
+                                            text={`Trade Improvement Track (Yellow).\nLevel 3 unlocks the Trading House ability:\nYou may trade any 2 identical commodities for any 1 other commodity or resource.`}
                                             className="cursor-help"
                                         >
                                             <div className="flex items-center gap-1.5">

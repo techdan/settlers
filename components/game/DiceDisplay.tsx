@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
 import { EventDieFace } from '@/core/rules/commodity-constants';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface DiceDisplayProps {
     diceRoll: GameState['diceRoll'];
@@ -8,17 +9,20 @@ interface DiceDisplayProps {
 }
 
 const EVENT_DIE_COLORS: Record<EventDieFace, { bg: string; text: string; label: string }> = {
-    ship: { bg: 'bg-gray-700', text: 'text-white', label: '🚢 Ship' },
-    green: { bg: 'bg-green-600', text: 'text-white', label: '🟢 Science' },
-    yellow: { bg: 'bg-yellow-500', text: 'text-black', label: '🟡 Trade' },
-    blue: { bg: 'bg-blue-600', text: 'text-white', label: '🔵 Politics' }
+    ship: { bg: 'bg-gray-700', text: 'text-white', label: 'Barbarian Ship' },
+    green: { bg: 'bg-green-600', text: 'text-white', label: 'Science' },
+    yellow: { bg: 'bg-yellow-500', text: 'text-black', label: 'Trade' },
+    blue: { bg: 'bg-blue-600', text: 'text-white', label: 'Politics' }
 };
 
-const EVENT_DIE_ICONS: Record<EventDieFace, string> = {
-    ship: '⛵',
-    green: '🔬',
-    yellow: '💰',
-    blue: '⚖️'
+// Map event die faces to improvement types or special icons
+const getIconType = (face: EventDieFace) => {
+    switch (face) {
+        case 'green': return 'science';
+        case 'yellow': return 'trade';
+        case 'blue': return 'politics';
+        case 'ship': return 'barbarian-ship';
+    }
 };
 
 export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll }) => {
@@ -57,10 +61,14 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                 <>
                     <div className="w-px h-8 bg-white/20" />
                     <div
-                        className={`w-10 h-10 ${EVENT_DIE_COLORS[eventDieRoll.face].bg} ${EVENT_DIE_COLORS[eventDieRoll.face].text} rounded flex items-center justify-center font-bold text-2xl shadow-lg cursor-help transition-transform hover:scale-110`}
+                        className={`w-10 h-10 ${EVENT_DIE_COLORS[eventDieRoll.face].bg} ${EVENT_DIE_COLORS[eventDieRoll.face].text} rounded flex items-center justify-center shadow-lg cursor-help transition-transform hover:scale-110`}
                         title={EVENT_DIE_COLORS[eventDieRoll.face].label}
                     >
-                        {EVENT_DIE_ICONS[eventDieRoll.face]}
+                        {eventDieRoll.face === 'ship' ? (
+                            <img src="/icons/drakkar.svg" alt="Barbarian Ship" style={{ width: '32px', height: '32px' }} />
+                        ) : (
+                            <GameIcon type={getIconType(eventDieRoll.face)} size={32} />
+                        )}
                     </div>
                 </>
             )}

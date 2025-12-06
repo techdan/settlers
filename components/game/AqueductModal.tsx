@@ -20,6 +20,9 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
     const [selectedResource, setSelectedResource] = useState<ResourceType | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const player = gameState.players.find(p => p.id === playerId);
+    const playerResources = player?.resources || { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+
     const handleClaim = async () => {
         if (!selectedResource || isSubmitting) return;
         setIsSubmitting(true);
@@ -32,12 +35,16 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto">
-            <div className="bg-slate-900 p-6 rounded-xl border border-green-500 shadow-2xl max-w-md w-full">
+        <div className="fixed inset-0 z-50 flex justify-center pt-8 pointer-events-none">
+            <div className="bg-slate-900 p-6 rounded-xl border border-green-500 shadow-2xl max-w-md w-full pointer-events-auto h-fit">
                 <h2 className="text-2xl font-bold text-white mb-2 text-center">Aqueduct Triggered! 💧</h2>
-                <p className="text-slate-300 text-center mb-6">
+                <p className="text-slate-300 text-center mb-4">
                     You received no production this turn. Choose 1 resource from the bank.
                 </p>
+
+                <div className="mb-4 text-center text-sm text-slate-400">
+                    Your current resources:
+                </div>
 
                 <div className="grid grid-cols-5 gap-2 mb-6">
                     {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
@@ -54,6 +61,7 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
                         >
                             <span className="text-2xl">{RESOURCE_ICONS[res]}</span>
                             <span className="text-xs capitalize text-slate-300">{res}</span>
+                            <span className="text-sm font-bold text-white">{playerResources[res]}</span>
                         </button>
                     ))}
                 </div>

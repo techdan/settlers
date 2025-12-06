@@ -206,12 +206,45 @@ export function canMoveKnightToVertex(
 
             if (!neighborVertexId || visited.has(neighborVertexId)) continue;
 
-            // Found the target!
+            // Check if this neighbor is the target
             if (neighborVertexId === targetVertexId) {
+                // Target found - but is it a valid destination?
+                // Knights can only move to empty vertices or vertices with enemy knights (displacement)
+                const targetVertex = gameState.board.vertices[targetVertexId];
+
+                // Cannot move to vertex with any building
+                if (targetVertex && (targetVertex.structure || targetVertex.owner)) {
+                    return false;
+                }
+
+                // Check for knights at target
+                for (const player of gameState.players) {
+                    if (!player.knights) continue;
+                    const knightAtTarget = player.knights.find(k => k.vertexId === targetVertexId);
+                    if (knightAtTarget) {
+                        // Cannot move to own knight
+                        if (knightAtTarget.playerId === playerId) {
+                            return false;
+                        }
+
+                        // Check if we can displace this enemy knight
+                        // Must have higher strength to displace
+                        const attackerStrength = CK_CONSTANTS.KNIGHT_STRENGTH[knight.level];
+                        const defenderStrength = CK_CONSTANTS.KNIGHT_STRENGTH[knightAtTarget.level];
+
+                        if (attackerStrength <= defenderStrength) {
+                            // Cannot displace equal or stronger knight
+                            return false;
+                        }
+                        // Can displace this weaker enemy knight
+                    }
+                }
+
+                // Valid destination found!
                 return true;
             }
 
-            // Check if we can pass through this vertex
+            // Check if we can pass through this intermediate vertex
             // We can pass through vertices with:
             // 1. No structure (empty)
             // 2. Friendly structures (buildings or knights)

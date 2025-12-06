@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
 import { getEdgeEndpoints } from '@/lib/hex';
+import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 
 /**
  * Calculate the longest continuous road for a player
@@ -93,6 +94,7 @@ export function calculateLongestRoad(gameState: GameState, playerId: string): nu
 export function updateLongestRoad(gameState: GameState): void {
     const roadLengths = gameState.players.map(p => ({
         playerId: p.id,
+        name: p.name,
         length: calculateLongestRoad(gameState, p.id)
     }));
 
@@ -100,11 +102,26 @@ export function updateLongestRoad(gameState: GameState): void {
     roadLengths.sort((a, b) => b.length - a.length);
 
     const longest = roadLengths[0];
+    const previousOwner = gameState.longestRoadOwner;
+    const previousLength = gameState.longestRoadLength;
 
     // Must be at least 5 roads to claim
     if (longest.length < 5) {
         gameState.longestRoadOwner = null;
         gameState.longestRoadLength = 0;
+
+        // Log if ownership changed
+        if (previousOwner) {
+            const prevOwnerName = gameState.players.find(p => p.id === previousOwner)?.name;
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${prevOwnerName} lost Longest Road (roads reduced to ${longest.length})`
+            });
+        }
+
+        // Update all players' victory points to reflect longest road loss
+        updateAllVictoryPoints(gameState);
         return;
     }
 
@@ -114,13 +131,49 @@ export function updateLongestRoad(gameState: GameState): void {
         if (gameState.longestRoadOwner &&
             roadLengths.find(r => r.playerId === gameState.longestRoadOwner)?.length === longest.length) {
             // Current owner is tied, they keep it
+            gameState.longestRoadLength = longest.length;
             return;
         }
+        // Tie but current owner not in tie - no one gets it
+        gameState.longestRoadOwner = null;
+        gameState.longestRoadLength = 0;
+        if (previousOwner) {
+            const prevOwnerName = gameState.players.find(p => p.id === previousOwner)?.name;
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${prevOwnerName} lost Longest Road (tied at ${longest.length})`
+            });
+        }
+
+        // Update all players' victory points to reflect longest road loss
+        updateAllVictoryPoints(gameState);
+        return;
     }
 
     // Award to longest (or take away if no longer qualifies)
     gameState.longestRoadOwner = longest.playerId;
     gameState.longestRoadLength = longest.length;
+
+    // Log if ownership changed
+    if (previousOwner !== longest.playerId) {
+        if (previousOwner) {
+            const prevOwnerName = gameState.players.find(p => p.id === previousOwner)?.name;
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `${prevOwnerName} lost Longest Road (${longest.name} now has ${longest.length} roads)`
+            });
+        }
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `${longest.name} gained Longest Road with ${longest.length} roads`
+        });
+    }
+
+    // Update all players' victory points to reflect longest road changes
+    updateAllVictoryPoints(gameState);
 }
 
 /**

@@ -1,11 +1,28 @@
 import React from 'react';
+import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
 
-export const Merchant: React.FC = () => {
+interface MerchantProps {
+    color?: string;
+}
+
+export const Merchant: React.FC<MerchantProps> = ({ color }) => {
+    // Default to green merchant color if no player color provided
+    const iconColor = color || '#16a34a';
+
     return (
         <g transform="translate(0, -12)">
-            <circle r="14" fill="#0f766e" stroke="#0ea5e9" strokeWidth="2" opacity="0.9" />
-            <circle r="6" fill="#ccfbf1" stroke="#0f172a" strokeWidth="1.5" />
-            <path d="M-6 0 L0 -9 L6 0 Z" fill="#22d3ee" stroke="#0f172a" strokeWidth="1" />
+            {/* Mustache icon with colored background */}
+            <foreignObject x="-16" y="-16" width="32" height="32">
+                <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ColoredSvgIcon
+                        src="/icons/mustache.svg"
+                        color="#000000"
+                        backgroundColor={iconColor}
+                        size={32}
+                        alt="Merchant"
+                    />
+                </div>
+            </foreignObject>
         </g>
     );
 };

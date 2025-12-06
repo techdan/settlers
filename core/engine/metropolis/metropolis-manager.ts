@@ -1,5 +1,6 @@
 import { GameState, PlayerState, MetropolisState } from '@/lib/types';
 import { MetropolisType, CK_CONSTANTS } from '@/core/rules/commodity-constants';
+import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 
 /**
  * Metropolis Manager (Cities & Knights Expansion)
@@ -146,22 +147,26 @@ export function buildMetropolis(
     }
 
     // Log the action
+    const typeName = type.charAt(0).toUpperCase() + type.slice(1);
     if (previousOwner) {
         const prevOwnerName = gameState.players.find(p => p.id === previousOwner)?.name;
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `${player.name} stole the ${type} metropolis from ${prevOwnerName}!`,
+            message: `${player.name} stole the ${typeName} Metropolis from ${prevOwnerName}!`,
             playerId
         });
     } else {
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `${player.name} built the ${type} metropolis!`,
+            message: `${player.name} built the ${typeName} Metropolis!`,
             playerId
         });
     }
+
+    // Update all players' victory points to reflect metropolis changes
+    updateAllVictoryPoints(gameState);
 
     return true;
 }
@@ -201,12 +206,7 @@ export function downgradeMetropolis(
         }
     }
 
-    gameState.logs.push({
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        message: `${player.name} lost the ${type} metropolis`,
-        playerId
-    });
+    // Note: No log here - the buildMetropolis function will log the steal action
 }
 
 /**

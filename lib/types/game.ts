@@ -2,7 +2,6 @@ import { ResourceType } from '../board-data';
 import { PlayerState, DevCardType, ProgressCardType, Knight } from './player';
 import { BoardState } from './board';
 import type { MetropolisType, EventDieFace, CommodityType } from '@/core/rules/commodity-constants';
-import type { ResourceType } from '@/core/engine/board/board-generator';
 
 /**
  * Game mode selection

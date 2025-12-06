@@ -409,7 +409,7 @@ function executeProgressCardEffect(
             break;
 
         case 'saboteur':
-            executeSaboteur(gameState, player, options);
+            executeSaboteur(gameState, player);
             break;
 
         case 'encouragement':
@@ -876,6 +876,9 @@ function executeMerchant(gameState: GameState, player: PlayerState, options?: an
         message: `${player.name} placed the merchant on a ${hex.terrain} hex (2:1 trade + 1 VP)`,
         playerId: player.id
     });
+
+    // Update victory points to reflect the merchant VP
+    updateAllVictoryPoints(gameState);
 }
 
 function executeMerchantFleet(gameState: GameState, player: PlayerState, options?: any): void {

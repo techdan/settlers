@@ -3,7 +3,6 @@ import { Hex, hexToPixel } from '@/lib/hex';
 import { TerrainType } from '@/core/rules/board-constants';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
-import { Sun } from 'lucide-react';
 import { Merchant } from './Merchant';
 import { GameIcon, ResourceType } from '@/components/ui/icons/GameIcon';
 
@@ -13,6 +12,7 @@ interface HexTileProps {
     numberToken: number | null;
     hasRobber: boolean;
     hasMerchant?: boolean;
+    merchantColor?: string;
     size: number;
     onClick?: () => void;
     isRolled?: boolean;
@@ -23,12 +23,12 @@ interface HexTileProps {
 
 // Hex tile background colors from icons.md (resource icon backgrounds)
 const TERRAIN_COLORS: Record<TerrainType, string> = {
-    forest: '#006636',  // Forest green (wood)
+    forest: '#06740E',  // Forest green (wood)
     hill: '#ca7728',    // Hills orange-brown (brick)
     pasture: '#84b83f', // Pasture green (sheep)
     field: '#f9e26f',   // Fields yellow (wheat)
     mountain: '#666d63', // Mountain grey (ore)
-    desert: '#F4A460',  // SandyBrown
+    desert: '#e4c27c',  // Desert tan
 };
 
 // Map terrain to resource icons
@@ -47,6 +47,7 @@ export const HexTile: React.FC<HexTileProps> = ({
     numberToken,
     hasRobber,
     hasMerchant,
+    merchantColor,
     size,
     onClick,
     isRolled,
@@ -114,8 +115,12 @@ export const HexTile: React.FC<HexTileProps> = ({
             )}
             {/* Desert icon */}
             {terrain === 'desert' && (
-                <g transform="translate(-16, -50)" opacity="0.4">
-                    <Sun size={32} color="#000" />
+                <g transform="translate(-24, -60)">
+                    <foreignObject width="48" height="48" style={{ opacity: 0.6 }}>
+                        <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src="/icons/desert.svg" alt="Desert" style={{ width: '48px', height: '48px' }} />
+                        </div>
+                    </foreignObject>
                 </g>
             )}
 
@@ -126,7 +131,7 @@ export const HexTile: React.FC<HexTileProps> = ({
             )}
 
             {hasRobber && <Robber />}
-            {hasMerchant && <Merchant />}
+            {hasMerchant && <Merchant color={merchantColor} />}
         </g>
     );
 };

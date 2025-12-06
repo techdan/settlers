@@ -6,7 +6,7 @@ interface BoardSelectionPromptProps {
     title: string;
     description: string;
     status?: string;
-    onCancel: () => void;
+    onCancel?: () => void;
     onFinish?: () => void;
     finishLabel?: string;
     finishDisabled?: boolean;
@@ -33,14 +33,16 @@ const BoardSelectionPromptComponent: React.FC<BoardSelectionPromptProps> = ({
                     {children}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        className="px-3 py-2 rounded-md border border-red-700 bg-red-700 hover:bg-red-600 text-white font-semibold transition-colors cursor-pointer"
-                        onClick={onCancel}
-                        title="Cancel"
-                    >
-                        Cancel
-                    </button>
+                    {onCancel && (
+                        <button
+                            type="button"
+                            className="px-3 py-2 rounded-md border border-red-700 bg-red-700 hover:bg-red-600 text-white font-semibold transition-colors cursor-pointer"
+                            onClick={onCancel}
+                            title="Cancel"
+                        >
+                            Cancel
+                        </button>
+                    )}
                     {onFinish && (
                         <button
                             type="button"

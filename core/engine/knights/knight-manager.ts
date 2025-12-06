@@ -51,6 +51,9 @@ export function placeKnight(
     // Add to player's knights
     player.knights.push(knight);
 
+    // Update longest road (new knight may block opponent roads at T-intersection)
+    updateLongestRoad(gameState);
+
     // Log placement
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
@@ -372,6 +375,8 @@ export function removeKnight(gameState: GameState, knightId: string): void {
         if (index !== -1) {
             player.knights.splice(index, 1);
             updateActiveKnightCount(player);
+            // Update longest road (removed knight may unblock opponent roads)
+            updateLongestRoad(gameState);
             return;
         }
     }

@@ -5,6 +5,7 @@ import { GameState } from '@/lib/types';
 import { ImprovementType, CK_CONSTANTS, CommodityType } from '@/core/rules/commodity-constants';
 import { canAffordImprovement, getUpgradeCost } from '@/core/engine/improvements/improvement-manager';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface CityManagementDialogProps {
     gameState: GameState;
@@ -33,6 +34,12 @@ const IMPROVEMENT_COMMODITIES: Record<ImprovementType, CommodityType> = {
     science: 'paper',
     trade: 'cloth',
     politics: 'coin'
+};
+
+const IMPROVEMENT_TOOLTIPS: Record<ImprovementType, string> = {
+    science: 'Science Improvement Track (Green)\nUpgrade with Paper commodities.\n\nLevel 3: Aqueduct\nIf you produce no resources on a dice roll (except 7),\nyou may take any one resource of your choice.',
+    trade: 'Trade Improvement Track (Yellow)\nUpgrade with Cloth commodities.\n\nLevel 3: Trading House\nYou may trade any 2 identical commodities\nfor any 1 other commodity or resource.',
+    politics: 'Politics Improvement Track (Blue)\nUpgrade with Coin commodities.\n\nLevel 3: Fortress\nYou may promote Strong Knights to Mighty Knights.'
 };
 
 export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
@@ -132,42 +139,100 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                         const playerCommodityCount = player.commodities?.[commodity] || 0;
                         const canAfford = canAffordImprovement(player, type, upgradeDiscount);
 
-                        const colorClass = type === 'science' ? 'text-green-400' :
-                            type === 'trade' ? 'text-yellow-400' : 'text-blue-400';
-                        const bgClass = type === 'science' ? 'bg-green-500' :
-                            type === 'trade' ? 'bg-yellow-500' : 'bg-blue-500';
+                        // Check if player has cities available for metropolis
+                        const playerCities = Object.values(gameState.board.vertices).filter(v =>
+                            v.owner === playerId && v.structure === 'city'
+                        );
+                        const hasCities = playerCities.length > 0;
+
+                        // Check metropolis status
+                        const metropolis = gameState.metropolises?.[type];
+                        const metropolisOwner = metropolis?.owner ? gameState.players.find(p => p.id === metropolis.owner) : null;
+                        const metropolisOwnerLevel = metropolisOwner?.improvements?.[type] || 0;
+
+                        // Conditions for when upgrade will trigger metropolis placement
+                        const willBuildMetropolis = level === 3 && !metropolis?.owner; // Level 3→4 and unclaimed - REQUIRES SELECTION
+                        const willSecureMetropolis = level === 4 && metropolis?.owner === playerId; // Level 4→5 and own it - NO SELECTION, just secures in place
+                        const willStealMetropolis = level === 4 && metropolis?.owner && metropolis?.owner !== playerId && metropolisOwnerLevel < 5; // Level 4→5 and can steal - REQUIRES SELECTION
+                        const metropolisSecured = metropolis?.owner && metropolisOwnerLevel >= 5;
+
+                        // Only require cities if the upgrade will actually trigger metropolis SELECTION (not just securing)
+                        const upgradeWillTriggerMetropolis = willBuildMetropolis || willStealMetropolis;
+                        const cannotBuildNoCity = upgradeWillTriggerMetropolis && !hasCities;
+
+                        // Disable button if upgrade would trigger metropolis but player has no cities
+                        const isDisabled = !canAct || !canAfford || cannotBuildNoCity;
+
+                        // Updated colors from icons.md
+                        const iconColor = type === 'science' ? '#6bb97f' :
+                            type === 'trade' ? '#c6daa4' : '#d7dfd1';
 
                         return (
-                            <div key={type} className="bg-slate-700/50 p-4 rounded border border-slate-600 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-3 h-12 rounded-full ${bgClass}`}></div>
-                                    <div>
-                                        <div className={`font-bold text-lg ${colorClass}`}>
-                                            {IMPROVEMENT_NAMES[type]}
+                            <div key={type} className="bg-slate-700/50 p-4 rounded border border-slate-600">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-4">
+                                        <div
+                                            className="flex items-center justify-center w-12 h-12 cursor-help"
+                                            title={IMPROVEMENT_TOOLTIPS[type]}
+                                        >
+                                            <GameIcon type={type} size={40} />
                                         </div>
-                                        <div className="text-sm text-slate-400">
-                                            Level {level} / {CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL}
+                                        <div>
+                                            <div className="font-bold text-lg text-white">
+                                                {IMPROVEMENT_NAMES[type]}
+                                            </div>
+                                            <div className="text-sm text-slate-400">
+                                                Level {level} / {CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL}
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {!isMax ? (
+                                        <button
+                                            onClick={() => handleUpgrade(type)}
+                                            disabled={!!isDisabled}
+                                            className={`
+                                                px-4 py-2 rounded text-sm font-bold transition-all min-w-[120px]
+                                                ${canAct && canAfford && !cannotBuildNoCity
+                                                    ? 'bg-slate-200 text-slate-900 hover:bg-white shadow-lg hover:scale-105 cursor-pointer'
+                                                    : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
+                                                }
+                                            `}
+                                        >
+                                            Upgrade ({playerCommodityCount} / {cost}) {COMMODITY_ICONS[commodity]}
+                                        </button>
+                                    ) : (
+                                        <div className="px-4 py-2 bg-green-900/20 text-green-400 rounded border border-green-900/50 font-bold text-sm">
+                                            Max Level
+                                        </div>
+                                    )}
                                 </div>
 
-                                {!isMax ? (
-                                    <button
-                                        onClick={() => handleUpgrade(type)}
-                                        disabled={!canAct || !canAfford}
-                                        className={`
-                                            px-4 py-2 rounded text-sm font-bold transition-all min-w-[120px]
-                                            ${canAct && canAfford
-                                                ? 'bg-slate-200 text-slate-900 hover:bg-white shadow-lg hover:scale-105 cursor-pointer'
-                                                : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                            }
-                                        `}
-                                    >
-                                        Upgrade ({playerCommodityCount} / {cost}) {COMMODITY_ICONS[commodity]}
-                                    </button>
-                                ) : (
-                                    <div className="px-4 py-2 bg-green-900/20 text-green-400 rounded border border-green-900/50 font-bold text-sm">
-                                        Max Level
+                                {/* Metropolis Status and Messages */}
+                                {metropolis?.owner && !willBuildMetropolis && !willSecureMetropolis && !willStealMetropolis && (
+                                    <div className="text-xs text-slate-300 bg-slate-700/30 border border-slate-600/50 rounded px-3 py-2 mt-2">
+                                        🏛️ {metropolisOwner?.name} has the {IMPROVEMENT_NAMES[type]} Metropolis
+                                        {metropolisSecured ? ' (secured at level 5)' : ' (level 4, can be stolen at level 5)'}
+                                    </div>
+                                )}
+                                {willBuildMetropolis && hasCities && (
+                                    <div className="text-xs text-yellow-300 bg-yellow-900/20 border border-yellow-700/50 rounded px-3 py-2 mt-2">
+                                        ⭐ Upgrading will let you claim the {IMPROVEMENT_NAMES[type]} Metropolis! (+2 VP)
+                                    </div>
+                                )}
+                                {willSecureMetropolis && (
+                                    <div className="text-xs text-blue-300 bg-blue-900/20 border border-blue-700/50 rounded px-3 py-2 mt-2">
+                                        🏛️ Upgrading will secure your {IMPROVEMENT_NAMES[type]} Metropolis at level 5! (cannot be stolen)
+                                    </div>
+                                )}
+                                {willStealMetropolis && hasCities && (
+                                    <div className="text-xs text-orange-300 bg-orange-900/20 border border-orange-700/50 rounded px-3 py-2 mt-2">
+                                        ⚔️ Upgrading will let you steal the {IMPROVEMENT_NAMES[type]} Metropolis from {metropolisOwner?.name}!
+                                    </div>
+                                )}
+                                {!isMax && upgradeWillTriggerMetropolis && cannotBuildNoCity && (
+                                    <div className="text-xs text-red-300 bg-red-900/20 border border-red-700/50 rounded px-3 py-2 mt-2">
+                                        ❌ You need at least one City to build a Metropolis. Build a city first!
                                     </div>
                                 )}
                             </div>
@@ -178,9 +243,14 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                     {!isCraneMode && vertex && (
                         <div className="bg-slate-700/50 p-4 rounded border border-slate-600 flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="w-3 h-12 rounded-full bg-orange-500"></div>
+                                <div
+                                    className="flex items-center justify-center w-12 h-12 cursor-help"
+                                    title="City Wall - Protects your city from the robber.\n\nCost: 2 Brick\n\nIncreases your maximum hand size by 2 cards (from 7 to 9).\n\nWhen a 7 is rolled, you only discard half your cards if you have more than 9 cards instead of 7."
+                                >
+                                    <GameIcon type="city-wall" size={40} playerColor="#d97706" />
+                                </div>
                                 <div>
-                                    <div className="font-bold text-lg text-orange-400">
+                                    <div className="font-bold text-lg text-white">
                                         City Wall
                                     </div>
                                     <div className="text-sm text-slate-400">
@@ -193,7 +263,6 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                                 <button
                                     onClick={handleBuildWall}
                                     disabled={!canAct || !canBuildWallForVertex}
-                                    title="Increases max hand size by 2 cards. Protects against robber discard."
                                     className={`
                                         px-4 py-2 rounded text-sm font-bold transition-all min-w-[120px]
                                         ${canAct && canBuildWallForVertex

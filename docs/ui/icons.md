@@ -33,6 +33,8 @@ Fill in the following columns:
 | dice-six-faces-six.svg | dice 6 | red, yellow | | |
 | dice-six-faces-three.svg | dice 3 | red, yellow | | |
 | dice-six-faces-two.svg | dice 2 | red, yellow | | |
+| desert.svg | Desert |  | hex |  |
+| drakkar.svg | Barbarian Ship |  | Event Die |  |
 | folded-paper.svg |  |  |  | |
 | knight-basic.svg | basic knight | | | |
 | knight-mighty.svg | | | | |
@@ -40,17 +42,17 @@ Fill in the following columns:
 | metropolis.svg | | | | |
 | modern-city.svg | | | | |
 | mounted-knight.svg | | | | |
-| mustache.svg | | | | |
+| mustache.svg | merchant | | | |
 | pilgrim-hat.svg | | | | |
 | ribbon-shield.svg | | | | |
 | road.svg | cloth | off white (faded yellow?) / pasture green background | commodity | |
 | robber.svg | robber | | | |
 | robber-mask.svg | | | | |
 | rolled-cloth.svg | | | | |
-| scales.svg | | | | |
+| scales.svg | Trade | | City Improvement / Event Die | |
 | science.svg | | | | |
 | scroll-unfurled.svg | paper | parchment color (faded yellow?) / forest green background  | commodity | |
-| shaking-hands.svg | politics | | | |
+| shaking-hands.svg | Politics | | City Improvement / Event Die | |
 | sheep.svg | sheep | sheep white / pasture green background | resource | |
 | shield.svg | | | | |
 | spy.svg | | | | |
@@ -67,13 +69,14 @@ Fill in the following columns:
 
 ### Hex Tiles
 - Hills (produce brick): #ca7728 ## #71140E  OPTIONS #ca7728 # #d74315 # #b22222
-- Forest (produce wood): `#006636`
+- Forest (produce wood): #06740E ## `#006636`
 - Mountain (produce ore): `#666d63`
 - Pasture (produce sheep): `#84b83f`
 - Fields (produce wheat): `#f9e26f`
+- Desert (produce nothing): #e4c27c
 
 ### Resources (Natural, Earthy)
-- Wood: `#723921` (foreground) + Stroke `#4b2619` # Extracted from wood-pile.svg
+- Wood: #E79108 `#723921` (foreground) + Stroke `#4b2619` # Extracted from wood-pile.svg
 - Brick: #EEE4DA  #CA7728 # OTHER OPTIONS  #D74315   #d35830 (foreground) + Stroke #FFA648   #891e21 
 - Sheep: `#ded7bc` # Other (Beige)
 - Wheat: `#db8b1f` # Other (Goldenrod)
@@ -90,9 +93,9 @@ Fill in the following columns:
 - Mighty: `#FFD700` (Gold)
 
 ### City Improvements
-- Science: `#16a34a` (Green-600)
-- Trade: `#f59e0b` (Amber-500)
-- Politics: `#3b82f6` (Blue-500)
+- Science: #729853  #6bb97f ## OTHER `#16a34a` (Green-600)
+- Trade: #8dae54  #c6daa4 ## OTHER `#f59e0b` (Amber-500)
+- Politics: #85949a  #d7dfd1 ## OTHER `#3b82f6` (Blue-500)
 
 ### Structures
 - Settlement: `#8B4513` (Brown)

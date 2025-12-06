@@ -41,6 +41,8 @@ interface BoardProps {
     selectingCityForEngineer?: boolean;
     selectedEngineerCityId?: string | null;
     selectingCityForMedicine?: boolean;
+    selectingCityForMetropolis?: 'science' | 'trade' | 'politics' | null;
+    selectedMetropolisCityId?: string | null;
     intrigueSelectedKnightId?: string | null;
     selectingKnightsForSmith?: boolean;
     smithSelectableKnightIds?: string[];
@@ -59,6 +61,7 @@ interface BoardProps {
     onEdgeSelectedForCard?: (edgeId: string) => void;
     onEngineerCitySelected?: (vertexId: string) => void;
     onMedicineCitySelected?: (vertexId: string) => void;
+    onMetropolisCitySelected?: (vertexId: string) => void;
     onCityClick?: (vertexId: string) => void;
     onKnightClick?: (knightId: string) => void;
     onBarbarianCitySelect?: (vertexId: string) => void;
@@ -83,6 +86,8 @@ export const Board: React.FC<BoardProps> = ({
     selectingCityForEngineer,
     selectedEngineerCityId,
     selectingCityForMedicine,
+    selectingCityForMetropolis,
+    selectedMetropolisCityId,
     treasonSelectedKnightId,
     treasonSelectedPlacementVertexId,
     intrigueSelectedKnightId,
@@ -103,6 +108,7 @@ export const Board: React.FC<BoardProps> = ({
     onEdgeSelectedForCard,
     onEngineerCitySelected,
     onMedicineCitySelected,
+    onMetropolisCitySelected,
     onCityClick,
     onKnightClick,
     onBarbarianCitySelect
@@ -264,6 +270,16 @@ export const Board: React.FC<BoardProps> = ({
             return valid;
         }
 
+        // Metropolis selection - player's cities
+        if (selectingCityForMetropolis) {
+            vertices.forEach(v => {
+                if (v.owner === playerId && v.structure === 'city') {
+                    valid.add(v.id);
+                }
+            });
+            return valid;
+        }
+
         // Progress Card Vertex Selection (Intrigue)
         if (selectingVertexForCard === 'intrigue') {
             // Intrigue: Move opponent's knight to any location
@@ -328,7 +344,7 @@ export const Board: React.FC<BoardProps> = ({
             }
         }
         return valid;
-    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer, selectingCityForMedicine, selectingKnightsForSmith, smithSelectableKnightIds]);
+    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer, selectingCityForMedicine, selectingCityForMetropolis, selectingKnightsForSmith, smithSelectableKnightIds]);
 
     const diplomatPlacementState = useMemo(() => {
         if (selectingEdgeForCard !== 'diplomat' || diplomatStage !== 'rebuild' || !diplomatRemovedEdgeId) {
@@ -508,6 +524,17 @@ export const Board: React.FC<BoardProps> = ({
                     await onEngineerCitySelected?.(vertexId);
                 } catch (e) {
                     console.error('Failed to build city wall with Engineering', e);
+                }
+            });
+            return;
+        }
+
+        if (selectingCityForMetropolis && validVertices.has(vertexId)) {
+            startTransition(async () => {
+                try {
+                    await onMetropolisCitySelected?.(vertexId);
+                } catch (e) {
+                    console.error('Failed to select city for metropolis', e);
                 }
             });
             return;
@@ -833,6 +860,10 @@ export const Board: React.FC<BoardProps> = ({
                                                 ? 'cursor'
                                                 : 'glow';
 
+                                        const merchantOwner = gameState.activeMerchant
+                                            ? gameState.players.find(p => p.id === gameState.activeMerchant)
+                                            : null;
+
                                         return (
                                             <TileComponent
                                                 key={tile.id}
@@ -841,6 +872,7 @@ export const Board: React.FC<BoardProps> = ({
                                                 numberToken={tile.numberToken}
                                                 hasRobber={gameState.robberHexId === tile.id}
                                                 hasMerchant={gameState.merchantHexId === tile.id}
+                                                merchantColor={merchantOwner?.color}
                                                 size={HEX_SIZE}
                                                 onClick={() => handleHexClick(tile.id)}
                                                 isRolled={isRolled}
@@ -881,6 +913,7 @@ export const Board: React.FC<BoardProps> = ({
                                         const isMedicineCancel = !!selectingCityForMedicine && validVertices.has(vertex.id);
                                         const isSmithCancel = !!selectingKnightsForSmith && validVertices.has(vertex.id);
                                         const isEngineerSelected = !!(selectingCityForEngineer && selectedEngineerCityId === vertex.id);
+                                        const isMetropolisSelected = !!(selectingCityForMetropolis && selectedMetropolisCityId === vertex.id);
                                         const isSmithSelected = !!(selectingKnightsForSmith && knight && smithSelectedKnightIds?.includes(knight.id));
                                         const isIntrigueSelected = !!(selectingVertexForCard === 'intrigue' && knight && intrigueSelectedKnightId === knight.id);
                                         const isTreasonSelected = !!(selectingVertexForCard === 'treason_remove' && knight && treasonSelectedKnightId === knight.id);
@@ -905,7 +938,7 @@ export const Board: React.FC<BoardProps> = ({
                                                         ? 'Cancel Medicine'
                                                         : 'Cancel Smithing'
                                                 }
-                                                isSelectedForAction={isEngineerSelected || isSmithSelected || isIntrigueSelected || isTreasonSelected || isTreasonPlacementSelected}
+                                                isSelectedForAction={isEngineerSelected || isMetropolisSelected || isSmithSelected || isIntrigueSelected || isTreasonSelected || isTreasonPlacementSelected}
                                                 highlightVariant={highlightVariant}
                                                 onCancelIconClick={onCancelBuild}
                                             />
