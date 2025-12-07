@@ -541,27 +541,28 @@ GameController (state owner)
 - [x] Create `CompactPlayerCard.tsx` ✅ Created
 - [x] Create `CompactImprovementBar.tsx` ✅ Created
 - [x] Create `CompactGameStatus.tsx` ✅ Created (uses CompactPlayerCard)
-- [ ] Integrate `CompactGameStatus` + `SidebarTabs` into `GameController.tsx`
-- [ ] Remove `GameLog` from left sidebar
+- [x] Integrate `CompactGameStatus` + `SidebarTabs` into `GameController.tsx` ✅ Done
+- [x] Remove `GameLog` from left sidebar ✅ Done (moved to tabs)
 - [ ] Test: All player info accessible via tooltips
 - [ ] Test: Tab switching instant (no animation)
 - [ ] Test: Chat tab disabled with "Coming soon"
 
 ## Phase 2: Barbarian Hex Overlay (HIGH PRIORITY)
 - [x] Create `BarbarianHexOverlay.tsx` ✅ Created
-- [ ] Position in upper-left, avoiding ports
+- [x] Position in upper-left, avoiding ports ✅ Positioned at top-28 left-4
 - [x] Display knight strength vs barbarian strength ✅ Implemented
 - [x] Display track position (0-7) ✅ Implemented
 - [x] Show danger state when defenders losing ✅ Implemented
-- [ ] Integrate into `GameController.tsx`
-- [ ] Remove `BarbarianTrack` from right sidebar
+- [x] Integrate into `GameController.tsx` ✅ Done
+- [x] Remove `BarbarianTrack` from right sidebar ✅ Done
 - [ ] Test: Hover shows detailed breakdown
 
 ## Phase 3: Bottom Layout Restructure (MEDIUM PRIORITY)
-- [ ] Add `layout` prop to `BuildControls.tsx`
+- [x] Move SidebarTabs to bottom-right corner ✅ Done
+- [ ] Add `layout` prop to `BuildControls.tsx` for vertical stacking
 - [ ] Position Build controls bottom-left
-- [ ] Keep Resources/PlayerHand bottom-center
-- [ ] Keep ProgressCardHand with Resources
+- [x] Keep Resources/PlayerHand bottom-center ✅ Done (max-w reduced to 70vw)
+- [x] Keep ProgressCardHand with Resources ✅ Done
 - [ ] Test: No overlap with game board
 - [ ] Test: Works at various zoom levels
 
@@ -582,7 +583,31 @@ GameController (state owner)
 
 ## Changelog
 
-### 2025-12-06 - Component Implementation (Session 2)
+### 2025-12-06 - Phase 3 Layout Update (Session 2, Part 3)
+- Reorganized CompactPlayerCard to 3-row layout:
+  - Row 1: Identity (color, name, VP, turn indicator)
+  - Row 2: Stats + Special VP icons (📦📜🛤⚔ │ 🛡🏆🏪)
+  - Row 3: City improvement bars with S/T/P labels and distinct colors
+- Updated CompactImprovementBar colors from icons.md:
+  - Science: #6bb97f (green)
+  - Trade: #c6a34a (yellow/gold)
+  - Politics: #7ba3c9 (blue)
+- Increased SidebarTabs height from 192px to 320px
+- Moved SidebarTabs from right sidebar to bottom-right corner
+- Bottom-right now contains: SidebarTabs → DiceDisplay → ActionControls
+- Reduced bottom-center max-width to 70vw to avoid overlap
+
+### 2025-12-06 - GameController Integration (Session 2, Part 2)
+- Integrated all new components into `GameController.tsx`
+- Replaced `GameStatus` with `CompactGameStatus` in right sidebar
+- Added `SidebarTabs` (Log/Chat/Stats) below player cards
+- Added `BarbarianHexOverlay` in upper-left (C&K mode only)
+- Removed `GameLog` from left sidebar (now in tabs)
+- Removed `BarbarianTrack` from right sidebar (now overlay)
+- Left sidebar now only shows DebugPanel (when enabled)
+- All TypeScript compiles successfully
+
+### 2025-12-06 - Component Implementation (Session 2, Part 1)
 - Created `CompactPlayerCard.tsx` - 2-row dense player card with all C&K info
 - Created `CompactGameStatus.tsx` - Uses CompactPlayerCard for player list
 - Created `BarbarianHexOverlay.tsx` - On-board barbarian track display

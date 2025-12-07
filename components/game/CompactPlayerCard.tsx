@@ -14,9 +14,10 @@ interface CompactPlayerCardProps {
 }
 
 /**
- * Compact 2-row player card for the right sidebar.
+ * Compact 3-row player card for the right sidebar.
  * Row 1: Identity (color, name, VP, turn indicator)
- * Row 2: Stats + Improvement bars + Special VP indicators
+ * Row 2: Stats + Special VP indicators
+ * Row 3: City improvement bars (C&K only)
  * 
  * All detailed information available via tooltips.
  */
@@ -150,9 +151,9 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                 )}
             </div>
 
-            {/* Row 2: Stats + Bars + Special VP */}
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-300 flex-wrap">
-                {/* Left: Basic stats */}
+            {/* Row 2: Stats + Special VP */}
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
+                {/* Basic stats */}
                 <div className="flex items-center gap-1.5">
                     {/* Resources */}
                     <Tooltip
@@ -221,65 +222,12 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                     )}
                 </div>
 
-                {/* Divider */}
-                {isCK && <span className="text-slate-600">│</span>}
+                {/* Divider for special VP */}
+                {isCK && <span className="text-slate-600 mx-0.5">│</span>}
 
-                {/* Center: Improvement bars (C&K only) */}
+                {/* Special VP (C&K only) - moved from row 3 to row 2 */}
                 {isCK && (
-                    <div className="flex items-center gap-1">
-                        <Tooltip
-                            content={`Science: Level ${player.improvements?.science || 0}/5\nLevel 3 = Aqueduct ability`}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span>
-                                <CompactImprovementBar
-                                    type="science"
-                                    level={player.improvements?.science || 0}
-                                    hasMetropolis={player.metropolisOwned?.includes('science')}
-                                />
-                            </span>
-                        </Tooltip>
-
-                        <Tooltip
-                            content={`Trade: Level ${player.improvements?.trade || 0}/5\nLevel 3 = Trading House ability`}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span>
-                                <CompactImprovementBar
-                                    type="trade"
-                                    level={player.improvements?.trade || 0}
-                                    hasMetropolis={player.metropolisOwned?.includes('trade')}
-                                />
-                            </span>
-                        </Tooltip>
-
-                        <Tooltip
-                            content={`Politics: Level ${player.improvements?.politics || 0}/5\nLevel 3 = Fortress ability`}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span>
-                                <CompactImprovementBar
-                                    type="politics"
-                                    level={player.improvements?.politics || 0}
-                                    hasMetropolis={player.metropolisOwned?.includes('politics')}
-                                />
-                            </span>
-                        </Tooltip>
-                    </div>
-                )}
-
-                {/* Divider */}
-                {isCK && <span className="text-slate-600">│</span>}
-
-                {/* Right: Special VP (C&K only) */}
-                {isCK && (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                         {/* Defender VP */}
                         <Tooltip
                             content={defenderTooltip}
@@ -320,6 +268,59 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                     </div>
                 )}
             </div>
+
+            {/* Row 3: City Improvement bars (C&K only) - on their own row */}
+            {isCK && (
+                <div className="flex items-center gap-2 mt-0.5">
+                    <Tooltip
+                        content={`Science: Level ${player.improvements?.science || 0}/5\nLevel 3 = Aqueduct ability\nUpgrade with Paper commodity`}
+                        className="cursor-default"
+                        tooltipClassName={tooltipClassName}
+                        placement="bottom"
+                    >
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold" style={{ color: '#6bb97f' }}>S</span>
+                            <CompactImprovementBar
+                                type="science"
+                                level={player.improvements?.science || 0}
+                                hasMetropolis={player.metropolisOwned?.includes('science')}
+                            />
+                        </div>
+                    </Tooltip>
+
+                    <Tooltip
+                        content={`Trade: Level ${player.improvements?.trade || 0}/5\nLevel 3 = Trading House ability\nUpgrade with Cloth commodity`}
+                        className="cursor-default"
+                        tooltipClassName={tooltipClassName}
+                        placement="bottom"
+                    >
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold" style={{ color: '#c6a34a' }}>T</span>
+                            <CompactImprovementBar
+                                type="trade"
+                                level={player.improvements?.trade || 0}
+                                hasMetropolis={player.metropolisOwned?.includes('trade')}
+                            />
+                        </div>
+                    </Tooltip>
+
+                    <Tooltip
+                        content={`Politics: Level ${player.improvements?.politics || 0}/5\nLevel 3 = Fortress ability\nUpgrade with Coin commodity`}
+                        className="cursor-default"
+                        tooltipClassName={tooltipClassName}
+                        placement="bottom"
+                    >
+                        <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold" style={{ color: '#7ba3c9' }}>P</span>
+                            <CompactImprovementBar
+                                type="politics"
+                                level={player.improvements?.politics || 0}
+                                hasMetropolis={player.metropolisOwned?.includes('politics')}
+                            />
+                        </div>
+                    </Tooltip>
+                </div>
+            )}
         </div>
     );
 };

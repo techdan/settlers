@@ -8,7 +8,9 @@ import { PlayerHand } from './PlayerHand';
 import { GameLog } from './GameLog';
 import { PlayerDevCards } from './PlayerDevCards';
 
-import { GameStatus } from './GameStatus';
+import { CompactGameStatus } from './CompactGameStatus';
+import { SidebarTabs } from './SidebarTabs';
+import { BarbarianHexOverlay } from '@/components/board/BarbarianHexOverlay';
 import { BuildControls } from './BuildControls';
 import { ActionControls } from './ActionControls';
 import { DiceDisplay } from './DiceDisplay';
@@ -26,7 +28,6 @@ import { CityManagementDialog } from './CityManagementDialog';
 import { KnightManagementDialog } from './KnightManagementDialog';
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 
-import { BarbarianTrack } from './BarbarianTrack';
 import { ProgressCardHand } from './ProgressCardHand';
 import { ProgressCardDiscardDialog } from './ProgressCardDiscardDialog';
 import { DebugPanel } from './DebugPanel';
@@ -1288,12 +1289,12 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
 
         setIsTreasonModalOpen(true);
-            if (treasonEffect.stage === 'awaiting_knight') {
-                setTreasonSelectedPlacementVertexId(null);
-                if (isTreasonTarget) {
-                    setTreasonMode('select_knight');
-                    setSelectingVertexForCard('treason_remove');
-                } else if (isTreasonInitiator) {
+        if (treasonEffect.stage === 'awaiting_knight') {
+            setTreasonSelectedPlacementVertexId(null);
+            if (isTreasonTarget) {
+                setTreasonMode('select_knight');
+                setSelectingVertexForCard('treason_remove');
+            } else if (isTreasonInitiator) {
                 setTreasonMode('waiting_for_knight');
                 if (selectingVertexForCard === 'treason_remove' || selectingVertexForCard === 'treason_place') {
                     setSelectingVertexForCard(null);
@@ -1889,58 +1890,62 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             {/* UI Overlay */}
             <div className="absolute inset-0 pointer-events-none p-4">
 
-                {/* Left Sidebar: Game Log & Debug Panel */}
-                {/* Positioned below Map Controls (approx top-20) */}
-                <div className="absolute top-48 left-4 bottom-36 w-80 flex flex-col gap-4 pointer-events-auto z-30">
-                    <div className="flex-1 min-h-0 overflow-y-auto">
-                        <GameLog logs={gameState.logs || []} />
-                    </div>
-                    {/* Debug Panel */}
-                    {isDebugMode && currentPlayer && (
-                        <DebugPanel player={currentPlayer} roomId={roomId} />
-                    )}
-                </div>
-
-                {/* Right Sidebar: Status + C&K Components */}
-                <div className="absolute top-4 right-4 w-80 flex flex-col gap-4 pointer-events-auto max-h-[calc(100vh-2rem)] overflow-y-auto overflow-x-visible">
-                    <GameStatus
+                {/* Top Right: CompactGameStatus (player cards only) */}
+                <div className="absolute top-4 right-4 w-80 pointer-events-auto overflow-x-visible">
+                    <CompactGameStatus
                         gameState={gameState}
                         currentPlayerId={playerId}
-                        vpAckTimestamp={lastVPAcknowledgedAt}
                     />
-                    {isCitiesAndKnights && (
-                        <>
-                            <BarbarianTrack gameState={gameState} />
-                        </>
-                    )}
                 </div>
 
-                {/* Bottom Center: Build Controls & Resources */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-auto max-w-[90vw]">
-                    <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}>
-                        <BuildControls
-                            gameState={gameState}
-                            playerId={playerId}
-                            buildMode={buildMode}
-                            onSetBuildMode={setBuildMode}
+                {/* Upper Left: Barbarian Hex Overlay (C&K only) */}
+                {isCitiesAndKnights && (
+                    <div className="absolute top-28 left-4 pointer-events-auto z-20">
+                        <BarbarianHexOverlay
+                            barbarianPosition={gameState.barbarianPosition || 0}
+                            totalKnightStrength={gameState.players.reduce((sum, p) => sum + (p.activeKnightCount || 0), 0)}
+                            totalCityCount={gameState.players.reduce((sum, p) => sum + (4 - p.citiesRemaining), 0)}
                         />
                     </div>
+                )}
 
-                    <div className="flex items-center gap-4 max-w-full overflow-x-auto">
-                        {currentPlayer && (
-                            <PlayerHand
-                                player={currentPlayer}
-                                roomId={roomId}
-                                lastTheft={gameState.lastTheft}
+                {/* Bottom Left: Debug + Build + Resources | Progress Cards */}
+                <div className="absolute bottom-4 left-4 flex items-end gap-4 pointer-events-auto">
+                    {/* Left Column: Debug (left-aligned) + Build/Resources (right-aligned) */}
+                    <div className="flex flex-col items-end gap-2">
+                        {/* Debug Panel (left-aligned, above Build) */}
+                        {isDebugMode && currentPlayer && (
+                            <div className="self-start pointer-events-auto">
+                                <DebugPanel player={currentPlayer} roomId={roomId} />
+                            </div>
+                        )}
+
+                        {/* Build Controls (right-aligned) */}
+                        <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}>
+                            <BuildControls
+                                gameState={gameState}
+                                playerId={playerId}
+                                buildMode={buildMode}
+                                onSetBuildMode={setBuildMode}
                             />
-                        )}
-                        {!isCitiesAndKnights && (
-                            <PlayerDevCards gameState={gameState} playerId={playerId} />
-                        )}
+                        </div>
+                        <div className="flex items-center gap-4 max-w-full overflow-x-auto">
+                            {currentPlayer && (
+                                <PlayerHand
+                                    player={currentPlayer}
+                                    roomId={roomId}
+                                    lastTheft={gameState.lastTheft}
+                                />
+                            )}
+                            {!isCitiesAndKnights && (
+                                <PlayerDevCards gameState={gameState} playerId={playerId} />
+                            )}
+                        </div>
                     </div>
 
+                    {/* Progress Cards spanning full height (C&K only) */}
                     {isCitiesAndKnights && currentPlayer && (
-                        <div className="flex justify-center w-full max-w-full overflow-x-auto">
+                        <div className="flex-shrink-0">
                             <ProgressCardHand
                                 player={currentPlayer}
                                 roomId={roomId}
@@ -1966,16 +1971,31 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     )}
                 </div>
 
-                {/* Bottom Right: Dice & Actions */}
-                <div className={`absolute bottom-4 right-4 flex flex-col items-end gap-4 pointer-events-auto ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}`}>
-                    <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
-                    <ActionControls
-                        gameState={gameState}
-                        playerId={playerId}
-                        onOpenTrade={() => setShowTrade(true)}
-                        onEndTurn={handleEndTurnClick}
-                        turnSubmitted={turnSubmitted}
-                    />
+                {/* Bottom Right: Actions + Log/Chat/Stats side by side */}
+                <div className="absolute bottom-4 right-4 flex items-end gap-4 pointer-events-auto">
+                    {/* Left: Dice + Trade/End controls */}
+                    <div className={`flex flex-col items-center gap-2 ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}`}>
+                        {/* Dice Display */}
+                        <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
+
+                        {/* Action Controls (Roll/Trade/End) */}
+                        <ActionControls
+                            gameState={gameState}
+                            playerId={playerId}
+                            onOpenTrade={() => setShowTrade(true)}
+                            onEndTurn={handleEndTurnClick}
+                            turnSubmitted={turnSubmitted}
+                        />
+                    </div>
+
+                    {/* Right: Log/Chat/Stats Tabs */}
+                    <div className="w-80">
+                        <SidebarTabs
+                            logs={gameState.logs || []}
+                            diceStats={gameState.diceStats}
+                            eventDieStats={gameState.eventDieStats}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

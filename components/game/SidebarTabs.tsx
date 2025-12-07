@@ -56,8 +56,8 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                 ))}
             </div>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-hidden max-h-48">
+            {/* Tab Content - taller height with vertical scroll */}
+            <div className="h-80 overflow-y-auto">
                 {activeTab === 'log' && (
                     <div className="h-full overflow-y-auto p-2">
                         <GameLog logs={logs} />

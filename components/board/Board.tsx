@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { HexTile as FlatHexTile } from '@/themes/flat/HexTile';
 import { VoxelHexTile } from '@/themes/voxel/HexTile';
@@ -10,7 +9,6 @@ import { VoxelPort } from '@/themes/voxel/Port';
 import { useThemeStore } from '@/lib/theme-store';
 import { Tooltip } from '@/components/ui/tooltip';
 import { generatePorts } from '@/engine/generatePorts';
-import { DiceStatsPanel } from '@/components/game/DiceStatsPanel';
 import { GameState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS } from '@/lib/types';
 import { Knight, ProgressCardType } from '@/lib/types/player';
 import { VertexRenderer } from './VertexRenderer';
@@ -149,7 +147,6 @@ export const Board: React.FC<BoardProps> = ({
     const [isPending, startTransition] = useTransition();
     const [isPlacingBonusRoad, setIsPlacingBonusRoad] = useState(false);
     const performOptimisticAction = useOptimisticAction();
-    const [showDiceStats, setShowDiceStats] = useState(false);
     const diceStats = useMemo(
         () => ({
             ...EMPTY_DICE_STATS,
@@ -744,12 +741,6 @@ export const Board: React.FC<BoardProps> = ({
         }
     };
 
-    const handleDiceStatsToggle = (event: React.MouseEvent) => {
-        event.preventDefault();
-        event.stopPropagation();
-        setShowDiceStats(current => !current);
-    };
-
     const handleHexClick = (hexId: string) => {
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
@@ -790,63 +781,33 @@ export const Board: React.FC<BoardProps> = ({
                     >
                         {({ zoomIn, zoomOut, resetTransform, setTransform }) => (
                             <>
-                                {/* Theme Toggle & Zoom Controls */}
-                                <div className="absolute top-4 left-4 z-10 pointer-events-auto flex flex-col gap-2">
-                                    <div className="flex items-start gap-2">
-                    <details className="group" open>
-                        <summary className="list-none cursor-pointer bg-slate-800 text-white px-3 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold flex items-center gap-2 w-fit">
-                            <span>Map Controls</span>
-                            <span className="group-open:rotate-180 transition-transform">▼</span>
-                        </summary>
-                        <div className="flex flex-col gap-2 mt-2 p-2 bg-slate-900/80 rounded border border-slate-700 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 justify-between w-full">
-                                <Tooltip content="Zoom In" placement="top">
-                                    <button onClick={() => zoomIn()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors">+</button>
-                                </Tooltip>
-                                <Tooltip content="Zoom Out" placement="top">
-                                    <button onClick={() => zoomOut()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors">-</button>
-                                </Tooltip>
-                                <Tooltip content="Reset View" placement="top">
-                                    <button onClick={() => resetTransform()} className="bg-slate-700 text-white p-2 rounded hover:bg-slate-600 transition-colors">⟳</button>
-                                </Tooltip>
-                            </div>
-                            <button onClick={toggleTheme} className="bg-slate-800 text-white px-4 py-2 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold">
-                                {theme === 'flat' ? 'Switch to 3D' : 'Switch to 2D'}
-                            </button>
-                        </div>
-                    </details>
+                                {/* Simplified Map Controls: + - 3D */}
+                                <div className="absolute top-4 left-4 z-10 pointer-events-auto flex items-center gap-1">
+                                    <Tooltip content="Zoom In" placement="bottom">
                                         <button
-                                            type="button"
-                                            onClick={handleDiceStatsToggle}
-                                            aria-pressed={showDiceStats}
-                                            className={`h-full px-3 py-2 bg-slate-800 text-white rounded shadow-lg border font-semibold text-sm transition-colors cursor-pointer ${
-                                                showDiceStats
-                                                    ? 'border-amber-400 text-amber-200'
-                                                    : 'border-slate-600 hover:border-amber-300 hover:text-amber-200'
-                                            }`}
+                                            onClick={() => zoomIn(0.1)}
+                                            className="bg-slate-800/90 text-white w-9 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-lg cursor-pointer"
                                         >
-                                            Dice
+                                            +
                                         </button>
-                                    </div>
+                                    </Tooltip>
+                                    <Tooltip content="Zoom Out" placement="bottom">
+                                        <button
+                                            onClick={() => zoomOut(0.1)}
+                                            className="bg-slate-800/90 text-white w-9 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-lg cursor-pointer"
+                                        >
+                                            −
+                                        </button>
+                                    </Tooltip>
+                                    <Tooltip content={theme === 'flat' ? 'Switch to 3D View' : 'Switch to 2D View'} placement="bottom">
+                                        <button
+                                            onClick={toggleTheme}
+                                            className="bg-slate-800/90 text-white px-3 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-sm cursor-pointer"
+                                        >
+                                            {theme === 'flat' ? '3D' : '2D'}
+                                        </button>
+                                    </Tooltip>
                                 </div>
-
-                                {showDiceStats &&
-                                    createPortal(
-                                        <div className="fixed inset-0 z-40 flex items-start justify-center pt-24 pointer-events-none">
-                                            <div
-                                                className="absolute inset-0 bg-black/50 backdrop-blur-sm pointer-events-auto"
-                                                onClick={() => setShowDiceStats(false)}
-                                            />
-                                            <div className="relative z-10 pointer-events-auto">
-                                                <DiceStatsPanel
-                                                    stats={diceStats}
-                                                    eventStats={eventDiceStats}
-                                                    onClose={() => setShowDiceStats(false)}
-                                                />
-                                            </div>
-                                        </div>,
-                                        document.body
-                                    )}
 
                         <TransformComponent
                             wrapperClass="w-full h-full"
