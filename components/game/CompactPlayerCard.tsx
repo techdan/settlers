@@ -152,7 +152,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
             </div>
 
             {/* Row 2: Stats + Special VP */}
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
+            <div className="flex items-center gap-1.5 text-[13px] leading-tight text-slate-300">
                 {/* Basic stats */}
                 <div className="flex items-center gap-1.5">
                     {/* Resources */}
@@ -162,7 +162,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         tooltipClassName={tooltipClassName}
                         placement="bottom"
                     >
-                        <span className={`flex items-center gap-0.5 ${isDanger ? 'text-red-400' : ''}`}>
+                        <span className={`flex items-center gap-1 ${isDanger ? 'text-red-400' : ''}`}>
                             <span>📦</span>
                             <span className="font-bold tabular-nums">{totalCards}</span>
                         </span>
@@ -175,7 +175,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         tooltipClassName={tooltipClassName}
                         placement="bottom"
                     >
-                        <span className="flex items-center gap-0.5">
+                        <span className="flex items-center gap-1">
                             <span>📜</span>
                             <span className="font-bold tabular-nums">{isCK ? progressCardCount : devCardCount}</span>
                         </span>
@@ -188,7 +188,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         tooltipClassName={tooltipClassName}
                         placement="bottom"
                     >
-                        <span className={`flex items-center gap-0.5 ${hasLongestRoad ? 'text-orange-400' : ''}`}>
+                        <span className={`flex items-center gap-1 ${hasLongestRoad ? 'text-orange-400' : ''}`}>
                             <span>🛤</span>
                             <span className="font-bold tabular-nums">{longestRoad}</span>
                         </span>
@@ -202,7 +202,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                             tooltipClassName={tooltipClassName}
                             placement="bottom"
                         >
-                            <span className="flex items-center gap-0.5">
+                            <span className="flex items-center gap-1">
                                 <span>⚔</span>
                                 <span className="font-bold tabular-nums">{activeKnightStrength}</span>
                             </span>
@@ -214,7 +214,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                             tooltipClassName={tooltipClassName}
                             placement="bottom"
                         >
-                            <span className={`flex items-center gap-0.5 ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}`}>
+                            <span className={`flex items-center gap-1 ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}`}>
                                 <span>⚔</span>
                                 <span className="font-bold tabular-nums">{player.knightsPlayed || 0}</span>
                             </span>
@@ -227,7 +227,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
                 {/* Special VP (C&K only) - moved from row 3 to row 2 */}
                 {isCK && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                         {/* Defender VP */}
                         <Tooltip
                             content={defenderTooltip}
@@ -235,7 +235,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                             tooltipClassName={tooltipClassName}
                             placement="bottom"
                         >
-                            <span className={`flex items-center gap-0.5 ${defenderVP > 0 ? 'text-blue-300' : 'text-slate-500'}`}>
+                            <span className={`flex items-center gap-1 ${defenderVP > 0 ? 'text-blue-300' : 'text-slate-500'}`}>
                                 <span>🛡</span>
                                 <span className="font-bold tabular-nums">{defenderVP}</span>
                             </span>
@@ -248,7 +248,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                             tooltipClassName={tooltipClassName}
                             placement="bottom"
                         >
-                            <span className={`flex items-center gap-0.5 ${vpCardsCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                            <span className={`flex items-center gap-1 ${vpCardsCount > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
                                 <span>🏆</span>
                                 <span className="font-bold tabular-nums">{vpCardsCount}</span>
                             </span>
@@ -271,20 +271,23 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
             {/* Row 3: City Improvement bars (C&K only) - on their own row */}
             {isCK && (
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-1 text-[13px] leading-tight">
                     <Tooltip
                         content={`Science: Level ${player.improvements?.science || 0}/5\nLevel 3 = Aqueduct ability\nUpgrade with Paper commodity`}
                         className="cursor-default"
                         tooltipClassName={tooltipClassName}
                         placement="bottom"
                     >
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold" style={{ color: '#6bb97f' }}>S</span>
-                            <CompactImprovementBar
-                                type="science"
-                                level={player.improvements?.science || 0}
-                                hasMetropolis={player.metropolisOwned?.includes('science')}
-                            />
+                        <div className="flex items-center gap-1.5">
+                            <span className="font-bold" style={{ color: '#6bb97f' }}>S</span>
+                            <div className="scale-[0.9] origin-left">
+                                <CompactImprovementBar
+                                    type="science"
+                                    level={player.improvements?.science || 0}
+                                    hasMetropolis={player.metropolisOwned?.includes('science')}
+                                    size="md"
+                                />
+                            </div>
                         </div>
                     </Tooltip>
 
@@ -294,13 +297,16 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         tooltipClassName={tooltipClassName}
                         placement="bottom"
                     >
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold" style={{ color: '#c6a34a' }}>T</span>
-                            <CompactImprovementBar
-                                type="trade"
-                                level={player.improvements?.trade || 0}
-                                hasMetropolis={player.metropolisOwned?.includes('trade')}
-                            />
+                        <div className="flex items-center gap-1.5">
+                            <span className="font-bold" style={{ color: '#c6a34a' }}>T</span>
+                            <div className="scale-[0.9] origin-left">
+                                <CompactImprovementBar
+                                    type="trade"
+                                    level={player.improvements?.trade || 0}
+                                    hasMetropolis={player.metropolisOwned?.includes('trade')}
+                                    size="md"
+                                />
+                            </div>
                         </div>
                     </Tooltip>
 
@@ -310,13 +316,16 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         tooltipClassName={tooltipClassName}
                         placement="bottom"
                     >
-                        <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold" style={{ color: '#7ba3c9' }}>P</span>
-                            <CompactImprovementBar
-                                type="politics"
-                                level={player.improvements?.politics || 0}
-                                hasMetropolis={player.metropolisOwned?.includes('politics')}
-                            />
+                        <div className="flex items-center gap-1.5">
+                            <span className="font-bold" style={{ color: '#7ba3c9' }}>P</span>
+                            <div className="scale-[0.9] origin-left">
+                                <CompactImprovementBar
+                                    type="politics"
+                                    level={player.improvements?.politics || 0}
+                                    hasMetropolis={player.metropolisOwned?.includes('politics')}
+                                    size="md"
+                                />
+                            </div>
                         </div>
                     </Tooltip>
                 </div>

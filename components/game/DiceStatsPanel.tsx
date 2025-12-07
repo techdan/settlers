@@ -23,9 +23,8 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
     return (
         <div className="bg-slate-900/85 text-slate-100 border border-slate-700 rounded-lg shadow-xl p-3 w-72 backdrop-blur-sm pointer-events-auto">
             <div className="flex items-center justify-between gap-2">
-                <div>
-                    <div className="text-sm font-semibold">Dice Stats</div>
-                    <div className="text-xs text-slate-300">{totalRolls} roll{totalRolls === 1 ? '' : 's'}</div>
+                <div className="text-sm font-semibold">
+                    Dice Stats <span className="text-xs text-slate-300 font-normal">({totalRolls} roll{totalRolls === 1 ? '' : 's'})</span>
                 </div>
                 {onClose && (
                     <Tooltip content="Hide dice stats" placement="top">
@@ -61,7 +60,9 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
 
             {eventStats && (
                 <div className="mt-4">
-                    <div className="text-sm font-semibold mb-2">Event Die</div>
+                    <div className="text-sm font-semibold mb-2">
+                        Event Die <span className="text-xs text-slate-300 font-normal">({totalEventRolls} roll{totalEventRolls === 1 ? '' : 's'})</span>
+                    </div>
                     <div className="flex flex-col gap-2">
                         {EVENT_DIE_FACES.map(face => {
                             const count = eventStats[face] || 0;
@@ -80,9 +81,6 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
                                 </div>
                             );
                         })}
-                        <div className="text-[11px] text-slate-400 text-right">
-                            {totalEventRolls} event roll{totalEventRolls === 1 ? '' : 's'}
-                        </div>
                     </div>
                 </div>
             )}

@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { GameLog } from './GameLog';
 import { DiceStatsPanel } from './DiceStatsPanel';
-import { DiceStats, EventDieStats, GameLogEntry } from '@/lib/types';
+import { DiceStats, EventDieStats, GameLogEntry, PlayerState } from '@/lib/types';
 
 interface SidebarTabsProps {
     logs: GameLogEntry[];
     diceStats?: DiceStats;
     eventDieStats?: EventDieStats;
+    players?: PlayerState[];
 }
 
 type TabType = 'log' | 'chat' | 'stats';
@@ -21,6 +22,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     logs,
     diceStats,
     eventDieStats,
+    players,
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('log');
 
@@ -31,7 +33,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     ];
 
     return (
-        <div className="flex flex-col bg-slate-900/90 rounded-lg border border-slate-700 shadow-xl backdrop-blur-sm overflow-hidden">
+        <div className="flex flex-col bg-slate-900/90 rounded-lg border border-slate-700 shadow-xl backdrop-blur-sm overflow-hidden text-neutral-200">
             {/* Tab Buttons */}
             <div className="flex border-b border-slate-700">
                 {tabs.map((tab) => (
@@ -56,11 +58,11 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                 ))}
             </div>
 
-            {/* Tab Content - taller height with vertical scroll */}
-            <div className="h-80 overflow-y-auto">
+            {/* Tab Content - taller height with vertical scroll (30rem = 480px, 50% taller than h-80/20rem) */}
+            <div className="h-[30rem] overflow-hidden flex flex-col">
                 {activeTab === 'log' && (
-                    <div className="h-full overflow-y-auto p-2">
-                        <GameLog logs={logs} />
+                    <div className="h-full overflow-hidden p-2">
+                        <GameLog logs={logs} players={players} />
                     </div>
                 )}
 

@@ -10,7 +10,6 @@ import { PlayerDevCards } from './PlayerDevCards';
 
 import { CompactGameStatus } from './CompactGameStatus';
 import { SidebarTabs } from './SidebarTabs';
-import { BarbarianHexOverlay } from '@/components/board/BarbarianHexOverlay';
 import { BuildControls } from './BuildControls';
 import { ActionControls } from './ActionControls';
 import { DiceDisplay } from './DiceDisplay';
@@ -49,6 +48,7 @@ import { TreasonPlacementModal } from './TreasonPlacementModal';
 import { TreasonEffect } from '@/lib/types/game';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { WeddingGiftModal } from './WeddingGiftModal';
+import { BarbarianTrack } from './BarbarianTrack';
 
 interface GameControllerProps {
     roomId: string;
@@ -1898,14 +1898,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     />
                 </div>
 
-                {/* Upper Left: Barbarian Hex Overlay (C&K only) */}
+                {/* Upper Left: Barbarian Track (C&K only) */}
                 {isCitiesAndKnights && (
-                    <div className="absolute top-28 left-4 pointer-events-auto z-20">
-                        <BarbarianHexOverlay
-                            barbarianPosition={gameState.barbarianPosition || 0}
-                            totalKnightStrength={gameState.players.reduce((sum, p) => sum + (p.activeKnightCount || 0), 0)}
-                            totalCityCount={gameState.players.reduce((sum, p) => sum + (4 - p.citiesRemaining), 0)}
-                        />
+                    <div
+                        className="absolute left-4 pointer-events-auto z-20"
+                        style={{ top: '4.25rem' }}
+                    >
+                        <BarbarianTrack gameState={gameState} />
                     </div>
                 )}
 
@@ -1994,6 +1993,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                             logs={gameState.logs || []}
                             diceStats={gameState.diceStats}
                             eventDieStats={gameState.eventDieStats}
+                            players={gameState.players}
                         />
                     </div>
                 </div>

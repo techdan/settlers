@@ -27,7 +27,8 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(npm run dev:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

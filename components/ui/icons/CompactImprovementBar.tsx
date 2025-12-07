@@ -44,6 +44,7 @@ export const CompactImprovementBar: React.FC<{
     const color = IMPROVEMENT_COLORS[type];
     const segmentSize = size === 'sm' ? 'w-2 h-2' : 'w-3 h-3';
     const gap = size === 'sm' ? 'gap-0.5' : 'gap-1';
+    const metropolisClass = size === 'sm' ? 'text-[10px] ml-0.5' : 'text-[14px] ml-1';
 
     return (
         <div
@@ -70,7 +71,7 @@ export const CompactImprovementBar: React.FC<{
                 );
             })}
             {hasMetropolis && (
-                <span className="text-[10px] ml-0.5" title="Metropolis">🏛️</span>
+                <span className={metropolisClass} title="Metropolis">🏛️</span>
             )}
         </div>
     );
