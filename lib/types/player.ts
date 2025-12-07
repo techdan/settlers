@@ -6,7 +6,7 @@ import type { CommodityType, ImprovementType, MetropolisType } from '@/core/rule
  */
 
 // Canonical player colors (hex strings). Legacy named colors are normalized to these.
-export type PlayerColor = '#ff0000' | '#0000ff' | '#ffa500' | '#d4b483';
+export type PlayerColor = '#ff0000' | '#0000ff' | '#ff7a00' | '#d4b483';
 
 export interface PlayerState {
     id: string;

@@ -16,6 +16,13 @@ const EVENT_DIE_COLORS: Record<EventDieFace, { bg: string; text: string; label: 
     blue: { bg: 'bg-blue-600', text: 'text-white', label: 'Politics' }
 };
 
+const EVENT_DIE_TEXT: Record<EventDieFace, { title: string; description: string }> = {
+    ship: { title: 'Barbarian Advance', description: 'Barbarian moves forward one space' },
+    green: { title: 'Science', description: 'Progress cards drawn from Science' },
+    yellow: { title: 'Trade', description: 'Progress cards drawn from Trade' },
+    blue: { title: 'Politics', description: 'Progress cards drawn from Politics' }
+};
+
 // Map event die faces to improvement types or special icons
 const getIconType = (face: EventDieFace) => {
     switch (face) {
@@ -64,9 +71,18 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
             {eventDieRoll && (
                 <>
                     <div className="w-px h-8 bg-white/20" />
-                    <Tooltip content={EVENT_DIE_COLORS[eventDieRoll.face].label} placement="top">
+                    <Tooltip
+                        content={(
+                            <div className="flex flex-col text-left">
+                                <span className="font-semibold text-white">{EVENT_DIE_TEXT[eventDieRoll.face].title}</span>
+                                <span className="text-slate-200">{EVENT_DIE_TEXT[eventDieRoll.face].description}</span>
+                            </div>
+                        )}
+                        placement="top"
+                    >
                         <div
-                            className={`w-10 h-10 ${EVENT_DIE_COLORS[eventDieRoll.face].bg} ${EVENT_DIE_COLORS[eventDieRoll.face].text} rounded flex items-center justify-center shadow-lg cursor-default transition-transform hover:scale-110`}
+                            className={`w-10 h-10 ${EVENT_DIE_COLORS[eventDieRoll.face].bg} ${EVENT_DIE_COLORS[eventDieRoll.face].text} rounded flex items-center justify-center shadow-lg cursor-pointer transition-transform hover:scale-110`}
+                            aria-label={`Event die: ${EVENT_DIE_TEXT[eventDieRoll.face].title}`}
                         >
                             {eventDieRoll.face === 'ship' ? (
                                 <img src="/icons/drakkar.svg" alt="Barbarian Ship" style={{ width: '32px', height: '32px' }} />

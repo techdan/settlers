@@ -5,11 +5,13 @@ import { generateBoard } from '@/core/engine/board/board-generator';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
 
-const PLAYER_COLORS: PlayerColor[] = ['#ff0000', '#0000ff', '#d4b483', '#ffa500'];
+const PLAYER_COLORS: PlayerColor[] = ['#ff0000', '#0000ff', '#d4b483', '#ff7a00'];
 const LEGACY_COLOR_MAP: Record<string, PlayerColor> = {
     red: '#ff0000',
     blue: '#0000ff',
-    orange: '#ffa500',
+    orange: '#ff7a00',
+    '#ffa500': '#ff7a00',
+    '#ff9100': '#ff7a00',
     white: '#d4b483',
     beige: '#d4b483',
 };

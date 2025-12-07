@@ -27,7 +27,6 @@ import { KnightManagementDialog } from './KnightManagementDialog';
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 
 import { BarbarianTrack } from './BarbarianTrack';
-import { EventDieDisplay } from './EventDieDisplay';
 import { ProgressCardHand } from './ProgressCardHand';
 import { ProgressCardDiscardDialog } from './ProgressCardDiscardDialog';
 import { DebugPanel } from './DebugPanel';
@@ -1911,15 +1910,13 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     />
                     {isCitiesAndKnights && (
                         <>
-                            <EventDieDisplay gameState={gameState} />
                             <BarbarianTrack gameState={gameState} />
                         </>
                     )}
                 </div>
 
                 {/* Bottom Center: Build Controls & Resources */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 pointer-events-auto max-w-[90vw]">
-                    {/* Build Controls */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 pointer-events-auto max-w-[90vw]">
                     <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}>
                         <BuildControls
                             gameState={gameState}
@@ -1929,37 +1926,44 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         />
                     </div>
 
-                    {/* Resources, Commodities & Dev Cards / Progress Cards */}
-                    <div className="flex gap-4 items-stretch max-w-full overflow-x-auto">
-                        {currentPlayer && <PlayerHand player={currentPlayer} roomId={roomId} lastTheft={gameState.lastTheft} />}
-                        {isCitiesAndKnights && currentPlayer && (
-                            <>
-                                <ProgressCardHand
-                                    player={currentPlayer}
-                                    roomId={roomId}
-                                    gameState={gameState}
-                                    onPlayCard={handlePlayProgressCard}
-                                    onStartHexSelection={handleStartHexSelection}
-                                    onStartVertexSelection={handleStartVertexSelection}
-                                    onStartEdgeSelection={handleStartEdgeSelection}
-                                    onStartCrane={handleStartCraneDialog}
-                                    onStartEngineerSelection={handleStartEngineerSelection}
-                                    onStartSmithSelection={handleStartSmithSelection}
-                                    onStartMedicineSelection={handleStartMedicineSelection}
-                                    onStartTreasonSelection={handleStartTreasonSelection}
-                                    isActiveTurn={isActiveTurn}
-                                    isEngineerSelecting={engineerSelectionActive}
-                                    isSmithSelecting={selectingKnightsForSmith}
-                                    isMedicineSelecting={selectingCityForMedicine}
-                                    activeFollowupCard={activeProgressCard === 'metropolis' ? null : activeProgressCard}
-                                    onCancelFollowupCard={handleCancelFollowupCard}
-                                    decorateCardHandler={decorateCardHandler}
-                                />
-                            </>
+                    <div className="flex items-center gap-4 max-w-full overflow-x-auto">
+                        {currentPlayer && (
+                            <PlayerHand
+                                player={currentPlayer}
+                                roomId={roomId}
+                                lastTheft={gameState.lastTheft}
+                            />
                         )}
-                        {!isCitiesAndKnights && <PlayerDevCards gameState={gameState} playerId={playerId} />}
-
+                        {!isCitiesAndKnights && (
+                            <PlayerDevCards gameState={gameState} playerId={playerId} />
+                        )}
                     </div>
+
+                    {isCitiesAndKnights && currentPlayer && (
+                        <div className="flex justify-center w-full max-w-full overflow-x-auto">
+                            <ProgressCardHand
+                                player={currentPlayer}
+                                roomId={roomId}
+                                gameState={gameState}
+                                onPlayCard={handlePlayProgressCard}
+                                onStartHexSelection={handleStartHexSelection}
+                                onStartVertexSelection={handleStartVertexSelection}
+                                onStartEdgeSelection={handleStartEdgeSelection}
+                                onStartCrane={handleStartCraneDialog}
+                                onStartEngineerSelection={handleStartEngineerSelection}
+                                onStartSmithSelection={handleStartSmithSelection}
+                                onStartMedicineSelection={handleStartMedicineSelection}
+                                onStartTreasonSelection={handleStartTreasonSelection}
+                                isActiveTurn={isActiveTurn}
+                                isEngineerSelecting={engineerSelectionActive}
+                                isSmithSelecting={selectingKnightsForSmith}
+                                isMedicineSelecting={selectingCityForMedicine}
+                                activeFollowupCard={activeProgressCard === 'metropolis' ? null : activeProgressCard}
+                                onCancelFollowupCard={handleCancelFollowupCard}
+                                decorateCardHandler={decorateCardHandler}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Bottom Right: Dice & Actions */}

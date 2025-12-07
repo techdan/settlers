@@ -3,7 +3,7 @@ import { Hex, hexToPixel } from '@/lib/hex';
 import { TerrainType } from '@/core/rules/board-constants';
 import { VoxelNumberToken } from './NumberToken';
 import { VoxelRobber } from './Robber';
-import { VoxelTree, VoxelMountain, VoxelWheat, VoxelBrick, VoxelSheep } from './Resources';
+import { VoxelTree, VoxelMountain, VoxelWheat, VoxelBrick, VoxelSheep, VoxelDesert } from './Resources';
 import { VoxelMerchant } from './Merchant';
 
 interface HexTileProps {
@@ -29,13 +29,13 @@ const TERRAIN_COLORS: Record<TerrainType, string> = {
     desert: '#FDD835', // Yellow
 };
 
-const TERRAIN_COMPONENTS: Record<TerrainType, React.ElementType | null> = {
+const TERRAIN_COMPONENTS: Record<TerrainType, React.ElementType> = {
     forest: VoxelTree,
     hill: VoxelBrick,
     pasture: VoxelSheep,
     field: VoxelWheat,
     mountain: VoxelMountain,
-    desert: null,
+    desert: VoxelDesert,
 };
 
 export const VoxelHexTile: React.FC<HexTileProps> = ({
@@ -138,22 +138,9 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({
             {/* Content (shifted up by DEPTH) */}
             <g transform={`translate(0, -${DEPTH})`}>
                 {/* Resource Icon - Centered and Scaled */}
-                {ResourceComponent && (
-                    <g transform="translate(0, 0) scale(1.5)">
-                        <ResourceComponent />
-                    </g>
-                )}
-
-                {/* Desert icon */}
-                {terrain === 'desert' && (
-                    <g transform="translate(0, 0)">
-                        <foreignObject width={size * 0.6} height={size * 0.6} x={-size * 0.3} y={-size * 0.5} style={{ opacity: 0.7 }}>
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <img src="/icons/cactus-colored.svg" alt="Desert" style={{ width: '100%', height: '100%' }} />
-                            </div>
-                        </foreignObject>
-                    </g>
-                )}
+                <g transform="translate(0, 0) scale(1.5)">
+                    <ResourceComponent />
+                </g>
 
                 {numberToken && (
                     <g transform={`translate(0, ${size * 0.3})`}>

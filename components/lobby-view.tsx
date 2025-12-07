@@ -42,11 +42,13 @@ export function LobbyView({
         const map: Record<string, PlayerColor> = {
             '#ff0000': '#ff0000',
             '#0000ff': '#0000ff',
-            '#ffa500': '#ffa500',
+            '#ff7a00': '#ff7a00',
+            '#ff9100': '#ff7a00', // Legacy brighter orange maps forward
+            '#ffa500': '#ff7a00', // Older orange maps forward
             '#d4b483': '#d4b483',
             red: '#ff0000',
             blue: '#0000ff',
-            orange: '#ffa500',
+            orange: '#ff7a00',
             white: '#d4b483',
             beige: '#d4b483',
         };
@@ -179,7 +181,7 @@ export function LobbyView({
         { value: '#ff0000', swatch: '#ff0000', label: 'Red' },
         { value: '#0000ff', swatch: '#0000ff', label: 'Blue' },
         { value: '#d4b483', swatch: '#d4b483', label: 'Beige' },
-        { value: '#ffa500', swatch: '#ffa500', label: 'Orange' },
+        { value: '#ff7a00', swatch: '#ff7a00', label: 'Orange' },
     ];
 
     const handleColorChange = (playerId: string, color: PlayerColor) => {

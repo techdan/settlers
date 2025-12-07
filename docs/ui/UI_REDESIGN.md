@@ -1,10 +1,613 @@
 # Cities & Knights UI Redesign Documentation
 
 **Project:** Settlers of Lancaster - Cities & Knights Edition
-**Date:** 2025-12-01
+**Date:** 2025-12-06 (Updated)
 **Status:** In Development
 
 ---
+
+# 🎯 WIREFRAME IMPLEMENTATION PLAN
+
+> **Based on wireframe screenshot and stakeholder clarifications (2025-12-06)**
+> **Final design decisions confirmed: 2-row compact player cards, instant tab switching, Chat disabled placeholder**
+
+---
+
+## 📋 Final Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Player Card Layout | 2-row compact | Dense design, future potential to move to top |
+| Tab Switching Animation | Instant | No animation overhead, snappy UX |
+| Chat Tab | Disabled placeholder | Implement later, show "Coming soon" |
+| Target Viewports | Desktop + Tablet Landscape | ~1024px+ width |
+| Debug Button | Env-controlled | `NEXT_PUBLIC_DEBUG_MODE` already exists |
+
+---
+
+## 🗺️ Layout Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│ [+ - 3D]  ┌──────────────┐                        ┌───────────────────────────┐ │
+│           │  Barbarian   │                        │         Phase             │ │
+│           │  Hex Overlay │                        ├───────────────────────────┤ │
+│           └──────────────┘                        │ [●] Player1    8VP [▓▓░]  │ │
+│                                                   │ 📦3 📜2 🛤5 ⚔2  🛡1 🏪●   │ │
+│              ┌────────────────────────────┐       ├───────────────────────────┤ │
+│              │                            │       │ [●] Player2    6VP [▓░░]  │ │
+│              │        GAME BOARD          │       │ 📦5 📜1 🛤3 ⚔1  🛡0 🏪-   │ │
+│              │                            │       ├───────────────────────────┤ │
+│              │                            │       │ [●] Player3    5VP [░░░]  │ │
+│              │                            │       │ 📦2 📜3 🛤4 ⚔0  🛡0 🏪-   │ │
+│              │                            │       ├───────────────────────────┤ │
+│              └────────────────────────────┘       │ [●] Player4    4VP [░░░]  │ │
+│                                                   │ 📦1 📜0 🛤2 ⚔0  🛡0 🏪-   │ │
+│ ┌──────────┐  ┌───────────────┐  ┌─────────────┐  ├───────────────────────────┤ │
+│ │  Build   │  │   Resources   │  │  Progress   │  │   [Log] [Chat] [Stats]    │ │
+│ │ (stack)  │  │  + Commodities│  │    Cards    │  │                           │ │
+│ └──────────┘  └───────────────┘  └─────────────┘  │   (tabbed content area)   │ │
+│                                  ┌───────────────┐│                           │ │
+│                                  │ Dice│Trade│End││                           │ │
+│                                  │Debug│     │   ││                           │ │
+│                                  └───────────────┘└───────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 📐 DETAILED COMPONENT SPECIFICATIONS
+
+## 1. Compact Player Card (2-Row Design)
+
+### Visual Design
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ [●] PlayerName                              8 VP    [🏴]   │  ← Row 1: Identity
+│ 📦4 📜2 🛤5 ⚔3   [▓▓▓░░][▓▓░░░][▓░░░░]   🛡1 📜1 🏪●     │  ← Row 2: Stats + Bars + VP
+└────────────────────────────────────────────────────────────┘
+```
+
+**Row 1 Elements:**
+| Element | Description | Style |
+|---------|-------------|-------|
+| Color Dot | 12x12 circle | `bg-[player.color]` |
+| Player Name | Truncated if >12 chars | `text-sm font-semibold` |
+| VP Count | Victory points | `text-lg font-bold text-amber-400` |
+| Turn Indicator | Flag when current turn | `🏴` or hidden |
+
+**Row 2 Elements (Left to Right):**
+| Element | Icon | Description | Tooltip |
+|---------|------|-------------|---------|
+| Resources | 📦 | Total res + commodities | Full breakdown |
+| Prog Cards | 📜 | Progress card count | - |
+| Roads | 🛤 | Longest continuous road | Longest Road status |
+| Defense | ⚔ | Active knight strength | Knight breakdown |
+| Science Bar | `[▓▓▓░░]` | Level 1-5, green | Level 3 = Aqueduct unlock |
+| Trade Bar | `[▓▓░░░]` | Level 1-5, yellow | Level 3 = Trading House |
+| Politics Bar | `[▓░░░░]` | Level 1-5, blue | Level 3 = Fortress |
+| Defender VP | 🛡 | Defender of Catan tokens | +1 VP each |
+| VP Cards | 📜 | Revealed VP progress cards | Card names |
+| Merchant | 🏪 | ● if owned, - if not | +1 VP if owned |
+
+### Component Architecture
+
+```tsx
+// File: components/game/CompactPlayerCard.tsx
+interface CompactPlayerCardProps {
+    player: PlayerState;
+    gameState: GameState;
+    isCurrentPlayer: boolean;  // Is this the local user?
+    isTurn: boolean;           // Is it this player's turn?
+}
+
+// CRITICAL: All detailed information MUST be available via Tooltip
+// The compact display is a summary - tooltips provide full details
+```
+
+### Data Dependencies
+
+```typescript
+// Required from PlayerState:
+player.id
+player.name
+player.color
+player.victoryPoints
+player.resources: Record<ResourceType, number>
+player.commodities: Record<CommodityType, number>  // C&K only
+player.progressCards: ProgressCardType[]
+player.activeKnightCount: number
+player.improvements: { science: number, trade: number, politics: number }
+player.metropolisOwned: ('science' | 'trade' | 'politics')[]
+player.defenderVPTokens: number
+player.revealedVPCards: string[]
+
+// Required from GameState:
+gameState.currentTurn                    // For turn indicator
+gameState.longestRoadOwner               // For road highlighting
+gameState.activeMerchant                 // Player ID who has merchant
+gameState.gameMode                       // 'base' | 'cities_and_knights'
+```
+
+### Implementation Notes
+
+```tsx
+// ⚠️ PITFALL: Don't forget base game mode!
+// In base game, hide C&K-specific elements:
+// - Improvement bars
+// - Commodities
+// - Defender VP
+// - Merchant
+
+{gameState.gameMode === 'cities_and_knights' && (
+    // C&K specific elements here
+)}
+
+// ⚠️ PITFALL: Resource count should include commodities in C&K!
+const totalCards = Object.values(player.resources).reduce((a, b) => a + b, 0)
+    + (gameState.gameMode === 'cities_and_knights' 
+        ? Object.values(player.commodities || {}).reduce((a, b) => a + b, 0) 
+        : 0);
+
+// ⚠️ PITFALL: Show danger indicator when over safe limit (7 base + 2 per city wall)
+const cityWallCount = Object.values(gameState.board.vertices)
+    .filter(v => v.owner === player.id && v.hasCityWall).length;
+const safeLimit = 7 + (cityWallCount * 2);
+const isDanger = totalCards > safeLimit;
+```
+
+---
+
+## 2. Compact Improvement Bar Component
+
+### Visual Design
+
+```
+[▓][▓][▓][░][░]    ← 5 segments, level 3 has ring indicator
+          ↑
+     Level 3 = unlock threshold (ring-1 ring-amber-400)
+```
+
+### Component Architecture
+
+```tsx
+// File: components/ui/icons/CompactImprovementBar.tsx
+// ✅ ALREADY CREATED
+
+interface Props {
+    type: 'science' | 'trade' | 'politics';
+    level: number;              // 0-5
+    hasMetropolis?: boolean;    // Show 🏛️ icon
+    size?: 'sm' | 'md';         // 'sm' = 8px segments, 'md' = 12px
+}
+
+// Color mapping:
+const colors = {
+    science: 'bg-green-500',   // Matches existing theme
+    trade: 'bg-yellow-400',
+    politics: 'bg-blue-500',
+};
+```
+
+### Implementation Notes
+
+```tsx
+// ⚠️ PITFALL: Level 3 is the unlock level - ALWAYS show ring indicator
+// This is consistent with the 5-city improvement cards in physical game
+// Levels 4-5 are for metropolis (one player takes it, steals from level 4+ player)
+
+// ⚠️ PITFALL: Metropolis can be stolen!
+// If player.metropolisOwned includes the type, show 🏛️
+// But if another player steals it (reaches level 4 when owner at 5), it moves
+```
+
+---
+
+## 3. Sidebar Tabs Component
+
+### Visual Design
+
+```
+┌─────────────────────────────────────────┐
+│  [Log]  │  [Chat]  │  [Stats]          │  ← Tab buttons
+├─────────────────────────────────────────┤
+│                                         │
+│        (Tab content area)               │
+│                                         │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### Component Architecture
+
+```tsx
+// File: components/game/SidebarTabs.tsx
+// ✅ ALREADY CREATED
+
+interface SidebarTabsProps {
+    logs: GameLogEntry[];
+    diceStats?: DiceStats;
+    eventDieStats?: EventDieStats;
+}
+
+// Tab configuration (easy to extend):
+const tabs = [
+    { id: 'log', label: 'Log', disabled: false },
+    { id: 'chat', label: 'Chat', disabled: true },  // ← Disabled for now
+    { id: 'stats', label: 'Stats', disabled: false },
+];
+```
+
+### Implementation Notes
+
+```tsx
+// ⚠️ PITFALL: Chat tab must be disabled but visible
+// Use disabled prop, show tooltip "Coming soon"
+// Don't hide the tab entirely - users should know feature is planned
+
+// ⚠️ PITFALL: Stats tab needs diceStats from gameState
+// If no rolls yet, show placeholder message
+// diceStats may be undefined on fresh games
+
+// ⚠️ IMPORTANT: Tab content must be scrollable
+// Use overflow-y-auto on content container
+// Set max-h to prevent sidebar from growing too tall
+```
+
+---
+
+## 4. Barbarian Hex Overlay
+
+### Visual Design
+
+```
+┌─────────────────────────────┐
+│   ⚔ 2   Active Knights      │  ← Upper hex: Knight strength
+│   🚢 3   Barbarian Strength  │
+├─────────────────────────────┤
+│   [○][○][●][○][○][○][○][○]  │  ← Lower hex: Track position
+│      Position: 3 / 7        │
+└─────────────────────────────┘
+```
+
+### Position Strategy
+
+```typescript
+// The overlay should be positioned OUTSIDE the main hex grid
+// to avoid overlap with ports and the game board
+
+// Option 1: Use foreignObject in SVG (for in-board positioning)
+// - Renders HTML content inside SVG
+// - Position at negative hex coordinates
+
+// Option 2: Position as absolute overlay (RECOMMENDED)
+// - Simpler CSS positioning
+// - Easier responsive behavior
+// - Position: absolute top-32 left-4 (below map controls)
+
+// ⚠️ PITFALL: Must work around ports!
+// The upper-left area has a port (Sheep 2:1)
+// Position the overlay ABOVE the port, not overlapping
+```
+
+### Component Architecture
+
+```tsx
+// File: components/board/BarbarianHexOverlay.tsx
+interface BarbarianHexOverlayProps {
+    barbarianPosition: number;      // 0-7 (attacks at 7)
+    totalKnightStrength: number;    // Sum of all players' active knights
+    totalCityCount: number;         // Sum of all players' cities
+    attackThreshold: number;        // Usually 7
+}
+
+// Calculate totals in GameController before passing:
+const totalKnightStrength = gameState.players.reduce(
+    (sum, p) => sum + (p.activeKnightCount || 0), 0
+);
+const totalCityCount = gameState.players.reduce(
+    (sum, p) => sum + (4 - p.citiesRemaining), 0
+);
+```
+
+### Implementation Notes
+
+```tsx
+// ⚠️ PITFALL: Attack threshold is configurable but typically 7
+// Import from: CK_CONSTANTS.BARBARIAN_ATTACK_POSITION
+
+// ⚠️ PITFALL: Knights must be ACTIVE to count
+// player.activeKnightCount, not total knight count
+// Inactive knights don't defend!
+
+// ⚠️ PITFALL: Show warning state when defenders losing
+const isDefeatImminent = totalKnightStrength < totalCityCount;
+// Use red/danger styling when true
+```
+
+---
+
+## 5. Bottom Layout Restructure
+
+### Layout Structure
+
+```
+bottom-left           bottom-center                bottom-right
+┌──────────┐  ┌─────────────────────────┐  ┌────────────────────┐
+│   Build  │  │  Resources + Comms      │  │   Progress Cards   │
+│  (stack) │  │                         │  │                    │
+└──────────┘  └─────────────────────────┘  └────────────────────┘
+                                           ┌────────────────────┐
+                                           │ Dice|Trade|End     │
+                                           │ Debug              │
+                                           └────────────────────┘
+```
+
+### Build Controls (Vertical Stack)
+
+```tsx
+// File: components/game/BuildControls.tsx
+// Add vertical layout variant
+
+interface BuildControlsProps {
+    // ... existing props
+    layout?: 'horizontal' | 'vertical';  // NEW: default 'horizontal'
+}
+
+// Vertical layout:
+<div className="flex flex-col gap-1 w-20">
+    <BuildButton icon="🛣️" label="Road" ... />
+    <BuildButton icon="🏠" label="Settlement" ... />
+    <BuildButton icon="🏙️" label="City" ... />
+    <BuildButton icon="⚔️" label="Knight" ... />  // C&K only
+    <BuildButton icon="🏰" label="Wall" ... />    // C&K only
+</div>
+
+// ⚠️ PITFALL: Only show Knight/Wall buttons in C&K mode
+```
+
+---
+
+# 📱 MOBILE / TABLET CONSIDERATIONS
+
+## Viewport Breakpoints
+
+```css
+/* Target: Desktop and Tablet Landscape */
+/* Minimum viable width: 1024px */
+
+/* For narrower viewports, consider: */
+@media (max-width: 1023px) {
+    /* Right sidebar: reduce width or collapse */
+    /* Bottom controls: stack vertically */
+    /* Barbarian overlay: reduce size or move */
+}
+```
+
+## Touch Target Sizes
+
+```tsx
+// Minimum touch target: 44x44px (Apple HIG guideline)
+// Current button sizes may be too small on tablet
+
+// Improvement bar segments (8px) are too small for touch
+// Solution: Entire bar is hover/click target, not individual segments
+
+// Tab buttons should be at least 44px tall
+className="min-h-[44px] ..."
+```
+
+## Potential Mobile Issues
+
+| Issue | Current State | Mitigation |
+|-------|---------------|------------|
+| Player card density | 2 rows, lots of icons | Tooltips work on long-press |
+| Improvement bars | 5 tiny segments | Tooltip shows level clearly |
+| Tabs | May be too small | Use min-height 44px |
+| Barbarian overlay | Fixed position | May need responsive positioning |
+
+---
+
+# 🚨 COMMON PITFALLS FOR JUNIOR DEVELOPERS
+
+## 1. Type Safety
+
+```typescript
+// ❌ WRONG: Assuming properties exist
+const count = player.progressCards.length;  // May crash if undefined
+
+// ✅ RIGHT: Always use optional chaining
+const count = player.progressCards?.length || 0;
+
+// ❌ WRONG: Assuming gameMode
+const isKnights = gameState.gameMode === 'cities_and_knights';
+
+// ✅ RIGHT: Check for both base and C&K
+const isCK = gameState.gameMode === 'cities_and_knights';
+const isBase = gameState.gameMode === 'base' || !gameState.gameMode;
+```
+
+## 2. State Management
+
+```typescript
+// ❌ WRONG: Reading stale state in callbacks
+const handleClick = () => {
+    console.log(someState);  // May be stale
+};
+
+// ✅ RIGHT: Use functional updates
+setActiveTab(prev => prev === 'log' ? 'stats' : 'log');
+```
+
+## 3. Tooltip Accessibility
+
+```tsx
+// ❌ WRONG: Tooltip only on hover (not accessible on touch)
+<div onMouseEnter={showTooltip}>
+
+// ✅ RIGHT: Use onClick for touch devices too
+<Tooltip content="...">  // Our Tooltip component handles this
+```
+
+## 4. Existing Component Reuse
+
+```tsx
+// ✅ REUSE existing components where possible:
+
+// Tooltip component: components/ui/tooltip.tsx
+import { Tooltip } from '@/components/ui/tooltip';
+
+// Game icons: components/ui/icons/GameIcon.tsx
+import { GameIcon, ImprovementIcon } from '@/components/ui/icons/GameIcon';
+
+// DiceStatsPanel: components/game/DiceStatsPanel.tsx
+// GameLog: components/game/GameLog.tsx
+```
+
+## 5. CSS Positioning
+
+```tsx
+// ❌ WRONG: Using `fixed` for game UI elements
+// Fixed elements don't scroll with the game board
+
+// ✅ RIGHT: Use `absolute` within the game container
+<div className="relative h-screen w-screen">
+    <div className="absolute top-4 left-4">...</div>  // ✅ Positioned correctly
+</div>
+```
+
+---
+
+# 📊 DATA FLOW PATTERNS
+
+## GameController → Components
+
+```
+GameController (state owner)
+    │
+    ├─→ GameStatus
+    │       └─→ CompactPlayerCard (for each player)
+    │               └─→ CompactImprovementBar (×3 for C&K)
+    │
+    ├─→ SidebarTabs
+    │       ├─→ GameLog
+    │       ├─→ ChatPlaceholder
+    │       └─→ DiceStatsPanel
+    │
+    ├─→ BarbarianHexOverlay (C&K only)
+    │
+    ├─→ BuildControls
+    ├─→ PlayerHand
+    ├─→ ProgressCardHand (C&K only)
+    └─→ ActionControls (Dice, Trade, End, Debug)
+```
+
+## Prop Threading Pattern
+
+```tsx
+// GameController.tsx
+<GameStatus
+    gameState={gameState}           // Full state
+    currentPlayerId={playerId}      // Local player
+    vpAckTimestamp={...}            // For VP card animation
+/>
+
+// GameStatus.tsx
+{gameState.players.map(player => (
+    <CompactPlayerCard
+        key={player.id}
+        player={player}
+        gameState={gameState}
+        isCurrentPlayer={player.id === currentPlayerId}
+        isTurn={gameState.currentTurn === player.id}
+    />
+))}
+
+// ⚠️ IMPORTANT: Don't pass entire gameState if only a few fields needed
+// Extract needed fields in parent, pass only what's required
+```
+
+---
+
+# ✅ IMPLEMENTATION CHECKLIST
+
+## Phase 0: Environment Setup
+- [x] `NEXT_PUBLIC_DEBUG_MODE` already exists in codebase
+- [ ] Verify debug flag works in both dev and production
+
+## Phase 1: Right Sidebar Restructure (HIGH PRIORITY)
+- [x] Create `SidebarTabs.tsx` ✅ Created
+- [x] Create `CompactPlayerCard.tsx` ✅ Created
+- [x] Create `CompactImprovementBar.tsx` ✅ Created
+- [x] Create `CompactGameStatus.tsx` ✅ Created (uses CompactPlayerCard)
+- [ ] Integrate `CompactGameStatus` + `SidebarTabs` into `GameController.tsx`
+- [ ] Remove `GameLog` from left sidebar
+- [ ] Test: All player info accessible via tooltips
+- [ ] Test: Tab switching instant (no animation)
+- [ ] Test: Chat tab disabled with "Coming soon"
+
+## Phase 2: Barbarian Hex Overlay (HIGH PRIORITY)
+- [x] Create `BarbarianHexOverlay.tsx` ✅ Created
+- [ ] Position in upper-left, avoiding ports
+- [x] Display knight strength vs barbarian strength ✅ Implemented
+- [x] Display track position (0-7) ✅ Implemented
+- [x] Show danger state when defenders losing ✅ Implemented
+- [ ] Integrate into `GameController.tsx`
+- [ ] Remove `BarbarianTrack` from right sidebar
+- [ ] Test: Hover shows detailed breakdown
+
+## Phase 3: Bottom Layout Restructure (MEDIUM PRIORITY)
+- [ ] Add `layout` prop to `BuildControls.tsx`
+- [ ] Position Build controls bottom-left
+- [ ] Keep Resources/PlayerHand bottom-center
+- [ ] Keep ProgressCardHand with Resources
+- [ ] Test: No overlap with game board
+- [ ] Test: Works at various zoom levels
+
+## Phase 4: Top-Left & Action Controls (MEDIUM PRIORITY)
+- [ ] Simplify MapControls to `+ - 3D` only
+- [ ] Add Debug toggle to ActionControls
+- [ ] Test: All controls functional
+- [ ] Test: Debug only visible when env flag set
+
+## Phase 5: Polish & Testing (LOW PRIORITY)
+- [ ] Test at 1920×1080 (desktop)
+- [ ] Test at 1024×768 (tablet landscape)
+- [ ] Test with 4 players (max sidebar)
+- [ ] Test with max progress cards
+- [ ] Keyboard navigation for tabs (optional)
+
+---
+
+## Changelog
+
+### 2025-12-06 - Component Implementation (Session 2)
+- Created `CompactPlayerCard.tsx` - 2-row dense player card with all C&K info
+- Created `CompactGameStatus.tsx` - Uses CompactPlayerCard for player list
+- Created `BarbarianHexOverlay.tsx` - On-board barbarian track display
+- All components compile without TypeScript errors
+- All detailed info accessible via tooltips
+
+### 2025-12-06 - Comprehensive Implementation Guide (Session 1)
+- **FINAL DECISION:** 2-row compact player cards
+- **FINAL DECISION:** Instant tab switching (no animation)
+- **FINAL DECISION:** Chat tab disabled placeholder
+- Added detailed component specifications with TypeScript interfaces
+- Added data flow patterns and prop threading examples
+- Added mobile/tablet considerations
+- Added common pitfalls section for junior developers
+- Added implementation checklist with completion tracking
+- Created `SidebarTabs.tsx` component
+- Created `CompactImprovementBar.tsx` component
+
+### 2025-12-01 - Initial Design
+- Created original UI redesign document
+- (Previous content preserved below)
+
+---
+---
+
 
 ## Table of Contents
 1. [Overview](#overview)
