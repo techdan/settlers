@@ -345,9 +345,8 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
                                     : () => handlePlayCard(cardType);
                                 return (
-                                    <Tooltip content={disabledTitle || info.description} placement="left" tooltipClassName="whitespace-pre-line">
+                                    <Tooltip key={`${cardType}-${index}`} content={disabledTitle || info.description} placement="left" tooltipClassName="whitespace-pre-line">
                                         <button
-                                            key={`${cardType}-${index}`}
                                             onClick={onCardClick}
                                             disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled}
                                             className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive

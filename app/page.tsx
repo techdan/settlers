@@ -1,11 +1,12 @@
 import { createRoom, joinRoom } from './actions';
+import { ResumeGameForm } from '@/components/lobby/resume-game-form';
 
 export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-8 gap-8 font-[family-name:var(--font-geist-sans)]">
       <h1 className="text-4xl font-bold">Settlers of Lanc</h1>
 
-      <div className="flex flex-col md:flex-row gap-12 w-full max-w-4xl justify-center">
+      <div className="flex flex-col md:flex-row gap-8 w-full max-w-7xl justify-center items-start">
         {/* Create Room Section */}
         <div className="flex flex-col gap-4 p-6 border rounded-lg bg-card text-card-foreground shadow-sm w-full max-w-sm">
           <h2 className="text-2xl font-semibold">Create Room</h2>
@@ -62,6 +63,9 @@ export default function Home() {
             </button>
           </form>
         </div>
+
+        {/* Resume Game Section */}
+        <ResumeGameForm />
       </div>
     </div>
   );

@@ -20,9 +20,12 @@ interface VertexRendererProps {
     onCancelIconClick?: () => void;
     isSelectedForAction?: boolean;
     highlightVariant?: 'default' | 'treason';
+    isPendingPlacement?: boolean;
+    onConfirmPlacement?: () => void;
+    onCancelPlacement?: () => void;
 }
 
-export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick, isSelectedForAction, highlightVariant = 'default' }) => {
+export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, theme = 'flat', isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick, isSelectedForAction, highlightVariant = 'default', isPendingPlacement, onConfirmPlacement, onCancelPlacement }) => {
     const pixel = hexCornerToPixel(createHex(vertex.q, vertex.r), vertex.d, size);
     const DEPTH = 15;
     const offset = theme === 'voxel' ? { x: 0, y: -DEPTH } : { x: 0, y: 0 };
@@ -42,7 +45,8 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
     // Determine if this vertex should show cursor-pointer
     const isOwnKnight = knight && knight.playerId === currentPlayerId;
     const isOwnCity = vertex.owner === currentPlayerId && (vertex.structure === 'city' || vertex.structure === 'metropolis');
-    const showPointer = isValid || isOwnKnight || isOwnCity || showCancelIcon;
+    const isOwnSettlement = vertex.owner === currentPlayerId && vertex.structure === 'settlement';
+    const showPointer = isValid || isOwnKnight || isOwnCity || isOwnSettlement || showCancelIcon;
 
     return (
         <g transform={`translate(${pixel.x + offset.x}, ${pixel.y + offset.y})`} onClick={() => onClick?.(vertex.id)} className={showPointer ? "cursor-pointer" : ""}>
@@ -278,6 +282,39 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                     <text x="0" y="3" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">x</text>
                     <title>{cancelIconTitle || 'Cancel selection'}</title>
                 </g>
+            )}
+
+            {/* Pending Placement Confirmation Icons */}
+            {isPendingPlacement && (
+                <>
+                    {/* Green Check - Confirm */}
+                    <g
+                        transform="translate(20, -20)"
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onConfirmPlacement?.();
+                        }}
+                    >
+                        <circle r={10} fill="#22c55e" stroke="white" strokeWidth={2} />
+                        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">✓</text>
+                        <title>Confirm Placement</title>
+                    </g>
+
+                    {/* Red X - Cancel */}
+                    <g
+                        transform="translate(-20, -20)"
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onCancelPlacement?.();
+                        }}
+                    >
+                        <circle r={10} fill="#ef4444" stroke="white" strokeWidth={2} />
+                        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">✕</text>
+                        <title>Cancel Placement</title>
+                    </g>
+                </>
             )}
         </g>
     );

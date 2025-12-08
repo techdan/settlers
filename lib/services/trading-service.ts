@@ -57,6 +57,14 @@ function getMerchantFleetTradeItem(gameState: GameState, playerId: string): Reso
     return effect?.tradeItem ?? null;
 }
 
+function formatResourceList(resources: Record<ResourceType, number>): string {
+    const parts = Object.entries(resources)
+        .filter(([, amount]) => amount > 0)
+        .map(([res, amount]) => `${amount} ${res}`);
+
+    return parts.length ? parts.join(', ') : 'nothing';
+}
+
 export async function tradeWithBank(
     roomId: string,
     playerId: string,
@@ -199,7 +207,7 @@ export async function offerTrade(
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} offered a trade`,
+        message: `${player.name} offered a trade: give ${formatResourceList(give)} for ${formatResourceList(get)}`,
         playerId
     });
 
@@ -249,6 +257,9 @@ export async function acceptTrade(
     // Execute trade
     // Initiator gives 'give', gets 'get'
     // Acceptor gives 'get', gets 'give'
+    const offeredGive = formatResourceList(gameState.tradeOffer.give);
+    const offeredGet = formatResourceList(gameState.tradeOffer.get);
+
     for (const [res, amount] of Object.entries(gameState.tradeOffer.give)) {
         initiator.resources[res as ResourceType] -= amount;
         acceptor.resources[res as ResourceType] += amount;
@@ -266,11 +277,56 @@ export async function acceptTrade(
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${acceptor.name} accepted the trade`,
+        message: `${acceptor.name} accepted ${initiator.name}'s trade: ${acceptor.name} gives ${offeredGet} and receives ${offeredGive}`,
         playerId
     });
 
     // Save to database
+    await updateGameState(gameState);
+
+    return gameState;
+}
+
+/**
+ * Reject an active trade offer
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID (rejector, cannot be initiator)
+ * @returns Updated game state
+ */
+export async function rejectTrade(
+    roomId: string,
+    playerId: string
+): Promise<GameState> {
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    const offer = gameState.tradeOffer;
+
+    if (!offer || offer.status !== 'open') {
+        throw new Error('No active trade offer');
+    }
+
+    if (offer.initiator === playerId) {
+        throw new Error('Trade initiator should cancel instead of rejecting');
+    }
+
+    const rejector = gameState.players.find(p => p.id === playerId);
+    const initiator = gameState.players.find(p => p.id === offer.initiator);
+
+    if (!rejector || !initiator) {
+        throw new Error('Player not found');
+    }
+
+    gameState.tradeOffer = null;
+
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${rejector.name} rejected your trade offer.`,
+        playerId: initiator.id
+    });
+
     await updateGameState(gameState);
 
     return gameState;

@@ -59,7 +59,8 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const canBuildKnight = canAffordKnight && knightsRemaining > 0;
     const canBuildCityWall = resources.brick >= 2 && wallsRemaining > 0 && hasEligibleCityForWall;
 
-    if (!isMyTurn || gameState.phase !== 'main_phase') return null;
+    // Enable building only when it's the player's turn and in main phase
+    const canInteract = isMyTurn && gameState.phase === 'main_phase';
 
     return (
         <div className="flex gap-2 bg-slate-800/80 p-2 rounded-xl backdrop-blur-sm border border-slate-700 pointer-events-auto">
@@ -70,12 +71,12 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 tooltipClassName="whitespace-pre-line"
             >
                 <button
-                    onClick={() => onSetBuildMode(buildMode === 'road' ? null : 'road')}
-                    disabled={!canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
+                    onClick={() => canInteract && onSetBuildMode(buildMode === 'road' ? null : 'road')}
+                    disabled={!canInteract || !canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'road'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
@@ -99,12 +100,12 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 tooltipClassName="whitespace-pre-line"
             >
                 <button
-                    onClick={() => onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
-                    disabled={!canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
+                    onClick={() => canInteract && onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
+                    disabled={!canInteract || !canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'settlement'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
@@ -128,12 +129,12 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 tooltipClassName="whitespace-pre-line"
             >
                 <button
-                    onClick={() => onSetBuildMode(buildMode === 'city' ? null : 'city')}
-                    disabled={!canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
+                    onClick={() => canInteract && onSetBuildMode(buildMode === 'city' ? null : 'city')}
+                    disabled={!canInteract || !canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordCity && (player?.citiesRemaining ?? 0) > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                         }`}
                 >
@@ -158,10 +159,10 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     tooltipClassName="whitespace-pre-line"
                 >
                     <button
-                        onClick={handleBuyDevCard}
-                        disabled={!canAffordDevCard || deckSize === 0 || isPending}
+                        onClick={() => canInteract && handleBuyDevCard()}
+                        disabled={!canInteract || !canAffordDevCard || deckSize === 0 || isPending}
                         className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                             }`}
                     >
@@ -186,12 +187,12 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     tooltipClassName="whitespace-pre-line"
                 >
                     <button
-                        onClick={() => onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
-                        disabled={!canBuildKnight}
+                        onClick={() => canInteract && onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
+                        disabled={!canInteract || !canBuildKnight}
                         className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildKnight
-                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
                                 : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                             }`}
                     >
@@ -217,12 +218,12 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     tooltipClassName="whitespace-pre-line"
                 >
                     <button
-                        onClick={() => onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
-                        disabled={!canBuildCityWall}
+                        onClick={() => canInteract && onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
+                        disabled={!canInteract || !canBuildCityWall}
                         className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildCityWall
-                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
                                 : 'bg-slate-800 text-slate-600 cursor-not-allowed'
                             }`}
                     >

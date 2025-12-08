@@ -4,6 +4,7 @@ import React from 'react';
 import { PlayerState, GameState } from '@/lib/types';
 import { Tooltip } from '@/components/ui/tooltip';
 import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementBar';
+import { IMPROVEMENT_TOOLTIPS } from './CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 
 interface CompactPlayerCardProps {
@@ -11,6 +12,7 @@ interface CompactPlayerCardProps {
     gameState: GameState;
     isCurrentPlayer: boolean;  // Is this the local user?
     isTurn: boolean;           // Is it this player's turn?
+    onOpenCityManagement?: () => void;
 }
 
 /**
@@ -26,9 +28,11 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
     gameState,
     isCurrentPlayer,
     isTurn,
+    onOpenCityManagement,
 }) => {
     const isCK = gameState.gameMode === 'cities_and_knights';
     const tooltipClassName = 'min-w-[12rem] max-w-[20rem] whitespace-pre-line text-xs';
+    const canOpenCityManagement = isCK && isCurrentPlayer && !!onOpenCityManagement;
 
     // Calculate stats
     const resourceCount = Object.values(player.resources).reduce((a, b) => a + b, 0);
@@ -152,9 +156,9 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
             </div>
 
             {/* Row 2: Stats + Special VP */}
-            <div className="flex items-center gap-1.5 text-[13px] leading-tight text-slate-300">
+            <div className="flex items-center gap-1 text-[12px] leading-tight text-slate-300">
                 {/* Basic stats */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                     {/* Resources */}
                     <Tooltip
                         content={resourceTooltip}
@@ -227,7 +231,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
                 {/* Special VP (C&K only) - moved from row 3 to row 2 */}
                 {isCK && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         {/* Defender VP */}
                         <Tooltip
                             content={defenderTooltip}
@@ -271,63 +275,38 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
             {/* Row 3: City Improvement bars (C&K only) - on their own row */}
             {isCK && (
-                <div className="flex items-center gap-2 mt-1 text-[13px] leading-tight">
-                    <Tooltip
-                        content={`Science: Level ${player.improvements?.science || 0}/5\nLevel 3 = Aqueduct ability\nUpgrade with Paper commodity`}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <span className="font-bold" style={{ color: '#6bb97f' }}>S</span>
-                            <div className="scale-[0.9] origin-left">
-                                <CompactImprovementBar
-                                    type="science"
-                                    level={player.improvements?.science || 0}
-                                    hasMetropolis={player.metropolisOwned?.includes('science')}
-                                    size="md"
-                                />
-                            </div>
-                        </div>
-                    </Tooltip>
-
-                    <Tooltip
-                        content={`Trade: Level ${player.improvements?.trade || 0}/5\nLevel 3 = Trading House ability\nUpgrade with Cloth commodity`}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <span className="font-bold" style={{ color: '#c6a34a' }}>T</span>
-                            <div className="scale-[0.9] origin-left">
-                                <CompactImprovementBar
-                                    type="trade"
-                                    level={player.improvements?.trade || 0}
-                                    hasMetropolis={player.metropolisOwned?.includes('trade')}
-                                    size="md"
-                                />
-                            </div>
-                        </div>
-                    </Tooltip>
-
-                    <Tooltip
-                        content={`Politics: Level ${player.improvements?.politics || 0}/5\nLevel 3 = Fortress ability\nUpgrade with Coin commodity`}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <div className="flex items-center gap-1.5">
-                            <span className="font-bold" style={{ color: '#7ba3c9' }}>P</span>
-                            <div className="scale-[0.9] origin-left">
-                                <CompactImprovementBar
-                                    type="politics"
-                                    level={player.improvements?.politics || 0}
-                                    hasMetropolis={player.metropolisOwned?.includes('politics')}
-                                    size="md"
-                                />
-                            </div>
-                        </div>
-                    </Tooltip>
+                <div className="flex items-center gap-1.5 mt-0.5 text-[12px] leading-tight">
+                    {([
+                        { type: 'science', label: 'S', color: '#6bb97f' },
+                        { type: 'trade', label: 'T', color: '#c6a34a' },
+                        { type: 'politics', label: 'P', color: '#7ba3c9' },
+                    ] as const).map(({ type, label, color }) => (
+                        <Tooltip
+                            key={type}
+                            content={IMPROVEMENT_TOOLTIPS[type]}
+                            className="cursor-default"
+                            tooltipClassName={tooltipClassName}
+                            placement="bottom"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => canOpenCityManagement && onOpenCityManagement?.()}
+                                className={`flex items-center gap-1 focus:outline-none rounded px-0.5 py-0.5 transition ${
+                                    canOpenCityManagement ? 'hover:bg-slate-700/60 cursor-pointer' : 'cursor-default'
+                                }`}
+                            >
+                                <span className="font-bold" style={{ color }}>{label}</span>
+                                <div className="scale-[0.85] origin-left">
+                                    <CompactImprovementBar
+                                        type={type}
+                                        level={player.improvements?.[type] || 0}
+                                        hasMetropolis={player.metropolisOwned?.includes(type)}
+                                        size="md"
+                                    />
+                                </div>
+                            </button>
+                        </Tooltip>
+                    ))}
                 </div>
             )}
         </div>

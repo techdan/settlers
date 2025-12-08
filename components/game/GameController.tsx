@@ -17,13 +17,14 @@ import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { BoardSelectionPrompt } from './BoardSelectionPrompt';
-import { buildCityWall, endTurn } from '@/app/actions';
+import { buildCity, buildCityWall, endTurn, moveRobber } from '@/app/actions';
 import { AqueductModal } from './AqueductModal';
 import { CommercialHarborModal } from './CommercialHarborModal';
 import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDialog';
 
 // Cities & Knights components
 import { CityManagementDialog } from './CityManagementDialog';
+import { SettlementManagementDialog } from './SettlementManagementDialog';
 import { KnightManagementDialog } from './KnightManagementDialog';
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 
@@ -49,6 +50,8 @@ import { TreasonEffect } from '@/lib/types/game';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { WeddingGiftModal } from './WeddingGiftModal';
 import { BarbarianTrack } from './BarbarianTrack';
+import { RobberVictimSelectionModal } from './RobberVictimSelectionModal';
+import { RobberTheftNotification } from './RobberTheftNotification';
 
 interface GameControllerProps {
     roomId: string;
@@ -63,8 +66,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [movingKnightId, setMovingKnightId] = useState<string | null>(null);
     const [buildingMetropolisType, setBuildingMetropolisType] = useState<'science' | 'trade' | 'politics' | null>(null);
     const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+    const [selectedSettlementId, setSelectedSettlementId] = useState<string | null>(null);
     const [selectedKnightId, setSelectedKnightId] = useState<string | null>(null);
     const [isCraneDialogOpen, setIsCraneDialogOpen] = useState(false);
+    const [isPlayerCityManagementOpen, setIsPlayerCityManagementOpen] = useState(false);
     const [selectingCityForMetropolis, setSelectingCityForMetropolis] = useState<'science' | 'trade' | 'politics' | null>(null);
     const [selectedMetropolisCityId, setSelectedMetropolisCityId] = useState<string | null>(null);
     const [isMetropolisSubmitting, setIsMetropolisSubmitting] = useState(false);
@@ -109,6 +114,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [smithError, setSmithError] = useState<string | null>(null);
     const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
     const [vpCardModalType, setVpCardModalType] = useState<'printer' | 'constitution' | null>(null);
+    const [robberVictimSelectionOpen, setRobberVictimSelectionOpen] = useState(false);
+    const [robberHexId, setRobberHexId] = useState<string | null>(null);
+    const [robberPotentialVictims, setRobberPotentialVictims] = useState<string[]>([]);
+    const [showTheftNotification, setShowTheftNotification] = useState(false);
+    const lastTheftSeenRef = useRef<number>(0);
     const lastVPCardSeenRef = useRef<number>(0);
     const {
         selectedCard: selectedProgressCard,
@@ -131,6 +141,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     // C&K action handlers
     const handleCityClick = (vertexId: string) => {
         setSelectedCityId(vertexId);
+        setBuildMode(null);
+    };
+
+    const handleSettlementClick = (vertexId: string) => {
+        setSelectedSettlementId(vertexId);
         setBuildMode(null);
     };
 
@@ -267,6 +282,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         handleCancelSelection();
         setIsCraneDialogOpen(true);
         setSelectedCityId(null);
+        setSelectedSettlementId(null);
         setSelectedKnightId(null);
         setBuildMode(null);
         setMovingKnightId(null);
@@ -282,7 +298,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         await buildCityWall(roomId, playerId, vertexId);
     };
 
-
+    const handleUpgradeSettlementToCity = async (vertexId: string) => {
+        await buildCity(roomId, playerId, vertexId);
+    };
 
     const handleActivateKnight = async (knightId: string) => {
         try {
@@ -972,6 +990,35 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     };
 
 
+    const handleRobberVictimRequest = (hexId: string, potentialVictims: string[]) => {
+        setRobberHexId(hexId);
+        setRobberPotentialVictims(potentialVictims);
+        setRobberVictimSelectionOpen(true);
+    };
+
+    const handleRobberVictimSelected = async (victimId: string | null) => {
+        if (!robberHexId) return;
+
+        try {
+            await moveRobber(roomId, playerId, robberHexId, victimId ?? undefined);
+            setRobberVictimSelectionOpen(false);
+            setRobberHexId(null);
+            setRobberPotentialVictims([]);
+        } catch (e) {
+            console.error("Failed to move robber with victim", e);
+        }
+    };
+
+    const handleRobberVictimCancel = () => {
+        setRobberVictimSelectionOpen(false);
+        setRobberHexId(null);
+        setRobberPotentialVictims([]);
+    };
+
+    const handleDismissTheftNotification = () => {
+        setShowTheftNotification(false);
+    };
+
     const handleCancelSelection = () => {
         setSelectingHexForCard(null);
         setSelectingVertexForCard(null);
@@ -999,6 +1046,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setSmithError(null);
         setSelectingCityForMedicine(false);
         setIsCraneDialogOpen(false);
+        setIsPlayerCityManagementOpen(false);
         setDiplomatStage(null);
         setDiplomatSelectedEdgeId(null);
         setDiplomatSelectedEdgeOwner(null);
@@ -1008,6 +1056,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setIntrigueTarget(null);
         setIntrigueError(null);
         setIsSubmittingIntrigue(false);
+        setRobberVictimSelectionOpen(false);
+        setRobberHexId(null);
+        setRobberPotentialVictims([]);
         if (!treasonEffect || treasonMode === 'select_opponent') {
             resetTreasonLocalState(false);
             setSelectingVertexForCard(prev => (prev === 'treason_remove' || prev === 'treason_place' ? null : prev));
@@ -1017,6 +1068,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         merchantPrompt.clear();
         taxationPrompt.clear();
         metropolisPrompt.clear();
+    };
+
+    const handleOpenPlayerCityManagement = () => {
+        handleCancelSelection();
+        setIsPlayerCityManagementOpen(true);
     };
 
     const handleCancelFollowupCard = () => {
@@ -1133,6 +1189,27 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         lastVPCardSeenRef.current = gain.timestamp;
         setVpCardModalType(gain.cardType);
     }, [baseGameState?.lastVPCardGain, playerId]);
+
+    // Show theft notification when the robber steals from or for the current player
+    useEffect(() => {
+        const theft = baseGameState?.lastTheft;
+        if (!theft) return;
+        if (!theft.timestamp) return;
+        if (theft.timestamp <= lastTheftSeenRef.current) return;
+
+        // Check if this player was involved (either as thief or victim)
+        const isThief = theft.thiefId === playerId;
+        const isVictim = theft.victimId === playerId || theft.victims?.some(v => v.victimId === playerId);
+
+        if (!isThief && !isVictim) return;
+
+        // Only trigger for recent thefts to avoid resurfacing on reloads
+        const isRecent = Date.now() - theft.timestamp < 8000;
+        if (!isRecent) return;
+
+        lastTheftSeenRef.current = theft.timestamp;
+        setShowTheftNotification(true);
+    }, [baseGameState?.lastTheft, playerId]);
 
     // Automatically force a discard modal when another player's turn pushes us over the progress card limit
     useEffect(() => {
@@ -1527,8 +1604,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onMedicineCitySelected={handleMedicineCitySelected}
                 onMetropolisCitySelected={handleMetropolisCitySelected}
                 onCityClick={handleCityClick}
+                onSettlementClick={handleSettlementClick}
                 onKnightClick={handleKnightClick}
                 onBarbarianCitySelect={handleLoseCityToBarbarians}
+                onRobberVictimRequest={handleRobberVictimRequest}
             />
 
             {showIntriguePrompt && (
@@ -1737,6 +1816,47 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
             <DiscardModal gameState={gameState} playerId={playerId} />
 
+            {/* Robber Victim Selection Modal */}
+            <RobberVictimSelectionModal
+                isOpen={robberVictimSelectionOpen}
+                gameState={gameState}
+                potentialVictims={robberPotentialVictims}
+                onSelectVictim={handleRobberVictimSelected}
+                onCancel={handleRobberVictimCancel}
+            />
+
+            {/* Robber Theft Notification */}
+            {showTheftNotification && gameState.lastTheft && (() => {
+                const theft = gameState.lastTheft;
+                const isThief = theft.thiefId === playerId;
+
+                // Find the specific item stolen from/to this player
+                let stolenItem = null;
+                if (isThief) {
+                    // Show total stolen across all victims
+                    stolenItem = theft.items?.[0] || null;
+                } else {
+                    // Show what was stolen from this specific victim
+                    const victimData = theft.victims?.find(v => v.victimId === playerId);
+                    stolenItem = victimData?.items?.[0] || null;
+                }
+
+                const thief = gameState.players.find(p => p.id === theft.thiefId);
+                const victim = gameState.players.find(p => p.id === theft.victimId) ||
+                              gameState.players.find(p => theft.victims?.some(v => v.victimId === p.id));
+
+                return (
+                    <RobberTheftNotification
+                        isOpen={showTheftNotification}
+                        stolenItem={stolenItem}
+                        wasVictim={!isThief}
+                        thiefName={thief?.name}
+                        victimName={victim?.name}
+                        onDismiss={handleDismissTheftNotification}
+                    />
+                );
+            })()}
+
             {/* City Management Dialog (C&K) */}
             {selectedCityId && (
                 <CityManagementDialog
@@ -1749,6 +1869,16 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 />
             )}
 
+            {isPlayerCityManagementOpen && (
+                <CityManagementDialog
+                    gameState={gameState}
+                    playerId={playerId}
+                    onClose={() => setIsPlayerCityManagementOpen(false)}
+                    onUpgradeImprovement={handleUpgradeImprovement}
+                    showCityWall={false}
+                />
+            )}
+
             {isCraneDialogOpen && (
                 <CityManagementDialog
                     gameState={gameState}
@@ -1756,6 +1886,17 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     onClose={() => setIsCraneDialogOpen(false)}
                     onCraneUpgrade={handleCraneUpgrade}
                     variant="crane"
+                />
+            )}
+
+            {/* Settlement Management Dialog */}
+            {selectedSettlementId && (
+                <SettlementManagementDialog
+                    gameState={gameState}
+                    playerId={playerId}
+                    vertexId={selectedSettlementId}
+                    onClose={() => setSelectedSettlementId(null)}
+                    onUpgradeToCity={handleUpgradeSettlementToCity}
                 />
             )}
 
@@ -1895,6 +2036,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     <CompactGameStatus
                         gameState={gameState}
                         currentPlayerId={playerId}
+                        onOpenCityManagement={handleOpenPlayerCityManagement}
                     />
                 </div>
 

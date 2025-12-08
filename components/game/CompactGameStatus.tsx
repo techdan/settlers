@@ -7,6 +7,7 @@ import { CompactPlayerCard } from './CompactPlayerCard';
 interface CompactGameStatusProps {
     gameState: GameState;
     currentPlayerId: string;
+    onOpenCityManagement?: () => void;
 }
 
 /**
@@ -16,6 +17,7 @@ interface CompactGameStatusProps {
 export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
     gameState,
     currentPlayerId,
+    onOpenCityManagement,
 }) => {
     return (
         <div className="bg-slate-900/90 p-3 rounded-lg text-white border border-slate-700 shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
@@ -36,6 +38,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
                         gameState={gameState}
                         isCurrentPlayer={player.id === currentPlayerId}
                         isTurn={gameState.currentTurn === player.id}
+                        onOpenCityManagement={onOpenCityManagement}
                     />
                 ))}
             </div>

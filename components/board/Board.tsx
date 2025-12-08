@@ -24,6 +24,7 @@ import { getAdjacentEdgesForVertex, getEdgeEndpoints, getAdjacentVertexIds, getC
 
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 import { getOpenRoadIds } from '@/core/validation/diplomat-validator';
+import { getTotalResources } from '@/core/engine/resources/resource-manager';
 
 interface BoardProps {
     gameState: GameState;
@@ -62,8 +63,10 @@ interface BoardProps {
     onMedicineCitySelected?: (vertexId: string) => void;
     onMetropolisCitySelected?: (vertexId: string) => void;
     onCityClick?: (vertexId: string) => void;
+    onSettlementClick?: (vertexId: string) => void;
     onKnightClick?: (knightId: string) => void;
     onBarbarianCitySelect?: (vertexId: string) => void;
+    onRobberVictimRequest?: (hexId: string, potentialVictims: string[]) => void;
 }
 
 const getHexVertexIds = (hexId: string): string[] => {
@@ -109,31 +112,85 @@ export const Board: React.FC<BoardProps> = ({
     onMedicineCitySelected,
     onMetropolisCitySelected,
     onCityClick,
+    onSettlementClick,
     onKnightClick,
-    onBarbarianCitySelect
+    onBarbarianCitySelect,
+    onRobberVictimRequest
 }) => {
     const { theme, toggleTheme } = useThemeStore();
     const HEX_SIZE = 90;
 
     const ports = useMemo(() => generatePorts(HEX_SIZE), [HEX_SIZE]);
 
+    // Pending placement state for confirmation modal - Must be declared before useMemo hooks that use it
+    const [pendingPlacement, setPendingPlacement] = useState<{
+        type: 'settlement' | 'road' | 'city' | 'knight' | 'city_wall';
+        id: string;
+        phase: 'setup' | 'main';
+    } | null>(null);
+
     const tiles = gameState.board.hexes;
-    const vertices = Object.values(gameState.board.vertices);
+    const baseVertices = Object.values(gameState.board.vertices);
     const edges = Object.values(gameState.board.edges);
 
-    const renderEdges = useMemo(() => {
-        if (selectingEdgeForCard !== 'diplomat' || !diplomatStage) return edges;
+    // Show pending placement (settlement, city, knight, city_wall)
+    const vertices = useMemo(() => {
+        if (!pendingPlacement) return baseVertices;
 
-        return edges.map(edge => {
-            if (diplomatStage === 'rebuild' && diplomatRemovedEdgeId && edge.id === diplomatRemovedEdgeId) {
-                return { ...edge, owner: null, structure: null };
-            }
-            if (diplomatStage === 'rebuild' && diplomatRelocatedEdgeId && edge.id === diplomatRelocatedEdgeId) {
-                return { ...edge, owner: playerId, structure: 'road' as const };
-            }
-            return edge;
-        });
-    }, [edges, diplomatStage, diplomatRemovedEdgeId, diplomatRelocatedEdgeId, playerId, selectingEdgeForCard]);
+        if (pendingPlacement.type === 'settlement') {
+            return baseVertices.map(vertex => {
+                if (vertex.id === pendingPlacement.id) {
+                    return { ...vertex, owner: playerId, structure: 'settlement' as const };
+                }
+                return vertex;
+            });
+        } else if (pendingPlacement.type === 'city') {
+            return baseVertices.map(vertex => {
+                if (vertex.id === pendingPlacement.id) {
+                    return { ...vertex, structure: 'city' as const };
+                }
+                return vertex;
+            });
+        } else if (pendingPlacement.type === 'city_wall') {
+            return baseVertices.map(vertex => {
+                if (vertex.id === pendingPlacement.id) {
+                    return { ...vertex, hasCityWall: true };
+                }
+                return vertex;
+            });
+        }
+        // Knights are handled separately via knightsMap
+        return baseVertices;
+    }, [baseVertices, pendingPlacement, playerId]);
+
+    const renderEdges = useMemo(() => {
+        let processedEdges = edges;
+
+        // Handle diplomat edge modifications
+        if (selectingEdgeForCard === 'diplomat' && diplomatStage) {
+            processedEdges = edges.map(edge => {
+                if (diplomatStage === 'rebuild' && diplomatRemovedEdgeId && edge.id === diplomatRemovedEdgeId) {
+                    return { ...edge, owner: null, structure: null };
+                }
+                if (diplomatStage === 'rebuild' && diplomatRelocatedEdgeId && edge.id === diplomatRelocatedEdgeId) {
+                    return { ...edge, owner: playerId, structure: 'road' as const };
+                }
+                return edge;
+            });
+        }
+
+        // Show pending road placement
+        if (pendingPlacement?.type === 'road') {
+            processedEdges = processedEdges.map(edge => {
+                if (edge.id === pendingPlacement.id) {
+                    return { ...edge, owner: playerId, structure: 'road' as const };
+                }
+                return edge;
+            });
+        }
+
+        return processedEdges;
+    }, [edges, diplomatStage, diplomatRemovedEdgeId, diplomatRelocatedEdgeId, playerId, selectingEdgeForCard, pendingPlacement]);
 
     // Sort tiles for Voxel rendering (Painter's Algorithm: Top -> Bottom)
     const sortedTiles = [...tiles].sort((a, b) => {
@@ -147,6 +204,7 @@ export const Board: React.FC<BoardProps> = ({
     const [isPending, startTransition] = useTransition();
     const [isPlacingBonusRoad, setIsPlacingBonusRoad] = useState(false);
     const performOptimisticAction = useOptimisticAction();
+
     const diceStats = useMemo(
         () => ({
             ...EMPTY_DICE_STATS,
@@ -169,12 +227,28 @@ export const Board: React.FC<BoardProps> = ({
                 map.set(k.vertexId, k);
             });
         });
+
+        // Add pending knight placement
+        if (pendingPlacement?.type === 'knight') {
+            const pendingKnight: Knight = {
+                id: 'pending-knight',
+                playerId: playerId,
+                vertexId: pendingPlacement.id,
+                level: 'basic',
+                active: false
+            };
+            map.set(pendingPlacement.id, pendingKnight);
+        }
+
         return map;
-    }, [gameState.players]);
+    }, [gameState.players, pendingPlacement, playerId]);
 
     // Calculate valid placements for highlighting
     const validVertices = useMemo(() => {
         const valid = new Set<string>();
+
+        // If there's a pending placement, don't show valid spots
+        if (pendingPlacement) return valid;
 
         // Knight Displacement Mode - Must be checked FIRST before currentTurn check
         // The displaced player needs to relocate even if it's not their turn
@@ -349,7 +423,7 @@ export const Board: React.FC<BoardProps> = ({
             }
         }
         return valid;
-    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer, selectingCityForMedicine, selectingCityForMetropolis, selectingKnightsForSmith, smithSelectableKnightIds]);
+    }, [gameState, playerId, buildMode, vertices, movingKnightId, buildingMetropolisType, selectingVertexForCard, selectingCityForEngineer, selectingCityForMedicine, selectingCityForMetropolis, selectingKnightsForSmith, smithSelectableKnightIds, pendingPlacement]);
 
     const diplomatPlacementState = useMemo(() => {
         if (selectingEdgeForCard !== 'diplomat' || diplomatStage !== 'rebuild' || !diplomatRemovedEdgeId) {
@@ -375,6 +449,10 @@ export const Board: React.FC<BoardProps> = ({
 
     const validEdges = useMemo(() => {
         const valid = new Set<string>();
+
+        // If there's a pending placement, don't show valid spots
+        if (pendingPlacement) return valid;
+
         if (gameState.currentTurn !== playerId) return valid;
 
         // Progress Card Edge Selection (Diplomat)
@@ -421,7 +499,7 @@ export const Board: React.FC<BoardProps> = ({
             });
         }
         return valid;
-    }, [gameState, playerId, buildMode, edges, selectingEdgeForCard, diplomatStage, diplomatPlacementState]);
+    }, [gameState, playerId, buildMode, edges, selectingEdgeForCard, diplomatStage, diplomatPlacementState, pendingPlacement]);
 
     // Valid hexes for progress card selection
 
@@ -609,13 +687,11 @@ export const Board: React.FC<BoardProps> = ({
 
         if (gameState.phase.startsWith('setup')) {
             if (isValidSetupSettlement(gameState, vertexId, playerId)) {
-                // performOptimisticAction({ type: 'PLACE_SETTLEMENT', vertexId, playerId });
-                startTransition(async () => {
-                    try {
-                        await placeSettlement(gameState.roomId, playerId, vertexId);
-                    } catch (e) {
-                        console.error("Failed to place settlement", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'settlement',
+                    id: vertexId,
+                    phase: 'setup'
                 });
             }
         } else if (gameState.phase === 'knight_displacement') {
@@ -630,43 +706,32 @@ export const Board: React.FC<BoardProps> = ({
             }
         } else if (gameState.phase === 'main_phase') {
             if (buildMode === 'settlement' && isValidMainPhaseSettlement(gameState, vertexId, playerId)) {
-                // performOptimisticAction({ type: 'BUILD_SETTLEMENT', vertexId, playerId });
-                startTransition(async () => {
-                    try {
-                        await buildSettlement(gameState.roomId, playerId, vertexId);
-                        onCancelBuild();
-                    } catch (e) {
-                        console.error("Failed to build settlement", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'settlement',
+                    id: vertexId,
+                    phase: 'main'
                 });
             } else if (buildMode === 'city' && isValidMainPhaseCity(gameState, vertexId, playerId)) {
-                // performOptimisticAction({ type: 'BUILD_CITY', vertexId, playerId });
-                startTransition(async () => {
-                    try {
-                        await buildCity(gameState.roomId, playerId, vertexId);
-                        onCancelBuild();
-                    } catch (e) {
-                        console.error("Failed to build city", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'city',
+                    id: vertexId,
+                    phase: 'main'
                 });
             } else if (buildMode === 'knight' && isValidKnightPlacement(gameState, vertexId, playerId)) {
-                startTransition(async () => {
-                    try {
-                        await buildKnight(gameState.roomId, playerId, vertexId);
-                        onCancelBuild();
-                    } catch (e) {
-                        console.error("Failed to build knight", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'knight',
+                    id: vertexId,
+                    phase: 'main'
                 });
             } else if (buildMode === 'city_wall' && canBuildCityWall(gameState, vertexId, playerId)) {
-                // City walls are per-city
-                startTransition(async () => {
-                    try {
-                        await buildCityWall(gameState.roomId, playerId, vertexId);
-                        onCancelBuild();
-                    } catch (e) {
-                        console.error("Failed to build city wall", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'city_wall',
+                    id: vertexId,
+                    phase: 'main'
                 });
             } else if (!buildMode && !movingKnightId && !selectingVertexForCard && !buildingMetropolisType) {
                 // Check for knight interaction first
@@ -681,6 +746,13 @@ export const Board: React.FC<BoardProps> = ({
                 // Handle city management click
                 if (isOwnCity) {
                     onCityClick?.(vertexId);
+                    return;
+                }
+
+                // Handle settlement management click
+                const isOwnSettlement = vertex && vertex.structure === 'settlement' && vertex.owner === playerId;
+                if (isOwnSettlement) {
+                    onSettlementClick?.(vertexId);
                 }
             }
         }
@@ -700,25 +772,20 @@ export const Board: React.FC<BoardProps> = ({
 
         if (gameState.phase.startsWith('setup')) {
             if (isValidSetupRoad(gameState, edgeId, playerId)) {
-                // performOptimisticAction({ type: 'PLACE_ROAD', edgeId, playerId });
-                startTransition(async () => {
-                    try {
-                        await placeRoad(gameState.roomId, playerId, edgeId);
-                    } catch (e) {
-                        console.error("Failed to place road", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'road',
+                    id: edgeId,
+                    phase: 'setup'
                 });
             }
         } else if (gameState.phase === 'main_phase' && buildMode === 'road') {
             if (isValidMainPhaseRoad(gameState, edgeId, playerId)) {
-                // performOptimisticAction({ type: 'BUILD_ROAD', edgeId, playerId });
-                startTransition(async () => {
-                    try {
-                        await buildRoad(gameState.roomId, playerId, edgeId);
-                        onCancelBuild();
-                    } catch (e) {
-                        console.error("Failed to build road", e);
-                    }
+                // Show pending placement for confirmation
+                setPendingPlacement({
+                    type: 'road',
+                    id: edgeId,
+                    phase: 'main'
                 });
             }
         } else if (
@@ -741,6 +808,98 @@ export const Board: React.FC<BoardProps> = ({
         }
     };
 
+    const handleCancelPlacement = () => {
+        // Remove pending placement and return to selection mode
+        setPendingPlacement(null);
+    };
+
+    const handleConfirmPlacement = () => {
+        if (!pendingPlacement) return;
+
+        const { type, id, phase } = pendingPlacement;
+
+        if (type === 'settlement') {
+            if (phase === 'setup') {
+                startTransition(async () => {
+                    try {
+                        await placeSettlement(gameState.roomId, playerId, id);
+                        setPendingPlacement(null);
+                    } catch (e) {
+                        console.error("Failed to place settlement", e);
+                        setPendingPlacement(null);
+                    }
+                });
+            } else {
+                startTransition(async () => {
+                    try {
+                        await buildSettlement(gameState.roomId, playerId, id);
+                        setPendingPlacement(null);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build settlement", e);
+                        setPendingPlacement(null);
+                    }
+                });
+            }
+        } else if (type === 'road') {
+            if (phase === 'setup') {
+                startTransition(async () => {
+                    try {
+                        await placeRoad(gameState.roomId, playerId, id);
+                        setPendingPlacement(null);
+                    } catch (e) {
+                        console.error("Failed to place road", e);
+                        setPendingPlacement(null);
+                    }
+                });
+            } else {
+                startTransition(async () => {
+                    try {
+                        await buildRoad(gameState.roomId, playerId, id);
+                        setPendingPlacement(null);
+                        onCancelBuild();
+                    } catch (e) {
+                        console.error("Failed to build road", e);
+                        setPendingPlacement(null);
+                    }
+                });
+            }
+        } else if (type === 'city') {
+            startTransition(async () => {
+                try {
+                    await buildCity(gameState.roomId, playerId, id);
+                    setPendingPlacement(null);
+                    onCancelBuild();
+                } catch (e) {
+                    console.error("Failed to build city", e);
+                    setPendingPlacement(null);
+                }
+            });
+        } else if (type === 'knight') {
+            startTransition(async () => {
+                try {
+                    await buildKnight(gameState.roomId, playerId, id);
+                    setPendingPlacement(null);
+                    onCancelBuild();
+                } catch (e) {
+                    console.error("Failed to build knight", e);
+                    setPendingPlacement(null);
+                }
+            });
+        } else if (type === 'city_wall') {
+            startTransition(async () => {
+                try {
+                    await buildCityWall(gameState.roomId, playerId, id);
+                    setPendingPlacement(null);
+                    onCancelBuild();
+                } catch (e) {
+                    console.error("Failed to build city wall", e);
+                    setPendingPlacement(null);
+                }
+            });
+        }
+    };
+
     const handleHexClick = (hexId: string) => {
         if (isPending) return;
         if (gameState.currentTurn !== playerId) return;
@@ -755,13 +914,38 @@ export const Board: React.FC<BoardProps> = ({
 
         // Robber placement
         if (gameState.phase === 'robber_placement') {
-            startTransition(async () => {
-                try {
-                    await moveRobber(gameState.roomId, playerId, hexId);
-                } catch (e) {
-                    console.error("Failed to move robber", e);
+            // Find potential victims on this hex
+            const [q, r] = hexId.split(',').map(Number);
+            const potentialVictims = new Set<string>();
+
+            for (let d = 0; d < 6; d++) {
+                const vId = getCanonicalVertexId(q, r, d);
+                const vertex = gameState.board.vertices[vId];
+                if (vertex && vertex.owner && vertex.owner !== playerId) {
+                    // Check if they have resources
+                    const victim = gameState.players.find(p => p.id === vertex.owner);
+                    if (victim && getTotalResources(victim) > 0) {
+                        potentialVictims.add(vertex.owner);
+                    }
                 }
-            });
+            }
+
+            const victimsArray = Array.from(potentialVictims);
+
+            // If multiple victims, show selection modal
+            if (victimsArray.length > 1 && onRobberVictimRequest) {
+                onRobberVictimRequest(hexId, victimsArray);
+            } else {
+                // Single or no victim - proceed directly
+                const victimId = victimsArray.length === 1 ? victimsArray[0] : undefined;
+                startTransition(async () => {
+                    try {
+                        await moveRobber(gameState.roomId, playerId, hexId, victimId);
+                    } catch (e) {
+                        console.error("Failed to move robber", e);
+                    }
+                });
+            }
         }
     };
 
@@ -864,17 +1048,23 @@ export const Board: React.FC<BoardProps> = ({
                                     ))}
 
                                     {/* Edges (Roads) */}
-                                    {renderEdges.map(edge => (
-                                        <EdgeRenderer
-                                            key={edge.id}
-                                            edge={edge}
-                                            size={HEX_SIZE}
-                                            color={gameState.players.find(p => p.id === edge.owner)?.color}
-                                            onClick={handleEdgeClick}
-                                            isValid={validEdges.has(edge.id)}
-                                            theme={theme}
-                                        />
-                                    ))}
+                                    {renderEdges.map(edge => {
+                                        const isPending = pendingPlacement?.type === 'road' && pendingPlacement.id === edge.id;
+                                        return (
+                                            <EdgeRenderer
+                                                key={edge.id}
+                                                edge={edge}
+                                                size={HEX_SIZE}
+                                                color={gameState.players.find(p => p.id === edge.owner)?.color}
+                                                onClick={handleEdgeClick}
+                                                isValid={validEdges.has(edge.id)}
+                                                theme={theme}
+                                                isPendingPlacement={isPending}
+                                                onConfirmPlacement={handleConfirmPlacement}
+                                                onCancelPlacement={handleCancelPlacement}
+                                            />
+                                        );
+                                    })}
 
                                     {/* Vertices (Settlements/Cities) */}
                                     {vertices.map(vertex => {
@@ -894,6 +1084,13 @@ export const Board: React.FC<BoardProps> = ({
                                         const isTreasonSelected = !!(selectingVertexForCard === 'treason_remove' && knight && treasonSelectedKnightId === knight.id);
                                         const isTreasonPlacementSelected = !!(selectingVertexForCard === 'treason_place' && treasonSelectedPlacementVertexId === vertex.id);
                                         const highlightVariant = selectingVertexForCard === 'treason_place' ? 'treason' : 'default';
+                                        // Check if any vertex-based placement is pending for this vertex
+                                        const isPending = !!pendingPlacement &&
+                                            (pendingPlacement.type === 'settlement' ||
+                                             pendingPlacement.type === 'city' ||
+                                             pendingPlacement.type === 'knight' ||
+                                             pendingPlacement.type === 'city_wall') &&
+                                            pendingPlacement.id === vertex.id;
                                         return (
                                             <VertexRenderer
                                                 key={vertex.id}
@@ -916,6 +1113,9 @@ export const Board: React.FC<BoardProps> = ({
                                                 isSelectedForAction={isEngineerSelected || isMetropolisSelected || isSmithSelected || isIntrigueSelected || isTreasonSelected || isTreasonPlacementSelected}
                                                 highlightVariant={highlightVariant}
                                                 onCancelIconClick={onCancelBuild}
+                                                isPendingPlacement={isPending}
+                                                onConfirmPlacement={handleConfirmPlacement}
+                                                onCancelPlacement={handleCancelPlacement}
                                             />
                                         );
                                     })}

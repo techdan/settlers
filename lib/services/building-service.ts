@@ -1,4 +1,5 @@
 import { GameState } from '@/lib/types';
+import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import {
     isValidMainPhaseRoad,
@@ -300,6 +301,8 @@ export async function placeInitialSettlement(
 
     // In round 2, give resources for placement
     // Setup rule: 1 resource per adjacent hex (no commodities, no double for cities)
+    const startingResources: Partial<Record<ResourceType, number>> = {};
+
     if (isSecondPlacement) {
         const [q, r, d] = vertexId.split(',').map(Number);
         const hexes = getHexesForVertex(q, r, d);
@@ -309,11 +312,12 @@ export async function placeInitialSettlement(
             const hex = gameState.board.hexes.find(
                 h => h.hex.q === hexCoords.q && h.hex.r === hexCoords.r
             );
-            if (hex) {
-                const resource = getResourceFromTerrain(hex.terrain);
-                if (resource) {
-                    player.resources[resource] += resourcesPerHex;
-                }
+            if (!hex) return;
+
+            const resource = getResourceFromTerrain(hex.terrain);
+            if (resource) {
+                player.resources[resource] += resourcesPerHex;
+                startingResources[resource] = (startingResources[resource] || 0) + resourcesPerHex;
             }
         });
     }
@@ -333,6 +337,24 @@ export async function placeInitialSettlement(
         message: basePlacementMessage,
         playerId
     });
+
+    if (isSecondPlacement) {
+        const resourceParts = Object.entries(startingResources)
+            .filter(([, count]) => (count || 0) > 0)
+            .map(([resource, count]) => `${count} ${resource}`);
+
+        const message =
+            resourceParts.length > 0
+                ? `${player.name} received ${resourceParts.join(', ')} from their second ${placeCity ? 'city' : 'settlement'} placement`
+                : `${player.name} received no resources from their second ${placeCity ? 'city' : 'settlement'} placement`;
+
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message,
+            playerId
+        });
+    }
 
     // Save to database
     await updateGameState(gameState);

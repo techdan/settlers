@@ -9,9 +9,12 @@ interface EdgeRendererProps {
     onClick?: (edgeId: string) => void;
     isValid?: boolean;
     theme?: 'flat' | 'voxel';
+    isPendingPlacement?: boolean;
+    onConfirmPlacement?: () => void;
+    onCancelPlacement?: () => void;
 }
 
-export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, onClick, isValid, theme = 'flat' }) => {
+export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, onClick, isValid, theme = 'flat', isPendingPlacement, onConfirmPlacement, onCancelPlacement }) => {
     const pixel = hexEdgeToPixel(createHex(edge.q, edge.r), edge.d, size);
     // Edge 0 is vertical (connecting 330 and 30 deg).
     const rotation = 60 * edge.d;
@@ -53,6 +56,39 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
             )}
             {!edge.structure && isValid && (
                 <rect x={-4} y={-size * 0.25} width={8} height={size * 0.5} fill="rgba(255, 255, 255, 0.6)" stroke="white" strokeWidth={1} className="hover:fill-white transition-colors" />
+            )}
+
+            {/* Pending Placement Confirmation Icons */}
+            {isPendingPlacement && (
+                <g transform={`rotate(${-rotation})`}>
+                    {/* Green Check - Confirm */}
+                    <g
+                        transform="translate(20, 0)"
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onConfirmPlacement?.();
+                        }}
+                    >
+                        <circle r={10} fill="#22c55e" stroke="white" strokeWidth={2} />
+                        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">✓</text>
+                        <title>Confirm Placement</title>
+                    </g>
+
+                    {/* Red X - Cancel */}
+                    <g
+                        transform="translate(-20, 0)"
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onCancelPlacement?.();
+                        }}
+                    >
+                        <circle r={10} fill="#ef4444" stroke="white" strokeWidth={2} />
+                        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">✕</text>
+                        <title>Cancel Placement</title>
+                    </g>
+                </g>
             )}
         </g>
     );

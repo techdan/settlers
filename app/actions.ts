@@ -33,6 +33,47 @@ export async function createRoom(formData: FormData) {
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
 
+export async function getRoomPlayers(roomId: string) {
+    // Check if room exists
+    const room = await roomRepository.findRoomById(roomId.toUpperCase());
+    if (!room) {
+        throw new Error('Room not found');
+    }
+
+    const players = await playerRepository.findPlayersByRoomId(roomId.toUpperCase());
+    return players.map(p => ({ id: p.id, name: p.name }));
+}
+
+export async function resumeGame(formData: FormData) {
+    const roomId = (formData.get('roomId') as string).toUpperCase();
+    const playerId = formData.get('playerId') as string | null;
+    const playerName = formData.get('playerName') as string | null;
+
+    if (!roomId) throw new Error('Room ID is required');
+
+    // Check if room exists
+    const room = await roomRepository.findRoomById(roomId);
+    if (!room) {
+        throw new Error('Room not found');
+    }
+
+    let targetPlayerId = playerId;
+
+    if (!targetPlayerId && playerName) {
+        // Find existing player by name
+        const player = await playerRepository.findPlayerByName(roomId, playerName);
+        if (player) {
+            targetPlayerId = player.id;
+        }
+    }
+
+    if (!targetPlayerId) {
+        throw new Error('Player not found in this room. Please check the name or join as a new player.');
+    }
+
+    redirect(`/room/${roomId}?playerId=${targetPlayerId}`);
+}
+
 export async function joinRoom(formData: FormData) {
     const playerName = formData.get('playerName') as string;
     const roomId = (formData.get('roomId') as string).toUpperCase();
@@ -121,6 +162,10 @@ export async function offerTrade(roomId: string, playerId: string, give: Record<
 
 export async function acceptTrade(roomId: string, playerId: string) {
     return tradingService.acceptTrade(roomId, playerId);
+}
+
+export async function rejectTrade(roomId: string, playerId: string) {
+    return tradingService.rejectTrade(roomId, playerId);
 }
 
 export async function cancelTrade(roomId: string, playerId: string) {

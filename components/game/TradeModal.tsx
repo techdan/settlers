@@ -276,9 +276,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <button onClick={() => updateOffer('give', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600">-</button>
-                                                    <span className="w-4 text-center">{offerGive[res]}</span>
-                                                    <button onClick={() => updateOffer('give', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600" disabled={offerGive[res] >= (player.resources[res] || 0)}>+</button>
+                                                    <button onClick={() => updateOffer('give', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
+                                                    <span className="w-4 text-center text-slate-100">{offerGive[res]}</span>
+                                                    <button onClick={() => updateOffer('give', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer" disabled={offerGive[res] >= (player.resources[res] || 0)}>+</button>
                                                 </div>
                                             </div>
                                         );
@@ -309,9 +309,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <button onClick={() => updateOffer('get', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600">-</button>
-                                                    <span className="w-4 text-center">{offerGet[res]}</span>
-                                                    <button onClick={() => updateOffer('get', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600">+</button>
+                                                    <button onClick={() => updateOffer('get', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
+                                                    <span className="w-4 text-center text-slate-100">{offerGet[res]}</span>
+                                                    <button onClick={() => updateOffer('get', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">+</button>
                                                 </div>
                                             </div>
                                         );

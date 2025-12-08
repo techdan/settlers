@@ -17,6 +17,7 @@ interface CityManagementDialogProps {
     onCraneUpgrade?: (improvement: ImprovementType) => Promise<void>;
     onBuildWall?: (vertexId: string) => Promise<void>;
     variant?: 'default' | 'crane';
+    showCityWall?: boolean;
 }
 
 const COMMODITY_ICONS: Record<CommodityType, string> = {
@@ -37,7 +38,7 @@ const IMPROVEMENT_COMMODITIES: Record<ImprovementType, CommodityType> = {
     politics: 'coin'
 };
 
-const IMPROVEMENT_TOOLTIPS: Record<ImprovementType, string> = {
+export const IMPROVEMENT_TOOLTIPS: Record<ImprovementType, string> = {
     science: 'Science Improvement Track (Green)\nUpgrade with Paper commodities.\n\nLevel 3: Aqueduct\nIf you produce no resources on a dice roll (except 7),\nyou may take any one resource of your choice.',
     trade: 'Trade Improvement Track (Yellow)\nUpgrade with Cloth commodities.\n\nLevel 3: Trading House\nYou may trade any 2 identical commodities\nfor any 1 other commodity or resource.',
     politics: 'Politics Improvement Track (Blue)\nUpgrade with Coin commodities.\n\nLevel 3: Fortress\nYou may promote Strong Knights to Mighty Knights.'
@@ -51,7 +52,8 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     onUpgradeImprovement,
     onCraneUpgrade,
     onBuildWall,
-    variant = 'default'
+    variant = 'default',
+    showCityWall = true
 }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -60,8 +62,9 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     const vertex = vertexId ? gameState.board.vertices[vertexId] : null;
 
     const isCraneMode = variant === 'crane';
+    const allowNoVertex = showCityWall === false;
 
-    if (!player || (!vertex && !isCraneMode)) return null;
+    if (!player || (!vertex && !isCraneMode && !allowNoVertex)) return null;
 
     const isMyTurn = gameState.currentTurn === playerId;
     const isMainPhase = gameState.phase === 'main_phase';
@@ -240,7 +243,7 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                     })}
 
                     {/* City Wall */}
-                    {!isCraneMode && vertex && (
+                    {!isCraneMode && showCityWall && vertex && (
                         <div className="bg-slate-700/50 p-4 rounded border border-slate-600 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <Tooltip

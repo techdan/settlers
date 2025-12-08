@@ -1,7 +1,7 @@
-import React, { useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { GameState, TradeOffer } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
-import { acceptTrade, cancelTrade } from '@/app/actions';
+import { acceptTrade, cancelTrade, rejectTrade } from '@/app/actions';
 
 interface TradeOfferDisplayProps {
     gameState: GameState;
@@ -18,6 +18,7 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
 
 export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId }) => {
     const [isPending, startTransition] = useTransition();
+    const [pendingAction, setPendingAction] = useState<'accept' | 'reject' | null>(null);
     const offer = gameState.tradeOffer;
 
     if (!offer || offer.status !== 'open') return null;
@@ -40,11 +41,27 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
     }
 
     const handleAccept = () => {
+        setPendingAction('accept');
         startTransition(async () => {
             try {
                 await acceptTrade(gameState.roomId, playerId);
             } catch (e) {
                 console.error("Failed to accept trade", e);
+            } finally {
+                setPendingAction(null);
+            }
+        });
+    };
+
+    const handleReject = () => {
+        setPendingAction('reject');
+        startTransition(async () => {
+            try {
+                await rejectTrade(gameState.roomId, playerId);
+            } catch (e) {
+                console.error("Failed to reject trade", e);
+            } finally {
+                setPendingAction(null);
             }
         });
     };
@@ -101,23 +118,32 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
                 </div>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-3">
                 {isInitiator ? (
                     <button
                         onClick={handleCancel}
                         disabled={isPending}
-                        className="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors"
+                        className="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
                     >
                         {isPending ? 'Cancelling...' : 'Cancel Offer'}
                     </button>
                 ) : (
-                    <button
-                        onClick={handleAccept}
-                        disabled={!canAfford || isPending}
-                        className="bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors"
-                    >
-                        {isPending ? 'Accepting...' : canAfford ? 'Accept Trade' : 'Cannot Afford'}
-                    </button>
+                    <>
+                        <button
+                            onClick={handleReject}
+                            disabled={isPending}
+                            className="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            {isPending && pendingAction === 'reject' ? 'Rejecting...' : 'Reject'}
+                        </button>
+                        <button
+                            onClick={handleAccept}
+                            disabled={!canAfford || isPending}
+                            className="bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            {isPending && pendingAction === 'accept' ? 'Accepting...' : canAfford ? 'Accept Trade' : 'Cannot Afford'}
+                        </button>
+                    </>
                 )}
             </div>
         </div>

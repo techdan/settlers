@@ -174,18 +174,35 @@ export async function playDevCard(
             const targetRes = options.monopolyResource;
             let stolenCount = 0;
 
+            // Track victims for notification
+            const monopolyVictims: { victimId: string; amount: number }[] = [];
+
             gameState.players.forEach(p => {
                 if (p.id !== playerId) {
                     const amount = p.resources[targetRes];
                     if (amount > 0) {
                         p.resources[targetRes] = 0;
                         stolenCount += amount;
+                        monopolyVictims.push({ victimId: p.id, amount });
                     }
                 }
             });
 
             player.resources[targetRes] += stolenCount;
             logMessage += `. Stole ${stolenCount} ${targetRes} from other players.`;
+
+            // Record theft for UI notifications
+            if (monopolyVictims.length > 0) {
+                gameState.lastTheft = {
+                    thiefId: playerId,
+                    items: [{ type: 'resource', value: targetRes, count: stolenCount }],
+                    victims: monopolyVictims.map(v => ({
+                        victimId: v.victimId,
+                        items: [{ type: 'resource', value: targetRes, count: v.amount }]
+                    })),
+                    timestamp: Date.now()
+                };
+            }
             break;
     }
 

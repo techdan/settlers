@@ -36,6 +36,23 @@ export async function findPlayersByRoomId(roomId: string) {
 }
 
 /**
+ * Find a player by name in a room
+ * 
+ * @param roomId - Room ID
+ * @param name - Player name
+ * @returns Player record or undefined if not found
+ */
+export async function findPlayerByName(roomId: string, name: string) {
+    const player = await db.query.players.findFirst({
+        where: (players, { and, eq }) => and(
+            eq(players.roomId, roomId),
+            eq(players.name, name)
+        )
+    });
+    return player;
+}
+
+/**
  * Create a new player
  *
  * @param id - Player ID (UUID)
