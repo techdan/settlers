@@ -62,12 +62,18 @@ export default async function RoomPage({
         notFound();
     }
 
+    // Serialize players for client component (convert Date to string)
+    const serializedPlayers = roomPlayers.map(player => ({
+        ...player,
+        joinedAt: player.joinedAt?.toISOString() ?? null
+    }));
+
     return (
         <LobbyView
             initialRoom={room}
-            initialPlayers={roomPlayers}
+            initialPlayers={serializedPlayers}
             roomId={roomId}
-            currentPlayerId={playerId}
+            currentPlayerId={playerId ?? ''}
         />
     );
 }

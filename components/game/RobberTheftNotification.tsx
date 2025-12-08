@@ -73,8 +73,7 @@ export const RobberTheftNotification: React.FC<RobberTheftNotificationProps> = (
                     <div className="bg-slate-700 rounded-lg p-4 mb-4">
                         <div className="flex items-center justify-center gap-3">
                             <GameIcon
-                                type={stolenItem.type}
-                                value={stolenItem.value}
+                                type={stolenItem.value}
                                 size={48}
                             />
                             <div className="text-left">

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
+import { PlayerColor } from '@/lib/types/player';
 
 type Player = {
     id: string;
     name: string;
     isHost: boolean;
-    color: string | null;
+    color: PlayerColor | null;
     joinedAt?: string | null;
 };
 
@@ -30,13 +31,18 @@ export function useLobbySubscription(
 
         setIsRealtime(true);
 
-        const normalizePlayer = (player: any): Player => ({
-            id: player.id,
-            name: player.name,
-            isHost: Boolean(player.isHost ?? player.is_host ?? false),
-            color: typeof player.color === 'string' ? player.color : null,
-            joinedAt: player.joinedAt ?? player.joined_at ?? null,
-        });
+        const normalizePlayer = (player: any): Player => {
+            const colorValue = player.color ?? null;
+            const validColors: PlayerColor[] = ['#ff0000', '#0000ff', '#ff7a00', '#d4b483'];
+
+            return {
+                id: player.id,
+                name: player.name,
+                isHost: Boolean(player.isHost ?? player.is_host ?? false),
+                color: colorValue && validColors.includes(colorValue) ? colorValue : null,
+                joinedAt: player.joinedAt ?? player.joined_at ?? null,
+            };
+        };
 
         // Subscribe to Room updates
         const roomChannel = supabase
