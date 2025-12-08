@@ -189,6 +189,7 @@ export async function buildCity(roomId: string, playerId: string, vertexId: stri
 
 import * as knightService from '@/lib/services/knight-service';
 import * as cityWallsService from '@/lib/services/city-walls-service';
+import * as improvementService from '@/lib/services/improvement-service';
 
 export async function buildKnight(roomId: string, playerId: string, vertexId: string) {
     return knightService.buildKnightAction(roomId, playerId, vertexId);
@@ -212,6 +213,15 @@ export async function relocateKnight(roomId: string, playerId: string, knightId:
 
 export async function buildCityWall(roomId: string, playerId: string, vertexId: string) {
     return cityWallsService.buildCityWall(roomId, playerId, vertexId);
+}
+
+export async function placeMetropolis(
+    roomId: string,
+    playerId: string,
+    vertexId: string,
+    metropolisType: 'science' | 'trade' | 'politics'
+) {
+    return improvementService.selectMetropolisCity(roomId, playerId, vertexId, metropolisType);
 }
 
 export async function debugGiveResource(roomId: string, playerId: string, resource: ResourceType) {

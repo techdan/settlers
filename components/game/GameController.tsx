@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Board } from '@/components/board/Board';
+import { BoardSelectionState, BoardCallbacks } from '@/lib/types/board-selection-state';
 import { GameState } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { PlayerHand } from './PlayerHand';
@@ -1276,11 +1277,12 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const gameState = baseGameState ? getOptimisticState(baseGameState) : null;
 
     // Clear local turn submission flag when it's no longer this player's turn
+    // OR when a new turn starts (phase changes to waiting_for_roll)
     useEffect(() => {
-        if (gameState?.currentTurn !== playerId) {
+        if (gameState?.currentTurn !== playerId || gameState?.phase === 'waiting_for_roll') {
             setTurnSubmitted(false);
         }
-    }, [gameState?.currentTurn, playerId]);
+    }, [gameState?.currentTurn, gameState?.phase, playerId]);
 
     const treasonEffect = gameState?.activeEffects?.find(
         (effect: any): effect is TreasonEffect => effect?.type === 'treason'
@@ -1570,44 +1572,67 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             <Board
                 gameState={gameState}
                 playerId={playerId}
-                buildMode={buildMode}
-                onCancelBuild={handleCancelSelection}
-                movingKnightId={movingKnightId}
-                buildingMetropolisType={buildingMetropolisType}
-                selectingHexForCard={selectingHexForCard}
-                selectingVertexForCard={selectingVertexForCard}
-                selectingEdgeForCard={selectingEdgeForCard}
-                selectingCityForEngineer={selectingCityForEngineer}
-                selectedEngineerCityId={selectedEngineerCityId}
-                selectingCityForMedicine={selectingCityForMedicine}
-                selectingCityForMetropolis={selectingCityForMetropolis}
-                selectedMetropolisCityId={selectedMetropolisCityId}
-                intrigueSelectedKnightId={intrigueTarget?.knightId ?? null}
-                selectingKnightsForSmith={selectingKnightsForSmith}
-                smithSelectableKnightIds={smithEligibleVertexIds}
-                smithSelectedKnightIds={selectedSmithKnightIds}
-                treasonSelectedKnightId={treasonSelectedKnightId}
-                treasonSelectedPlacementVertexId={treasonSelectedPlacementVertexId}
-                progressPromptCardType={showRoadBuildingPrompt ? 'road_building_progress' : null}
-                progressPromptVisible={showRoadBuildingPrompt}
-                progressPromptReady={isRoadBuildingProgressActive}
-                inventorSelection={inventorSelection}
-                merchantSelectedHexId={selectedMerchantHexId}
-                taxationSelectedHexId={selectedTaxationHexId}
-                diplomatStage={diplomatStage}
-                diplomatRemovedEdgeId={diplomatStage === 'rebuild' ? diplomatSelectedEdgeId : null}
-                diplomatRelocatedEdgeId={diplomatRelocateEdgeId}
-                onHexSelected={handleHexSelected}
-                onVertexSelectedForCard={handleVertexSelected}
-                onEdgeSelectedForCard={handleEdgeSelected}
-                onEngineerCitySelected={handleEngineerCitySelected}
-                onMedicineCitySelected={handleMedicineCitySelected}
-                onMetropolisCitySelected={handleMetropolisCitySelected}
-                onCityClick={handleCityClick}
-                onSettlementClick={handleSettlementClick}
-                onKnightClick={handleKnightClick}
-                onBarbarianCitySelect={handleLoseCityToBarbarians}
-                onRobberVictimRequest={handleRobberVictimRequest}
+                selectionState={{
+                    buildMode,
+                    movingKnightId,
+                    buildingMetropolisType,
+                    hexCardSelection: selectingHexForCard ? {
+                        type: selectingHexForCard,
+                        selectedHexId: selectingHexForCard === 'merchant' ? (selectedMerchantHexId ?? undefined) :
+                                      selectingHexForCard === 'taxation' ? (selectedTaxationHexId ?? undefined) :
+                                      undefined,
+                        inventorSelection: inventorSelection ? {
+                            firstHexId: inventorSelection.firstHexId,
+                            secondHexId: inventorSelection.secondHexId
+                        } : undefined
+                    } : undefined,
+                    vertexCardSelection: selectingVertexForCard ? {
+                        type: selectingVertexForCard,
+                        selectedKnightId: selectingVertexForCard === 'intrigue' ? intrigueTarget?.knightId ?? undefined :
+                                         selectingVertexForCard === 'treason_remove' ? treasonSelectedKnightId ?? undefined :
+                                         undefined,
+                        placementVertexId: selectingVertexForCard === 'treason_place' ? treasonSelectedPlacementVertexId ?? undefined : undefined
+                    } : undefined,
+                    edgeCardSelection: selectingEdgeForCard ? {
+                        type: selectingEdgeForCard,
+                        stage: diplomatStage ?? undefined,
+                        removedEdgeId: diplomatStage === 'rebuild' ? diplomatSelectedEdgeId ?? undefined : undefined,
+                        relocatedEdgeId: diplomatRelocateEdgeId ?? undefined
+                    } : undefined,
+                    citySelection: selectingCityForEngineer ? {
+                        type: 'engineer',
+                        selectedCityId: selectedEngineerCityId ?? undefined
+                    } : selectingCityForMedicine ? {
+                        type: 'medicine'
+                    } : selectingCityForMetropolis ? {
+                        type: 'metropolis',
+                        cityType: selectingCityForMetropolis,
+                        selectedCityId: selectedMetropolisCityId ?? undefined
+                    } : undefined,
+                    smithSelection: selectingKnightsForSmith ? {
+                        selectableKnightIds: smithEligibleVertexIds,
+                        selectedKnightIds: selectedSmithKnightIds
+                    } : undefined,
+                    progressPrompt: showRoadBuildingPrompt ? {
+                        cardType: 'road_building_progress',
+                        visible: showRoadBuildingPrompt,
+                        ready: isRoadBuildingProgressActive
+                    } : undefined
+                }}
+                callbacks={{
+                    onCancelBuild: handleCancelSelection,
+                    onHexSelected: handleHexSelected,
+                    onVertexSelectedForCard: handleVertexSelected,
+                    onEdgeSelectedForCard: handleEdgeSelected,
+                    onEngineerCitySelected: handleEngineerCitySelected,
+                    onMedicineCitySelected: handleMedicineCitySelected,
+                    onMetropolisCitySelected: handleMetropolisCitySelected,
+                    onCityClick: handleCityClick,
+                    onSettlementClick: handleSettlementClick,
+                    onKnightClick: handleKnightClick,
+                    onBarbarianCitySelect: handleLoseCityToBarbarians,
+                    onRobberVictimRequest: handleRobberVictimRequest
+                }}
             />
 
             {showIntriguePrompt && (

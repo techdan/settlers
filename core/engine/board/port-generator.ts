@@ -1,7 +1,5 @@
-import { getEdgeEndpoints } from '@/lib/hex';
-import { ResourceType } from './board-generator';
-
-export type PortType = ResourceType | 'generic';
+import { Port, PortType } from '@/types/board';
+import { hexToPixel, createHex } from '@/lib/hex';
 
 interface EdgeDef {
     q: number;
@@ -9,10 +7,8 @@ interface EdgeDef {
     edgeIndex: number;
 }
 
-/**
- * Coastline edges in clockwise order around the board
- * These define the 30 edges on the outer perimeter
- */
+// The 30 exposed edges of the outer ring, in clockwise order
+// Starting from Hex(0, -2) Edge 3 (West)
 const COASTLINE_EDGES: EdgeDef[] = [
     { q: 0, r: -2, edgeIndex: 3 },  // 0
     { q: 0, r: -2, edgeIndex: 4 },  // 1: P0 Sheep
@@ -29,7 +25,7 @@ const COASTLINE_EDGES: EdgeDef[] = [
     { q: 2, r: 0, edgeIndex: 1 },   // 12
     { q: 1, r: 1, edgeIndex: 0 },   // 13
     { q: 1, r: 1, edgeIndex: 1 },   // 14
-    { q: 0, r: 2, edgeIndex: 0 },   // 15: P4 Wood
+    { q: 0, r: 2, edgeIndex: 0 },   // 15: P4 Wood (Moved from 14)
     { q: 0, r: 2, edgeIndex: 1 },   // 16
     { q: 0, r: 2, edgeIndex: 2 },   // 17
     { q: -1, r: 2, edgeIndex: 1 },  // 18: P5 Generic
@@ -46,10 +42,8 @@ const COASTLINE_EDGES: EdgeDef[] = [
     { q: -1, r: -1, edgeIndex: 4 }, // 29
 ];
 
-/**
- * Port configuration following standard Catan layout
- * Spacing pattern: 3-2-2-3-2-2-3-2-2 (edges between ports)
- */
+// Port Indices in the COASTLINE_EDGES array
+// Rotated counter-clockwise by 2 edges (index - 2)
 const PORT_INDICES = [
     { index: 29, type: 'sheep' },
     { index: 3, type: 'generic' },
@@ -62,76 +56,52 @@ const PORT_INDICES = [
     { index: 26, type: 'generic' },
 ];
 
-/**
- * Initialize port mapping
- * Maps vertex IDs to their port types
- */
-function initializePortMapping(): Record<string, PortType> {
-    const mapping: Record<string, PortType> = {};
+// Edge angles for Pointy Top Hexes (Normal vectors pointing OUT)
+const EDGE_ANGLES = [0, 60, 120, 180, 240, 300];
 
-    PORT_INDICES.forEach(config => {
+export const generatePorts = (hexSize: number): Port[] => {
+    return PORT_INDICES.map((config, i) => {
         const edgeDef = COASTLINE_EDGES[config.index];
-        // Edge connects two vertices. We need to get the canonical IDs of these vertices.
-        const [v1, v2] = getEdgeEndpoints(edgeDef.q, edgeDef.r, edgeDef.edgeIndex);
+        const hex = createHex(edgeDef.q, edgeDef.r);
+        const center = hexToPixel(hex, hexSize);
 
-        mapping[v1] = config.type as PortType;
-        mapping[v2] = config.type as PortType;
+        // Calculate edge midpoint
+        const dist = hexSize * Math.sqrt(3) / 2;
+        const angleDeg = EDGE_ANGLES[edgeDef.edgeIndex];
+        const angleRad = angleDeg * Math.PI / 180;
+
+        // Push the port center out further so it sits "off shore"
+        // dist is the distance to the edge midpoint. We want to go a bit further.
+        const portOffset = 60; // Pixels to push out
+        const x = center.x + (dist + portOffset) * Math.cos(angleRad);
+        const y = center.y + (dist + portOffset) * Math.sin(angleRad);
+
+        // Port angle should point INWARD to the hex center
+        const portAngle = (angleDeg + 180) % 360;
+
+        // Calculate vertices for the port (for visualization lines)
+        // We want the corners of the hex edge that this port is attached to.
+        // For pointy top hexes, if the edge normal is at angleDeg, the corners are at angleDeg - 30 and angleDeg + 30.
+        const corner1Rad = (angleDeg - 30) * Math.PI / 180;
+        const corner2Rad = (angleDeg + 30) * Math.PI / 180;
+
+        // Corners are at distance = hexSize from center
+        const v1 = {
+            x: center.x + hexSize * Math.cos(corner1Rad),
+            y: center.y + hexSize * Math.sin(corner1Rad)
+        };
+
+        const v2 = {
+            x: center.x + hexSize * Math.cos(corner2Rad),
+            y: center.y + hexSize * Math.sin(corner2Rad)
+        };
+
+        return {
+            id: `port-${i}`,
+            type: config.type as PortType,
+            position: { x, y },
+            angle: portAngle,
+            vertices: [v1, v2]
+        };
     });
-
-    return mapping;
-}
-
-// Cached port mapping
-const VERTEX_TO_PORT = initializePortMapping();
-
-/**
- * Get the port type for a given vertex
- * 
- * @param vertexId - Canonical vertex ID
- * @returns Port type if vertex has a port, undefined otherwise
- */
-export function getPortForVertex(vertexId: string): PortType | undefined {
-    return VERTEX_TO_PORT[vertexId];
-}
-
-/**
- * Calculate trade ratio for a player at a vertex
- * 
- * @param vertexId - Vertex where player has a settlement/city
- * @param resource - Resource being traded
- * @returns Trade ratio (2, 3, or 4)
- */
-export function getTradeRatio(vertexId: string, resource: ResourceType): number {
-    const port = getPortForVertex(vertexId);
-
-    if (!port) return 4; // Default 4:1 ratio
-
-    if (port === 'generic') return 3; // Generic port 3:1
-
-    if (port === resource) return 2; // Resource-specific port 2:1
-
-    return 4; // Has a port, but not for this resource
-}
-
-/**
- * Get best trade ratio for a player across all their settlements
- * 
- * @param playerVertices - Array of vertex IDs where player has settlements/cities
- * @param resource - Resource being traded
- * @returns Best available trade ratio
- */
-export function getBestTradeRatio(
-    playerVertices: string[],
-    resource: ResourceType
-): number {
-    let bestRatio = 4; // Default
-
-    for (const vertexId of playerVertices) {
-        const ratio = getTradeRatio(vertexId, resource);
-        if (ratio < bestRatio) {
-            bestRatio = ratio;
-        }
-    }
-
-    return bestRatio;
-}
+};

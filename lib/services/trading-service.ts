@@ -1,7 +1,7 @@
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { getPortForVertex, getBestTradeRatio } from '@/core/engine/board/port-generator';
+import { getPortForVertex, getBestTradeRatio } from '@/engine/generatePorts';
 import { CommodityType } from '@/core/rules/commodity-constants';
 
 /**
