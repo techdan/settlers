@@ -1,7 +1,9 @@
 # Progress Card Refactoring - Progress Summary
 
 ## Overview
-Implementing Option 3 (Hybrid Command + Config Approach) from Progress-Card-Refactoring-Proposal.md to reduce the 1,767-line progress-card-manager.ts to ~300 lines through modular architecture.
+Implementing Option 3 (Hybrid Command + Config Approach) from Progress-Card-Refactoring-Proposal.md to:
+1. Reduce the 1,767-line progress-card-manager.ts to ~300 lines through modular architecture
+2. **Standardize modal popups and UI interactions** for all progress cards with consistent user experience
 
 ---
 
@@ -138,6 +140,57 @@ Implementing Option 3 (Hybrid Command + Config Approach) from Progress-Card-Refa
 - Command pattern implementation for complex cards
 - Additional effect types (discard, move robber, swap tokens, etc.)
 - Multi-step interaction handling (select target, choose option, etc.)
+
+---
+
+## UI Standardization Progress
+
+### Goal
+Create consistent, reusable modal components for all progress card interactions with a unified user experience.
+
+### Current State
+- ❌ Inconsistent UI patterns across different cards
+- ❌ Some cards use custom modals, others modify state directly
+- ❌ No standardized error handling or feedback
+- ❌ Parameter selection (resources, buildings, players) varies by card
+
+### Planned Architecture
+
+**Interaction Types to Support:**
+1. ✅ **Instant Effects** - No interaction needed (Irrigation, Mining, Encouragement)
+2. ⏳ **Resource/Commodity Selection** - Pick type from list (Resource/Trade Monopoly)
+3. ⏳ **Vertex Selection** - Pick building location (Engineer, Medicine)
+4. ⏳ **Knight Selection** - Pick up to N knights (Smith)
+5. ⏳ **Player Selection** - Pick target player (Guild Dues, Wedding, Taxation)
+6. ⏳ **Edge Selection** - Pick road placements (Road Building, Diplomat)
+7. ⏳ **Dice Selection** - Choose dice results (Alchemist)
+8. ⏳ **Token Swapping** - Swap number tokens (Inventor)
+9. ⏳ **Card Viewing** - View and select cards (Espionage)
+
+**Modal Components** (`components/game/modals/`):
+- ⏳ `ProgressCardModal.tsx` - Main wrapper with consistent styling
+- ⏳ `ResourceSelector.tsx` - Grid of resource options with icons
+- ⏳ `CommoditySelector.tsx` - Grid of commodity options with icons
+- ⏳ `VertexSelector.tsx` - Highlights valid vertices on board
+- ⏳ `KnightSelector.tsx` - List with knight levels and promotability
+- ⏳ `PlayerSelector.tsx` - List of eligible players
+- ⏳ `EdgeSelector.tsx` - Highlights valid edges on board
+- ⏳ `DiceSelector.tsx` - Dice result picker
+- ⏳ `TokenSwapper.tsx` - Number token swapping interface
+- ⏳ `CardViewer.tsx` - View opponent cards and select
+
+**Backend Types** (`core/engine/progress/types/CardInteraction.ts`):
+- ⏳ `CardInteractionType` - Union type of all interaction types
+- ⏳ `CardInteraction` - Interaction requirements (prompt, options, constraints)
+- ⏳ `InteractionOption` - Individual selectable option
+- ⏳ `CardExecutionResult` - Response format with interaction or notification
+
+**Benefits:**
+- ✅ Consistent UI/UX across all 25 progress cards
+- ✅ Reusable components reduce code duplication
+- ✅ Declarative interaction requirements (testable, documentable)
+- ✅ Unified error handling and validation feedback
+- ✅ Easier to add new cards with standard interactions
 
 ---
 

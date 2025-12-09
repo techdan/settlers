@@ -114,6 +114,9 @@ export function executeAddCommodityPerCity(
 /**
  * Execute: Steal resources or commodities from opponents
  * Used by Resource Monopoly (up to 2 resources) and Trade Monopoly (1 commodity)
+ *
+ * If options are not provided, this will throw an error indicating interaction is needed.
+ * The calling code should catch this and present the appropriate UI.
  */
 export function executeStealFromOpponents(
   state: GameState,

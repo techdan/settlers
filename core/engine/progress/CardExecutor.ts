@@ -18,6 +18,10 @@ import {
   executeActivateKnight,
   executePromoteKnight,
 } from './effects/KnightEffects';
+import { EncouragementCommand } from './commands/EncouragementCommand';
+import { EngineerCommand } from './commands/EngineerCommand';
+import { SmithCommand } from './commands/SmithCommand';
+import { RoadBuildingCommand } from './commands/RoadBuildingCommand';
 
 /**
  * CardExecutor
@@ -31,8 +35,13 @@ export class CardExecutor {
 
   constructor() {
     // Register complex card commands here
-    // These will be added in Phase 3
     this.commands = new Map();
+
+    // Phase 3.1: Simple commands
+    this.commands.set('encouragement', new EncouragementCommand());
+    this.commands.set('engineer', new EngineerCommand());
+    this.commands.set('smith', new SmithCommand());
+    this.commands.set('road_building_progress', new RoadBuildingCommand());
   }
 
   /**
@@ -47,9 +56,6 @@ export class CardExecutor {
     // Check if this is a complex card with a custom command
     const command = this.commands.get(cardType);
     if (command) {
-      if (!command.canExecute(state, playerId)) {
-        throw new Error(`Cannot execute ${cardType} card in current state`);
-      }
       return command.execute(state, playerId, options);
     }
 
@@ -141,35 +147,6 @@ export class CardExecutor {
     }
   }
 
-  /**
-   * Register a complex card command
-   */
-  registerCommand(command: ProgressCardCommand): void {
-    this.commands.set(command.type, command);
-  }
-
-  /**
-   * Check if a card can be executed
-   */
-  canExecute(cardType: ProgressCardType, state: GameState, playerId: string): boolean {
-    // Check complex commands
-    const command = this.commands.get(cardType);
-    if (command) {
-      return command.canExecute(state, playerId);
-    }
-
-    // Check simple cards
-    if (isSimpleCard(cardType)) {
-      const config = getCardConfig(cardType);
-      if (config?.validator) {
-        return config.validator(state, playerId);
-      }
-      // Default: can play if it's the player's turn
-      return state.currentTurn === playerId;
-    }
-
-    return false;
-  }
 }
 
 /**

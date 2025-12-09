@@ -1,6 +1,7 @@
 import { GameState } from '@/lib/types/game';
 import { ProgressCardType } from '@/lib/types/player';
 import { CardEffect } from './CardEffect';
+import { CardInteraction } from './CardInteraction';
 
 /**
  * Configuration for a simple progress card
@@ -19,6 +20,12 @@ export interface CardConfig {
   /** Whether the card requires user interaction/selection */
   requiresInteraction: boolean;
 
+  /**
+   * Interaction requirements (if requiresInteraction is true)
+   * This declares upfront what the user needs to select
+   */
+  interaction?: Omit<CardInteraction, 'cardName'>;
+
   /** List of effects to apply when the card is played */
   effects: CardEffect[];
 
@@ -29,20 +36,10 @@ export interface CardConfig {
 /**
  * Interface for complex progress card commands
  * These cards have custom logic that doesn't fit the declarative model
+ *
+ * Commands should throw errors if they cannot execute (e.g., validation failures)
  */
 export interface ProgressCardCommand {
-  /** Card type identifier */
-  readonly type: ProgressCardType;
-
-  /** Card category */
-  readonly category: 'science' | 'trade' | 'politics';
-
-  /** Whether this card grants a victory point */
-  readonly isVictoryPoint: boolean;
-
-  /** Check if the card can be executed in the current state */
-  canExecute(state: GameState, playerId: string): boolean;
-
   /** Execute the card's logic */
   execute(state: GameState, playerId: string, options?: any): GameState;
 }

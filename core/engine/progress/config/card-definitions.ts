@@ -1,4 +1,5 @@
 import { CardConfig } from '../types/CardConfig';
+import { buildResourceOptions, buildCommodityOptions } from '../utilities/InteractionBuilder';
 
 /**
  * Simple progress card definitions
@@ -51,7 +52,15 @@ export const SIMPLE_CARD_CONFIGS: CardConfig[] = [
     type: 'resource_monopoly',
     category: 'trade',
     isVictoryPoint: false,
-    requiresInteraction: true, // Player must select resource type
+    requiresInteraction: true,
+    interaction: {
+      type: 'select_resource',
+      prompt: 'Choose a resource to steal from all opponents (up to 2 from each)',
+      options: buildResourceOptions(),
+      minSelections: 1,
+      maxSelections: 1,
+      allowCancel: true,
+    },
     effects: [
       {
         type: 'steal_from_opponents',
@@ -65,7 +74,15 @@ export const SIMPLE_CARD_CONFIGS: CardConfig[] = [
     type: 'trade_monopoly',
     category: 'trade',
     isVictoryPoint: false,
-    requiresInteraction: true, // Player must select commodity type
+    requiresInteraction: true,
+    interaction: {
+      type: 'select_commodity',
+      prompt: 'Choose a commodity to steal from all opponents (1 from each)',
+      options: buildCommodityOptions(),
+      minSelections: 1,
+      maxSelections: 1,
+      allowCancel: true,
+    },
     effects: [
       {
         type: 'steal_from_opponents',

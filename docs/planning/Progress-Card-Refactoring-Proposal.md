@@ -533,6 +533,201 @@ core/engine/progress/
 
 ---
 
+## UI Standardization Goal
+
+### Current Problem
+Progress cards currently have inconsistent user interactions:
+- Some cards show custom modal dialogs
+- Some use inline selection UI
+- Some modify game state directly without confirmation
+- Error handling and feedback messages are inconsistent
+- No standardized pattern for parameter selection (resource type, target player, etc.)
+
+### Standardization Approach
+
+#### 1. Unified Modal System
+Create a standardized modal system for all progress card interactions:
+
+```typescript
+// core/engine/progress/types/CardInteraction.ts
+export type CardInteractionType =
+  | 'select_resource'      // Resource Monopoly - choose resource type
+  | 'select_commodity'     // Trade Monopoly - choose commodity type
+  | 'select_vertex'        // Engineer, Medicine - choose building location
+  | 'select_knights'       // Smith - choose up to 2 knights
+  | 'select_player'        // Guild Dues, Taxation - choose target player
+  | 'select_edges'         // Road Building - place roads
+  | 'select_dice'          // Alchemist - choose dice results
+  | 'select_tokens'        // Inventor - swap number tokens
+  | 'select_cards'         // Espionage - look at and take card
+  | 'confirmation'         // Simple yes/no confirmation
+  | 'notification';        // Just show result message
+
+export interface CardInteraction {
+  type: CardInteractionType;
+  cardName: string;
+  prompt: string;
+  options?: InteractionOption[];
+  minSelections?: number;
+  maxSelections?: number;
+  allowCancel?: boolean;
+}
+
+export interface InteractionOption {
+  id: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+}
+```
+
+#### 2. Declarative Interaction Requirements
+Cards specify their interaction needs in config:
+
+```typescript
+// Example: Resource Monopoly
+{
+  type: 'resource_monopoly',
+  category: 'trade',
+  requiresInteraction: true,
+  interaction: {
+    type: 'select_resource',
+    prompt: 'Choose a resource type to monopolize',
+    minSelections: 1,
+    maxSelections: 1
+  },
+  effects: [...]
+}
+
+// Example: Smith (Smithing)
+{
+  type: 'smith',
+  category: 'science',
+  requiresInteraction: true,
+  interaction: {
+    type: 'select_knights',
+    prompt: 'Select up to 2 knights to promote for free',
+    minSelections: 1,
+    maxSelections: 2,
+    filter: (knight, player) => isKnightPromotable(knight, player)
+  }
+}
+```
+
+#### 3. Standardized Modal Components
+
+**Frontend Components** (`components/game/modals/`):
+- `ProgressCardModal.tsx` - Main modal wrapper
+- `ResourceSelector.tsx` - Pick resource type
+- `CommoditySelector.tsx` - Pick commodity type
+- `VertexSelector.tsx` - Pick building location (highlights on board)
+- `KnightSelector.tsx` - Pick knights (shows list with promotability)
+- `PlayerSelector.tsx` - Pick target player
+- `EdgeSelector.tsx` - Pick road placements (highlights on board)
+- `DiceSelector.tsx` - Pick dice results
+- `TokenSwapper.tsx` - Swap number tokens
+- `CardViewer.tsx` - View and select from cards
+
+**Backend Response Format**:
+```typescript
+export interface CardExecutionResult {
+  success: boolean;
+  newState?: GameState;
+  error?: string;
+  requiresInteraction?: CardInteraction;
+  notification?: {
+    title: string;
+    message: string;
+    type: 'success' | 'info' | 'warning' | 'error';
+  };
+}
+```
+
+#### 4. Execution Flow
+
+**Step 1: Initial Play Request**
+```typescript
+// Client: User clicks "Play" on Resource Monopoly card
+POST /api/game/:roomId/progress-card
+{
+  cardType: 'resource_monopoly',
+  playerId: 'player1'
+}
+
+// Server Response: Requires interaction
+{
+  success: false,
+  requiresInteraction: {
+    type: 'select_resource',
+    cardName: 'Resource Monopoly',
+    prompt: 'Choose a resource to steal from all opponents',
+    options: [
+      { id: 'wood', label: 'Wood', icon: '🪵' },
+      { id: 'brick', label: 'Brick', icon: '🧱' },
+      { id: 'sheep', label: 'Sheep', icon: '🐑' },
+      { id: 'wheat', label: 'Wheat', icon: '🌾' },
+      { id: 'ore', label: 'Ore', icon: '⛰️' }
+    ],
+    minSelections: 1,
+    maxSelections: 1
+  }
+}
+```
+
+**Step 2: User Provides Input**
+```typescript
+// Client: User selects 'wood' from modal
+POST /api/game/:roomId/progress-card
+{
+  cardType: 'resource_monopoly',
+  playerId: 'player1',
+  interaction: {
+    type: 'select_resource',
+    selections: ['wood']
+  }
+}
+
+// Server Response: Success with notification
+{
+  success: true,
+  newState: { ... },
+  notification: {
+    title: 'Resource Monopoly',
+    message: 'You stole 5 wood from opponents (Player 2: 2, Player 3: 2, Player 4: 1)',
+    type: 'success'
+  }
+}
+```
+
+#### 5. Benefits
+
+✅ **Consistency**: All cards use same modal patterns
+✅ **Reusability**: Modal components shared across multiple cards
+✅ **Accessibility**: Standardized keyboard navigation and screen reader support
+✅ **Testability**: Interaction requirements are declarative and testable
+✅ **Error Handling**: Uniform error messages and validation feedback
+✅ **Extensibility**: Easy to add new interaction types
+✅ **Documentation**: Clear contract between frontend and backend
+
+#### 6. Implementation Priority
+
+**Phase 3.2 (Medium Complexity)**:
+- Implement `ProgressCardModal` wrapper
+- Add `ResourceSelector` and `CommoditySelector` (for monopoly cards)
+- Add `VertexSelector` (for Engineer, Medicine)
+- Add `KnightSelector` (for Smith)
+
+**Phase 3.3 (High Complexity)**:
+- Add `PlayerSelector` (for Guild Dues, Wedding)
+- Add `EdgeSelector` (for Road Building, Diplomat)
+- Add `DiceSelector` (for Alchemist)
+- Add `TokenSwapper` (for Inventor)
+- Add `CardViewer` (for Espionage)
+
+---
+
 ## Migration Strategy
 
 ### Phase 1: Setup Infrastructure (No Breaking Changes)
