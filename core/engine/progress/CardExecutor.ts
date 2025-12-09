@@ -22,6 +22,21 @@ import { EncouragementCommand } from './commands/EncouragementCommand';
 import { EngineerCommand } from './commands/EngineerCommand';
 import { SmithCommand } from './commands/SmithCommand';
 import { RoadBuildingCommand } from './commands/RoadBuildingCommand';
+import { MedicineCommand } from './commands/MedicineCommand';
+import { CraneCommand } from './commands/CraneCommand';
+import { InventorCommand } from './commands/InventorCommand';
+import { MerchantCommand } from './commands/MerchantCommand';
+import { MerchantFleetCommand } from './commands/MerchantFleetCommand';
+import { WeddingCommand } from './commands/WeddingCommand';
+import { TreasonCommand } from './commands/TreasonCommand';
+import { IntrigueCommand } from './commands/IntrigueCommand';
+import { DiplomatCommand } from './commands/DiplomatCommand';
+import { SaboteurCommand } from './commands/SaboteurCommand';
+import { EspionageCommand } from './commands/EspionageCommand';
+import { GuildDuesCommand } from './commands/GuildDuesCommand';
+import { TaxationCommand } from './commands/TaxationCommand';
+import { CommercialHarborCommand } from './commands/CommercialHarborCommand';
+import { AlchemistCommand } from './commands/AlchemistCommand';
 
 /**
  * CardExecutor
@@ -42,6 +57,25 @@ export class CardExecutor {
     this.commands.set('engineer', new EngineerCommand());
     this.commands.set('smith', new SmithCommand());
     this.commands.set('road_building_progress', new RoadBuildingCommand());
+
+    // Phase 3.3: Medium complexity commands
+    this.commands.set('medicine', new MedicineCommand());
+    this.commands.set('crane', new CraneCommand());
+    this.commands.set('inventor', new InventorCommand());
+    this.commands.set('merchant', new MerchantCommand());
+    this.commands.set('merchant_fleet', new MerchantFleetCommand());
+
+    // Phase 3.4: High complexity commands
+    this.commands.set('wedding', new WeddingCommand());
+    this.commands.set('treason', new TreasonCommand());
+    this.commands.set('intrigue', new IntrigueCommand());
+    this.commands.set('diplomat', new DiplomatCommand());
+    this.commands.set('saboteur', new SaboteurCommand());
+    this.commands.set('espionage', new EspionageCommand());
+    this.commands.set('guild_dues', new GuildDuesCommand());
+    this.commands.set('taxation', new TaxationCommand());
+    this.commands.set('commercial_harbor', new CommercialHarborCommand());
+    this.commands.set('alchemist', new AlchemistCommand());
   }
 
   /**
