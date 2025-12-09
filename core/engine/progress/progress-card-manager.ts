@@ -19,6 +19,8 @@ import { isValidMainPhaseCity, isValidMainPhaseRoad } from '@/core/validation/bu
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { isKnightPromotable } from '@/core/utils/knight-upgrade-utils';
 import { isOpenRoad } from '@/core/validation/diplomat-validator';
+import { getCardExecutor } from './CardExecutor';
+import { isSimpleCard } from './config/card-definitions';
 
 const MEDICINE_COST: Partial<Record<ResourceType, number>> = {
     ore: 2,
@@ -323,6 +325,20 @@ function executeProgressCardEffect(
 ): void {
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return;
+
+    // NEW: Route simple cards through CardExecutor
+    if (isSimpleCard(cardType)) {
+        try {
+            const executor = getCardExecutor();
+            const newState = executor.execute(cardType, gameState, playerId, options);
+            // Copy back the modified state (CardExecutor modifies in place, but we return it for consistency)
+            Object.assign(gameState, newState);
+            return;
+        } catch (error) {
+            // If CardExecutor fails, fall back to legacy implementation
+            console.error(`CardExecutor failed for ${cardType}, falling back to legacy:`, error);
+        }
+    }
 
     switch (cardType) {
         // SCIENCE CARDS

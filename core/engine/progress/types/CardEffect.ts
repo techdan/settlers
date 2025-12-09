@@ -32,6 +32,7 @@ export interface AddResourcePerHexEffect extends BaseCardEffect {
   resource: ResourceType;
   hexTerrain: TerrainType;
   requiresAdjacentBuilding: boolean;
+  amountPerHex: number; // Amount of resource to add per matching hex
   resourceMapping?: Record<string, ResourceType>;
 }
 
@@ -56,13 +57,17 @@ export interface AddCommodityPerCityEffect extends BaseCardEffect {
 }
 
 /**
- * Effect: Steal resources from opponents
+ * Effect: Steal resources or commodities from opponents
+ * Used by Resource Monopoly (up to 2 resources per opponent)
+ * and Trade Monopoly (1 commodity per opponent if they have it)
  */
 export interface StealFromOpponentsEffect extends BaseCardEffect {
   type: 'steal_from_opponents';
-  resourceType: ResourceType | 'any';
-  count: number;
-  perOpponent?: boolean;
+  cardType: 'resource' | 'commodity';
+  resourceType?: ResourceType; // For resource monopoly - requires runtime selection
+  commodityType?: CommodityType; // For trade monopoly - requires runtime selection
+  maxPerOpponent: number; // 2 for resources, 1 for commodities
+  requiresSelection: boolean; // True if player must choose the resource/commodity type
 }
 
 /**
