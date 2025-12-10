@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setLobbyPlayerColor, startGame } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
-import { ConnectionStatusIndicator } from '@/components/game/ConnectionStatus';
+import { ConnectionStatusIndicator } from '@/components/game/ui/ConnectionStatus';
 import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
 import {
     DEFAULT_PLAYER_COLOR,
@@ -259,13 +259,11 @@ export function LobbyView({
                                                                         ? `Switch to ${option.label}`
                                                                         : 'Only the player can change their color'
                                                         }
-                                                        className={`w-7 h-7 rounded-full border-2 border-slate-200 dark:border-slate-700 transition-all duration-150 ${
-                                                            isSelected
+                                                        className={`w-7 h-7 rounded-full border-2 border-slate-200 dark:border-slate-700 transition-all duration-150 ${isSelected
                                                                 ? 'ring-2 ring-offset-2 ring-slate-900 dark:ring-white ring-offset-white dark:ring-offset-slate-800'
                                                                 : 'ring-0'
-                                                        } ${
-                                                            interactionClass
-                                                        }`}
+                                                            } ${interactionClass
+                                                            }`}
                                                         style={{ backgroundColor: option.swatch }}
                                                     >
                                                         <span className="sr-only">{option.label}</span>

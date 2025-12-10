@@ -1,24 +1,45 @@
-# Console Cleanup Prompt
+# Console Cleanup Prompt - DEBUG LOGGING ONLY
+
+## ⚠️ CRITICAL: NARROW SCOPE
+
+**ONLY remove development debug logging (console.log/console.debug) that serves no purpose.**
+
+**DO NOT remove:**
+- ❌ Error handling logs (`console.error`, `console.warn` in try/catch blocks)
+- ❌ Error boundary logs
+- ❌ Critical failure logs
+- ❌ Intentional debug tooling (DebugPanel.tsx)
+- ❌ Admin/dev scripts (scripts/*.ts)
+
+**DO remove:**
+- ✅ Development debugging: `console.log('entering useEffect')`
+- ✅ State inspection: `console.log('selectedHex:', selectedHex)`
+- ✅ Temporary debugging: `console.debug('calculation result:', result)`
+
+---
 
 ## Context
 
-You're working on a Settlers of Catan implementation with Cities & Knights expansion. The codebase has 29 files containing console.log/warn/error statements that need cleanup. This is part of Phase 4 completion following a comprehensive refactor.
+You're working on a Settlers of Catan implementation. The codebase has some development debug logging (`console.log`, `console.debug`) that should be removed. This is **NOT** about error handling - leave all error logs intact.
 
 **Related Documentation:**
-- @docs/audits/Opus-Audit-2025-12-06.md (lines 591-609)
 - @AGENTS.md (tech stack and conventions)
 
-## Current State
+---
 
-**Files with console statements (29 total):**
+## Task: Remove Development Debug Logging ONLY
+
+**Estimated Time:** 30-60 minutes
+
+### Files with Console Statements (29 total)
 
 ```bash
-# UI Components (13 files)
+# UI Components
 ./app/room/[id]/page.tsx
 ./components/game/ActionControls.tsx
 ./components/game/AqueductModal.tsx
 ./components/game/BuildControls.tsx
-./components/game/DebugPanel.tsx
+./components/game/DebugPanel.tsx              # KEEP - intentional debug feature
 ./components/game/DiscardModal.tsx
 ./components/game/GameController.tsx
 ./components/game/PlayerDevCards.tsx
@@ -28,11 +49,11 @@ You're working on a Settlers of Catan implementation with Cities & Knights expan
 ./components/game/TradeOfferDisplay.tsx
 ./components/lobby-view.tsx
 
-# Rendering Layer (2 files)
+# Rendering Layer
 ./components/ui/icons/ColoredSvgIcon.tsx
 ./core/engine/board/board-generator.ts
 
-# Controllers & Hooks (9 files)
+# Controllers & Hooks
 ./lib/controllers/improvement-controller.ts
 ./lib/controllers/knight-controller.ts
 ./lib/controllers/progress-card-controller.ts
@@ -43,190 +64,283 @@ You're working on a Settlers of Catan implementation with Cities & Knights expan
 ./lib/hooks/useRobberInteractions.ts
 ./lib/hooks/useTurnActions.ts
 
-# Services (2 files)
+# Services
 ./lib/services/game-service.ts
 ./lib/supabase.ts
 
-# Scripts (3 files - KEEP THESE)
-./scripts/check-db.ts
-./scripts/event-die-distribution.ts
-./scripts/verify-lobby.ts
+# Scripts - KEEP THESE
+./scripts/check-db.ts                         # KEEP - admin script
+./scripts/event-die-distribution.ts           # KEEP - admin script
+./scripts/verify-lobby.ts                     # KEEP - admin script
 ```
 
-## Task: Remove Development Console Statements
+---
 
-**Estimated Time:** 1-2 hours
+## Step-by-Step Process
 
-### Step 1: Categorize Console Statements (15 min)
+### Step 1: Review Each File (20 min)
 
-Review each file and categorize console statements:
+For each file, **read the file first** and identify ONLY:
 
-1. **Remove entirely** - Debug logging during development
-   - Example: `console.log('entering useEffect')`
-   - Example: `console.log('selectedHex:', selectedHex)`
-
-2. **Keep as-is** - Intentional debug tooling
-   - DebugPanel.tsx console statements (debug UI feature)
-   - scripts/*.ts files (dev/admin scripts)
-
-3. **Replace with proper error handling** - Error cases
-   - Example: `console.error('Failed to fetch')` → throw error or show user toast
-   - Example: `console.warn('Invalid state')` → log to monitoring service (future)
-
-### Step 2: Clean UI Components (30 min)
-
-For each component file:
-
-1. **Read the file** to understand context
-2. **Search for console statements**: `console.log`, `console.warn`, `console.error`, `console.debug`
-3. **Apply categorization** from Step 1:
-   - Remove debug logging
-   - Keep intentional debug features (DebugPanel.tsx)
-   - Convert errors to proper error handling
-4. **Verify no regressions** - ensure removing logs doesn't break functionality
-
-**Priority files** (most likely to have removable logs):
-- GameController.tsx
-- ProgressCardHand.tsx
-- TradeModal.tsx
-- AqueductModal.tsx
-- DiscardModal.tsx
-
-### Step 3: Clean Controllers & Hooks (20 min)
-
-Focus on business logic files:
-
-1. **Controllers** (improvement-controller.ts, knight-controller.ts, progress-card-controller.ts)
-   - Remove debug logging
-   - Keep error cases but convert to proper handling
-
-2. **Hooks** (all useBoardActions, useGameControllerEffects, etc.)
-   - Remove effect debugging (`console.log` in useEffect)
-   - Keep critical error warnings
-
-### Step 4: Clean Services & Core (15 min)
-
-1. **game-service.ts** - Remove debug logs, keep errors
-2. **supabase.ts** - Review connection/subscription logs
-3. **board-generator.ts** - Remove generation debug logs
-4. **ColoredSvgIcon.tsx** - Remove icon rendering debug
-
-### Step 5: Verification & Testing (15-20 min)
-
-1. **Run TypeScript check**:
-   ```bash
-   npx tsc --noEmit
-   ```
-
-2. **Run build**:
-   ```bash
-   npm run build
-   ```
-   Should complete without errors.
-
-3. **Test in browser** (critical paths):
-   - Create a new game room
-   - Join as 2+ players
-   - Start game
-   - Roll dice
-   - Build structures (settlement, city)
-   - Play a progress card
-   - Trade resources
-   - End turn
-   - Check browser console - should be quiet (no debug spam)
-
-4. **Verify debug panel still works** (if enabled in dev):
-   - DebugPanel.tsx console statements should remain
-   - Debug features should still function
-
-### Step 6: Update Beads (5 min)
-
-Close the console cleanup tracking:
-
-```bash
-# If there's a specific bead for console cleanup, close it
-bd close <bead-id> -m "Removed 50+ console statements from 26 files. Kept intentional debug tooling in DebugPanel.tsx and scripts/. Build passing, manual testing complete."
-
-# Update Phase 4 completion bead
-bd update SettlersOfLanc-tqwo.3 -m "Console cleanup complete"
-```
-
-## Guidelines
-
-### What to Remove ✅
-
+**REMOVE (development debug logging):**
 ```typescript
-// Debug logging - REMOVE
 console.log('component mounted');
 console.log('state:', state);
 console.log('entering useEffect');
 console.debug('calculation result:', result);
-
-// Development debugging - REMOVE
-console.warn('TODO: implement this');
 console.log({ selectedHex, playerColor, buildMode });
+console.log('TODO: implement this');
 ```
 
-### What to Keep ❌ (Don't Remove)
-
+**KEEP (error handling, critical logs):**
 ```typescript
-// DebugPanel.tsx - intentional debug UI
-console.log('[Debug Panel] Resource added:', resource);
+// Error handling - KEEP
+try {
+  await updateGame();
+} catch (error) {
+  console.error('Failed to update game:', error); // KEEP THIS
+  throw error;
+}
 
-// scripts/*.ts - admin/dev scripts
-console.log('Database connection successful');
-console.log('Event die distribution:', results);
+// Critical failures - KEEP
+if (!gameState) {
+  console.error('Game state is null'); // KEEP THIS
+  return;
+}
 
-// Critical errors that should be monitored (future: replace with proper logging)
-console.error('Supabase subscription failed:', error);
+// Supabase errors - KEEP
+subscription.on('error', (error) => {
+  console.error('Supabase subscription failed:', error); // KEEP THIS
+});
+
+// Network errors - KEEP
+console.warn('Retry attempt failed'); // KEEP THIS
+
+// DebugPanel.tsx - KEEP ALL
+console.log('[Debug Panel] Resource added:', resource); // KEEP THIS
+
+// scripts/*.ts - KEEP ALL
+console.log('Database connection successful'); // KEEP THIS
 ```
 
-### What to Replace 🔄
+### Step 2: Remove Debug Logging Only (15 min)
+
+Use the Edit tool to remove **only** the development debug logging identified in Step 1.
+
+**Example edits:**
 
 ```typescript
 // BEFORE
-console.error('Failed to update game state:', error);
+useEffect(() => {
+  console.log('selectedHex changed:', selectedHex); // REMOVE
+  if (selectedHex) {
+    handleHexSelection(selectedHex);
+  }
+}, [selectedHex]);
 
-// AFTER - proper error handling
-throw new Error(`Failed to update game state: ${error.message}`);
-
-// OR show user feedback
-toast.error('Failed to update game. Please try again.');
-
-// OR both
-toast.error('Action failed. Please try again.');
-throw error; // Re-throw for error boundary
+// AFTER
+useEffect(() => {
+  if (selectedHex) {
+    handleHexSelection(selectedHex);
+  }
+}, [selectedHex]);
 ```
+
+```typescript
+// BEFORE
+const handleClick = () => {
+  console.log('button clicked'); // REMOVE
+  onClick();
+};
+
+// AFTER
+const handleClick = () => {
+  onClick();
+};
+```
+
+**DO NOT change error handling:**
+
+```typescript
+// KEEP AS-IS (error handling)
+try {
+  const result = await fetchData();
+  console.log('Fetch successful'); // REMOVE THIS debug log
+  return result;
+} catch (error) {
+  console.error('Fetch failed:', error); // KEEP THIS error log
+  throw error;
+}
+
+// AFTER
+try {
+  const result = await fetchData();
+  return result;
+} catch (error) {
+  console.error('Fetch failed:', error); // KEPT
+  throw error;
+}
+```
+
+### Step 3: Verification (10 min)
+
+1. **TypeScript check:**
+   ```bash
+   npx tsc --noEmit
+   ```
+
+2. **Build:**
+   ```bash
+   npm run build
+   ```
+
+3. **Tests:**
+   ```bash
+   npm test -- --run
+   ```
+
+All should pass.
+
+### Step 4: Manual Spot Check (10 min)
+
+Open browser and test:
+- Create room
+- Join as player
+- Start game
+- Roll dice
+- Build structure
+
+Check browser console - should be cleaner (no "entering useEffect" spam), but error handling should still log.
+
+---
+
+## Clear Examples
+
+### Example 1: Remove Debug Log, Keep Error Log
+
+**File:** `lib/hooks/useGameSubscription.ts`
+
+```typescript
+// BEFORE
+useEffect(() => {
+  console.log('Setting up subscription for room:', roomId); // REMOVE
+
+  const channel = supabase.channel(`game:${roomId}`);
+
+  channel.on('postgres_changes', { ... }, (payload) => {
+    console.log('Received update:', payload); // REMOVE
+    setGameState(payload.new.state);
+  });
+
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log('Subscribed successfully'); // REMOVE
+    }
+    if (status === 'CHANNEL_ERROR') {
+      console.error('Subscription error'); // KEEP - error handling
+    }
+  });
+}, [roomId]);
+
+// AFTER
+useEffect(() => {
+  const channel = supabase.channel(`game:${roomId}`);
+
+  channel.on('postgres_changes', { ... }, (payload) => {
+    setGameState(payload.new.state);
+  });
+
+  channel.subscribe((status) => {
+    if (status === 'CHANNEL_ERROR') {
+      console.error('Subscription error'); // KEPT
+    }
+  });
+}, [roomId]);
+```
+
+### Example 2: Keep DebugPanel Logs
+
+**File:** `components/game/DebugPanel.tsx`
+
+```typescript
+// KEEP ALL LOGS IN THIS FILE
+const handleAddResource = () => {
+  console.log('[Debug Panel] Adding resource:', resource); // KEEP - intentional feature
+  giveResource(playerId, resource);
+};
+```
+
+### Example 3: Keep Scripts
+
+**File:** `scripts/check-db.ts`
+
+```typescript
+// KEEP ALL LOGS IN SCRIPTS
+async function checkDatabase() {
+  console.log('Connecting to database...'); // KEEP - script output
+  const db = await connectDB();
+  console.log('Database connected successfully'); // KEEP - script output
+}
+```
+
+---
 
 ## Success Criteria
 
-1. ✅ **26 files cleaned** (excluding 3 scripts)
-2. ✅ **Build passes**: `npm run build` succeeds
-3. ✅ **TypeScript check passes**: `npx tsc --noEmit` succeeds
-4. ✅ **Browser console quiet** during normal gameplay (no debug spam)
-5. ✅ **DebugPanel.tsx still functional** (intentional debug logging remains)
-6. ✅ **Manual testing complete** (critical game paths tested)
-7. ✅ **Beads updated** to reflect completion
+1. ✅ **Debug logging removed** - No more `console.log('entering useEffect')` spam
+2. ✅ **Error handling intact** - All `console.error`, `console.warn` in try/catch remain
+3. ✅ **Build passes** - `npm run build` succeeds
+4. ✅ **Tests pass** - `npm test -- --run` succeeds
+5. ✅ **DebugPanel works** - Debug feature still functional
+6. ✅ **No regressions** - Error logging still works
+
+---
+
+## Common Mistakes to Avoid
+
+### ❌ DON'T DO THIS:
+
+```typescript
+// Removing error handling logs - DON'T DO THIS
+try {
+  await updateGame();
+} catch (error) {
+  console.error('Failed:', error); // ❌ Don't remove this!
+}
+
+// Removing critical failure logs - DON'T DO THIS
+if (!data) {
+  console.error('Data is null'); // ❌ Don't remove this!
+  return;
+}
+```
+
+### ✅ DO THIS:
+
+```typescript
+// Remove only debug logs
+console.log('entering function'); // ✅ Remove this
+console.log('state:', state);     // ✅ Remove this
+console.debug('result:', result); // ✅ Remove this
+```
+
+---
 
 ## Expected Outcome
 
-- **~50-100 console statements removed**
-- **Clean browser console** during gameplay
-- **No functional regressions**
-- **Build passing**
-- **Phase 4 completion: 100%** (was 95%)
+- **~20-30 debug logs removed** (not 50-100)
+- **Cleaner browser console** during development
+- **Error handling intact** - still logs errors properly
+- **No functional changes** - only removing noise
 
-## Notes
+---
 
-- **Do NOT remove** error logs that indicate critical failures
-- **Do NOT remove** DebugPanel.tsx console statements (feature, not bug)
-- **Do NOT remove** scripts/*.ts console statements (intentional admin output)
-- **Focus on** removing development debug logging from UI components and hooks
-- **Be surgical** - only remove what's clearly debug logging, preserve error handling
+## If Unsure
 
-## Next Steps After Completion
+**When in doubt, KEEP the log.** It's better to leave an error log than break error handling.
 
-After console cleanup is complete and verified:
-- Phase 4 will be 100% complete
-- Ready to proceed to Phase 5: Testing Infrastructure
-- Or ready to tackle P1 gameplay bugs if testing is deferred
+Ask yourself:
+- Is this inside a try/catch block? → **KEEP**
+- Is this logging an error or warning? → **KEEP**
+- Is this in DebugPanel.tsx or scripts/? → **KEEP**
+- Is this just "console.log('entering effect')"? → **REMOVE**
