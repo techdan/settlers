@@ -1,6 +1,8 @@
 import React from 'react';
 import { GameLogEntry, PlayerState } from '@/lib/types';
 import { Tooltip } from '@/components/ui/tooltip';
+import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
+import type { PlayerColor } from '@/lib/types/player';
 
 interface GameLogProps {
     logs: GameLogEntry[];
@@ -10,6 +12,10 @@ interface GameLogProps {
 export const GameLog: React.FC<GameLogProps> = ({ logs, players }) => {
     // Reverse logs to show newest first
     const reversedLogs = [...logs].reverse();
+    const resolvePlayerColor = (color?: string | null) => {
+        if (!color) return null;
+        return PLAYER_COLOR_VAR_MAP[(color.toLowerCase?.() as PlayerColor) || (color as PlayerColor)] || color;
+    };
 
     return (
         <div className="flex flex-col h-full">
@@ -30,7 +36,7 @@ export const GameLog: React.FC<GameLogProps> = ({ logs, players }) => {
                                 {/* Player Badge */}
                                 <div
                                     className="w-1.5 h-1.5 rounded-full mr-2 mt-1 flex-shrink-0 shadow-[0_0_4px_rgba(0,0,0,0.5)]"
-                                    style={{ backgroundColor: player?.color || '#475569' }}
+                                    style={{ backgroundColor: resolvePlayerColor(player?.color) || 'var(--color-highlight-muted)' }}
                                 />
 
                                 {/* Message */}

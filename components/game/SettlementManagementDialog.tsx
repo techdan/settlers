@@ -95,7 +95,7 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
                                         <GameIcon
                                             type="city"
                                             size={40}
-                                            playerColor="#ffffff"
+                                            playerColor="var(--color-highlight-white)"
                                             backgroundColor={player.color}
                                         />
                                     </div>

@@ -32,6 +32,14 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
   const [svgContent, setSvgContent] = useState<string>('');
   const [currentSrc, setCurrentSrc] = useState<string>(src);
 
+  const resolveCssVar = (value?: string) => {
+    if (!value) return value;
+    const match = value.match(/var\\((--[^)]+)\\)/);
+    if (!match || typeof window === 'undefined') return value;
+    const resolved = getComputedStyle(document.documentElement).getPropertyValue(match[1])?.trim();
+    return resolved || value;
+  };
+
   useEffect(() => {
     // Reset to primary src when src prop changes
     setCurrentSrc(src);
@@ -83,7 +91,9 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
 
           setSvgContent(processedSvg);
         } else {
-          setSvgContent(applyColorToSvg(svgText, color, backgroundColor));
+          const resolvedColor = resolveCssVar(color) || color;
+          const resolvedBackground = resolveCssVar(backgroundColor) || backgroundColor;
+          setSvgContent(applyColorToSvg(svgText, resolvedColor, resolvedBackground));
         }
       })
       .catch((err) => {
@@ -140,11 +150,12 @@ function applyColorToSvg(svgText: string, color: string, backgroundColor?: strin
   // If backgroundColor is provided, apply it to the first path (background)
   // and the foreground color to subsequent paths
   if (backgroundColor) {
-    let pathCount = 0;
-    coloredSvg = coloredSvg.replace(/<path([^>]*?)(\/?)>/g, (match, attrs, selfClosing) => {
-      pathCount++;
-      // First path gets background color, rest get foreground color
-      const fillColor = pathCount === 1 ? backgroundColor : color;
+    let shapeCount = 0;
+    const shapeRegex = /<(path|circle|rect|polygon|ellipse)([^>]*?)(\/?)>/g;
+    coloredSvg = coloredSvg.replace(shapeRegex, (match, _tag, attrs, selfClosing) => {
+      shapeCount++;
+      // First shape gets background color, rest get foreground color
+      const fillColor = shapeCount === 1 ? backgroundColor : color;
 
       // Remove existing fill attribute if present
       let newAttrs = attrs.replace(/\s*fill="[^"]*"/g, '');
@@ -155,7 +166,7 @@ function applyColorToSvg(svgText: string, color: string, backgroundColor?: strin
       }
 
       // Add the new fill color and preserve self-closing if needed
-      return `<path${newAttrs} fill="${fillColor}"${selfClosing}>`;
+      return `<${_tag}${newAttrs} fill="${fillColor}"${selfClosing}>`;
     });
   } else {
     // No background color - apply foreground color to all fills/strokes

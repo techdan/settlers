@@ -1139,7 +1139,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         if (baseGameState?.phase === 'barbarian_attack') {
             const resolveStuckAttack = async () => {
                 try {
-                    console.log('Auto-resolving stuck barbarian attack...');
+                    
                     const res = await fetch(`/api/game/${roomId}/barbarian`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },

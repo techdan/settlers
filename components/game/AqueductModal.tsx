@@ -29,7 +29,7 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
         try {
             await claimAqueductResource(gameState.roomId, playerId, selectedResource);
         } catch (e) {
-            console.error(e);
+            console.error('Failed to claim aqueduct resource', e);
             setIsSubmitting(false);
         }
     };

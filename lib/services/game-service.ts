@@ -214,8 +214,6 @@ export async function rollDice(
     const gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
-    console.log('[rollDice] Current phase:', gameState.phase, 'Current turn:', gameState.currentTurn, 'Player:', playerId);
-
     // Validate turn
     if (gameState.currentTurn !== playerId) {
         throw new Error('Not your turn');
@@ -424,8 +422,6 @@ export async function endTurn(
     gameState.currentTurn = nextPlayerId;
     gameState.phase = 'waiting_for_roll';
 
-    console.log('[endTurn] Turn ended. Previous player:', playerId, 'Next player:', nextPlayerId, 'New phase:', gameState.phase);
-
     // Clear dice roll
     gameState.diceRoll = undefined;
 
@@ -459,9 +455,7 @@ export async function endTurn(
     });
 
     // Save to database
-    console.log('[endTurn] Saving state - Phase:', gameState.phase, 'Current turn:', gameState.currentTurn);
     await updateGameState(gameState);
-    console.log('[endTurn] State saved successfully');
 
     return gameState;
 }

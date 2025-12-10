@@ -1,29 +1,14 @@
 import React from 'react';
 
-/**
- * Colors from docs/ui/icons.md
- * - Science: #729853 / #6bb97f (greens)
- * - Trade: #8dae54 / #c6daa4 (yellow-greens) -> using warmer #c6a34a for better distinction
- * - Politics: #85949a / #d7dfd1 (blue-grays) -> using bluer #7ba3c9 for better distinction
- */
 const IMPROVEMENT_COLORS = {
     science: {
-        filled: '#6bb97f',
-        filledBg: 'bg-[#6bb97f]',
-        glow: 'shadow-[#6bb97f]/30',
-        ring: 'ring-[#6bb97f]/50',
+        filled: 'var(--color-improvement-science-alt)',
     },
     trade: {
-        filled: '#c6a34a',
-        filledBg: 'bg-[#c6a34a]',
-        glow: 'shadow-[#c6a34a]/30',
-        ring: 'ring-[#c6a34a]/50',
+        filled: 'var(--color-improvement-trade-alt)',
     },
     politics: {
-        filled: '#7ba3c9',
-        filledBg: 'bg-[#7ba3c9]',
-        glow: 'shadow-[#7ba3c9]/30',
-        ring: 'ring-[#7ba3c9]/50',
+        filled: 'var(--color-improvement-politics-alt)',
     },
 };
 
@@ -64,8 +49,8 @@ export const CompactImprovementBar: React.FC<{
                             ${isUnlockLevel ? 'ring-1 ring-amber-400/60' : ''}
                         `}
                         style={{
-                            backgroundColor: isFilled ? color.filled : 'rgb(71 85 105 / 0.6)', // slate-600/60
-                            boxShadow: isFilled ? `0 0 4px ${color.filled}40` : 'none',
+                            backgroundColor: isFilled ? color.filled : 'var(--color-highlight-muted)',
+                            boxShadow: isFilled ? `0 0 4px ${color.filled}` : 'none',
                         }}
                     />
                 );

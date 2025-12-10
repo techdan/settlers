@@ -47,13 +47,13 @@ const HexTile: React.FC<{
                 <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
                     {variant === 'barbarians' ? (
                         <>
-                            <stop offset="0%" stopColor="#1e293b" stopOpacity="0.95" />
-                            <stop offset="100%" stopColor="#450a0a" stopOpacity="0.95" />
+                            <stop offset="0%" stopColor="var(--color-barbarian-gradient-start)" stopOpacity="0.95" />
+                            <stop offset="100%" stopColor="var(--color-barbarian-gradient-end)" stopOpacity="0.95" />
                         </>
                     ) : (
                         <>
-                            <stop offset="0%" stopColor="#1e293b" stopOpacity="0.95" />
-                            <stop offset="100%" stopColor="#0f172a" stopOpacity="0.95" />
+                            <stop offset="0%" stopColor="var(--color-barbarian-gradient-start)" stopOpacity="0.95" />
+                            <stop offset="100%" stopColor="var(--color-barbarian-gradient-end-alt)" stopOpacity="0.95" />
                         </>
                     )}
                 </linearGradient>
@@ -71,7 +71,7 @@ const HexTile: React.FC<{
             <polygon
                 points={points}
                 fill={`url(#${gradientId})`}
-                stroke={isWarning ? '#dc2626' : variant === 'barbarians' ? '#7f1d1d' : '#475569'}
+                stroke={isWarning ? 'var(--color-highlight-warning)' : variant === 'barbarians' ? 'var(--color-barbarian-stroke-dark)' : 'var(--color-barbarian-stroke-muted)'}
                 strokeWidth="2"
                 className={`transition-all duration-300 ${isWarning ? 'animate-pulse' : ''}`}
                 filter={isWarning ? `url(#${glowId})` : undefined}

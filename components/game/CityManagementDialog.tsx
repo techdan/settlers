@@ -168,8 +168,11 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                         const isDisabled = !canAct || !canAfford || cannotBuildNoCity;
 
                         // Updated colors from icons.md
-                        const iconColor = type === 'science' ? '#6bb97f' :
-                            type === 'trade' ? '#c6daa4' : '#d7dfd1';
+                        const iconColor = type === 'science'
+                            ? 'var(--color-improvement-science-alt)'
+                            : type === 'trade'
+                                ? 'var(--color-improvement-trade-alt)'
+                                : 'var(--color-improvement-politics-alt)';
 
                         return (
                             <div key={type} className="bg-slate-700/50 p-4 rounded border border-slate-600">
@@ -252,7 +255,7 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                                 tooltipClassName="whitespace-pre-line"
                             >
                                 <div className="flex items-center justify-center w-12 h-12 cursor-default">
-                                    <GameIcon type="city-wall" size={40} playerColor="#d97706" />
+                                    <GameIcon type="city-wall" size={40} playerColor="var(--color-structure-wall-highlight)" />
                                 </div>
                             </Tooltip>
                                 <div>

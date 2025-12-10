@@ -6,6 +6,12 @@ import { setLobbyPlayerColor, startGame } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ConnectionStatus';
 import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
+import {
+    DEFAULT_PLAYER_COLOR,
+    PLAYER_COLOR_NORMALIZATION_MAP,
+    PLAYER_COLOR_OPTIONS,
+    PLAYER_COLOR_VAR_MAP,
+} from '@/lib/constants/player-colors';
 
 import { BoardPreview } from './lobby/BoardPreview';
 import { GeneratorControls } from './lobby/GeneratorControls';
@@ -39,21 +45,7 @@ export function LobbyView({
 }) {
     const normalizePlayerColor = useCallback((color: PlayerColor | string | null | undefined): PlayerColor => {
         const colorKey = typeof color === 'string' ? color.toLowerCase() : '';
-        const map: Record<string, PlayerColor> = {
-            '#ff0000': '#ff0000',
-            '#0000ff': '#0000ff',
-            '#ff7a00': '#ff7a00',
-            '#ff9100': '#ff7a00', // Legacy brighter orange maps forward
-            '#ffa500': '#ff7a00', // Older orange maps forward
-            '#d4b483': '#d4b483',
-            red: '#ff0000',
-            blue: '#0000ff',
-            orange: '#ff7a00',
-            white: '#d4b483',
-            beige: '#d4b483',
-        };
-
-        return map[colorKey] ?? '#ff0000';
+        return PLAYER_COLOR_NORMALIZATION_MAP[colorKey] ?? DEFAULT_PLAYER_COLOR;
     }, []);
 
     const normalizePlayers = useCallback((list: Player[]) => {
@@ -145,9 +137,7 @@ export function LobbyView({
                     {},
                     {
                         maxRetries: 5,
-                        onRetry: (attempt, delay) => {
-                            console.log(`Retrying room fetch (attempt ${attempt}, delay ${delay}ms)`);
-                        }
+                        onRetry: () => { }
                     }
                 );
 
@@ -177,12 +167,7 @@ export function LobbyView({
         };
     }, [isRealtime, roomId, currentPlayerId, router, normalizePlayers, playersEqual, roomsEqual]);
 
-    const colorOptions: { value: PlayerColor; swatch: string; label: string }[] = [
-        { value: '#ff0000', swatch: '#ff0000', label: 'Red' },
-        { value: '#0000ff', swatch: '#0000ff', label: 'Blue' },
-        { value: '#d4b483', swatch: '#d4b483', label: 'Beige' },
-        { value: '#ff7a00', swatch: '#ff7a00', label: 'Orange' },
-    ];
+    const colorOptions = PLAYER_COLOR_OPTIONS;
 
     const handleColorChange = (playerId: string, color: PlayerColor) => {
         setColorError(null);

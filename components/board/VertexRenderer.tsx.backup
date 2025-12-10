@@ -31,18 +31,18 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
     // Get pastel shade of player color for knights (better contrast)
     const getPastelKnightColor = (playerColor: string): string => {
         const colorMap: Record<string, string> = {
-            'red': '#FF6B6B',      // Pastel red
-            'blue': '#4DABF7',     // Pastel blue
-            'white': '#E9ECEF',    // Light gray
-            'orange': '#FFA94D',   // Pastel orange
+            'red': 'var(--color-highlight-danger)',      // Pastel red
+            'blue': 'var(--color-highlight-info)',     // Pastel blue
+            'white': 'var(--color-highlight-neutral)',    // Light gray
+            'orange': 'var(--color-player-4)',   // Pastel orange
         };
-        return colorMap[playerColor] || '#ADB5BD'; // Default to gray
+        return colorMap[playerColor] || 'var(--color-highlight-muted)'; // Default to gray
     };
 
     // Determine knight color/style based on level
     const getKnightStyle = () => {
         if (!knight) return null;
-        const ringColor = knight.active ? '#FFD700' : '#000000'; // Gold for active, Black for inactive
+        const ringColor = knight.active ? 'var(--color-knight-mighty)' : 'var(--color-highlight-ink)'; // Gold for active, Black for inactive
         const levelIndicator = knight.level === 'basic' ? 1 : knight.level === 'strong' ? 2 : 3;
         return { ringColor, levelIndicator };
     };
@@ -64,7 +64,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                 <circle
                     r={size * 0.4}
                     fill="none"
-                    stroke={highlightVariant === 'treason' ? '#e5e7eb' : '#ef4444'}
+                    stroke={highlightVariant === 'treason' ? 'var(--color-highlight-neutral)' : 'var(--color-highlight-danger)'}
                     strokeWidth={4}
                     className="animate-pulse pointer-events-none"
                 />
@@ -74,7 +74,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                 <circle
                     r={size * 0.32}
                     fill="none"
-                    stroke={highlightVariant === 'treason' ? '#e5e7eb' : '#22d3ee'}
+                    stroke={highlightVariant === 'treason' ? 'var(--color-highlight-neutral)' : 'var(--color-highlight-info)'}
                     strokeWidth={3}
                     className="animate-pulse pointer-events-none"
                 />
@@ -197,7 +197,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                             e.stopPropagation();
                             onCancelMove?.();
                         }}>
-                            <circle r={8} fill="#ef4444" stroke="white" strokeWidth={1} />
+                            <circle r={8} fill="var(--color-highlight-danger)" stroke="white" strokeWidth={1} />
                             <text x="0" y="3" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">✕</text>
                             <title>Cancel Move</title>
                         </g>
@@ -218,7 +218,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                         onCancelIconClick?.();
                     }}
                 >
-                    <circle r={8} fill="#ef4444" stroke="white" strokeWidth={1} />
+                    <circle r={8} fill="var(--color-highlight-danger)" stroke="white" strokeWidth={1} />
                     <text x="0" y="3" textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">x</text>
                     <title>{cancelIconTitle || 'Cancel selection'}</title>
                 </g>

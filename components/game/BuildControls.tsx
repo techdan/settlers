@@ -81,7 +81,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <GameIcon type="road" size={18} playerColor={buildMode === 'road' ? '#fff' : '#94a3b8'} />
+                        <GameIcon type="road" size={18} playerColor={buildMode === 'road' ? 'var(--color-highlight-white)' : 'var(--color-highlight-muted)'} />
                         <span>Road ({player?.roadsRemaining ?? 0})</span>
                     </div>
                     <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
@@ -139,7 +139,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <GameIcon type="city" size={18} playerColor={buildMode === 'city' ? '#fff' : '#94a3b8'} />
+                        <GameIcon type="city" size={18} playerColor={buildMode === 'city' ? 'var(--color-highlight-white)' : 'var(--color-highlight-muted)'} />
                         <span>City ({player?.citiesRemaining ?? 0})</span>
                     </div>
                     <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
@@ -228,7 +228,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                             }`}
                     >
                         <div className="flex items-center gap-1.5">
-                            <GameIcon type="city-wall" size={18} playerColor={buildMode === 'city_wall' ? '#fff' : '#94a3b8'} />
+                            <GameIcon type="city-wall" size={18} playerColor={buildMode === 'city_wall' ? 'var(--color-highlight-white)' : 'var(--color-structure-wall-highlight)'} />
                             <span>City Wall ({wallsRemaining})</span>
                         </div>
                         <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">

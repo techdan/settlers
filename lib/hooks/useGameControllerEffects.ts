@@ -24,7 +24,6 @@ export function useResolveStuckBarbarian(baseGameState: GameState | null, roomId
     if (baseGameState?.phase === 'barbarian_attack') {
       const resolveStuckAttack = async () => {
         try {
-          console.log('Auto-resolving stuck barbarian attack...');
           await resolveBarbarianAttack(roomId);
         } catch (e) {
           console.error('Error auto-resolving barbarian attack:', e);

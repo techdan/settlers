@@ -66,15 +66,15 @@ Before taking any action (either tool calls *or* responses to the user), you mus
 
 ### Core Technologies
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16.0.7 (App Router)
 - **React**: Version 19
 - **TypeScript**: Strict mode enabled
 - **Database**: PostgreSQL (Supabase hosted for production, local for dev)
 - **ORM**: Drizzle ORM with migrations
 - **Styling**: Tailwind CSS v4
 - **UI Components**: shadcn/ui (New York style)
-- **State Management**: TanStack Query (React Query v5)
-- **Authentication**: Clerk
+- **State Management**: Zustand (local state), Supabase Realtime (game state sync)
+- **Authentication**: None (throwaway game context)
 
 ### Path Aliases
 
@@ -93,20 +93,38 @@ import Button from "@/components/ui/button"
 
 The design system uses CSS variables for theming. Light and dark color schemes are defined in [app/globals.css](app/globals.css).
 
-### Authentication (Clerk)
+### Authentication
 
-- **Provider**: Clerk (clerk.com)
-- **Environment Variables**:
-  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Public key for client-side
-  - `CLERK_SECRET_KEY` - Secret key for server-side
-- **Setup**:
-  - ClerkProvider wraps the app in root layout
-  - Middleware protects routes requiring authentication
-  - User context available via `useUser()` hook
-  - Sign-in/sign-up pages at `/sign-in` and `/sign-up`
-- **User Association**:
-  - Database tables include `userId` (from Clerk) for multi-tenancy
-  - Row-level filtering ensures users only see their own data
+This is a throwaway game implementation with no persistent user accounts.
+
+- **No authentication required** - games are ephemeral
+- **Room-based access** - players join via room codes
+- **Temporary player IDs** - generated per game session
+- **No user data persistence** - games are deleted after completion
+
+**Rationale:** Optimized for quick pickup games without account overhead.
+
+### State Management
+
+#### Client State (Zustand)
+
+- **Store location**: `lib/stores/`
+- **Usage**: Lightweight client-side UI state
+- **Patterns**:
+  - UI state (modals, selections)
+  - Temporary user preferences
+  - Local game UI state
+
+#### Game State (Supabase Realtime)
+
+- **Source of Truth**: PostgreSQL `games` table
+- **Sync**: WebSocket-based real-time updates
+- **Flow**:
+  1. Client action → Server Action
+  2. Server Action → Service Layer → Database
+  3. Database change → Supabase triggers → WebSocket
+  4. WebSocket → All connected clients
+- **Optimistic Updates**: Client applies changes immediately, server validates
 
 ### Database Configuration
 

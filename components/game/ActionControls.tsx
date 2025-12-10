@@ -26,7 +26,6 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
     const [isPending, startTransition] = useTransition();
 
     const handleRollDice = () => {
-        console.log('[Client] Roll Dice clicked - Phase:', gameState.phase, 'Current turn:', gameState.currentTurn, 'Player ID:', playerId);
         startTransition(async () => {
             try {
                 if (onRollDice) {
@@ -41,7 +40,6 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
     };
 
     const handleEndTurn = () => {
-        console.log('[Client] End Turn clicked - Phase:', gameState.phase, 'Current turn:', gameState.currentTurn, 'Player ID:', playerId);
         startTransition(async () => {
             try {
                 if (onEndTurn) {
@@ -49,7 +47,6 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
                 } else {
                     await endTurn(gameState.roomId, playerId);
                 }
-                console.log('[Client] End Turn completed');
             } catch (e) {
                 console.error("Failed to end turn", e);
             }

@@ -277,9 +277,9 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
             {isCK && (
                 <div className="flex items-center gap-1.5 mt-0.5 text-[12px] leading-tight">
                     {([
-                        { type: 'science', label: 'S', color: '#6bb97f' },
-                        { type: 'trade', label: 'T', color: '#c6a34a' },
-                        { type: 'politics', label: 'P', color: '#7ba3c9' },
+                        { type: 'science', label: 'S', color: 'var(--color-improvement-science-alt)' },
+                        { type: 'trade', label: 'T', color: 'var(--color-improvement-trade-alt)' },
+                        { type: 'politics', label: 'P', color: 'var(--color-improvement-politics-alt)' },
                     ] as const).map(({ type, label, color }) => (
                         <Tooltip
                             key={type}

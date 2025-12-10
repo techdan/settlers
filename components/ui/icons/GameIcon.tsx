@@ -1,6 +1,8 @@
 import React from 'react';
 import type { ResourceType } from '@/core/rules/board-constants';
 import { ColoredSvgIcon } from './ColoredSvgIcon';
+import { DEFAULT_PLAYER_COLOR, PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
+import type { PlayerColor } from '@/lib/types/player';
 
 /**
  * Color-coded icon system for Settlers of Catan: Cities & Knights
@@ -43,39 +45,39 @@ interface GameIconProps {
  */
 const ICON_COLORS = {
   // Resources (foreground colors from icons.md)
-  wood: '#634336', // Wood brown
-  brick: '#ea7955', // Brick (with stroke #891E21)
-  sheep: '#ded7bc', // Sheep beige
-  wheat: '#db8b1f', // Wheat goldenrod
-  ore: '#4f4a3c', // Ore slate gray
+  wood: 'var(--color-resource-wood)',
+  brick: 'var(--color-resource-brick-alt)',
+  sheep: 'var(--color-resource-sheep)',
+  wheat: 'var(--color-resource-wheat)',
+  ore: 'var(--color-resource-ore)',
 
   // Commodities (foreground colors from icons.md)
-  paper: '#e8c4a4', // Paper parchment
-  cloth: '#ecd998', // Cloth yellow
-  coin: '#707c79', // Coin grey
+  paper: 'var(--color-commodity-paper)',
+  cloth: 'var(--color-commodity-cloth)',
+  coin: 'var(--color-commodity-coin)',
 
   // City Improvements (category colors from icons.md)
-  science: '#6bb97f', // Science green
-  trade: '#c6daa4', // Trade light green/yellow
-  politics: '#d7dfd1', // Politics light grey/blue
+  science: 'var(--color-improvement-science-alt)',
+  trade: 'var(--color-improvement-trade-alt)',
+  politics: 'var(--color-improvement-politics-alt)',
 
   // Knights (martial progression)
-  basic: '#CD7F32', // Bronze
-  strong: '#C0C0C0', // Silver
-  mighty: '#FFD700', // Gold
+  basic: 'var(--color-knight-basic)',
+  strong: 'var(--color-knight-strong)',
+  mighty: 'var(--color-knight-mighty)',
 
   // Special pieces
-  robber: '#1a1a1a', // Near black (menacing)
-  merchant: '#16a34a', // Green (trade)
-  'barbarian-ship': '#ffffff', // White foreground
-  dice: '#1e293b', // Slate-900 (neutral)
+  robber: 'var(--color-special-robber)',
+  merchant: 'var(--color-special-merchant)',
+  'barbarian-ship': 'var(--color-special-barbarian-ship)',
+  dice: 'var(--color-special-dice)',
 
   // Structures (use player color, these are fallbacks)
-  settlement: '#8B4513',
-  city: '#4B5563',
-  metropolis: '#9333ea',
-  road: '#6B4423',
-  'city-wall': '#57534e',
+  settlement: 'var(--color-structure-settlement)',
+  city: 'var(--color-structure-city)',
+  metropolis: 'var(--color-structure-metropolis)',
+  road: 'var(--color-structure-road)',
+  'city-wall': 'var(--color-structure-wall-highlight)',
 };
 
 /**
@@ -83,16 +85,16 @@ const ICON_COLORS = {
  */
 const ICON_BACKGROUNDS = {
   // Resources (hex tile backgrounds from icons.md)
-  wood: '#006636', // Forest (produce wood)
-  brick: '#ca7728', // Hills (produce brick)
-  sheep: '#84b83f', // Pasture (produce sheep)
-  wheat: '#f9e26f', // Fields (produce wheat)
-  ore: '#666d63', // Mountain (produce ore)
+  wood: 'var(--color-hex-forest)',
+  brick: 'var(--color-hex-hills)',
+  sheep: 'var(--color-hex-pasture)',
+  wheat: 'var(--color-hex-fields)',
+  ore: 'var(--color-hex-mountain)',
 
   // Commodities (hex tile backgrounds from icons.md)
-  paper: '#006636', // Forest green (paper from forest)
-  cloth: '#84b83f', // Pasture green (cloth from pasture)
-  coin: '#666d63', // Mountain grey (coin from ore)
+  paper: 'var(--color-hex-forest)',
+  cloth: 'var(--color-hex-pasture)',
+  coin: 'var(--color-hex-mountain)',
 };
 
 /**
@@ -172,7 +174,12 @@ export const GameIcon: React.FC<GameIconProps> = ({
 
   // Use player color for structures, otherwise use icon's base color
   const isStructure = ['settlement', 'city', 'metropolis', 'road', 'city-wall'].includes(type);
-  const fillColor = isStructure && playerColor ? playerColor : baseColor;
+  const resolvePlayerColor = (color: string): string => {
+    const normalized = (color.toLowerCase?.() as PlayerColor | undefined) || DEFAULT_PLAYER_COLOR;
+    return PLAYER_COLOR_VAR_MAP[normalized as PlayerColor] || color;
+  };
+
+  const fillColor = isStructure && playerColor ? resolvePlayerColor(playerColor) : baseColor;
 
   // Get background color from ICON_BACKGROUNDS if not explicitly provided
   const bgColor = backgroundColor || (ICON_BACKGROUNDS as any)[type];

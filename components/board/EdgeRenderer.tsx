@@ -1,6 +1,8 @@
 import React from 'react';
 import { Edge } from '@/lib/types';
 import { createHex, hexEdgeToPixel } from '@/lib/hex';
+import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
+import type { PlayerColor } from '@/lib/types/player';
 
 interface EdgeRendererProps {
     edge: Edge;
@@ -20,6 +22,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
     const rotation = 60 * edge.d;
     const DEPTH = 15;
     const offset = theme === 'voxel' ? { x: 0, y: -DEPTH } : { x: 0, y: 0 };
+    const ownerColor = color ? PLAYER_COLOR_VAR_MAP[(color.toLowerCase?.() as PlayerColor) || (color as PlayerColor)] || color : undefined;
 
     if (!edge.structure && !isValid) return null;
 
@@ -34,12 +37,12 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                     <g transform="scale(1.5)">
                         {/* 3D Road Segment */}
                         {/* Top Face */}
-                        <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={color || 'gray'} stroke="none" filter="brightness(1.1)" />
+                        <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={ownerColor || 'gray'} stroke="none" filter="brightness(1.1)" />
                         {/* Side Face (simulated by offset rect) */}
-                        <rect x={4} y={-size * 0.3} width={2} height={size * 0.6} fill={color || 'gray'} stroke="none" filter="brightness(0.7)" />
+                        <rect x={4} y={-size * 0.3} width={2} height={size * 0.6} fill={ownerColor || 'gray'} stroke="none" filter="brightness(0.7)" />
                     </g>
                 ) : (
-                    <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={color || 'gray'} stroke="black" strokeWidth={1} />
+                    <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={ownerColor || 'gray'} stroke="var(--color-highlight-ink)" strokeWidth={1} />
                 )
             )}
             {edge.structure === 'road' && isValid && (
@@ -49,13 +52,13 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                     width={12}
                     height={size * 0.64}
                     fill="none"
-                    stroke="rgb(251 191 36)"
+                    stroke="var(--color-improvement-trade)"
                     strokeWidth={2}
                     className="animate-pulse"
                 />
             )}
             {!edge.structure && isValid && (
-                <rect x={-4} y={-size * 0.25} width={8} height={size * 0.5} fill="rgba(255, 255, 255, 0.6)" stroke="white" strokeWidth={1} className="hover:fill-white transition-colors" />
+                <rect x={-4} y={-size * 0.25} width={8} height={size * 0.5} fill="rgba(255, 255, 255, 0.6)" stroke="var(--color-highlight-white)" strokeWidth={1} className="hover:fill-white transition-colors" />
             )}
 
             {/* Pending Placement Confirmation Icons */}
@@ -70,8 +73,8 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                             onConfirmPlacement?.();
                         }}
                     >
-                        <circle r={10} fill="#22c55e" stroke="white" strokeWidth={2} />
-                        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">✓</text>
+                        <circle r={10} fill="var(--color-highlight-success)" stroke="var(--color-highlight-white)" strokeWidth={2} />
+                        <text x="0" y="4" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="14" fontWeight="bold">✓</text>
                         <title>Confirm Placement</title>
                     </g>
 
@@ -84,8 +87,8 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                             onCancelPlacement?.();
                         }}
                     >
-                        <circle r={10} fill="#ef4444" stroke="white" strokeWidth={2} />
-                        <text x="0" y="4" textAnchor="middle" fill="white" fontSize="14" fontWeight="bold">✕</text>
+                        <circle r={10} fill="var(--color-highlight-danger)" stroke="var(--color-highlight-white)" strokeWidth={2} />
+                        <text x="0" y="4" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="14" fontWeight="bold">✕</text>
                         <title>Cancel Placement</title>
                     </g>
                 </g>

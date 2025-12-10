@@ -1,5 +1,7 @@
 import React from 'react';
 import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
+import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
+import type { PlayerColor } from '@/lib/types/player';
 
 interface MerchantProps {
     color?: string;
@@ -7,7 +9,9 @@ interface MerchantProps {
 
 export const Merchant: React.FC<MerchantProps> = ({ color }) => {
     // Default to green merchant color if no player color provided
-    const iconColor = color || '#16a34a';
+    const iconColor = color
+        ? PLAYER_COLOR_VAR_MAP[(color.toLowerCase?.() as PlayerColor) || (color as PlayerColor)] || color
+        : 'var(--color-special-merchant)';
 
     return (
         <g transform="translate(0, -12)">
@@ -16,8 +20,8 @@ export const Merchant: React.FC<MerchantProps> = ({ color }) => {
                 <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ColoredSvgIcon
                         src="/icons/mustache.svg"
-                        color="#000000"
                         backgroundColor={iconColor}
+                        color="var(--color-highlight-white)"
                         size={32}
                         alt="Merchant"
                     />

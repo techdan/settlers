@@ -113,10 +113,217 @@
 }
 
 @layer base {
+  /**
+   * Game-Specific Colors
+   * Source of truth: docs/ui/icons.md
+   * Uses CSS Color 5 relative color syntax to preserve exact hex while exposing OKLCH tokens.
+   */
+  :root {
+    /* ===== Resources ===== */
+    --color-resource-wood: oklch(from #723921 l c h);
+    --color-resource-wood-stroke: oklch(from #4b2619 l c h);
+    --color-resource-brick: oklch(from #ca7728 l c h);
+    --color-resource-brick-alt: oklch(from #d35830 l c h);
+    --color-resource-brick-stroke: oklch(from #891e21 l c h);
+    --color-resource-sheep: oklch(from #ded7bc l c h);
+    --color-resource-wheat: oklch(from #db8b1f l c h);
+    --color-resource-ore: oklch(from #4f4a3c l c h);
+
+    /* ===== Commodities ===== */
+    --color-commodity-paper: oklch(from #e8c4a4 l c h);
+    --color-commodity-paper-stroke: oklch(from #4a4a4a l c h);
+    --color-commodity-cloth: oklch(from #ecd998 l c h);
+    --color-commodity-coin: oklch(from #707c79 l c h);
+
+    /* ===== Knights ===== */
+    --color-knight-basic: oklch(from #cd7f32 l c h);
+    --color-knight-strong: oklch(from #c0c0c0 l c h);
+    --color-knight-mighty: oklch(from #ffd700 l c h);
+
+    /* ===== City Improvements ===== */
+    --color-improvement-science: oklch(from #729853 l c h);
+    --color-improvement-science-alt: oklch(from #6bb97f l c h);
+    --color-improvement-trade: oklch(from #8dae54 l c h);
+    --color-improvement-trade-alt: oklch(from #c6daa4 l c h);
+    --color-improvement-politics: oklch(from #85949a l c h);
+    --color-improvement-politics-alt: oklch(from #d7dfd1 l c h);
+
+    /* ===== Hex Tiles ===== */
+    --color-hex-hills: oklch(from #ca7728 l c h);
+    --color-hex-forest: oklch(from #006636 l c h);
+    --color-hex-mountain: oklch(from #666d63 l c h);
+    --color-hex-pasture: oklch(from #84b83f l c h);
+    --color-hex-fields: oklch(from #f9e26f l c h);
+    --color-hex-desert: oklch(from #e4c27c l c h);
+
+    /* ===== Structures ===== */
+    --color-structure-settlement: oklch(from #8b4513 l c h);
+    --color-structure-city: oklch(from #708090 l c h);
+    --color-structure-metropolis: oklch(from #ffd700 l c h);
+    --color-structure-road: oklch(from #654321 l c h);
+    --color-structure-wall-base: oklch(from #3f2e22 l c h);
+    --color-structure-wall-shadow: oklch(from #2a1d15 l c h);
+    --color-structure-wall-highlight: oklch(from #5c4033 l c h);
+
+    /* ===== Special ===== */
+    --color-special-robber: oklch(from #1a1a1a l c h);
+    --color-special-barbarian: oklch(from #8b0000 l c h);
+    --color-special-merchant: oklch(from #daa520 l c h);
+    --color-special-barbarian-ship: oklch(from #ffffff l c h);
+    --color-special-dice: oklch(from #1e293b l c h);
+
+    /* ===== Player Colors ===== */
+    --color-player-1: oklch(from #ff0000 l c h);
+    --color-player-2: oklch(from #0000ff l c h);
+    --color-player-3: oklch(from #d4b483 l c h);
+    --color-player-4: oklch(from #ff7a00 l c h);
+
+    /* ===== Highlights & UI Accents ===== */
+    --color-highlight-neutral: oklch(from #e5e7eb l c h);
+    --color-highlight-info: oklch(from #22d3ee l c h);
+    --color-highlight-danger: oklch(from #ef4444 l c h);
+    --color-highlight-success: oklch(from #22c55e l c h);
+    --color-highlight-warning: oklch(from #dc2626 l c h);
+    --color-highlight-muted: oklch(from #475569 l c h);
+    --color-highlight-ink: oklch(from #000000 l c h);
+    --color-highlight-white: oklch(from #ffffff l c h);
+
+    /* ===== Barbarian Overlay ===== */
+    --color-barbarian-gradient-start: oklch(from #1e293b l c h);
+    --color-barbarian-gradient-end: oklch(from #450a0a l c h);
+    --color-barbarian-gradient-end-alt: oklch(from #0f172a l c h);
+    --color-barbarian-stroke-dark: oklch(from #7f1d1d l c h);
+    --color-barbarian-stroke-muted: oklch(from #475569 l c h);
+  }
+}
+
+@layer base {
+  /* Fallbacks for environments without CSS relative color (oklch(from ...)) support */
+  @supports not (color: oklch(0.5 0 0)) {
+    :root {
+      --color-resource-wood: #723921;
+      --color-resource-wood-stroke: #4b2619;
+      --color-resource-brick: #ca7728;
+      --color-resource-brick-alt: #d35830;
+      --color-resource-brick-stroke: #891e21;
+      --color-resource-sheep: #ded7bc;
+      --color-resource-wheat: #db8b1f;
+      --color-resource-ore: #4f4a3c;
+
+      --color-commodity-paper: #e8c4a4;
+      --color-commodity-paper-stroke: #4a4a4a;
+      --color-commodity-cloth: #ecd998;
+      --color-commodity-coin: #707c79;
+
+      --color-knight-basic: #cd7f32;
+      --color-knight-strong: #c0c0c0;
+      --color-knight-mighty: #ffd700;
+
+      --color-improvement-science: #729853;
+      --color-improvement-science-alt: #6bb97f;
+      --color-improvement-trade: #8dae54;
+      --color-improvement-trade-alt: #c6daa4;
+      --color-improvement-politics: #85949a;
+      --color-improvement-politics-alt: #d7dfd1;
+
+      --color-hex-hills: #ca7728;
+      --color-hex-forest: #006636;
+      --color-hex-mountain: #666d63;
+      --color-hex-pasture: #84b83f;
+      --color-hex-fields: #f9e26f;
+      --color-hex-desert: #e4c27c;
+
+      --color-structure-settlement: #8b4513;
+      --color-structure-city: #708090;
+      --color-structure-metropolis: #ffd700;
+      --color-structure-road: #654321;
+      --color-structure-wall-base: #3f2e22;
+      --color-structure-wall-shadow: #2a1d15;
+      --color-structure-wall-highlight: #5c4033;
+
+      --color-special-robber: #1a1a1a;
+      --color-special-barbarian: #8b0000;
+      --color-special-merchant: #daa520;
+      --color-special-barbarian-ship: #ffffff;
+      --color-special-dice: #1e293b;
+
+      --color-player-1: #ff0000;
+      --color-player-2: #0000ff;
+      --color-player-3: #d4b483;
+      --color-player-4: #ff7a00;
+
+      --color-highlight-neutral: #e5e7eb;
+      --color-highlight-info: #22d3ee;
+      --color-highlight-danger: #ef4444;
+      --color-highlight-success: #22c55e;
+      --color-highlight-warning: #dc2626;
+      --color-highlight-muted: #475569;
+      --color-highlight-ink: #000000;
+      --color-highlight-white: #ffffff;
+
+      --color-barbarian-gradient-start: #1e293b;
+      --color-barbarian-gradient-end: #450a0a;
+      --color-barbarian-gradient-end-alt: #0f172a;
+      --color-barbarian-stroke-dark: #7f1d1d;
+      --color-barbarian-stroke-muted: #475569;
+    }
+  }
+}
+
+@layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer utilities {
+  /* Resource text/bg utilities */
+  .text-resource-wood { color: var(--color-resource-wood); }
+  .text-resource-brick { color: var(--color-resource-brick); }
+  .text-resource-sheep { color: var(--color-resource-sheep); }
+  .text-resource-wheat { color: var(--color-resource-wheat); }
+  .text-resource-ore { color: var(--color-resource-ore); }
+
+  .bg-resource-wood { background-color: var(--color-resource-wood); }
+  .bg-resource-brick { background-color: var(--color-resource-brick); }
+  .bg-resource-sheep { background-color: var(--color-resource-sheep); }
+  .bg-resource-wheat { background-color: var(--color-resource-wheat); }
+  .bg-resource-ore { background-color: var(--color-resource-ore); }
+
+  /* Commodity text/bg utilities */
+  .text-commodity-paper { color: var(--color-commodity-paper); }
+  .text-commodity-cloth { color: var(--color-commodity-cloth); }
+  .text-commodity-coin { color: var(--color-commodity-coin); }
+
+  .bg-commodity-paper { background-color: var(--color-commodity-paper); }
+  .bg-commodity-cloth { background-color: var(--color-commodity-cloth); }
+  .bg-commodity-coin { background-color: var(--color-commodity-coin); }
+
+  /* Card type utilities (aligned to improvements) */
+  .text-card-science { color: var(--color-improvement-science); }
+  .text-card-trade { color: var(--color-improvement-trade); }
+  .text-card-politics { color: var(--color-improvement-politics); }
+
+  .bg-card-science { background-color: var(--color-improvement-science); }
+  .bg-card-trade { background-color: var(--color-improvement-trade); }
+  .bg-card-politics { background-color: var(--color-improvement-politics); }
+
+  /* Knight level utilities */
+  .text-knight-basic { color: var(--color-knight-basic); }
+  .text-knight-strong { color: var(--color-knight-strong); }
+  .text-knight-mighty { color: var(--color-knight-mighty); }
+
+  /* Player utilities */
+  .text-player-1 { color: var(--color-player-1); }
+  .text-player-2 { color: var(--color-player-2); }
+  .text-player-3 { color: var(--color-player-3); }
+  .text-player-4 { color: var(--color-player-4); }
+
+  .bg-player-1 { background-color: var(--color-player-1); }
+  .bg-player-2 { background-color: var(--color-player-2); }
+  .bg-player-3 { background-color: var(--color-player-3); }
+  .bg-player-4 { background-color: var(--color-player-4); }
 }
