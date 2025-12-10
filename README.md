@@ -20,6 +20,34 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Testing
+
+This project uses [Vitest](https://vitest.dev/) for unit testing.
+
+Run tests:
+
+```bash
+# Run tests in watch mode
+npm test
+
+# Run tests once
+npm run test:run
+
+# Run tests with UI
+npm run test:ui
+
+# Generate coverage report
+npm run test:coverage
+```
+
+Current coverage targets:
+- Lines: 60%
+- Functions: 60%
+- Branches: 60%
+- Statements: 60%
+
+Coverage reports are generated in the `coverage/` directory.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
