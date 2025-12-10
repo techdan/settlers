@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { PlayerState } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { ProgressCardType } from '@/lib/types/player';
 import { debugGiveResource, debugGiveCommodity, debugGiveProgressCard } from '@/app/actions';

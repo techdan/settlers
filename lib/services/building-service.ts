@@ -1,5 +1,5 @@
 import { GameState } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import {
     isValidMainPhaseRoad,

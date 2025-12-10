@@ -20,7 +20,11 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ roomId: string }> }
 ) {
-    const roomId = (await params).roomId;
+    const { roomId } = await params;
+
+    if (!roomId) {
+        return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
+    }
 
     const game = await db.query.games.findFirst({
         where: eq(games.roomId, roomId),

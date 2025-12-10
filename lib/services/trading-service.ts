@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
+import { isMerchantFleetEffect, type MerchantFleetEffect } from '@/lib/types/effects';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { getPortForVertex, getBestTradeRatio } from '@/core/engine/board/port-generator';
 import { CommodityType } from '@/core/rules/commodity-constants';
@@ -23,12 +24,6 @@ function isCommodity(type: string): type is CommodityType {
     return ['paper', 'cloth', 'coin'].includes(type);
 }
 
-type MerchantFleetEffect = {
-    type: 'merchant_fleet';
-    playerId: string;
-    tradeItem: ResourceType | CommodityType;
-};
-
 const terrainToResource: Record<string, ResourceType | null> = {
     forest: 'wood',
     hill: 'brick',
@@ -47,11 +42,10 @@ function getMerchantResource(gameState: GameState): ResourceType | null {
 }
 
 function getMerchantFleetTradeItem(gameState: GameState, playerId: string): ResourceType | CommodityType | null {
-    const effect = gameState.activeEffects?.find(
-        (entry: any): entry is MerchantFleetEffect =>
-            entry?.type === 'merchant_fleet' &&
-            entry.playerId === playerId &&
-            typeof entry.tradeItem === 'string'
+    const activeEffects = gameState.activeEffects ?? [];
+    const effect = activeEffects.find(
+        (entry): entry is MerchantFleetEffect =>
+            isMerchantFleetEffect(entry) && entry.playerId === playerId
     );
 
     return effect?.tradeItem ?? null;

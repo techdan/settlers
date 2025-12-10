@@ -1,6 +1,6 @@
 import React, { useState, useTransition } from 'react';
 import { GameState } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { discardCards } from '@/app/actions';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 

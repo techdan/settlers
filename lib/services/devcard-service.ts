@@ -1,5 +1,6 @@
 import { GameState, DevCardType } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
+import { isRoadBuildingEffect, type RoadBuildingEffect } from '@/lib/types/effects';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
 import { updateLongestRoadIncremental } from '@/core/engine/scoring/longest-road';
@@ -266,8 +267,10 @@ export async function placeBonusRoad(
         throw new Error('Invalid road placement');
     }
 
-    const roadBuildingEffect = gameState.activeEffects?.find(
-        (effect: any) => effect?.type === 'road_building_progress' && effect.playerId === playerId
+    const activeEffects = gameState.activeEffects ?? [];
+    const roadBuildingEffect = activeEffects.find(
+        (effect): effect is RoadBuildingEffect =>
+            isRoadBuildingEffect(effect) && effect.playerId === playerId
     );
 
     // Get player

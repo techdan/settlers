@@ -1,7 +1,8 @@
-import { ResourceType } from '../board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { PlayerState, DevCardType, ProgressCardType, Knight } from './player';
 import { BoardState } from './board';
 import type { MetropolisType, EventDieFace, CommodityType } from '@/core/rules/commodity-constants';
+import type { ActiveEffect } from '@/lib/types/effects';
 
 /**
  * Game mode selection
@@ -192,7 +193,7 @@ export interface GameState {
     eventDieRoll?: EventDieRoll; // Last event die roll result
     merchantHexId?: string | null; // Hex where merchant is placed (provides 2:1 trade)
     activeMerchant?: string | null; // Player ID who has active Merchant progress card (grants 1 VP)
-    activeEffects?: any[]; // Active progress card effects (e.g., Alchemist, Crane, Medicine)
+    activeEffects?: ActiveEffect[]; // Active progress card effects (e.g., Alchemist, Crane, Medicine)
     pendingDisplacement?: {
         knightId: string;
         playerId: string;

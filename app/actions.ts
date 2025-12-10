@@ -98,7 +98,7 @@ export async function joinRoom(formData: FormData) {
 
 import { DevCardType, GameState } from '@/lib/types';
 import { PlayerColor } from '@/lib/types/player';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { getHexesForVertex, getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
 import * as gameService from '@/lib/services/game-service';
 import * as buildingService from '@/lib/services/building-service';
@@ -148,7 +148,7 @@ export async function discardCards(roomId: string, playerId: string, resources: 
     return robberService.discardCards(roomId, playerId, resources);
 }
 
-import { getPortForVertex } from '@/lib/board-data';
+import { getPortForVertex } from '@/core/engine/board/port-generator';
 
 export async function tradeWithBank(roomId: string, playerId: string, giveResource: ResourceType | CommodityType, getResource: ResourceType | CommodityType) {
     return tradingService.tradeWithBank(roomId, playerId, giveResource, getResource);

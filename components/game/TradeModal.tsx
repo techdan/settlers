@@ -1,6 +1,7 @@
 import React, { useState, useTransition } from 'react';
 import { GameState } from '@/lib/types';
-import { ResourceType, getPortForVertex } from '@/lib/board-data';
+import { getPortForVertex } from '@/core/engine/board/port-generator';
+import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { claimAqueductResource } from '@/app/actions';
 
 interface AqueductModalProps {

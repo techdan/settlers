@@ -1,5 +1,6 @@
 import { GameState, PlayerState } from '@/lib/types';
-import { ResourceType, TerrainType } from '@/core/engine/board/board-generator';
+import { TerrainType } from '@/core/engine/board/board-generator';
+import { ResourceType } from '@/core/rules/board-constants';
 import { getCanonicalVertexId } from '@/lib/hex';
 import { getResourceFromTerrain } from '@/core/rules/game-rules';
 import { CommodityType, TERRAIN_TO_COMMODITY } from '@/core/rules/commodity-constants';

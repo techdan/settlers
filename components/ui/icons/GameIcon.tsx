@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ResourceType } from '@/core/rules/board-constants';
 import { ColoredSvgIcon } from './ColoredSvgIcon';
 
 /**
@@ -12,7 +13,7 @@ import { ColoredSvgIcon } from './ColoredSvgIcon';
  */
 
 // Type definitions
-export type ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore';
+export type { ResourceType } from '@/core/rules/board-constants';
 export type CommodityType = 'paper' | 'cloth' | 'coin';
 export type StructureType = 'settlement' | 'city' | 'metropolis' | 'road' | 'city-wall';
 export type KnightLevel = 'basic' | 'strong' | 'mighty';

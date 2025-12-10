@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { GameIcon } from '@/components/ui/icons/GameIcon';
 

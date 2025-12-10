@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types/game';
 import { ProgressCardCommand } from '../types/CardConfig';
+import { isRoadBuildingEffect } from '@/lib/types/effects';
 
 /**
  * Road Building Card Command
@@ -11,7 +12,7 @@ import { ProgressCardCommand } from '../types/CardConfig';
  * the player to place 2 roads through the normal road placement UI.
  */
 export class RoadBuildingCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
@@ -24,11 +25,7 @@ export class RoadBuildingCommand implements ProgressCardCommand {
 
     // Clear any prior progress-card road building effect for this player
     state.activeEffects = state.activeEffects.filter(
-      (effect) =>
-        !(
-          effect?.type === 'road_building_progress' &&
-          effect.playerId === playerId
-        )
+      effect => !(isRoadBuildingEffect(effect) && effect.playerId === playerId)
     );
 
     // Add the road building effect

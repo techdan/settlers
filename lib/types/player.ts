@@ -1,4 +1,4 @@
-import { ResourceType } from '../board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import type { CommodityType, ImprovementType, MetropolisType } from '@/core/rules/commodity-constants';
 
 /**

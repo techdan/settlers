@@ -1,6 +1,6 @@
 import React, { useState, useTransition } from 'react';
 import { GameState, PlayerState, DevCardType } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { playDevCard } from '@/app/actions';
 import { Tooltip } from '@/components/ui/tooltip';
 

@@ -1,6 +1,6 @@
 import React, { useState, useTransition } from 'react';
 import { GameState, TradeOffer } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
 
 interface TradeOfferDisplayProps {

@@ -1,6 +1,7 @@
-import { GameState } from '@/lib/types/game';
+import { GameState, TreasonEffect } from '@/lib/types/game';
 import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
+import { isTreasonEffect } from '@/lib/types/effects';
 
 /**
  * Treason Card Command
@@ -12,17 +13,12 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeTreason() (lines 1490-1527)
  */
 
-interface TreasonEffect {
-  type: 'treason';
-  initiatorId: string;
-  targetPlayerId: string;
-  stage: 'awaiting_knight' | 'awaiting_placement';
-  removedKnightLevel?: 'basic' | 'strong' | 'mighty';
-  removedKnightActive?: boolean;
-}
+type TreasonOptions = {
+  opponentId: string;
+};
 
 export class TreasonCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: TreasonOptions): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
@@ -33,7 +29,7 @@ export class TreasonCommand implements ProgressCardCommand {
       throw new Error('Cannot play Treason before the first barbarian attack');
     }
 
-    const opponentId = options?.opponentId as string | undefined;
+    const opponentId = options?.opponentId;
     if (!opponentId) {
       throw new Error('Treason requires selecting an opponent');
     }
@@ -55,7 +51,7 @@ export class TreasonCommand implements ProgressCardCommand {
 
     // Remove any prior Treason effect for this player to avoid duplicates
     state.activeEffects = state.activeEffects.filter(
-      (effect: any) => !(effect?.type === 'treason' && effect.initiatorId === playerId)
+      effect => !(isTreasonEffect(effect) && effect.initiatorId === playerId)
     );
 
     // Create new Treason effect

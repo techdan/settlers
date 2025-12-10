@@ -12,12 +12,9 @@ import { makeCommercialHarborOffers, respondToCommercialHarbor } from '@/core/en
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { ResourceType } from '@/core/rules/board-constants';
 import { randomUUID } from 'crypto';
+import { isRoadBuildingEffect, isTreasonEffect, type RoadBuildingEffect } from '@/lib/types/effects';
 
-type RoadBuildingEffect = {
-    type: 'road_building_progress';
-    playerId: string;
-    placedEdges?: string[];
-};
+type ProgressCardOptions = Record<string, unknown>;
 
 const KNIGHT_PIECES_PER_LEVEL = 2;
 
@@ -27,16 +24,18 @@ function hasKnightPieceAvailable(player: { knights?: Knight[] }, level: Knight['
 }
 
 function findRoadBuildingEffect(gameState: GameState, playerId: string): RoadBuildingEffect | undefined {
-    return gameState.activeEffects?.find(
-        (effect: any): effect is RoadBuildingEffect =>
-            effect?.type === 'road_building_progress' && effect.playerId === playerId
+    const activeEffects = gameState.activeEffects ?? [];
+    return activeEffects.find(
+        (effect): effect is RoadBuildingEffect =>
+            isRoadBuildingEffect(effect) && effect.playerId === playerId
     );
 }
 
 function removeRoadBuildingEffect(gameState: GameState, playerId: string): void {
     if (!gameState.activeEffects) return;
-    gameState.activeEffects = gameState.activeEffects.filter(
-        (effect: any) => !(effect?.type === 'road_building_progress' && effect.playerId === playerId)
+    const activeEffects = gameState.activeEffects;
+    gameState.activeEffects = activeEffects.filter(
+        effect => !(isRoadBuildingEffect(effect) && effect.playerId === playerId)
     );
 }
 
@@ -125,14 +124,14 @@ export async function finalizeRoadBuildingProgress(roomId: string, playerId: str
 }
 
 function findTreasonEffect(gameState: GameState): TreasonEffect | undefined {
-    return gameState.activeEffects?.find(
-        (effect: any): effect is TreasonEffect => effect?.type === 'treason'
-    );
+    const activeEffects = gameState.activeEffects ?? [];
+    return activeEffects.find(isTreasonEffect);
 }
 
 function removeTreasonEffect(gameState: GameState): void {
     if (!gameState.activeEffects) return;
-    gameState.activeEffects = gameState.activeEffects.filter((effect: any) => effect?.type !== 'treason');
+    const activeEffects = gameState.activeEffects;
+    gameState.activeEffects = activeEffects.filter(effect => !isTreasonEffect(effect));
 }
 
 export async function selectTreasonKnight(roomId: string, playerId: string, knightId: string): Promise<GameState> {
@@ -359,7 +358,7 @@ export async function playProgressCardAction(
     roomId: string,
     playerId: string,
     cardType: ProgressCardType,
-    options?: any
+    options?: ProgressCardOptions
 ): Promise<GameState> {
     const gameState = await getGameStateByRoomId(roomId);
     if (!gameState) {

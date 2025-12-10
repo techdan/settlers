@@ -1,7 +1,8 @@
 import React from 'react';
 import { Port, PortType } from '@/types/board';
 import { HelpCircle } from 'lucide-react';
-import { GameIcon, ResourceType } from '@/components/ui/icons/GameIcon';
+import { ResourceType } from '@/core/rules/board-constants';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface PortProps {
     port: Port;

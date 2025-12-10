@@ -3,6 +3,11 @@ import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
+import { isMerchantFleetEffect } from '@/lib/types/effects';
+
+type MerchantFleetOptions = {
+  tradeItem: ResourceType | CommodityType;
+};
 
 /**
  * Merchant Fleet Card Command
@@ -11,13 +16,13 @@ import { CommodityType } from '@/core/rules/commodity-constants';
  * Legacy implementation: executeMerchantFleet() (lines 901-930)
  */
 export class MerchantFleetCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: MerchantFleetOptions): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const tradeItem = options?.tradeItem as ResourceType | CommodityType | undefined;
+    const tradeItem = options?.tradeItem;
     const validItems: (ResourceType | CommodityType)[] = [
       'wood',
       'brick',
@@ -40,7 +45,7 @@ export class MerchantFleetCommand implements ProgressCardCommand {
 
     // Remove any existing merchant fleet effect for this player
     state.activeEffects = state.activeEffects.filter(
-      (effect: any) => !(effect?.type === 'merchant_fleet' && effect.playerId === playerId)
+      effect => !(isMerchantFleetEffect(effect) && effect.playerId === playerId)
     );
 
     // Add new merchant fleet effect (expires after this player's turn)

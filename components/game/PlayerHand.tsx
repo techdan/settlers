@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { PlayerState } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { ResourceIcon, CommodityIcon } from '@/components/ui/icons/GameIcon';
-import type { ResourceType as IconResourceType, CommodityType as IconCommodityType } from '@/components/ui/icons/GameIcon';
+import type { CommodityType as IconCommodityType } from '@/components/ui/icons/GameIcon';
 
 interface PlayerHandProps {
     player: PlayerState;
@@ -82,7 +82,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
                 {/* Resources */}
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
                     <div key={res} className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>
-                        <ResourceIcon type={res as IconResourceType} size={44} />
+                        <ResourceIcon type={res as ResourceType} size={44} />
                         <div className="font-mono font-bold text-white text-sm tabular-nums">{player.resources[res] || 0}</div>
                     </div>
                 ))}

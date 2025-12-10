@@ -19,7 +19,7 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ id?: string }> }
 ) {
-    const roomId = (await params).id;
+    const { id: roomId } = await params;
 
     if (!roomId) {
         return NextResponse.json({ error: 'Room id is required' }, { status: 400 });

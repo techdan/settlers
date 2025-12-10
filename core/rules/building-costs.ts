@@ -1,4 +1,4 @@
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
 
 /**
  * Building costs in the game

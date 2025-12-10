@@ -1,5 +1,7 @@
 import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS } from '@/lib/types';
-import { ResourceType } from '@/lib/board-data';
+import { ResourceType } from '@/core/rules/board-constants';
+import { Edge, Vertex } from '@/lib/types/board';
+import { isMerchantFleetEffect } from '@/lib/types/effects';
 import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/repositories/game-repository';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources, logDistribution } from '@/core/engine/resources/resource-manager';
@@ -103,8 +105,8 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         // Fallback to standard board if nothing generated
         hexes = generateStandardBoard();
     }
-    const vertices: Record<string, any> = {};
-    const edges: Record<string, any> = {};
+    const vertices: Record<string, Vertex> = {};
+    const edges: Record<string, Edge> = {};
 
     hexes.forEach(hex => {
         // Vertices (0-5)
@@ -432,8 +434,9 @@ export async function endTurn(
 
     // Clear any Merchant Fleet effects from the ending player
     if (gameState.activeEffects) {
-        gameState.activeEffects = gameState.activeEffects.filter(
-            (effect: any) => !(effect?.type === 'merchant_fleet' && effect.playerId === playerId)
+        const activeEffects = gameState.activeEffects;
+        gameState.activeEffects = activeEffects.filter(
+            effect => !(isMerchantFleetEffect(effect) && effect.playerId === playerId)
         );
     }
 

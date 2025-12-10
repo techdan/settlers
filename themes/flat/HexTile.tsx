@@ -1,10 +1,10 @@
 import React from 'react';
 import { Hex, hexToPixel } from '@/lib/hex';
-import { TerrainType } from '@/core/rules/board-constants';
+import { ResourceType, TerrainType } from '@/core/rules/board-constants';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
 import { Merchant } from './Merchant';
-import { GameIcon, ResourceType } from '@/components/ui/icons/GameIcon';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface HexTileProps {
     hex: Hex;
