@@ -137,8 +137,16 @@ export const HexTile: React.FC<HexTileProps> = ({
                 </g>
             )}
 
-            {hasRobber && <Robber />}
-            {hasMerchant && <Merchant color={merchantColor} />}
+            {hasRobber && (
+                <g transform={hasMerchant ? 'translate(-12, 0)' : undefined}>
+                    <Robber />
+                </g>
+            )}
+            {hasMerchant && (
+                <g transform={hasRobber ? 'translate(12, 0)' : undefined}>
+                    <Merchant color={merchantColor} />
+                </g>
+            )}
         </g>
     );
 };

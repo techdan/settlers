@@ -153,13 +153,13 @@ export const VoxelHexTile: React.FC<HexTileProps> = ({
                 )}
 
                 {hasRobber && (
-                    <g transform="translate(0, -10)">
+                    <g transform={`translate(${hasMerchant ? -12 : 0}, -10)`}>
                         <VoxelRobber />
                     </g>
                 )}
 
                 {hasMerchant && (
-                    <g transform="translate(0, -10)">
+                    <g transform={`translate(${hasRobber ? 12 : 0}, -10)`}>
                         <VoxelMerchant />
                     </g>
                 )}

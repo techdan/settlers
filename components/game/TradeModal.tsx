@@ -1,13 +1,14 @@
 import React, { useState, useTransition } from 'react';
-import { GameState, PlayerState } from '@/lib/types';
+import { GameState } from '@/lib/types';
 import { ResourceType, getPortForVertex } from '@/lib/board-data';
 import { CommodityType } from '@/core/rules/commodity-constants';
-import { tradeWithBank, offerTrade } from '@/app/actions';
+import { TradeController } from '@/lib/controllers/trade-controller';
 
 interface TradeModalProps {
     gameState: GameState;
     playerId: string;
     onClose: () => void;
+    tradeController: TradeController;
 }
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
@@ -46,7 +47,7 @@ function getIcon(type: string): string {
     return RESOURCE_ICONS[type as ResourceType];
 }
 
-export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onClose }) => {
+export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onClose, tradeController }) => {
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'bank' | 'domestic'>('bank');
@@ -137,7 +138,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
         const currentGetRes = getRes;
         startTransition(async () => {
             try {
-                await tradeWithBank(gameState.roomId, playerId, currentGiveRes, currentGetRes);
+                await tradeController.handleBankTrade(currentGiveRes, currentGetRes);
                 // Show confirmation message
                 setTradeConfirmation({
                     gave: currentGiveRes,
@@ -154,7 +155,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const handleOfferTrade = () => {
         startTransition(async () => {
             try {
-                await offerTrade(gameState.roomId, playerId, offerGive, offerGet);
+                await tradeController.handleOfferTrade(offerGive, offerGet);
                 setOfferGive(createEmptyOffer());
                 setOfferGet(createEmptyOffer());
             } catch (e) {

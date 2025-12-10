@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Board } from '@/components/board/Board';
-import { BoardSelectionState, BoardCallbacks } from '@/lib/types/board-selection-state';
 import { GameState } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { PlayerHand } from './PlayerHand';
 import { GameLog } from './GameLog';
 import { PlayerDevCards } from './PlayerDevCards';
+import { ProgressCardPrompts } from './ProgressCardPrompts';
+import { BarbarianCityPrompt } from './BarbarianCityPrompt';
+import { KnightDisplacementOverlay } from './KnightDisplacementOverlay';
+import { GameEventModals } from './GameEventModals';
+import { VPCardModal } from './VPCardModal';
 
 import { CompactGameStatus } from './CompactGameStatus';
 import { SidebarTabs } from './SidebarTabs';
@@ -27,61 +30,59 @@ import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDial
 import { CityManagementDialog } from './CityManagementDialog';
 import { SettlementManagementDialog } from './SettlementManagementDialog';
 import { KnightManagementDialog } from './KnightManagementDialog';
-import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
-
 import { ProgressCardHand } from './ProgressCardHand';
 import { ProgressCardDiscardDialog } from './ProgressCardDiscardDialog';
 import { DebugPanel } from './DebugPanel';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
 import { useProgressCardSelectionDecorator } from '@/lib/hooks/useProgressCardSelectionDecorator';
+import { useProgressCardUIState } from '@/lib/hooks/useProgressCardUIState';
 import { useConnectionStatus } from '@/lib/hooks/useConnectionStatus';
 import { useGameSubscription } from '@/lib/hooks/useGameSubscription';
 import { ConnectionStatusIndicator } from './ConnectionStatus';
-import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
-import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
-import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
+import { useTreasonState } from '@/lib/hooks/useTreasonState';
+import { GameBoardSection } from './GameBoardSection';
 import { ProgressCardType } from '@/lib/types/player';
 import { ProgressPromptProvider, useProgressPrompt } from '@/lib/hooks/useProgressPrompt';
-import { MerchantPlacementModal } from './MerchantPlacementModal';
-import { ResourceType, TerrainType } from '@/core/rules/board-constants';
-import { TaxationPlacementModal } from './TaxationPlacementModal';
-import { getCanonicalVertexId } from '@/lib/hex';
-import { TreasonPlacementModal } from './TreasonPlacementModal';
 import { TreasonEffect } from '@/lib/types/game';
-import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { WeddingGiftModal } from './WeddingGiftModal';
 import { BarbarianTrack } from './BarbarianTrack';
 import { RobberVictimSelectionModal } from './RobberVictimSelectionModal';
 import { RobberTheftNotification } from './RobberTheftNotification';
+import { GameOverModal } from './GameOverModal';
+import { RobberModals } from './RobberModals';
+import { GameLayoutPanels } from './GameLayoutPanels';
 
 // Controllers and hooks
 import { useSelectionManager } from '@/lib/hooks/useSelectionManager';
 import { createKnightController, KnightController } from '@/lib/controllers/knight-controller';
 import { createImprovementController, ImprovementController } from '@/lib/controllers/improvement-controller';
 import { createProgressCardController, ProgressCardController } from '@/lib/controllers/progress-card-controller';
+import { createTradeController, TradeController } from '@/lib/controllers/trade-controller';
+import { useRobberInteractions } from '@/lib/hooks/useRobberInteractions';
+import { useTurnActions } from '@/lib/hooks/useTurnActions';
+import {
+    useInitialGameState,
+    useResolveStuckBarbarian,
+    useSubscribedGameState,
+    useTheftNotificationEffect,
+    useProgressDiscardEnforcement,
+    useTurnSubmissionReset,
+    useVPCardModalEffect,
+    useGameOverModalEffect,
+    useSelectedCardAutoClear,
+} from '@/lib/hooks/useGameControllerEffects';
 
 interface GameControllerProps {
     roomId: string;
     playerId: string;
 }
 
-// Helper function to convert terrain to resource type
-const resourceForTerrain = (terrain: string): ResourceType | null => {
-    switch (terrain) {
-        case 'forest': return 'wood';
-        case 'hill': return 'brick';
-        case 'pasture': return 'sheep';
-        case 'field': return 'wheat';
-        case 'mountain': return 'ore';
-        default: return null;
-    }
-};
-
 const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }) => {
     // Game state management
     const [baseGameState, setBaseGameState] = useState<GameState | null>(null);
     const [showTrade, setShowTrade] = useState(false);
     const [turnSubmitted, setTurnSubmitted] = useState(false);
+    const [showGameOverModal, setShowGameOverModal] = useState(false);
 
     // Progress card discard modal
     const [showProgressCardDiscard, setShowProgressCardDiscard] = useState(false);
@@ -93,9 +94,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const lastVPCardSeenRef = useRef<number>(0);
 
     // Robber victim selection (not in selectionManager)
-    const [robberVictimSelectionOpen, setRobberVictimSelectionOpen] = useState(false);
-    const [robberHexId, setRobberHexId] = useState<string | null>(null);
-    const [robberPotentialVictims, setRobberPotentialVictims] = useState<string[]>([]);
+    const {
+        robberVictimSelectionOpen,
+        robberHexId,
+        robberPotentialVictims,
+        handleRobberVictimRequest,
+        handleRobberVictimSelected,
+        handleRobberVictimCancel,
+        resetRobberSelection,
+    } = useRobberInteractions({ roomId, playerId });
     const [showTheftNotification, setShowTheftNotification] = useState(false);
     const lastTheftSeenRef = useRef<number>(0);
 
@@ -128,6 +135,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const isCitiesAndKnights = gameState?.gameMode === 'cities_and_knights';
     const isActiveTurn = gameState?.currentTurn === playerId;
 
+    useGameOverModalEffect(gameState, setShowGameOverModal);
+
     // Treason effect state
     const treasonEffect = gameState?.activeEffects?.find(
         (effect: any): effect is TreasonEffect => effect?.type === 'treason'
@@ -137,7 +146,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const treasonTargetId = treasonEffect?.targetPlayerId;
     const isTreasonTarget = treasonTargetId === playerId;
     const treasonInitiatorName = treasonInitiatorId && gameState
-        ? gameState.players.find(p => p.id === treasonInitiatorId)?.name
+        ? gameState.players.find(p => p.id === treasonInitiatorId)?.name ?? null
         : null;
 
     // Road building effect state
@@ -207,31 +216,26 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         metropolisPrompt,
         handlePlayProgressCard: progressCardController.handlePlayProgressCard
     });
+    const tradeController = createTradeController({ roomId, playerId });
+    const { handleCancelFollowupCard, handleDiscardProgressCards } = progressCardController;
 
-    const handleRobberVictimRequest = (hexId: string, potentialVictims: string[]) => {
-        setRobberHexId(hexId);
-        setRobberPotentialVictims(potentialVictims);
-        setRobberVictimSelectionOpen(true);
-    };
-
-    const handleRobberVictimSelected = async (victimId: string | null) => {
-        if (!robberHexId) return;
-
-        try {
-            await moveRobber(roomId, playerId, robberHexId, victimId ?? undefined);
-            setRobberVictimSelectionOpen(false);
-            setRobberHexId(null);
-            setRobberPotentialVictims([]);
-        } catch (e) {
-            console.error("Failed to move robber with victim", e);
-        }
-    };
-
-    const handleRobberVictimCancel = () => {
-        setRobberVictimSelectionOpen(false);
-        setRobberHexId(null);
-        setRobberPotentialVictims([]);
-    };
+    const {
+        treasonOpponents,
+        treasonEffectLevel,
+        treasonSupplyAvailable,
+        treasonHasLegalPlacement,
+        treasonStatus,
+        showTreasonPlacePrompt,
+        showTreasonModal,
+    } = useTreasonState({
+        gameState,
+        playerId,
+        treasonEffect,
+        isTreasonInitiator,
+        isTreasonTarget,
+        selectionManager,
+        resetTreasonLocalState,
+    });
 
     const handleDismissTheftNotification = () => {
         setShowTheftNotification(false);
@@ -242,9 +246,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         selectionManager.clearAllSelections();
 
         // Clear robber victim selection (not in selectionManager)
-        setRobberVictimSelectionOpen(false);
-        setRobberHexId(null);
-        setRobberPotentialVictims([]);
+        resetRobberSelection();
 
         // Handle treason special case
         if (!treasonEffect || selectionManager.treasonMode === 'select_opponent') {
@@ -268,40 +270,6 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         selectionManager.setIsPlayerCityManagementOpen(true);
     };
 
-    const handleCancelFollowupCard = () => {
-        if (isRoadBuildingProgressActive) {
-            progressCardController.handleCancelRoadBuildingProgress();
-            return;
-        }
-        handleCancelSelection();
-    };
-
-    const handleDiscardProgressCards = async (cardsToDiscard: any[]) => {
-        const shouldAutoEndTurn = progressDiscardContext === 'own_turn';
-
-        try {
-            const res = await fetch(`/api/game/${roomId}/progress-card/discard`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ playerId, cardsToDiscard })
-            });
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error || 'Failed to discard cards');
-            }
-
-            if (shouldAutoEndTurn) {
-                await endTurn(roomId, playerId);
-            }
-
-            setShowProgressCardDiscard(false);
-            setProgressDiscardContext('own_turn');
-        } catch (e) {
-            console.error('Error discarding progress cards:', e);
-            throw e; // Re-throw to let dialog handle it
-        }
-    };
-
     const handleLoseCityToBarbarians = async (vertexId: string) => {
         try {
             const res = await fetch(`/api/game/${roomId}/barbarian`, {
@@ -319,405 +287,84 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         }
     };
 
-    // Initial fetch to ensure we have data before subscription kicks in
-    useEffect(() => {
-        const fetchInitialState = async () => {
-            try {
-                const res = await fetch(`/api/game/${roomId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setBaseGameState(data);
-                }
-            } catch (e) {
-                console.error("Failed to fetch initial game state", e);
-            }
-        };
-        fetchInitialState();
-    }, [roomId]);
-
-    // Auto-resolve stuck barbarian_attack phase (cleanup for old games)
-    useEffect(() => {
-        if (baseGameState?.phase === 'barbarian_attack') {
-            const resolveStuckAttack = async () => {
-                try {
-                    console.log('Auto-resolving stuck barbarian attack...');
-                    const res = await fetch(`/api/game/${roomId}/barbarian`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'resolve' })
-                    });
-                    if (!res.ok) {
-                        console.error('Failed to auto-resolve barbarian attack');
-                    }
-                } catch (e) {
-                    console.error('Error auto-resolving barbarian attack:', e);
-                }
-            };
-            resolveStuckAttack();
-        }
-    }, [baseGameState?.phase, roomId]);
+    useInitialGameState(roomId, setBaseGameState);
+    useResolveStuckBarbarian(baseGameState, roomId);
 
     // Realtime subscription
     const subscribedGameState = useGameSubscription(roomId, baseGameState);
 
     // Update local state when subscription updates
-    useEffect(() => {
-        if (subscribedGameState) {
-            setBaseGameState(subscribedGameState);
-        }
-    }, [subscribedGameState]);
+    useSubscribedGameState(subscribedGameState, setBaseGameState);
 
     // Show forced modal when the current player draws a VP progress card (auto-plays immediately).
-    useEffect(() => {
-        const gain = baseGameState?.lastVPCardGain;
-        if (!gain) return;
-        if (gain.cardType !== 'printer' && gain.cardType !== 'constitution') return;
-        if (gain.playerId !== playerId) return;
-        if (gain.timestamp <= lastVPCardSeenRef.current) return;
-
-        // Only trigger for fresh draws to avoid resurfacing on unrelated state changes or reloads.
-        const isRecent = Date.now() - gain.timestamp < 8000;
-        if (!isRecent) return;
-
-        lastVPCardSeenRef.current = gain.timestamp;
-        setVpCardModalType(gain.cardType);
-    }, [baseGameState?.lastVPCardGain, playerId]);
+    useVPCardModalEffect(baseGameState, playerId, lastVPCardSeenRef, setVpCardModalType);
 
     // Show theft notification when the robber steals from or for the current player
-    useEffect(() => {
-        const theft = baseGameState?.lastTheft;
-        if (!theft) return;
-        if (!theft.timestamp) return;
-        if (theft.timestamp <= lastTheftSeenRef.current) return;
+    useTheftNotificationEffect(baseGameState, playerId, lastTheftSeenRef, setShowTheftNotification);
 
-        // Check if this player was involved (either as thief or victim)
-        const isThief = theft.thiefId === playerId;
-        const isVictim = theft.victimId === playerId || theft.victims?.some(v => v.victimId === playerId);
+    useProgressDiscardEnforcement(
+        baseGameState,
+        playerId,
+        getOptimisticState,
+        showProgressCardDiscard,
+        setShowProgressCardDiscard,
+        progressDiscardContext,
+        setProgressDiscardContext
+    );
 
-        if (!isThief && !isVictim) return;
+    useTurnSubmissionReset(gameState, playerId, setTurnSubmitted);
 
-        // Only trigger for recent thefts to avoid resurfacing on reloads
-        const isRecent = Date.now() - theft.timestamp < 8000;
-        if (!isRecent) return;
+    useSelectedCardAutoClear(selectedProgressCard, selectionManager, clearSelectedCard);
 
-        lastTheftSeenRef.current = theft.timestamp;
-        setShowTheftNotification(true);
-    }, [baseGameState?.lastTheft, playerId]);
+    const {
+        showDiplomatPrompt,
+        diplomatPromptStatus,
+        showIntriguePrompt,
+        intriguePromptStatus,
+        showEngineeringPrompt,
+        engineeringPromptStatus,
+        showMedicinePrompt,
+        medicinePromptStatus,
+        showRoadBuildingPrompt,
+        roadBuildingPromptStatus,
+        smithEligibleVertexIds,
+        selectedMerchantHex,
+        selectedMerchantResource,
+        showMerchantModal,
+        showInventorPrompt,
+        inventorPromptStatus,
+        showTaxationModal,
+        taxationPromptStatus,
+    } = useProgressCardUIState({
+        gameState,
+        selectionManager,
+        playerId,
+        merchantPrompt,
+        inventorPrompt,
+        taxationPrompt,
+        engineeringPrompt,
+        medicinePrompt,
+        roadBuildingPrompt,
+        isActiveTurn: !!isActiveTurn,
+    });
 
-    // Automatically force a discard modal when another player's turn pushes us over the progress card limit
-    useEffect(() => {
-        if (!baseGameState) return;
-
-        const effectiveState = getOptimisticState(baseGameState);
-        const player = effectiveState.players.find(p => p.id === playerId);
-        const cardCount = player?.progressCards?.length ?? 0;
-        const overLimit = effectiveState.gameMode === 'cities_and_knights' && cardCount > 4;
-
-        if (!overLimit) {
-            if (showProgressCardDiscard) {
-                setShowProgressCardDiscard(false);
-            }
-            if (progressDiscardContext !== 'own_turn') {
-                setProgressDiscardContext('own_turn');
-            }
-            return;
-        }
-
-        const isPlayersTurn = effectiveState.currentTurn === playerId;
-        if (!isPlayersTurn) {
-            if (!showProgressCardDiscard || progressDiscardContext !== 'other_turn') {
-                setProgressDiscardContext('other_turn');
-                setShowProgressCardDiscard(true);
-            }
-        }
-    }, [baseGameState, getOptimisticState, playerId, progressDiscardContext, showProgressCardDiscard]);
-
-    // Clear local turn submission flag when turn changes or new turn starts
-    useEffect(() => {
-        if (!gameState) return;
-
-        // Reset turnSubmitted when:
-        // 1. It's no longer this player's turn (multiplayer)
-        // 2. A new turn starts (phase changes to waiting_for_roll) (single-player)
-        if (gameState.currentTurn !== playerId || gameState.phase === 'waiting_for_roll') {
-            setTurnSubmitted(false);
-        }
-    }, [gameState?.currentTurn, gameState?.phase, playerId]);
-
-    useEffect(() => {
-        if (!selectedProgressCard || selectedProgressCard === 'road_building_progress') return;
-
-        const hasActiveLocalSelection =
-            !!selectionManager.selectingHexForCard ||
-            !!selectionManager.selectingVertexForCard ||
-            !!selectionManager.selectingEdgeForCard ||
-            selectionManager.selectingCityForEngineer ||
-            selectionManager.selectingCityForMedicine ||
-            selectionManager.selectingCityForMetropolis ||
-            selectionManager.selectingKnightsForSmith ||
-            selectionManager.isCraneDialogOpen ||
-            selectionManager.treasonMode !== null ||
-            selectionManager.isTreasonModalOpen;
-
-        if (!hasActiveLocalSelection) {
-            clearSelectedCard();
-        }
-    }, [
-        clearSelectedCard,
-        selectionManager.isCraneDialogOpen,
-        selectedProgressCard,
-        selectionManager.selectingCityForEngineer,
-        selectionManager.selectingCityForMedicine,
-        selectionManager.selectingCityForMetropolis,
-        selectionManager.selectingEdgeForCard,
-        selectionManager.selectingHexForCard,
-        selectionManager.selectingKnightsForSmith,
-        selectionManager.selectingVertexForCard,
-        selectionManager.treasonMode,
-        selectionManager.isTreasonModalOpen
-    ]);
-
-    const showDiplomatPrompt = selectionManager.selectingEdgeForCard === 'diplomat' && selectionManager.diplomatStage !== null;
-    const diplomatOwnerName = selectionManager.diplomatSelectedEdgeOwner && gameState
-        ? gameState.players.find(p => p.id === selectionManager.diplomatSelectedEdgeOwner)?.name || 'Opponent'
-        : null;
-    const diplomatPromptStatus =
-        selectionManager.diplomatError ||
-        (selectionManager.diplomatStage === 'rebuild'
-            ? (selectionManager.diplomatRelocateEdgeId ? 'New road position selected. Click Rebuild to place it.' : 'Select a highlighted edge to rebuild your road.')
-            : selectionManager.diplomatSelectedEdgeId
-                ? (selectionManager.diplomatSelectedEdgeOwner === playerId
-                    ? 'Selected your road. Remove to relocate it.'
-                    : `Selected ${diplomatOwnerName || 'an opponent'}'s road. Remove to return it.`)
-                : 'Click any highlighted open road to select it.');
-
-    // Derive intrigue display values
-    const intrigueOpponent = selectionManager.intrigueTarget && gameState
-        ? gameState.players.find(p => p.id === selectionManager.intrigueTarget!.opponentId)
-        : null;
-    const intrigueSelectedKnight = intrigueOpponent
-        ? (intrigueOpponent.knights || []).find(k => k.id === selectionManager.intrigueTarget!.knightId)
-        : null;
-    const intrigueOpponentName = intrigueOpponent?.name || null;
-
-    const showIntriguePrompt = selectionManager.selectingVertexForCard === 'intrigue';
-    const intriguePromptStatus =
-        selectionManager.intrigueError ||
-        (selectionManager.isSubmittingIntrigue
-            ? 'Displacing selected knight...'
-            : intrigueSelectedKnight
-                ? `Selected ${intrigueOpponentName || 'opponent'}'s ${intrigueSelectedKnight.level} knight. Click Displace to force relocation.`
-                : 'Click a highlighted opponent knight adjacent to your roads.');
-    const showEngineeringPrompt = engineeringPrompt.isVisible && !!isActiveTurn;
-    const engineeringPromptStatus =
-        engineeringPrompt.status || 'Select a city without a wall to add a free city wall.';
-    const showMedicinePrompt = medicinePrompt.isVisible && !!isActiveTurn;
-    const medicinePromptStatus =
-        medicinePrompt.status || `Select a settlement to upgrade to a city (costs 2 ore + 1 wheat instead of normal cost).`;
-    const showRoadBuildingPrompt = roadBuildingPrompt.isVisible && !!isActiveTurn;
-    const roadBuildingPromptStatus =
-        roadBuildingPrompt.status || 'Place up to 2 roads for free on your network.';
-
-    // Smith card selection - get promotable knight vertex IDs
-    const smithEligibleVertexIds = gameState && selectionManager.selectingKnightsForSmith
-        ? getPromotableKnights(gameState, playerId).map(k => k.vertexId)
-        : [];
-
-    const selectedMerchantHex = selectionManager.selectedMerchantHexId && gameState
-        ? gameState.board.hexes.find(hex => hex.id === selectionManager.selectedMerchantHexId)
-        : null;
-    const selectedMerchantResource = selectedMerchantHex ? resourceForTerrain(selectedMerchantHex.terrain) : null;
-    const showMerchantModal = selectionManager.isMerchantModalOpen && merchantPrompt.isVisible;
-    const showInventorPrompt = inventorPrompt.isVisible && !!isActiveTurn;
-    const inventorPromptStatus = (() => {
-        if (inventorPrompt.status) return inventorPrompt.status;
-        const inv = selectionManager.inventorSelection;
-        if (inv.firstValue && inv.secondValue) {
-            return `Swapping #${inv.firstValue} with #${inv.secondValue}`;
-        }
-        if (inv.firstValue) {
-            return `Selected #${inv.firstValue}. Click another hex to swap.`;
-        }
-        return 'Select first hex with a number token to swap (not 2, 6, 8, or 12).';
-    })();
-    const showTaxationModal = selectionManager.isTaxationModalOpen && taxationPrompt.isVisible;
-    const taxationPromptStatus =
-        taxationPrompt.status || 'Select any land hex to move the robber and steal 1 card from each opponent on it.';
-
-    // Manage Treason staged flow UI based on active effect
-    useEffect(() => {
-        if (!treasonEffect) {
-            if (selectionManager.treasonMode !== 'select_opponent') {
-                resetTreasonLocalState();
-            }
-            if (selectionManager.selectingVertexForCard === 'treason_remove' || selectionManager.selectingVertexForCard === 'treason_place') {
-                selectionManager.setSelectingVertexForCard(null);
-            }
-            return;
-        }
-
-        selectionManager.setIsTreasonModalOpen(true);
-        if (treasonEffect.stage === 'awaiting_knight') {
-            selectionManager.setTreasonSelectedPlacementVertexId(null);
-            if (isTreasonTarget) {
-                selectionManager.setTreasonMode('select_knight');
-                selectionManager.setSelectingVertexForCard('treason_remove');
-            } else if (isTreasonInitiator) {
-                selectionManager.setTreasonMode('waiting_for_knight');
-                if (selectionManager.selectingVertexForCard === 'treason_remove' || selectionManager.selectingVertexForCard === 'treason_place') {
-                    selectionManager.setSelectingVertexForCard(null);
-                }
-            } else {
-                selectionManager.setTreasonMode('waiting_for_knight');
-            }
-        } else if (treasonEffect.stage === 'awaiting_placement') {
-            selectionManager.setTreasonSelectedKnightId(null);
-            selectionManager.setTreasonSelectedPlacementVertexId(null);
-            if (isTreasonInitiator) {
-                selectionManager.setTreasonMode('place_knight');
-                selectionManager.setSelectingVertexForCard('treason_place');
-                selectionManager.setSelectingEdgeForCard(null);
-                selectionManager.setSelectingHexForCard(null);
-                selectionManager.setBuildMode(null);
-                selectionManager.setMovingKnightId(null);
-                selectionManager.setBuildingMetropolisType(null);
-                selectionManager.setIsTreasonModalOpen(true);
-            } else {
-                // Target is done once they remove a knight
-                resetTreasonLocalState();
-                const currentSelection = selectionManager.selectingVertexForCard;
-                if (currentSelection === 'treason_remove' || currentSelection === 'treason_place') {
-                    selectionManager.setSelectingVertexForCard(null);
-                }
-            }
-        }
-    }, [isTreasonInitiator, isTreasonTarget, selectionManager.selectingVertexForCard, treasonEffect, selectionManager.treasonMode]);
+    const { handleRollDiceClick, handleEndTurnClick } = useTurnActions({
+        roomId,
+        playerId,
+        baseGameState,
+        getOptimisticState,
+        applyOptimisticUpdate,
+        clearOptimisticUpdate,
+        setTurnSubmitted,
+        isCitiesAndKnights: !!isCitiesAndKnights,
+        currentPlayer,
+        setShowProgressCardDiscard,
+        setProgressDiscardContext,
+    });
 
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
-    const treasonOpponents = gameState.players
-        .filter(p => p.id !== playerId)
-        .map(p => {
-            const knightCount = (p.knights || []).length;
-            return {
-                id: p.id,
-                name: p.name,
-                color: p.color ? p.color : undefined,
-                knightCount,
-                hasKnights: knightCount > 0
-            };
-        });
-
-    const treasonEffectLevel = treasonEffect?.removedKnight?.level;
-    const treasonSupplyAvailable = (() => {
-        if (!treasonEffectLevel || !gameState || !isTreasonInitiator) return true;
-        const knightCount = (gameState.players.find(p => p.id === playerId)?.knights || []).filter(k => k.level === treasonEffectLevel).length;
-        return knightCount < 2;
-    })();
-    const treasonHasLegalPlacement = (() => {
-        if (!gameState || !isTreasonInitiator) return true;
-        return Object.keys(gameState.board.vertices).some(vId =>
-            isValidKnightPlacement(gameState, vId, playerId)
-        );
-    })();
-
-    const treasonStatus = (() => {
-        if (selectionManager.treasonMode === 'waiting_for_knight' && treasonTargetId) {
-            const targetName = gameState.players.find(p => p.id === treasonTargetId)?.name || 'opponent';
-            return `Waiting for ${targetName} to remove a knight.`;
-        }
-        if (selectionManager.treasonMode === 'select_knight') {
-            return selectionManager.treasonSelectedKnightId ? 'Selected knight. Click Remove to continue.' : 'Click one of your knights to remove it.';
-        }
-        if (selectionManager.treasonMode === 'place_knight') {
-            if (!treasonSupplyAvailable) {
-                return `No ${treasonEffectLevel || ''} knight pieces remain in your supply. Resolve to end Treason without placement.`;
-            }
-            if (!treasonHasLegalPlacement) {
-                return 'No legal intersections connected to your roads. Resolve to end Treason without placement.';
-            }
-            return selectionManager.treasonSelectedPlacementVertexId
-                ? 'Selected intersection. Click Place to finish.'
-                : 'Click an empty intersection connected to your roads.';
-        }
-        return undefined;
-    })();
-
-    const showTreasonPlacePrompt =
-        selectionManager.treasonMode === 'place_knight' &&
-        selectionManager.selectingVertexForCard === 'treason_place' &&
-        treasonSupplyAvailable &&
-        treasonHasLegalPlacement;
-    const showTreasonModal =
-        selectionManager.isTreasonModalOpen &&
-        selectionManager.treasonMode &&
-        (selectionManager.treasonMode !== 'place_knight' || !treasonSupplyAvailable || !treasonHasLegalPlacement);
-
-
-    const handleRollDiceClick = async () => {
-        const optimisticId = `roll-dice-${roomId}`;
-
-        // Apply optimistic update to change phase to main_phase immediately
-        applyOptimisticUpdate(optimisticId, (state) => {
-            if (state.currentTurn !== playerId || state.phase !== 'waiting_for_roll') return state;
-            return {
-                ...state,
-                phase: 'main_phase'
-            };
-        });
-
-        try {
-            await rollDice(roomId, playerId);
-            console.log('[Client] Roll Dice server action completed successfully');
-        } catch (e) {
-            console.error('Failed to roll dice', e);
-        } finally {
-            console.log('[Client] Clearing optimistic update:', optimisticId);
-            clearOptimisticUpdate(optimisticId);
-        }
-    };
-
-    const handleEndTurnClick = async () => {
-        const cardCount = currentPlayer?.progressCards?.length ?? 0;
-        if (isCitiesAndKnights && cardCount > 4) {
-            setProgressDiscardContext('own_turn');
-            setShowProgressCardDiscard(true);
-            return;
-        }
-
-        const optimisticId = `end-turn-${roomId}`;
-        const effectiveState = baseGameState ? getOptimisticState(baseGameState) : null;
-        if (effectiveState && effectiveState.currentTurn === playerId) {
-            const currentIndex = effectiveState.turnOrder.indexOf(playerId);
-            const nextPlayerId = effectiveState.turnOrder[(currentIndex + 1) % effectiveState.turnOrder.length];
-            applyOptimisticUpdate(optimisticId, (state) => {
-                if (state.currentTurn !== playerId) return state;
-                const nextId = nextPlayerId || state.currentTurn;
-                return {
-                    ...state,
-                    currentTurn: nextId,
-                    phase: 'waiting_for_roll',
-                    diceRoll: undefined,
-                    tradeOffer: null
-                };
-            });
-        }
-
-        setTurnSubmitted(true);
-        try {
-            await endTurn(roomId, playerId);
-            console.log('[Client] End Turn server action completed successfully');
-        } catch (e: any) {
-            const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
-            if (!message.includes('not your turn')) {
-                setTurnSubmitted(false);
-            }
-            console.error('Failed to end turn', e);
-        } finally {
-            console.log('[Client] Clearing optimistic update:', optimisticId);
-            clearOptimisticUpdate(optimisticId);
-        }
-    };
+    const shouldShowGameOverModal = showGameOverModal && (gameState.phase === 'game_over' || !!gameState.winner);
 
     const activeProgressCard: ProgressCardType | 'metropolis' | null = (() => {
         if (showRoadBuildingPrompt) return 'road_building_progress';
@@ -753,6 +400,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 lastError={connectionStatus.lastError}
             />
 
+            {shouldShowGameOverModal && (
+                <GameOverModal
+                    gameState={gameState}
+                    winnerId={gameState.winner}
+                    isOpen={shouldShowGameOverModal}
+                    onClose={() => setShowGameOverModal(false)}
+                />
+            )}
+
             {selectionManager.selectingKnightsForSmith && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-slate-900/90 border border-blue-500/60 rounded-lg px-4 py-3 shadow-lg pointer-events-auto">
                     <div className="text-sm text-white">
@@ -786,345 +442,77 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 </div>
             )}
 
-            <Board
+            <GameBoardSection
                 gameState={gameState}
                 playerId={playerId}
-                selectionState={{
-                    buildMode: selectionManager.buildMode,
-                    movingKnightId: selectionManager.movingKnightId,
-                    buildingMetropolisType: selectionManager.buildingMetropolisType,
-                    hexCardSelection: selectionManager.selectingHexForCard ? {
-                        type: selectionManager.selectingHexForCard,
-                        selectedHexId: selectionManager.selectingHexForCard === 'merchant' ? (selectionManager.selectedMerchantHexId ?? undefined) :
-                                      selectionManager.selectingHexForCard === 'taxation' ? (selectionManager.selectedTaxationHexId ?? undefined) :
-                                      undefined,
-                        inventorSelection: selectionManager.inventorSelection ? {
-                            firstHexId: selectionManager.inventorSelection.firstHexId,
-                            secondHexId: selectionManager.inventorSelection.secondHexId
-                        } : undefined
-                    } : undefined,
-                    vertexCardSelection: selectionManager.selectingVertexForCard ? {
-                        type: selectionManager.selectingVertexForCard,
-                        selectedKnightId: selectionManager.selectingVertexForCard === 'intrigue' ? selectionManager.intrigueTarget?.knightId ?? undefined :
-                                         selectionManager.selectingVertexForCard === 'treason_remove' ? selectionManager.treasonSelectedKnightId ?? undefined :
-                                         undefined,
-                        placementVertexId: selectionManager.selectingVertexForCard === 'treason_place' ? selectionManager.treasonSelectedPlacementVertexId ?? undefined : undefined
-                    } : undefined,
-                    edgeCardSelection: selectionManager.selectingEdgeForCard ? {
-                        type: selectionManager.selectingEdgeForCard,
-                        stage: selectionManager.diplomatStage ?? undefined,
-                        removedEdgeId: selectionManager.diplomatStage === 'rebuild' ? selectionManager.diplomatSelectedEdgeId ?? undefined : undefined,
-                        relocatedEdgeId: selectionManager.diplomatRelocateEdgeId ?? undefined
-                    } : undefined,
-                    citySelection: selectionManager.selectingCityForEngineer ? {
-                        type: 'engineer',
-                        selectedCityId: selectionManager.selectedEngineerCityId ?? undefined
-                    } : selectionManager.selectingCityForMedicine ? {
-                        type: 'medicine',
-                        selectedCityId: selectionManager.selectedMedicineCityId ?? undefined
-                    } : selectionManager.selectingCityForMetropolis ? {
-                        type: 'metropolis',
-                        cityType: selectionManager.selectingCityForMetropolis,
-                        selectedCityId: selectionManager.selectedMetropolisCityId ?? undefined
-                    } : undefined,
-                    smithSelection: selectionManager.selectingKnightsForSmith ? {
-                        selectableKnightIds: smithEligibleVertexIds,
-                        selectedKnightIds: selectionManager.selectedSmithKnightIds
-                    } : undefined,
-                    progressPrompt: showRoadBuildingPrompt ? {
-                        cardType: 'road_building_progress',
-                        visible: showRoadBuildingPrompt,
-                        ready: isRoadBuildingProgressActive
-                    } : undefined
-                }}
-                callbacks={{
-                    onCancelBuild: handleCancelSelection,
-                    onHexSelected: progressCardController.handleHexSelected,
-                    onVertexSelectedForCard: progressCardController.handleVertexSelected,
-                    onEdgeSelectedForCard: progressCardController.handleEdgeSelected,
-                    onEngineerCitySelected: progressCardController.handleEngineerCitySelected,
-                    onMedicineCitySelected: progressCardController.handleMedicineCitySelected,
-                    onMetropolisCitySelected: improvementController.handleMetropolisCitySelected,
-                    onCityClick: improvementController.handleCityClick,
-                    onSettlementClick: improvementController.handleSettlementClick,
-                    onKnightClick: knightController.handleKnightClick,
-                    onBarbarianCitySelect: handleLoseCityToBarbarians,
-                    onRobberVictimRequest: handleRobberVictimRequest
-                }}
+                selectionManager={selectionManager}
+                smithEligibleVertexIds={smithEligibleVertexIds}
+                isRoadBuildingProgressActive={isRoadBuildingProgressActive}
+                showRoadBuildingPrompt={showRoadBuildingPrompt}
+                onCancelSelection={handleCancelSelection}
+                onConfirmSmithPromotions={knightController.handleConfirmSmithPromotions}
+                onLoseCityToBarbarians={handleLoseCityToBarbarians}
+                onRobberVictimRequest={handleRobberVictimRequest}
+                progressCardController={progressCardController}
+                improvementController={improvementController}
+                knightController={knightController}
             />
 
-            {showIntriguePrompt && (
-                <BoardSelectionPrompt
-                    title="Intrigue"
-                    description="Select an opponent knight adjacent to your road network."
-                    status={intriguePromptStatus}
-                    onCancel={handleCancelSelection}
-                    onFinish={progressCardController.handleConfirmIntrigueDisplacement}
-                    finishLabel="Displace"
-                    finishDisabled={!selectionManager.intrigueTarget || selectionManager.isSubmittingIntrigue}
-                />
-            )}
-
-            {showTreasonPlacePrompt && (
-                <BoardSelectionPrompt
-                    title="Treason"
-                    description="Place the captured knight on any empty intersection connected to your roads."
-                    status={treasonStatus}
-                    onCancel={progressCardController.handleCancelTreasonPlacement}
-                    onFinish={progressCardController.handleConfirmTreasonPlacement}
-                    finishLabel="Place"
-                    finishDisabled={!selectionManager.treasonSelectedPlacementVertexId || selectionManager.isSubmittingTreason}
-                />
-            )}
-
-            {showMerchantModal && (
-                <MerchantPlacementModal
-                    isOpen={showMerchantModal}
-                    selectedResource={selectedMerchantResource}
-                    status={merchantPrompt.status}
-                    error={selectionManager.merchantError}
-                    onCancel={handleCancelSelection}
-                    onPlace={progressCardController.handleConfirmMerchantPlacement}
-                />
-            )}
-
-            {showTreasonModal && (
-                <TreasonPlacementModal
-                    isOpen={showTreasonModal}
-                    mode={selectionManager.treasonMode!}
-                    opponents={treasonOpponents}
-                    selectedOpponentId={selectionManager.treasonSelectedOpponentId}
-                    initiatorName={treasonInitiatorName ?? undefined}
-                    status={treasonStatus}
-                    error={selectionManager.treasonError}
-                    hasSelection={
-                        selectionManager.treasonMode === 'select_opponent'
-                            ? !!selectionManager.treasonSelectedOpponentId
-                            : selectionManager.treasonMode === 'select_knight'
-                                ? !!selectionManager.treasonSelectedKnightId
-                                : selectionManager.treasonMode === 'place_knight'
-                                    ? (treasonSupplyAvailable && treasonHasLegalPlacement
-                                        ? !!selectionManager.treasonSelectedPlacementVertexId
-                                        : true)
-                                    : false
-                    }
-                    onSelectOpponent={
-                        selectionManager.treasonMode === 'select_opponent'
-                            ? (id) => {
-                                selectionManager.setTreasonSelectedOpponentId(
-                                    selectionManager.treasonSelectedOpponentId === id ? null : id
-                                );
-                                selectionManager.setTreasonError(null);
-                            }
-                            : undefined
-                    }
-                    onConfirm={
-                        selectionManager.treasonMode === 'select_opponent'
-                            ? progressCardController.handleConfirmTreasonOpponent
-                            : selectionManager.treasonMode === 'select_knight'
-                                ? progressCardController.handleConfirmTreasonKnightRemoval
-                                : selectionManager.treasonMode === 'place_knight'
-                                    ? progressCardController.handleConfirmTreasonPlacement
-                                    : undefined
-                    }
-                    confirmLabel={
-                        selectionManager.treasonMode === 'select_opponent'
-                            ? 'Confirm'
-                            : selectionManager.treasonMode === 'select_knight'
-                                ? 'Remove'
-                                : selectionManager.treasonMode === 'place_knight'
-                                    ? (treasonSupplyAvailable && treasonHasLegalPlacement ? 'Place' : 'Resolve')
-                                    : undefined
-                    }
-                    disableConfirm={selectionManager.isSubmittingTreason}
-                    onCancel={
-                        selectionManager.treasonMode === 'select_opponent'
-                            ? () => resetTreasonLocalState()
-                            : selectionManager.treasonMode === 'place_knight'
-                                ? progressCardController.handleCancelTreasonPlacement
-                                : undefined
-                    }
-                />
-            )}
-
-            {showTaxationModal && (
-                <TaxationPlacementModal
-                    isOpen={showTaxationModal}
-                    status={taxationPromptStatus}
-                    error={selectionManager.taxationError}
-                    hasSelection={!!selectionManager.selectedTaxationHexId}
-                    onCancel={handleCancelSelection}
-                    onPlace={progressCardController.handleConfirmTaxationPlacement}
-                />
-            )}
-
-            {showEngineeringPrompt && (
-                <BoardSelectionPrompt
-                    title="Engineering"
-                    description="Click one of your cities without a wall to add a free city wall."
-                    status={engineeringPromptStatus}
-                    onCancel={handleCancelSelection}
-                    onFinish={progressCardController.handleConfirmEngineerBuild}
-                    finishLabel="Build"
-                    finishDisabled={!selectionManager.selectedEngineerCityId || selectionManager.isEngineerSubmitting}
-                />
-            )}
-
-            {showMedicinePrompt && (
-                <BoardSelectionPrompt
-                    title="Medicine"
-                    description="Upgrade a settlement to a city for a discounted cost (2 ore + 1 wheat)."
-                    status={medicinePromptStatus}
-                    onCancel={handleCancelSelection}
-                    onFinish={progressCardController.handleConfirmMedicineBuild}
-                    finishLabel="Upgrade"
-                    finishDisabled={!selectionManager.selectedMedicineCityId || selectionManager.isSubmittingMedicine}
-                />
-            )}
-
-            {showRoadBuildingPrompt && (
-                <BoardSelectionPrompt
-                    title="Road Building"
-                    description="Place up to 2 roads for free on your network."
-                    status={roadBuildingPromptStatus}
-                    onCancel={progressCardController.handleCancelRoadBuildingProgress}
-                    onFinish={progressCardController.handleFinalizeRoadBuildingProgress}
-                    finishLabel="Build"
-                    finishDisabled={(roadBuildingEffect?.placedEdges?.length ?? 0) < 2}
-                />
-            )}
-
-            {showInventorPrompt && !selectionManager.isInventorConfirmOpen && (
-                <BoardSelectionPrompt
-                    title="Inventor"
-                    description="Swap any two number tokens (not 2, 6, 8, or 12)."
-                    status={inventorPromptStatus}
-                    onCancel={handleCancelSelection}
-                    onFinish={undefined}
-                />
-            )}
-
-            {showDiplomatPrompt && (
-                <BoardSelectionPrompt
-                    title="Diplomat"
-                    description={selectionManager.diplomatStage === 'rebuild' ? 'Place your moved road on any legal edge.' : 'Select an open road to remove.'}
-                    status={diplomatPromptStatus}
-                    onCancel={handleCancelSelection}
-                    onFinish={selectionManager.diplomatStage === 'rebuild' ? progressCardController.handleConfirmDiplomatRebuild : progressCardController.handleConfirmDiplomatRemove}
-                    finishLabel={selectionManager.diplomatStage === 'rebuild' ? 'Rebuild' : 'Remove'}
-                    finishDisabled={
-                        selectionManager.isSubmittingDiplomat ||
-                        (selectionManager.diplomatStage === 'rebuild' ? !selectionManager.diplomatRelocateEdgeId : !selectionManager.diplomatSelectedEdgeId)
-                    }
-                />
-            )}
-
-            {selectionManager.isInventorConfirmOpen && selectionManager.inventorSelection.firstValue !== undefined && selectionManager.inventorSelection.secondValue !== undefined && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60" onClick={handleCancelSelection} />
-                    <div
-                        className="relative bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-6 w-[360px] space-y-4 pointer-events-auto"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <h3 className="text-lg font-bold">Inventor</h3>
-                        <p className="text-sm text-slate-200">
-                            Swapping <span className="font-semibold text-emerald-300">#{selectionManager.inventorSelection.firstValue}</span> with{' '}
-                            <span className="font-semibold text-cyan-300">#{selectionManager.inventorSelection.secondValue}</span>
-                        </p>
-                        {selectionManager.inventorError && (
-                            <div className="text-sm text-red-200 bg-red-900/50 border border-red-600 rounded-md px-3 py-2">
-                                {selectionManager.inventorError}
-                            </div>
-                        )}
-                        <div className="flex justify-end gap-3 pt-2">
-                            <button
-                                className="px-4 py-2 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
-                                onClick={handleCancelSelection}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow cursor-pointer"
-                                onClick={progressCardController.handleConfirmInventorSwap}
-                            >
-                                Swap
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ProgressCardPrompts
+                gameState={gameState}
+                selectionManager={selectionManager}
+                progressCardController={progressCardController}
+                onCancelSelection={handleCancelSelection}
+                showIntriguePrompt={showIntriguePrompt}
+                intriguePromptStatus={intriguePromptStatus}
+                showTreasonPlacePrompt={showTreasonPlacePrompt}
+                treasonStatus={treasonStatus}
+                treasonOpponents={treasonOpponents}
+                treasonInitiatorName={treasonInitiatorName}
+                treasonSupplyAvailable={treasonSupplyAvailable}
+                treasonHasLegalPlacement={treasonHasLegalPlacement}
+                showTreasonModal={showTreasonModal}
+                onResetTreason={() => resetTreasonLocalState()}
+                showMerchantModal={showMerchantModal}
+                merchantPromptStatus={merchantPrompt.status}
+                selectedMerchantResource={selectedMerchantResource}
+                showTaxationModal={showTaxationModal}
+                taxationPromptStatus={taxationPromptStatus}
+                showEngineeringPrompt={showEngineeringPrompt}
+                engineeringPromptStatus={engineeringPromptStatus}
+                showMedicinePrompt={showMedicinePrompt}
+                medicinePromptStatus={medicinePromptStatus}
+                showRoadBuildingPrompt={showRoadBuildingPrompt}
+                roadBuildingPromptStatus={roadBuildingPromptStatus}
+                roadBuildingEffect={roadBuildingEffect}
+                showInventorPrompt={showInventorPrompt}
+                inventorPromptStatus={inventorPromptStatus}
+                showDiplomatPrompt={showDiplomatPrompt}
+                diplomatPromptStatus={diplomatPromptStatus}
+            />
 
             {vpCardModalType && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 pointer-events-auto">
-                    <div className="bg-slate-900 border border-amber-500/60 rounded-xl shadow-2xl p-6 w-[360px] text-white">
-                        <div className="text-sm uppercase tracking-wide text-amber-300 mb-2">Victory Point Card</div>
-                        <div className="text-xl font-bold text-amber-100 mb-3">
-                            {vpCardModalType === 'printer' ? 'Printing (1 VP)' : 'Constitution (1 VP)'}
-                        </div>
-                        <p className="text-slate-200 text-sm mb-3">
-                            {vpCardModalType === 'printer'
-                                ? 'Printing is a Victory Point progress card. It plays immediately and adds +1 VP to your total.'
-                                : 'Constitution is a Victory Point progress card. It plays immediately and adds +1 VP to your total.'}
-                        </p>
-                        <p className="text-slate-300 text-xs mb-4">
-                            This card cannot be cancelled or held. Click &ldquo;Play Card&rdquo; to acknowledge and continue.
-                        </p>
-                        <button
-                            className="w-full bg-amber-400 text-slate-900 font-semibold py-2 rounded-lg hover:bg-amber-300 transition cursor-pointer"
-                            onClick={() => {
-                                setLastVPAcknowledgedAt(Date.now());
-                                setVpCardModalType(null);
-                            }}
-                        >
-                            Play Card
-                        </button>
-                    </div>
-                </div>
+                <VPCardModal
+                    type={vpCardModalType}
+                    onAcknowledge={() => {
+                        setLastVPAcknowledgedAt(Date.now());
+                        setVpCardModalType(null);
+                    }}
+                />
             )}
 
             <DiscardModal gameState={gameState} playerId={playerId} />
 
-            {/* Robber Victim Selection Modal */}
-            <RobberVictimSelectionModal
-                isOpen={robberVictimSelectionOpen}
+            <RobberModals
                 gameState={gameState}
+                playerId={playerId}
+                isOpen={robberVictimSelectionOpen}
                 potentialVictims={robberPotentialVictims}
                 onSelectVictim={handleRobberVictimSelected}
-                onCancel={handleRobberVictimCancel}
+                onCancelVictim={handleRobberVictimCancel}
+                showTheftNotification={showTheftNotification}
+                onDismissTheft={handleDismissTheftNotification}
             />
-
-            {/* Robber Theft Notification */}
-            {showTheftNotification && gameState.lastTheft && (() => {
-                const theft = gameState.lastTheft;
-                const isThief = theft.thiefId === playerId;
-
-                // Find the specific items stolen from/to this player
-                let stolenItems = null;
-                if (isThief) {
-                    // Show total stolen across all victims
-                    stolenItems = theft.items || null;
-                } else {
-                    // Show what was stolen from this specific victim
-                    const victimData = theft.victims?.find(v => v.victimId === playerId);
-                    stolenItems = victimData?.items || null;
-                }
-
-                const thief = gameState.players.find(p => p.id === theft.thiefId);
-                const victim = gameState.players.find(p => p.id === theft.victimId) ||
-                              gameState.players.find(p => theft.victims?.some(v => v.victimId === p.id));
-
-                return (
-                    <RobberTheftNotification
-                        isOpen={showTheftNotification}
-                        stolenItem={stolenItems?.[0] || null}
-                        stolenItems={stolenItems || undefined}
-                        wasVictim={!isThief}
-                        thiefName={thief?.name}
-                        victimName={victim?.name}
-                        onDismiss={handleDismissTheftNotification}
-                    />
-                );
-            })()}
 
             {/* City Management Dialog (C&K) */}
             {selectionManager.selectedCityId && (
@@ -1208,209 +596,59 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 />
             )}
 
-            {showTrade && (
-                <TradeModal
-                    gameState={gameState}
-                    playerId={playerId}
-                    onClose={() => setShowTrade(false)}
-                />
-            )}
+            <GameEventModals
+                gameState={gameState}
+                playerId={playerId}
+                roomId={roomId}
+                showTrade={showTrade}
+                onCloseTrade={() => setShowTrade(false)}
+                tradeController={tradeController}
+            />
 
-            {/* Aqueduct Modal */}
-            {gameState.phase === 'aqueduct_selection' && gameState.pendingAqueduct?.includes(playerId) && (
-                <AqueductModal gameState={gameState} playerId={playerId} />
-            )}
+            <BarbarianCityPrompt gameState={gameState} playerId={playerId} />
 
-            {/* Commercial Harbor - Initiator Dialog (rendered from ProgressCardHand) */}
+            <TradeOfferDisplay gameState={gameState} playerId={playerId} tradeController={tradeController} />
 
-            {/* Commercial Harbor - Opponent Response Modal */}
-            {gameState.pendingCommercialHarbor && (
-                <CommercialHarborModal gameState={gameState} playerId={playerId} roomId={roomId} />
-            )}
+            <KnightDisplacementOverlay
+                gameState={gameState}
+                playerId={playerId}
+                onRemoveDisplacedKnight={knightController.handleRemoveDisplacedKnight}
+            />
 
-            {gameState.pendingWedding && (
-                <WeddingGiftModal gameState={gameState} playerId={playerId} roomId={roomId} />
-            )}
-
-            {/* Barbarian City Selection UI */}
-            {gameState.phase === 'barbarian_city_selection' && gameState.pendingBarbarianVictims?.includes(playerId) && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
-                    <h3 className="text-xl font-bold">⚔️ Barbarians Attacked!</h3>
-                    <p className="text-center">
-                        The barbarians have sacked your lands!<br />
-                        <span className="font-bold text-red-300">Click on a city to destroy it.</span>
-                    </p>
-                </div>
-            )}
-
-            <TradeOfferDisplay gameState={gameState} playerId={playerId} />
-
-            {/* Knight Displacement UI */}
-            {gameState.phase === 'knight_displacement' && gameState.pendingDisplacement?.playerId === playerId && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
-                    <h3 className="text-xl font-bold">Your Knight Was Displaced!</h3>
-                    {(() => {
-                        const validTargets = getValidRelocationTargets(
-                            gameState,
-                            playerId,
-                            gameState.pendingDisplacement!.originVertexId
-                        );
-                        const hasValidTargets = validTargets.length > 0;
-
-                        return (
-                            <>
-                                <p className="text-center max-w-md">
-                                    {hasValidTargets
-                                        ? "One of your knights was displaced by a stronger opponent. Click on any empty intersection connected by your roads to relocate it."
-                                        : "No valid intersections available to relocate your knight. You must remove it from the board."
-                                    }
-                                </p>
-                                {!hasValidTargets && (
-                                    <div className="flex gap-4">
-                                        <button
-                                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors"
-                                            onClick={async () => {
-                                                try {
-                                                    const res = await fetch(`/api/game/${roomId}/knight`, {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({
-                                                            playerId,
-                                                            action: 'relocate',
-                                                            knightId: gameState.pendingDisplacement!.knightId,
-                                                            targetVertexId: null // Remove
-                                                        })
-                                                    });
-                                                    if (!res.ok) throw new Error('Failed to remove knight');
-                                                } catch (e) {
-                                                    console.error('Error removing knight:', e);
-                                                }
-                                            }}
-                                        >
-                                            Remove Knight
-                                        </button>
-                                    </div>
-                                )}
-                            </>
-                        );
-                    })()}
-                </div>
-            )}
-
-            {/* UI Overlay */}
-            <div className="absolute inset-0 pointer-events-none p-4">
-
-                {/* Top Right: CompactGameStatus (player cards only) */}
-                <div className="absolute top-4 right-4 w-80 pointer-events-auto overflow-x-visible">
-                    <CompactGameStatus
-                        gameState={gameState}
-                        currentPlayerId={playerId}
-                        onOpenCityManagement={handleOpenPlayerCityManagement}
-                    />
-                </div>
-
-                {/* Upper Left: Barbarian Track (C&K only) */}
-                {isCitiesAndKnights && (
-                    <div
-                        className="absolute left-4 pointer-events-auto z-20"
-                        style={{ top: '4.25rem' }}
-                    >
-                        <BarbarianTrack gameState={gameState} />
-                    </div>
-                )}
-
-                {/* Bottom Left: Debug + Build + Resources | Progress Cards */}
-                <div className="absolute bottom-4 left-4 flex items-end gap-4 pointer-events-auto">
-                    {/* Left Column: Debug (left-aligned) + Build/Resources (right-aligned) */}
-                    <div className="flex flex-col items-end gap-2">
-                        {/* Debug Panel (left-aligned, above Build) */}
-                        {isDebugMode && currentPlayer && (
-                            <div className="self-start pointer-events-auto">
-                                <DebugPanel player={currentPlayer} roomId={roomId} />
-                            </div>
-                        )}
-
-                        {/* Build Controls (right-aligned) */}
-                        <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}>
-                            <BuildControls
-                                gameState={gameState}
-                                playerId={playerId}
-                                buildMode={selectionManager.buildMode}
-                                onSetBuildMode={selectionManager.setBuildMode}
-                            />
-                        </div>
-                        <div className="flex items-center gap-4 max-w-full overflow-x-auto">
-                            {currentPlayer && (
-                                <PlayerHand
-                                    player={currentPlayer}
-                                    roomId={roomId}
-                                    lastTheft={gameState.lastTheft}
-                                />
-                            )}
-                            {!isCitiesAndKnights && (
-                                <PlayerDevCards gameState={gameState} playerId={playerId} />
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Progress Cards spanning full height (C&K only) */}
-                    {isCitiesAndKnights && currentPlayer && (
-                        <div className="flex-shrink-0">
-                            <ProgressCardHand
-                                player={currentPlayer}
-                                roomId={roomId}
-                                gameState={gameState}
-                                onPlayCard={progressCardController.handlePlayProgressCard}
-                                onStartHexSelection={progressCardController.handleStartHexSelection}
-                                onStartVertexSelection={progressCardController.handleStartVertexSelection}
-                                onStartEdgeSelection={progressCardController.handleStartEdgeSelection}
-                                onStartCrane={improvementController.handleStartCraneDialog}
-                                onStartEngineerSelection={progressCardController.handleStartEngineerSelection}
-                                onStartSmithSelection={knightController.handleStartSmithSelection}
-                                onStartMedicineSelection={progressCardController.handleStartMedicineSelection}
-                                onStartTreasonSelection={progressCardController.handleStartTreasonSelection}
-                                isActiveTurn={isActiveTurn}
-                                isEngineerSelecting={engineerSelectionActive}
-                                isSmithSelecting={selectionManager.selectingKnightsForSmith}
-                                isMedicineSelecting={selectionManager.selectingCityForMedicine}
-                                activeFollowupCard={activeProgressCard === 'metropolis' ? null : activeProgressCard}
-                                onCancelFollowupCard={handleCancelFollowupCard}
-                                decorateCardHandler={decorateCardHandler}
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* Bottom Right: Actions + Log/Chat/Stats side by side */}
-                <div className="absolute bottom-4 right-4 flex items-end gap-4 pointer-events-auto">
-                    {/* Left: Dice + Trade/End controls */}
-                    <div className={`flex flex-col items-center gap-2 ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}`}>
-                        {/* Dice Display */}
-                        <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
-
-                        {/* Action Controls (Roll/Trade/End) */}
-                        <ActionControls
-                            gameState={gameState}
-                            playerId={playerId}
-                            onOpenTrade={() => setShowTrade(true)}
-                            onRollDice={handleRollDiceClick}
-                            onEndTurn={handleEndTurnClick}
-                            turnSubmitted={turnSubmitted}
-                            hasOptimisticUpdates={hasOptimisticUpdates()}
-                        />
-                    </div>
-
-                    {/* Right: Log/Chat/Stats Tabs */}
-                    <div className="w-80">
-                        <SidebarTabs
-                            logs={gameState.logs || []}
-                            diceStats={gameState.diceStats}
-                            eventDieStats={gameState.eventDieStats}
-                            players={gameState.players}
-                        />
-                    </div>
-                </div>
-            </div>
+            <GameLayoutPanels
+                gameState={gameState}
+                playerId={playerId}
+                isCitiesAndKnights={!!isCitiesAndKnights}
+                isDebugMode={isDebugMode}
+                currentPlayer={currentPlayer}
+                selectionManager={selectionManager}
+                promptBlocksUI={promptBlocksUI}
+                engineerSelectionActive={engineerSelectionActive}
+                isActiveTurn={!!isActiveTurn}
+                handleOpenPlayerCityManagement={handleOpenPlayerCityManagement}
+                handleCancelFollowupCard={handleCancelFollowupCard}
+                decorateCardHandler={decorateCardHandler}
+                progressCardControllerHandlers={{
+                    handlePlayProgressCard: progressCardController.handlePlayProgressCard,
+                    handleStartHexSelection: progressCardController.handleStartHexSelection,
+                    handleStartVertexSelection: progressCardController.handleStartVertexSelection,
+                    handleStartEdgeSelection: progressCardController.handleStartEdgeSelection,
+                    handleStartEngineerSelection: progressCardController.handleStartEngineerSelection,
+                    handleStartMedicineSelection: progressCardController.handleStartMedicineSelection,
+                    handleStartTreasonSelection: progressCardController.handleStartTreasonSelection,
+                }}
+                improvementControllerHandlers={{
+                    handleStartCraneDialog: improvementController.handleStartCraneDialog,
+                }}
+                knightControllerHandlers={{
+                    handleStartSmithSelection: knightController.handleStartSmithSelection,
+                }}
+                onRollDice={handleRollDiceClick}
+                onEndTurn={handleEndTurnClick}
+                onOpenTrade={() => setShowTrade(true)}
+                turnSubmitted={turnSubmitted}
+                hasOptimisticUpdates={hasOptimisticUpdates()}
+            />
         </div>
     );
 };

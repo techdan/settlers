@@ -1,11 +1,12 @@
 import React, { useState, useTransition } from 'react';
 import { GameState, TradeOffer } from '@/lib/types';
 import { ResourceType } from '@/lib/board-data';
-import { acceptTrade, cancelTrade, rejectTrade } from '@/app/actions';
+import { TradeController } from '@/lib/controllers/trade-controller';
 
 interface TradeOfferDisplayProps {
     gameState: GameState;
     playerId: string;
+    tradeController: TradeController;
 }
 
 const RESOURCE_ICONS: Record<ResourceType, string> = {
@@ -16,7 +17,7 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
     ore: '🪨'
 };
 
-export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId }) => {
+export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId, tradeController }) => {
     const [isPending, startTransition] = useTransition();
     const [pendingAction, setPendingAction] = useState<'accept' | 'reject' | null>(null);
     const offer = gameState.tradeOffer;
@@ -44,7 +45,7 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
         setPendingAction('accept');
         startTransition(async () => {
             try {
-                await acceptTrade(gameState.roomId, playerId);
+                await tradeController.handleAcceptTrade();
             } catch (e) {
                 console.error("Failed to accept trade", e);
             } finally {
@@ -57,7 +58,7 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
         setPendingAction('reject');
         startTransition(async () => {
             try {
-                await rejectTrade(gameState.roomId, playerId);
+                await tradeController.handleRejectTrade();
             } catch (e) {
                 console.error("Failed to reject trade", e);
             } finally {
@@ -69,7 +70,7 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
     const handleCancel = () => {
         startTransition(async () => {
             try {
-                await cancelTrade(gameState.roomId, playerId);
+                await tradeController.handleCancelTrade();
             } catch (e) {
                 console.error("Failed to cancel trade", e);
             }

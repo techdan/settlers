@@ -29,7 +29,10 @@
       "Bash(npm run dev:*)",
       "Bash(npx tsc:*)",
       "Bash(grep:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
