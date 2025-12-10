@@ -83,6 +83,7 @@ export interface BoardCallbacks {
   onKnightClick?: (knightId: string) => void;
   onBarbarianCitySelect?: (vertexId: string) => void;
   onRobberVictimRequest?: (hexId: string, potentialVictims: string[]) => void;
+  onRobberMoveStarted?: () => void;
   onCancelBuild: () => void;
 }
 

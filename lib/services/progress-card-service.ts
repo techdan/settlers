@@ -6,7 +6,12 @@ import { TreasonEffect, WeddingSelection } from '@/lib/types/game';
 import { updateActiveKnightCount } from '@/core/engine/knights/knight-manager';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { respondToWedding } from '@/core/engine/progress/utilities/WeddingHelpers';
-import { Knight } from '@/lib/types/player';
+import { Knight, ProgressCardType } from '@/lib/types/player';
+import { playProgressCard } from '@/core/engine/progress/progress-card-manager';
+import { makeCommercialHarborOffers, respondToCommercialHarbor } from '@/core/engine/progress/utilities/CommercialHarborHelpers';
+import { CommodityType } from '@/core/rules/commodity-constants';
+import { ResourceType } from '@/core/rules/board-constants';
+import { randomUUID } from 'crypto';
 
 type RoadBuildingEffect = {
     type: 'road_building_progress';
@@ -345,6 +350,168 @@ export async function submitWeddingGifts(
     }
 
     respondToWedding(gameState, playerId, selections);
+
+    await updateGameState(gameState);
+    return gameState;
+}
+
+export async function playProgressCardAction(
+    roomId: string,
+    playerId: string,
+    cardType: ProgressCardType,
+    options?: any
+): Promise<GameState> {
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) {
+        throw new Error('Game not found');
+    }
+
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Progress cards are only available in Cities & Knights mode');
+    }
+
+    if (gameState.currentTurn !== playerId) {
+        throw new Error('Not your turn');
+    }
+
+    const isAlchemy = cardType === 'alchemist';
+    if (isAlchemy) {
+        if (gameState.phase !== 'waiting_for_roll') {
+            throw new Error('Alchemy can only be played before rolling dice');
+        }
+    } else if (gameState.phase !== 'main_phase') {
+        throw new Error('Progress cards can only be played after rolling dice (except Alchemy)');
+    }
+
+    playProgressCard(gameState, playerId, cardType, options);
+
+    await updateGameState(gameState);
+    return gameState;
+}
+
+export async function discardProgressCardsAction(
+    roomId: string,
+    playerId: string,
+    cardsToDiscard: ProgressCardType[]
+): Promise<GameState> {
+    if (!Array.isArray(cardsToDiscard)) {
+        throw new Error('Invalid request body');
+    }
+
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) {
+        throw new Error('Game not found');
+    }
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) {
+        throw new Error('Player not found');
+    }
+
+    if (!player.progressCards) {
+        throw new Error('Player has no progress cards');
+    }
+
+    for (const card of cardsToDiscard) {
+        if (!player.progressCards.includes(card)) {
+            throw new Error(`Player does not have card: ${card}`);
+        }
+    }
+
+    for (const card of cardsToDiscard) {
+        const index = player.progressCards.indexOf(card);
+        if (index > -1) {
+            player.progressCards.splice(index, 1);
+        }
+    }
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `${player.name} discarded ${cardsToDiscard.length} progress card${cardsToDiscard.length !== 1 ? 's' : ''}`,
+        playerId
+    });
+
+    await updateGameState(gameState);
+
+    return gameState;
+}
+
+export async function makeCommercialHarborOffersAction(
+    roomId: string,
+    playerId: string,
+    offers: Array<{ targetPlayerId: string; offeredResource: ResourceType | null }>
+): Promise<GameState> {
+    if (!Array.isArray(offers)) {
+        throw new Error('offers array is required');
+    }
+
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) {
+        throw new Error('Game not found');
+    }
+
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Commercial Harbor is only available in Cities & Knights mode');
+    }
+
+    makeCommercialHarborOffers(gameState, playerId, offers);
+
+    await updateGameState(gameState);
+    return gameState;
+}
+
+export async function respondToCommercialHarborAction(
+    roomId: string,
+    playerId: string,
+    commodity: CommodityType | null
+): Promise<GameState> {
+    const validCommodities: (CommodityType | null)[] = ['paper', 'cloth', 'coin', null];
+    if (!validCommodities.includes(commodity)) {
+        throw new Error('Invalid commodity type');
+    }
+
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) {
+        throw new Error('Game not found');
+    }
+
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Commercial Harbor is only available in Cities & Knights mode');
+    }
+
+    respondToCommercialHarbor(gameState, playerId, commodity);
+
+    await updateGameState(gameState);
+    return gameState;
+}
+
+export async function cancelCommercialHarborAction(roomId: string, playerId: string): Promise<GameState> {
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) {
+        throw new Error('Game not found');
+    }
+
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Commercial Harbor is only available in Cities & Knights mode');
+    }
+
+    if (!gameState.pendingCommercialHarbor) {
+        throw new Error('No active Commercial Harbor session');
+    }
+
+    if (gameState.pendingCommercialHarbor.initiatorId !== playerId) {
+        throw new Error('Only the initiator can cancel');
+    }
+
+    const initiatorName = gameState.players.find(p => p.id === playerId)?.name;
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${initiatorName ?? 'Player'} cancelled Commercial Harbor`,
+        playerId
+    });
+    gameState.pendingCommercialHarbor = undefined;
 
     await updateGameState(gameState);
     return gameState;

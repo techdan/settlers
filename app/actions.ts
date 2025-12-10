@@ -105,6 +105,8 @@ import * as buildingService from '@/lib/services/building-service';
 import * as tradingService from '@/lib/services/trading-service';
 import * as robberService from '@/lib/services/robber-service';
 import * as devCardService from '@/lib/services/devcard-service';
+import * as progressCardService from '@/lib/services/progress-card-service';
+import * as ckGameService from '@/lib/services/ck-game-service';
 import { games } from '@/lib/db/schema';
 import { db } from '@/lib/db';
 import { eq } from 'drizzle-orm';
@@ -215,13 +217,37 @@ export async function buildCityWall(roomId: string, playerId: string, vertexId: 
     return cityWallsService.buildCityWall(roomId, playerId, vertexId);
 }
 
+export async function upgradeImprovement(
+    roomId: string,
+    playerId: string,
+    improvement: ImprovementType
+) {
+    const result = await improvementService.upgradePlayerImprovement(roomId, playerId, improvement);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
 export async function placeMetropolis(
     roomId: string,
     playerId: string,
     vertexId: string,
     metropolisType: 'science' | 'trade' | 'politics'
 ) {
-    return improvementService.selectMetropolisCity(roomId, playerId, vertexId, metropolisType);
+    const result = await improvementService.selectMetropolisCity(roomId, playerId, vertexId, metropolisType);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function resolveBarbarianAttack(roomId: string) {
+    const result = await ckGameService.resolveBarbarianAttackAction(roomId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function loseCityToBarbarian(roomId: string, playerId: string, vertexId: string) {
+    const result = await ckGameService.loseCityToBarbarianAction(roomId, playerId, vertexId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
 }
 
 export async function debugGiveResource(roomId: string, playerId: string, resource: ResourceType) {
@@ -246,8 +272,9 @@ export async function debugGiveResource(roomId: string, playerId: string, resour
         .where(eq(games.id, gameState.id));
 }
 
-import { CommodityType } from '@/core/rules/commodity-constants';
+import { CommodityType, ImprovementType } from '@/core/rules/commodity-constants';
 import { ProgressCardType } from '@/lib/types/player';
+import { WeddingSelection } from '@/lib/types/game';
 import { updateAllVictoryPoints, checkVictoryCondition } from '@/core/rules/victory-conditions';
 
 export async function debugGiveCommodity(roomId: string, playerId: string, commodity: CommodityType) {
@@ -339,6 +366,93 @@ export async function debugGiveProgressCard(roomId: string, playerId: string, ca
     await db.update(games)
         .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
         .where(eq(games.id, gameState.id));
+}
+
+export async function playProgressCard(
+    roomId: string,
+    playerId: string,
+    cardType: ProgressCardType,
+    options?: any
+) {
+    const result = await progressCardService.playProgressCardAction(roomId, playerId, cardType, options);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function discardProgressCards(
+    roomId: string,
+    playerId: string,
+    cardsToDiscard: ProgressCardType[]
+) {
+    const result = await progressCardService.discardProgressCardsAction(roomId, playerId, cardsToDiscard);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function cancelRoadBuildingProgress(roomId: string, playerId: string) {
+    const result = await progressCardService.cancelRoadBuildingProgress(roomId, playerId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function finalizeRoadBuildingProgress(roomId: string, playerId: string) {
+    const result = await progressCardService.finalizeRoadBuildingProgress(roomId, playerId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function selectTreasonKnight(roomId: string, playerId: string, knightId: string) {
+    const result = await progressCardService.selectTreasonKnight(roomId, playerId, knightId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function placeTreasonKnight(roomId: string, playerId: string, vertexId: string | null) {
+    const result = await progressCardService.placeTreasonKnight(roomId, playerId, vertexId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function cancelTreason(roomId: string, playerId: string) {
+    const result = await progressCardService.cancelTreason(roomId, playerId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function submitWeddingGiftsAction(
+    roomId: string,
+    playerId: string,
+    selections: WeddingSelection[]
+) {
+    const result = await progressCardService.submitWeddingGifts(roomId, playerId, selections);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function makeCommercialHarborOffers(
+    roomId: string,
+    playerId: string,
+    offers: Array<{ targetPlayerId: string; offeredResource: ResourceType | null }>
+) {
+    const result = await progressCardService.makeCommercialHarborOffersAction(roomId, playerId, offers);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function respondToCommercialHarbor(
+    roomId: string,
+    playerId: string,
+    commodity: CommodityType | null
+) {
+    const result = await progressCardService.respondToCommercialHarborAction(roomId, playerId, commodity);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function cancelCommercialHarbor(roomId: string, playerId: string) {
+    const result = await progressCardService.cancelCommercialHarborAction(roomId, playerId);
+    revalidatePath(`/room/${roomId}`);
+    return result;
 }
 
 export async function placeBonusRoad(roomId: string, playerId: string, edgeId: string) {

@@ -80,7 +80,8 @@ export function useBoardActions(
     onSettlementClick,
     onKnightClick,
     onBarbarianCitySelect,
-    onRobberVictimRequest
+    onRobberVictimRequest,
+    onRobberMoveStarted
   } = callbacks;
 
   // Handle vertex clicks (settlements, cities, knights, special cards)
@@ -362,6 +363,8 @@ export function useBoardActions(
 
     // Robber placement
     if (gameState.phase === 'robber_placement') {
+      onRobberMoveStarted?.();
+
       // Find potential victims on this hex
       const [q, r] = hexId.split(',').map(Number);
       const potentialVictims = new Set<string>();

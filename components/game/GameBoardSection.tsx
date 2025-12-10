@@ -17,6 +17,7 @@ interface GameBoardSectionProps {
   onConfirmSmithPromotions: () => void;
   onLoseCityToBarbarians: (vertexId: string) => Promise<void>;
   onRobberVictimRequest: (hexId: string, victims: string[]) => void;
+  onRobberMoveStarted: () => void;
   progressCardController: ProgressCardController;
   improvementController: ImprovementController;
   knightController: KnightController;
@@ -33,6 +34,7 @@ export const GameBoardSection: React.FC<GameBoardSectionProps> = ({
   onConfirmSmithPromotions,
   onLoseCityToBarbarians,
   onRobberVictimRequest,
+  onRobberMoveStarted,
   progressCardController,
   improvementController,
   knightController,
@@ -163,6 +165,7 @@ export const GameBoardSection: React.FC<GameBoardSectionProps> = ({
           onKnightClick: knightController.handleKnightClick,
           onBarbarianCitySelect: onLoseCityToBarbarians,
           onRobberVictimRequest: onRobberVictimRequest,
+          onRobberMoveStarted,
         }}
       />
     </>

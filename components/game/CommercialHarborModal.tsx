@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { CommodityType } from '@/core/rules/commodity-constants';
+import { respondToCommercialHarbor } from '@/app/actions';
 
 interface CommercialHarborModalProps {
     gameState: GameState;
@@ -70,20 +71,7 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
         setError('');
 
         try {
-            const res = await fetch(`/api/game/${roomId}/commercial-harbor`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerId,
-                    action: 'respond',
-                    commodity: hasNoCommodities ? null : selectedCommodity
-                })
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to respond to Commercial Harbor');
-            }
+            await respondToCommercialHarbor(roomId, playerId, hasNoCommodities ? null : selectedCommodity);
 
             // Success - modal will close automatically when gameState updates
         } catch (e: any) {

@@ -1,6 +1,6 @@
 import { GameState } from '@/lib/types';
 import { SelectionState, ImprovementType } from '@/lib/hooks/useSelectionManager';
-import { buildCityWall, buildCity } from '@/app/actions';
+import { buildCityWall, buildCity, placeMetropolis, upgradeImprovement } from '@/app/actions';
 
 /**
  * Improvement Controller
@@ -64,15 +64,7 @@ export function createImprovementController(deps: ImprovementControllerDeps): Im
    * Triggers metropolis selection if level 4/5 is reached
    */
   const handleUpgradeImprovement = async (improvement: ImprovementType) => {
-    const res = await fetch(`/api/game/${roomId}/improvement`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerId, action: 'upgrade', improvement })
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to upgrade improvement');
-    }
+    await upgradeImprovement(roomId, playerId, improvement);
 
     // Check if player reached level 4 or 5 and is eligible for metropolis
     if (gameState) {
@@ -145,22 +137,7 @@ export function createImprovementController(deps: ImprovementControllerDeps): Im
     selectionManager.setIsMetropolisSubmitting(true);
     metropolisPrompt.setStatus('Upgrading to metropolis...');
     try {
-      const res = await fetch(`/api/game/${roomId}/metropolis`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          action: 'select_city',
-          vertexId: selectedMetropolisCityId,
-          improvementType: selectingCityForMetropolis
-        })
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to select metropolis city');
-      }
-
+      await placeMetropolis(roomId, playerId, selectedMetropolisCityId, selectingCityForMetropolis);
       selectionManager.setSelectingCityForMetropolis(null);
       selectionManager.setSelectedMetropolisCityId(null);
       metropolisPrompt.clear();

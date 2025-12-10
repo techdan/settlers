@@ -4,7 +4,16 @@ import { ProgressPrompt } from './improvement-controller';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 import { getCanonicalVertexId } from '@/lib/hex';
 import { ResourceType, TerrainType } from '@/core/rules/board-constants';
-import { endTurn } from '@/app/actions';
+import {
+  endTurn,
+  playProgressCard,
+  cancelRoadBuildingProgress,
+  finalizeRoadBuildingProgress,
+  selectTreasonKnight,
+  placeTreasonKnight,
+  cancelTreason,
+  discardProgressCards,
+} from '@/app/actions';
 
 /**
  * Progress Card Controller
@@ -127,18 +136,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
       if (cardType === 'road_building_progress') {
         roadBuildingPrompt.begin();
       }
-      const res = await fetch(`/api/game/${roomId}/progress-card`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, cardType, options: options || {} })
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        if (cardType === 'road_building_progress') {
-          roadBuildingPrompt.clear();
-        }
-        throw new Error(errorData.error || 'Failed to play progress card');
-      }
+      await playProgressCard(roomId, playerId, cardType, options || {});
     } catch (e: any) {
       if (cardType === 'road_building_progress') {
         roadBuildingPrompt.clear();
@@ -617,19 +615,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     selectionManager.setIsSubmittingTreason(true);
     selectionManager.setTreasonError(null);
     try {
-      const res = await fetch(`/api/game/${roomId}/progress-card/treason`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          action: 'remove_knight',
-          knightId: selectionManager.treasonSelectedKnightId
-        })
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to remove knight');
-      }
+      await selectTreasonKnight(roomId, playerId, selectionManager.treasonSelectedKnightId);
       // Target is done after removing their knight
       if (isTreasonTarget) {
         resetTreasonLocalState();
@@ -652,19 +638,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     selectionManager.setIsSubmittingTreason(true);
     selectionManager.setTreasonError(null);
     try {
-      const res = await fetch(`/api/game/${roomId}/progress-card/treason`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          action: 'place_knight',
-          vertexId: chosenVertex
-        })
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to place knight');
-      }
+      await placeTreasonKnight(roomId, playerId, chosenVertex ?? null);
       resetTreasonLocalState();
       selectionManager.setSelectingVertexForCard(
         selectionManager.selectingVertexForCard === 'treason_place' ? null : selectionManager.selectingVertexForCard
@@ -684,18 +658,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     selectionManager.setIsSubmittingTreason(true);
     selectionManager.setTreasonError(null);
     try {
-      const res = await fetch(`/api/game/${roomId}/progress-card/treason`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          action: 'cancel'
-        })
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to cancel Treason');
-      }
+      await cancelTreason(roomId, playerId);
       selectionManager.clearAllSelections();
     } catch (e: any) {
       selectionManager.setTreasonError(e?.message || 'Failed to cancel Treason');
@@ -709,21 +672,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
   const handleCancelRoadBuildingProgress = async () => {
     roadBuildingPrompt.hide();
     try {
-      const res = await fetch(`/api/game/${roomId}/progress-card/road-building`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, action: 'cancel' })
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        const message = error.error || 'Failed to cancel Road Building';
-        if (message.toLowerCase().includes('no active road building')) {
-          roadBuildingPrompt.clear();
-          clearSelectedCard();
-          return;
-        }
-        throw new Error(message);
-      }
+      await cancelRoadBuildingProgress(roomId, playerId);
       clearSelectedCard();
       roadBuildingPrompt.clear();
     } catch (e) {
@@ -735,21 +684,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
   const handleFinalizeRoadBuildingProgress = async () => {
     roadBuildingPrompt.hide();
     try {
-      const res = await fetch(`/api/game/${roomId}/progress-card/road-building`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, action: 'complete' })
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        const message = error.error || 'Failed to finish Road Building';
-        if (message.toLowerCase().includes('no active road building')) {
-          roadBuildingPrompt.clear();
-          clearSelectedCard();
-          return;
-        }
-        throw new Error(message);
-      }
+      await finalizeRoadBuildingProgress(roomId, playerId);
       clearSelectedCard();
       roadBuildingPrompt.clear();
     } catch (e) {
@@ -772,15 +707,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     const shouldAutoEndTurn = progressDiscardContext === 'own_turn';
 
     try {
-      const res = await fetch(`/api/game/${roomId}/progress-card/discard`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, cardsToDiscard })
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to discard cards');
-      }
+      await discardProgressCards(roomId, playerId, cardsToDiscard);
 
       if (shouldAutoEndTurn) {
         await endTurn(roomId, playerId);

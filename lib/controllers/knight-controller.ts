@@ -1,6 +1,7 @@
 import { GameState } from '@/lib/types';
 import { SelectionState } from '@/lib/hooks/useSelectionManager';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
+import { activateKnight, upgradeKnight, relocateKnight } from '@/app/actions';
 
 /**
  * Knight Controller
@@ -53,12 +54,7 @@ export function createKnightController(deps: KnightControllerDeps): KnightContro
    */
   const handleActivateKnight = async (knightId: string) => {
     try {
-      const res = await fetch(`/api/game/${roomId}/knight`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, action: 'activate', knightId })
-      });
-      if (!res.ok) throw new Error('Failed to activate knight');
+      await activateKnight(roomId, playerId, knightId);
     } catch (e) {
       console.error('Error activating knight:', e);
     }
@@ -77,12 +73,7 @@ export function createKnightController(deps: KnightControllerDeps): KnightContro
    */
   const handleUpgradeKnight = async (knightId: string) => {
     try {
-      const res = await fetch(`/api/game/${roomId}/knight`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId, action: 'upgrade', knightId })
-      });
-      if (!res.ok) throw new Error('Failed to upgrade knight');
+      await upgradeKnight(roomId, playerId, knightId);
     } catch (e) {
       console.error('Error upgrading knight:', e);
     }
@@ -155,17 +146,7 @@ export function createKnightController(deps: KnightControllerDeps): KnightContro
    */
   const handleRemoveDisplacedKnight = async (knightId: string) => {
     try {
-      const res = await fetch(`/api/game/${roomId}/knight`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId,
-          action: 'relocate',
-          knightId,
-          targetVertexId: null // Remove
-        })
-      });
-      if (!res.ok) throw new Error('Failed to remove knight');
+      await relocateKnight(roomId, playerId, knightId, null);
     } catch (e) {
       console.error('Error removing knight:', e);
     }

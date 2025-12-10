@@ -6,3 +6,4 @@
 export * from './game-repository';
 export * from './room-repository';
 export * from './player-repository';
+export * from './lobby-repository';

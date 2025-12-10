@@ -1,6 +1,9 @@
 import { Port, PortType } from '@/types/board';
 import { hexToPixel, createHex } from '@/lib/hex';
 
+// Re-export PortType for backward compatibility with legacy imports
+export type { PortType };
+
 interface EdgeDef {
     q: number;
     r: number;
@@ -105,3 +108,21 @@ export const generatePorts = (hexSize: number): Port[] => {
         };
     });
 };
+
+// Trading helper functions (stubs - TODO: implement properly)
+export function getPortForVertex(vertexId: string): PortType | null {
+    // TODO: Implement - should return the port type for a given vertex
+    return null;
+}
+
+export function getTradeRatio(portType: PortType | null, resourceType: any): number {
+    // Default 4:1 trade ratio, 3:1 for generic ports, 2:1 for specific ports
+    if (!portType) return 4;
+    if (portType === 'generic') return 3;
+    return 2;
+}
+
+export function getBestTradeRatio(vertexIds: string[], resourceType: any): number {
+    // TODO: Implement - should find the best port among player's vertices
+    return 4; // Default 4:1 ratio
+}

@@ -21,7 +21,7 @@ import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { BoardSelectionPrompt } from './BoardSelectionPrompt';
-import { buildCity, buildCityWall, endTurn, moveRobber, rollDice } from '@/app/actions';
+import { buildCity, buildCityWall, endTurn, loseCityToBarbarian, moveRobber, rollDice } from '@/app/actions';
 import { AqueductModal } from './AqueductModal';
 import { CommercialHarborModal } from './CommercialHarborModal';
 import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDialog';
@@ -92,6 +92,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const [vpCardModalType, setVpCardModalType] = useState<'printer' | 'constitution' | null>(null);
     const [lastVPAcknowledgedAt, setLastVPAcknowledgedAt] = useState<number | null>(null);
     const lastVPCardSeenRef = useRef<number>(0);
+    const [showRobberMovePrompt, setShowRobberMovePrompt] = useState(false);
 
     // Robber victim selection (not in selectionManager)
     const {
@@ -134,6 +135,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const currentPlayer = gameState?.players.find(p => p.id === playerId);
     const isCitiesAndKnights = gameState?.gameMode === 'cities_and_knights';
     const isActiveTurn = gameState?.currentTurn === playerId;
+
+    useEffect(() => {
+        if (gameState?.phase === 'robber_placement' && isActiveTurn) {
+            setShowRobberMovePrompt(true);
+        } else {
+            setShowRobberMovePrompt(false);
+        }
+    }, [gameState?.phase, isActiveTurn]);
 
     useGameOverModalEffect(gameState, setShowGameOverModal);
 
@@ -241,6 +250,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setShowTheftNotification(false);
     };
 
+    const handleRobberMoveStarted = () => {
+        setShowRobberMovePrompt(false);
+    };
+
     const handleCancelSelection = () => {
         // Clear all selection state managed by selectionManager
         selectionManager.clearAllSelections();
@@ -272,15 +285,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     const handleLoseCityToBarbarians = async (vertexId: string) => {
         try {
-            const res = await fetch(`/api/game/${roomId}/barbarian`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'lose_city', playerId, vertexId })
-            });
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.error || 'Failed to lose city');
-            }
+            await loseCityToBarbarian(roomId, playerId, vertexId);
         } catch (e) {
             console.error('Error losing city to barbarians:', e);
             throw e;
@@ -409,6 +414,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 />
             )}
 
+            {showRobberMovePrompt && (
+                <BoardSelectionPrompt
+                    title="Move the robber"
+                    description="Select any land hex to place the robber so the game can continue."
+                    status="Everyone is waiting for your move."
+                />
+            )}
+
             {selectionManager.selectingKnightsForSmith && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-slate-900/90 border border-blue-500/60 rounded-lg px-4 py-3 shadow-lg pointer-events-auto">
                     <div className="text-sm text-white">
@@ -453,6 +466,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onConfirmSmithPromotions={knightController.handleConfirmSmithPromotions}
                 onLoseCityToBarbarians={handleLoseCityToBarbarians}
                 onRobberVictimRequest={handleRobberVictimRequest}
+                onRobberMoveStarted={handleRobberMoveStarted}
                 progressCardController={progressCardController}
                 improvementController={improvementController}
                 knightController={knightController}

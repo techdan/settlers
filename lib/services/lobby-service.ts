@@ -1,9 +1,7 @@
-import { db } from '@/lib/db';
-import { rooms, players } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { generateBoard } from '@/core/engine/board/board-generator';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
+import * as lobbyRepository from '@/lib/repositories/lobby-repository';
 
 const PLAYER_COLORS: PlayerColor[] = ['#ff0000', '#0000ff', '#d4b483', '#ff7a00'];
 const LEGACY_COLOR_MAP: Record<string, PlayerColor> = {
@@ -38,10 +36,7 @@ export class LobbyService {
      * Assigns defaults when missing or duplicated and persists updates.
      */
     private static async ensurePlayerColors(roomId: string) {
-        const roomPlayers = await db.query.players.findMany({
-            where: eq(players.roomId, roomId),
-            orderBy: (playersTable, { asc }) => asc(playersTable.joinedAt)
-        });
+        const roomPlayers = await lobbyRepository.getPlayersByRoomIdOrdered(roomId);
 
         const availableColors = [...PLAYER_COLORS];
         const updates: Array<{ id: string; color: PlayerColor }> = [];
@@ -67,13 +62,7 @@ export class LobbyService {
         });
 
         if (updates.length > 0) {
-            await Promise.all(
-                updates.map(update =>
-                    db.update(players)
-                        .set({ color: update.color })
-                        .where(eq(players.id, update.id))
-                )
-            );
+            await lobbyRepository.updatePlayerColors(updates);
         }
 
         return normalizedPlayers;
@@ -103,13 +92,7 @@ export class LobbyService {
             .map(p => ({ id: p.id, isHost: p.id === hostId }));
 
         if (hostUpdates.length > 0) {
-            await Promise.all(
-                hostUpdates.map(update =>
-                    db.update(players)
-                        .set({ isHost: update.isHost })
-                        .where(eq(players.id, update.id))
-                )
-            );
+            await lobbyRepository.updatePlayerHostFlags(hostUpdates);
         }
 
         const normalizedPlayers = colorNormalized.map(p => ({
@@ -132,9 +115,7 @@ export class LobbyService {
      * Get the current lobby state for a room
      */
     static async getLobbyState(roomId: string): Promise<LobbyState | null> {
-        const room = await db.query.rooms.findFirst({
-            where: eq(rooms.id, roomId)
-        });
+        const room = await lobbyRepository.getRoomById(roomId);
 
         if (!room || !room.metadata) return null;
 
@@ -145,9 +126,7 @@ export class LobbyService {
      * Update the lobby state in the database
      */
     static async updateLobbyState(roomId: string, state: LobbyState): Promise<void> {
-        await db.update(rooms)
-            .set({ metadata: JSON.stringify(state) })
-            .where(eq(rooms.id, roomId));
+        await lobbyRepository.updateRoomMetadata(roomId, JSON.stringify(state));
     }
 
     /**
@@ -276,9 +255,7 @@ export class LobbyService {
             throw new Error('Color already taken');
         }
 
-        await db.update(players)
-            .set({ color: normalizedColor })
-            .where(eq(players.id, playerId));
+        await lobbyRepository.setPlayerColor(playerId, normalizedColor);
 
         const state = await this.getOrInitLobbyState(roomId);
         const updatedPlayers = state.players.map(p => {

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { GameState } from '@/lib/types';
+import { resolveBarbarianAttack } from '@/app/actions';
 
 export function useInitialGameState(roomId: string, setBaseGameState: (state: GameState) => void) {
   useEffect(() => {
@@ -24,14 +25,7 @@ export function useResolveStuckBarbarian(baseGameState: GameState | null, roomId
       const resolveStuckAttack = async () => {
         try {
           console.log('Auto-resolving stuck barbarian attack...');
-          const res = await fetch(`/api/game/${roomId}/barbarian`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'resolve' }),
-          });
-          if (!res.ok) {
-            console.error('Failed to auto-resolve barbarian attack');
-          }
+          await resolveBarbarianAttack(roomId);
         } catch (e) {
           console.error('Error auto-resolving barbarian attack:', e);
         }

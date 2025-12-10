@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
+import { playProgressCard, makeCommercialHarborOffers, cancelCommercialHarbor } from '@/app/actions';
 
 interface CommercialHarborInitiatorDialogProps {
     gameState: GameState;
@@ -87,36 +88,11 @@ const OfferSelectionDialog: React.FC<{
         try {
             // If this is initial play, we need to play the card first
             if (isInitialPlay) {
-                const playRes = await fetch(`/api/game/${roomId}/progress-card`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        playerId,
-                        cardType: 'commercial_harbor'
-                    })
-                });
-
-                if (!playRes.ok) {
-                    const errorData = await playRes.json();
-                    throw new Error(errorData.error || 'Failed to play card');
-                }
+                await playProgressCard(roomId, playerId, 'commercial_harbor');
             }
 
             // Now make the offers
-            const res = await fetch(`/api/game/${roomId}/commercial-harbor`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerId,
-                    action: 'makeOffers',
-                    offers
-                })
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to make offers');
-            }
+            await makeCommercialHarborOffers(roomId, playerId, offers);
 
             // Success - close the modal so player can continue their turn
             onClose?.();
@@ -138,19 +114,7 @@ const OfferSelectionDialog: React.FC<{
         setError('');
 
         try {
-            const res = await fetch(`/api/game/${roomId}/commercial-harbor`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerId,
-                    action: 'cancel'
-                })
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to cancel');
-            }
+            await cancelCommercialHarbor(roomId, playerId);
 
             // Success - modal will close
         } catch (e: any) {

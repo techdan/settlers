@@ -3,6 +3,8 @@ import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { GuildSelectionList, SelectionMap, getSelectionCount } from './GuildSelectionList';
+import { submitWeddingGiftsAction } from '@/app/actions';
+import { WeddingSelection } from '@/lib/types/game';
 
 interface WeddingGiftModalProps {
     gameState: GameState;
@@ -50,28 +52,19 @@ export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, p
             return;
         }
 
-        const payload = Object.entries(selections).flatMap(([key, count]) => {
+        const payload: WeddingSelection[] = Object.entries(selections).flatMap(([key, count]) => {
             const [type, value] = key.split(':');
-            return Array.from({ length: count }, () => ({ type, value }));
+            return Array.from({ length: count }, () => ({
+                type: type as WeddingSelection['type'],
+                value: value as ResourceType | CommodityType
+            }));
         });
 
         setIsSubmitting(true);
         setError('');
 
         try {
-            const res = await fetch(`/api/game/${roomId}/progress-card/wedding`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    playerId,
-                    selections: payload
-                })
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to submit cards');
-            }
+            await submitWeddingGiftsAction(roomId, playerId, payload);
         } catch (e: any) {
             setError(e.message || 'Failed to submit cards');
             setIsSubmitting(false);
