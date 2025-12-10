@@ -287,6 +287,8 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
         const isAlchemist = cardType === 'alchemist';
         const isCommercialHarbor = cardType === 'commercial_harbor';
         const isTreason = cardType === 'treason';
+        const isTaxation = cardType === 'taxation';
+        const isIntrigue = cardType === 'intrigue';
 
         // Phase validation
         const wrongPhase = isAlchemist
@@ -303,6 +305,10 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                 const commercialHarborDisabled = isCommercialHarbor &&
                                     gameState.pendingCommercialHarbor !== undefined &&
                                     gameState.pendingCommercialHarbor.offers.length > 0;
+
+                                // C&K Rule: Robber-related cards cannot be played before first barbarian attack
+                                const beforeFirstAttack = gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked;
+                                const robberCardDisabled = (isTaxation || isIntrigue || isTreason) && beforeFirstAttack;
                                 const hasFollowup =
                                     requiresParameters(cardType) ||
                                     BOARD_SELECTION_CARDS.includes(cardType) ||
@@ -338,6 +344,8 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     tooltipParts.push('\n❌ Need 2 ore + 1 wheat, a city piece, and an upgradeable settlement');
                                 } else if (isCommercialHarbor && commercialHarborDisabled) {
                                     tooltipParts.push('\n❌ Commercial Harbor already in progress');
+                                } else if (robberCardDisabled) {
+                                    tooltipParts.push('\n❌ Cannot be played before the first barbarian attack');
                                 }
 
                                 const disabledTitle = tooltipParts.join('');
@@ -348,11 +356,11 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     <Tooltip key={`${cardType}-${index}`} content={disabledTitle || info.description} placement="left" tooltipClassName="whitespace-pre-line">
                                         <button
                                             onClick={onCardClick}
-                                            disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled}
+                                            disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled}
                                             className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
                                                 ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
                                                 : 'hover:bg-slate-700/50'
-                                                } ${phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                } ${phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                         >
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">{icon}</span>

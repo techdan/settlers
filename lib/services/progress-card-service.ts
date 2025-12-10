@@ -5,7 +5,7 @@ import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { TreasonEffect, WeddingSelection } from '@/lib/types/game';
 import { updateActiveKnightCount } from '@/core/engine/knights/knight-manager';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
-import { respondToWedding } from '@/core/engine/progress/progress-card-manager';
+import { respondToWedding } from '@/core/engine/progress/utilities/WeddingHelpers';
 import { Knight } from '@/lib/types/player';
 
 type RoadBuildingEffect = {
@@ -211,6 +211,11 @@ export async function placeTreasonKnight(roomId: string, playerId: string, verte
 
     // Check supply: if no pieces of that level remain, resolve without placement
     if (!hasKnightPieceAvailable(player, effect.removedKnight.level)) {
+        // Remove the card from hand since the effect completed
+        if (player.progressCards) {
+            player.progressCards = player.progressCards.filter(c => c !== 'treason');
+        }
+
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
@@ -227,6 +232,11 @@ export async function placeTreasonKnight(roomId: string, playerId: string, verte
         isValidKnightPlacement(gameState, vId, playerId)
     );
     if (validPlacements.length === 0) {
+        // Remove the card from hand since the effect completed
+        if (player.progressCards) {
+            player.progressCards = player.progressCards.filter(c => c !== 'treason');
+        }
+
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
@@ -259,6 +269,12 @@ export async function placeTreasonKnight(roomId: string, playerId: string, verte
     });
 
     updateActiveKnightCount(player);
+
+    // Remove the card from hand since placement was successful
+    if (player.progressCards) {
+        player.progressCards = player.progressCards.filter(c => c !== 'treason');
+    }
+
     removeTreasonEffect(gameState);
 
     gameState.logs.push({

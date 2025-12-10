@@ -87,6 +87,8 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const [stolenCard, setStolenCard] = useState<ProgressCardType | ''>('');
     const [error, setError] = useState<string>('');
     const [guildSelections, setGuildSelections] = useState<SelectionMap>({});
+    const [espionageCommitted, setEspionageCommitted] = useState<boolean>(false);
+    const [guildDuesCommitted, setGuildDuesCommitted] = useState<boolean>(false);
 
     if (!isOpen || !cardType) return null;
 
@@ -224,6 +226,8 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         setStolenCard('');
         setGuildSelections({});
         setError('');
+        setEspionageCommitted(false);
+        setGuildDuesCommitted(false);
     };
 
     const getOwnKnights = () => currentPlayer.knights || [];
@@ -269,7 +273,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     );
     const guildSelectedCount = getSelectionCount(guildSelections);
     const higherVPOpponents = gameState.players.filter(
-        p => p.id !== currentPlayer.id && (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0)
+        p => p.id !== currentPlayer.id && (p.victoryPoints ?? 0) >= (currentPlayer.victoryPoints ?? 0)
     );
 
     const renderCardForm = () => {
@@ -358,13 +362,13 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 return (
                     <div className="space-y-3">
                         <p className="text-sm text-slate-200">
-                            All opponents with more victory points must discard half of their <span className="font-semibold text-emerald-300">resource cards</span> (rounded down), just like a 7 roll.
+                            All opponents with equal or more victory points must discard half of their <span className="font-semibold text-emerald-300">resource cards</span> (rounded down), just like a 7 roll.
                         </p>
                         <div className="space-y-2">
                             {gameState.players
                                 .filter(p => p.id !== currentPlayer.id)
                                 .map(p => {
-                                    const hasMoreVP = (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0);
+                                    const hasMoreVP = (p.victoryPoints ?? 0) >= (currentPlayer.victoryPoints ?? 0);
                                     const resourceCount = getOpponentResourceCount(p.id);
                                     return (
                                         <div
@@ -394,7 +398,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         </div>
                         {higherVPOpponents.length === 0 && (
                             <div className="text-xs text-amber-300 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
-                                No opponents currently have more victory points. Playing Saboteur will have no effect.
+                                No opponents currently have equal or more victory points. Playing Saboteur will have no effect.
                             </div>
                         )}
                     </div>
@@ -403,34 +407,55 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'espionage':
                 return (
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium block mb-1">Select opponent:</label>
-                            <select
-                                value={opponentId}
-                                onChange={(e) => setOpponentId(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                            >
-                                <option value="">Select opponent</option>
-                                {getOpponents().map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        {opponentId && (
-                            <div>
-                                <label className="text-sm font-medium block mb-1">Select card to steal:</label>
-                                <select
-                                    value={stolenCard}
-                                    onChange={(e) => setStolenCard(e.target.value as ProgressCardType)}
-                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                                >
-                                    <option value="">Select card</option>
-                                    {getOpponentCards(opponentId).map(c => {
-                                        const meta = PROGRESS_CARD_DEFINITIONS[c];
-                                        return <option key={c} value={c}>{meta.name}</option>;
-                                    })}
-                                </select>
-                            </div>
+                        {!espionageCommitted ? (
+                            <>
+                                <div>
+                                    <label className="text-sm font-medium block mb-1">Select opponent:</label>
+                                    <select
+                                        value={opponentId}
+                                        onChange={(e) => setOpponentId(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                                    >
+                                        <option value="">Select opponent</option>
+                                        {getOpponents().map(p => {
+                                            const cardCount = (p.progressCards || []).length;
+                                            return (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name} ({cardCount} card{cardCount === 1 ? '' : 's'})
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div className="text-xs text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
+                                    ⚠️ Once you click "Select", you cannot cancel and must steal a progress card from this opponent.
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-sm text-slate-200 mb-2">
+                                    Stealing from: <span className="font-semibold text-emerald-300">{gameState.players.find(p => p.id === opponentId)?.name}</span>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium block mb-1">Select card to steal:</label>
+                                    <select
+                                        value={stolenCard}
+                                        onChange={(e) => setStolenCard(e.target.value as ProgressCardType)}
+                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                                    >
+                                        <option value="">Select card</option>
+                                        {getOpponentCards(opponentId).map(c => {
+                                            const meta = PROGRESS_CARD_DEFINITIONS[c];
+                                            return <option key={c} value={c}>{meta.name}</option>;
+                                        })}
+                                    </select>
+                                </div>
+                                {getOpponentCards(opponentId).length === 0 && (
+                                    <div className="text-sm text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
+                                        This opponent has no progress cards to steal.
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 );
@@ -474,54 +499,64 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 );
 
             case 'guild_dues': {
-                const grouped = opponentId ? getOpponentHandCounts(opponentId) : [];
-                const totalAvailable = opponentId ? getOpponentHandSize(opponentId) : 0;
+                const grouped = opponentId && guildDuesCommitted ? getOpponentHandCounts(opponentId) : [];
+                const totalAvailable = opponentId && guildDuesCommitted ? getOpponentHandSize(opponentId) : 0;
                 const requiredPicks = totalAvailable === 0 ? 0 : Math.min(2, totalAvailable);
                 return (
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium block mb-1">Select opponent (must have more VPs than you):</label>
-                            <select
-                                value={opponentId}
-                                onChange={(e) => {
-                                    setOpponentId(e.target.value);
-                                    setGuildSelections({});
-                                    setError('');
-                                }}
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
-                            >
-                                <option value="">Select opponent</option>
-                                {eligibleGuildOpponents.map(p => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name} ({p.victoryPoints} VP, {getOpponentHandSize(p.id)} cards)
-                                    </option>
-                                ))}
-                            </select>
-                            {eligibleGuildOpponents.length === 0 && (
-                                <p className="text-xs text-amber-300 mt-1">No opponents have more victory points than you.</p>
-                            )}
-                        </div>
-
-                        {opponentId && (
-                            <div className="space-y-3">
-                                {requiredPicks > 0 ? (
-                                    <div className="text-sm text-slate-200">
-                                        Choose {requiredPicks === 2 ? 'any 2 cards' : 'the only card available'} from {gameState.players.find(p => p.id === opponentId)?.name}'s hand.
-                                    </div>
-                                ) : (
-                                    <div className="text-sm text-amber-200">This opponent has no cards to take.</div>
-                                )}
-                                <GuildSelectionList
-                                    items={grouped}
-                                    required={requiredPicks}
-                                    selections={guildSelections}
-                                    onChange={(next) => {
-                                        setGuildSelections(next);
-                                        setError('');
-                                    }}
-                                    emptyMessage="Opponent has no resources or commodities to take."
-                                />
-                            </div>
+                        {!guildDuesCommitted ? (
+                            <>
+                                <div>
+                                    <label className="text-sm font-medium block mb-1">Select opponent (must have more VPs than you):</label>
+                                    <select
+                                        value={opponentId}
+                                        onChange={(e) => {
+                                            setOpponentId(e.target.value);
+                                            setGuildSelections({});
+                                            setError('');
+                                        }}
+                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                                    >
+                                        <option value="">Select opponent</option>
+                                        {eligibleGuildOpponents.map(p => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.name} ({p.victoryPoints} VP, {getOpponentHandSize(p.id)} cards)
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {eligibleGuildOpponents.length === 0 && (
+                                        <p className="text-xs text-amber-300 mt-1">No opponents have more victory points than you.</p>
+                                    )}
+                                </div>
+                                <div className="text-xs text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
+                                    ⚠️ Once you click "Select", you cannot cancel and must take cards from this opponent's hand.
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-sm text-slate-200 mb-2">
+                                    Taking from: <span className="font-semibold text-emerald-300">{gameState.players.find(p => p.id === opponentId)?.name}</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {requiredPicks > 0 ? (
+                                        <div className="text-sm text-slate-200">
+                                            Choose {requiredPicks === 2 ? 'any 2 cards' : 'the only card available'} from {gameState.players.find(p => p.id === opponentId)?.name}'s hand.
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-amber-200">This opponent has no cards to take.</div>
+                                    )}
+                                    <GuildSelectionList
+                                        items={grouped}
+                                        required={requiredPicks}
+                                        selections={guildSelections}
+                                        onChange={(next) => {
+                                            setGuildSelections(next);
+                                            setError('');
+                                        }}
+                                        emptyMessage="Opponent has no resources or commodities to take."
+                                    />
+                                </div>
+                            </>
                         )}
                     </div>
                 );
@@ -599,19 +634,27 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     };
 
     const isGuildDues = cardType === 'guild_dues';
+    const isEspionage = cardType === 'espionage';
     const requiresMerchantFleetSelection = cardType === 'merchant_fleet';
     const merchantFleetReady = !requiresMerchantFleetSelection || !!merchantFleetChoice;
     const higherVPBlocked = (cardType === 'wedding' || cardType === 'saboteur') && higherVPOpponents.length === 0;
+
+    // Two-step commitment for Espionage and Guild Dues
+    const showSelectButton = (isEspionage && !espionageCommitted) || (isGuildDues && !guildDuesCommitted);
+    const canCommit = opponentId !== '';
+
     const guildRequiredPicks =
-        isGuildDues && opponentId
+        isGuildDues && opponentId && guildDuesCommitted
             ? (() => {
                 const size = getOpponentHandSize(opponentId);
                 if (size === 0) return 0;
                 return Math.min(2, size);
             })()
             : 0;
-    const guildReady = !isGuildDues || (opponentId && guildRequiredPicks > 0 && guildSelectedCount === guildRequiredPicks);
-    const disablePlay = alchemyLocked || !guildReady || !merchantFleetReady || higherVPBlocked;
+    const guildReady = !isGuildDues || (guildDuesCommitted && opponentId && guildRequiredPicks > 0 && guildSelectedCount === guildRequiredPicks);
+    const espionageReady = !isEspionage || (espionageCommitted && opponentId && stolenCard !== '');
+    const disablePlay = alchemyLocked || !guildReady || !espionageReady || !merchantFleetReady || higherVPBlocked;
+
     const playTooltip =
         !guildReady && isGuildDues
             ? guildRequiredPicks === 0
@@ -619,16 +662,42 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 : guildRequiredPicks === 1
                     ? 'Select 1 resource or commodity'
                     : 'Select 2 resources or commodities'
+        : !espionageReady && isEspionage
+            ? 'Select a progress card to steal'
         : !merchantFleetReady && requiresMerchantFleetSelection
             ? 'Select a resource or commodity'
             : higherVPBlocked
                 ? 'No opponents have more victory points'
             : undefined;
+
+    const handleSelectOpponent = () => {
+        if (!opponentId) {
+            setError('Please select an opponent');
+            return;
+        }
+        if (isEspionage) {
+            const opponent = gameState.players.find(p => p.id === opponentId);
+            if (!opponent || (opponent.progressCards || []).length === 0) {
+                setError('Selected opponent has no progress cards');
+                return;
+            }
+            setEspionageCommitted(true);
+        } else if (isGuildDues) {
+            const opponent = gameState.players.find(p => p.id === opponentId);
+            if (!opponent || getOpponentHandSize(opponentId) === 0) {
+                setError('Selected opponent has no cards');
+                return;
+            }
+            setGuildDuesCommitted(true);
+        }
+        setError('');
+    };
+
     const actionLabel =
         cardType === 'guild_dues'
             ? 'Take Cards'
             : cardType === 'espionage'
-                ? 'Take'
+                ? 'Steal Card'
                 : cardType === 'irrigation' || cardType === 'mining'
                     ? 'Confirm'
                     : cardType === 'encouragement'
@@ -677,23 +746,42 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 <div className="p-6 border-t border-slate-700 flex gap-3 justify-end">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white transition-colors cursor-pointer"
+                        disabled={espionageCommitted || guildDuesCommitted}
+                        className={`px-4 py-2 rounded transition-colors ${
+                            espionageCommitted || guildDuesCommitted
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
+                                : 'bg-slate-700 hover:bg-slate-600 text-white cursor-pointer'
+                        }`}
                     >
                         Cancel
                     </button>
-                    <Tooltip content={playTooltip} placement="top" tooltipClassName="whitespace-pre-line">
+                    {showSelectButton ? (
                         <button
-                            onClick={handlePlay}
-                            disabled={disablePlay}
+                            onClick={handleSelectOpponent}
+                            disabled={!canCommit}
                             className={`px-4 py-2 rounded font-medium transition-colors ${
-                                disablePlay
+                                !canCommit
                                     ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                                    : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
                             }`}
                         >
-                        {actionLabel}
+                            Select
                         </button>
-                    </Tooltip>
+                    ) : (
+                        <Tooltip content={playTooltip} placement="top" tooltipClassName="whitespace-pre-line">
+                            <button
+                                onClick={handlePlay}
+                                disabled={disablePlay}
+                                className={`px-4 py-2 rounded font-medium transition-colors ${
+                                    disablePlay
+                                        ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
+                                        : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                                }`}
+                            >
+                            {actionLabel}
+                            </button>
+                        </Tooltip>
+                    )}
                 </div>
             </div>
         </div>

@@ -242,7 +242,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
                     // Calculate selection/highlight states
                     const isEngineerCancel = false;
-                    const isMedicineCancel = !!(citySelection?.type === 'medicine' && validation.validVertices.has(vertex.id));
+                    const isMedicineCancel = false;
                     const isSmithCancel = !!(smithSelection?.selectableKnightIds && validation.validVertices.has(vertex.id));
                     const isEngineerSelected = !!(
                       citySelection?.type === 'engineer' && citySelection?.selectedCityId === vertex.id

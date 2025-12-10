@@ -136,6 +136,10 @@ export interface SelectionState {
   // Medicine card state
   selectingCityForMedicine: boolean;
   setSelectingCityForMedicine: (selecting: boolean) => void;
+  selectedMedicineCityId: string | null;
+  setSelectedMedicineCityId: (id: string | null) => void;
+  isSubmittingMedicine: boolean;
+  setIsSubmittingMedicine: (submitting: boolean) => void;
 
   // Smith card state
   selectingKnightsForSmith: boolean;
@@ -228,6 +232,8 @@ export function useSelectionManager(): SelectionState {
 
   // Medicine card
   const [selectingCityForMedicine, setSelectingCityForMedicine] = useState(false);
+  const [selectedMedicineCityId, setSelectedMedicineCityId] = useState<string | null>(null);
+  const [isSubmittingMedicine, setIsSubmittingMedicine] = useState(false);
 
   // Smith card
   const [selectingKnightsForSmith, setSelectingKnightsForSmith] = useState(false);
@@ -277,6 +283,8 @@ export function useSelectionManager(): SelectionState {
     setSelectingCityForEngineer(false);
     setSelectedEngineerCityId(null);
     setSelectingCityForMedicine(false);
+    setSelectedMedicineCityId(null);
+    setIsSubmittingMedicine(false);
     setSelectingKnightsForSmith(false);
     setSelectedSmithKnightIds([]);
     setSmithError(null);
@@ -365,6 +373,10 @@ export function useSelectionManager(): SelectionState {
     setIsEngineerSubmitting,
     selectingCityForMedicine,
     setSelectingCityForMedicine,
+    selectedMedicineCityId,
+    setSelectedMedicineCityId,
+    isSubmittingMedicine,
+    setIsSubmittingMedicine,
     selectingKnightsForSmith,
     setSelectingKnightsForSmith,
     selectedSmithKnightIds,

@@ -7,24 +7,33 @@ interface ActionControlsProps {
     gameState: GameState;
     playerId: string;
     onOpenTrade: () => void;
+    onRollDice?: () => Promise<void> | void;
     onEndTurn?: () => Promise<void> | void;
     turnSubmitted?: boolean;
+    hasOptimisticUpdates?: boolean;
 }
 
 export const ActionControls: React.FC<ActionControlsProps> = ({
     gameState,
     playerId,
     onOpenTrade,
+    onRollDice,
     onEndTurn,
-    turnSubmitted = false
+    turnSubmitted = false,
+    hasOptimisticUpdates = false
 }) => {
     const isMyTurn = gameState.currentTurn === playerId;
     const [isPending, startTransition] = useTransition();
 
     const handleRollDice = () => {
+        console.log('[Client] Roll Dice clicked - Phase:', gameState.phase, 'Current turn:', gameState.currentTurn, 'Player ID:', playerId);
         startTransition(async () => {
             try {
-                await rollDice(gameState.roomId, playerId);
+                if (onRollDice) {
+                    await onRollDice();
+                } else {
+                    await rollDice(gameState.roomId, playerId);
+                }
             } catch (e) {
                 console.error("Failed to roll dice", e);
             }
@@ -32,6 +41,7 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
     };
 
     const handleEndTurn = () => {
+        console.log('[Client] End Turn clicked - Phase:', gameState.phase, 'Current turn:', gameState.currentTurn, 'Player ID:', playerId);
         startTransition(async () => {
             try {
                 if (onEndTurn) {
@@ -39,6 +49,7 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
                 } else {
                     await endTurn(gameState.roomId, playerId);
                 }
+                console.log('[Client] End Turn completed');
             } catch (e) {
                 console.error("Failed to end turn", e);
             }
@@ -68,10 +79,10 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
             {gameState.phase === 'waiting_for_roll' && (
                 <button
                     onClick={handleRollDice}
-                    disabled={isPending}
+                    disabled={isPending || hasOptimisticUpdates}
                     className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105 disabled:opacity-50 disabled:scale-100 cursor-pointer disabled:cursor-not-allowed"
                 >
-                    {isPending ? 'Rolling...' : 'Roll Dice 🎲'}
+                    {isPending ? 'Rolling...' : hasOptimisticUpdates ? 'Waiting...' : 'Roll Dice 🎲'}
                 </button>
             )}
 

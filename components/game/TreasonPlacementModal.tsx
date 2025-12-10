@@ -54,12 +54,12 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
     return (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
             <div
-                className="pointer-events-auto bg-slate-900 text-white border border-purple-500/60 rounded-lg shadow-xl px-4 py-4 w-[380px] space-y-3"
+                className="pointer-events-auto bg-slate-900 text-white border border-blue-500/60 rounded-lg shadow-xl px-4 py-4 w-[380px] space-y-3"
                 role="dialog"
                 aria-modal="true"
             >
                 <div className="space-y-1">
-                    <div className="text-xs uppercase tracking-[0.2em] text-purple-200 font-semibold">{headingMap[mode]}</div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-blue-200 font-semibold">{headingMap[mode]}</div>
                     <p className="text-sm text-slate-200">{descriptionMap[mode]}</p>
                 </div>
 
@@ -72,7 +72,7 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
                                     type="button"
                                     className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${
                                         selectedOpponentId === opp.id
-                                            ? 'border-purple-400 bg-purple-800/60 text-white'
+                                            ? 'border-blue-400 bg-blue-800/60 text-white'
                                             : 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-100'
                                     } ${opp.hasKnights ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                                     onClick={() => onSelectOpponent?.(opp.id)}
@@ -108,7 +108,7 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
                 )}
 
                 {status && (
-                    <div className="text-sm font-semibold text-purple-100 bg-purple-900/40 border border-purple-700/60 rounded-md px-3 py-1.5">
+                    <div className="text-sm font-semibold text-blue-100 bg-blue-900/40 border border-blue-700/60 rounded-md px-3 py-1.5">
                         {status}
                     </div>
                 )}
@@ -133,7 +133,7 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
                         <button
                             className={`px-3 py-2 rounded-md font-semibold shadow transition-colors text-sm ${
                                 hasSelection && !disableConfirm
-                                    ? 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer'
+                                    ? 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'
                                     : 'bg-slate-700 text-slate-400 cursor-not-allowed'
                             }`}
                             type="button"

@@ -50,6 +50,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'bank' | 'domestic'>('bank');
+    const [tradeConfirmation, setTradeConfirmation] = useState<{
+        gave: ResourceType | CommodityType;
+        gaveAmount: number;
+        received: ResourceType | CommodityType;
+    } | null>(null);
 
     type MerchantFleetEffect = {
         type: 'merchant_fleet';
@@ -127,9 +132,18 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
 
     const handleBankTrade = () => {
         if (giveRes === getRes) return;
+        const currentRatio = ratio; // Capture the current ratio before async operation
+        const currentGiveRes = giveRes;
+        const currentGetRes = getRes;
         startTransition(async () => {
             try {
-                await tradeWithBank(gameState.roomId, playerId, giveRes, getRes);
+                await tradeWithBank(gameState.roomId, playerId, currentGiveRes, currentGetRes);
+                // Show confirmation message
+                setTradeConfirmation({
+                    gave: currentGiveRes,
+                    gaveAmount: currentRatio,
+                    received: currentGetRes
+                });
             } catch (e) {
                 console.error("Failed to trade", e);
             }
@@ -328,6 +342,45 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             {isPending ? 'Offering...' : 'Offer Trade 🤝'}
                         </button>
                     </>
+                )}
+
+                {/* Trade Confirmation Overlay */}
+                {tradeConfirmation && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl z-10">
+                        <div className="bg-slate-800 border-2 border-green-600 rounded-lg p-6 max-w-sm w-full mx-4 shadow-2xl">
+                            <div className="text-center">
+                                {/* Success icon */}
+                                <div className="text-green-400 text-4xl mb-2">✓</div>
+                                <h2 className="text-xl font-bold text-white mb-4">Trade Complete!</h2>
+
+                                {/* Trade details */}
+                                <div className="bg-slate-700 rounded-lg p-4 mb-4">
+                                    <div className="flex items-center justify-center gap-2 text-lg">
+                                        <span className="text-white font-semibold">
+                                            {tradeConfirmation.gaveAmount} {getIcon(tradeConfirmation.gave)} {tradeConfirmation.gave}
+                                        </span>
+                                        <span className="text-slate-400">→</span>
+                                        <span className="text-white font-semibold">
+                                            1 {getIcon(tradeConfirmation.received)} {tradeConfirmation.received}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <p className="text-slate-300 mb-6">
+                                    You traded <span className="font-semibold text-yellow-400">{tradeConfirmation.gaveAmount} {tradeConfirmation.gave}</span> for{' '}
+                                    <span className="font-semibold text-yellow-400">1 {tradeConfirmation.received}</span>
+                                </p>
+
+                                {/* OK button */}
+                                <button
+                                    onClick={() => setTradeConfirmation(null)}
+                                    className="w-full py-3 px-6 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg transition-colors"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

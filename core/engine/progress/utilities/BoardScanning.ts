@@ -6,7 +6,7 @@ import { getCanonicalVertexId } from '@/lib/hex';
 /**
  * Helper function to get all vertex IDs for a hex
  */
-function getVertexIdsForHex(hexId: string): string[] {
+export function getVertexIdsForHex(hexId: string): string[] {
   const [q, r] = hexId.split(',').map(Number);
   if (Number.isNaN(q) || Number.isNaN(r)) return [];
   return Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));

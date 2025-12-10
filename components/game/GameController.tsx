@@ -18,7 +18,7 @@ import { DiscardModal } from './DiscardModal';
 import { TradeModal } from './TradeModal';
 import { TradeOfferDisplay } from './TradeOfferDisplay';
 import { BoardSelectionPrompt } from './BoardSelectionPrompt';
-import { buildCity, buildCityWall, endTurn, moveRobber } from '@/app/actions';
+import { buildCity, buildCityWall, endTurn, moveRobber, rollDice } from '@/app/actions';
 import { AqueductModal } from './AqueductModal';
 import { CommercialHarborModal } from './CommercialHarborModal';
 import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDialog';
@@ -109,12 +109,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         clearSelectedCard
     } = useProgressCardSelectionDecorator();
     const engineeringPrompt = useProgressPrompt('engineer', selectionManager.selectingCityForEngineer);
+    const medicinePrompt = useProgressPrompt('medicine', selectionManager.selectingCityForMedicine);
     const merchantPrompt = useProgressPrompt('merchant', selectionManager.selectingHexForCard === 'merchant');
+    const inventorPrompt = useProgressPrompt('inventor', selectionManager.selectingHexForCard === 'inventor');
     const taxationPrompt = useProgressPrompt('taxation', selectionManager.selectingHexForCard === 'taxation');
     const metropolisPrompt = useProgressPrompt('metropolis', !!selectionManager.selectingCityForMetropolis);
 
     const router = useRouter();
-    const { getOptimisticState, applyOptimisticUpdate, clearOptimisticUpdate } = useOptimisticGameState();
+    const { getOptimisticState, applyOptimisticUpdate, clearOptimisticUpdate, hasOptimisticUpdates } = useOptimisticGameState();
     const connectionStatus = useConnectionStatus();
 
     // Debug mode: enabled by default in development or via NEXT_PUBLIC_DEBUG_MODE env var
@@ -169,8 +171,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         gameState,
         selectionManager,
         merchantPrompt,
+        inventorPrompt,
         taxationPrompt,
         engineeringPrompt,
+        medicinePrompt,
         roadBuildingPrompt,
         getOptimisticState,
         clearSelectedCard,
@@ -507,6 +511,9 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const showEngineeringPrompt = engineeringPrompt.isVisible && !!isActiveTurn;
     const engineeringPromptStatus =
         engineeringPrompt.status || 'Select a city without a wall to add a free city wall.';
+    const showMedicinePrompt = medicinePrompt.isVisible && !!isActiveTurn;
+    const medicinePromptStatus =
+        medicinePrompt.status || `Select a settlement to upgrade to a city (costs 2 ore + 1 wheat instead of normal cost).`;
     const showRoadBuildingPrompt = roadBuildingPrompt.isVisible && !!isActiveTurn;
     const roadBuildingPromptStatus =
         roadBuildingPrompt.status || 'Place up to 2 roads for free on your network.';
@@ -521,6 +528,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         : null;
     const selectedMerchantResource = selectedMerchantHex ? resourceForTerrain(selectedMerchantHex.terrain) : null;
     const showMerchantModal = selectionManager.isMerchantModalOpen && merchantPrompt.isVisible;
+    const showInventorPrompt = inventorPrompt.isVisible && !!isActiveTurn;
+    const inventorPromptStatus = (() => {
+        if (inventorPrompt.status) return inventorPrompt.status;
+        const inv = selectionManager.inventorSelection;
+        if (inv.firstValue && inv.secondValue) {
+            return `Swapping #${inv.firstValue} with #${inv.secondValue}`;
+        }
+        if (inv.firstValue) {
+            return `Selected #${inv.firstValue}. Click another hex to swap.`;
+        }
+        return 'Select first hex with a number token to swap (not 2, 6, 8, or 12).';
+    })();
     const showTaxationModal = selectionManager.isTaxationModalOpen && taxationPrompt.isVisible;
     const taxationPromptStatus =
         taxationPrompt.status || 'Select any land hex to move the robber and steal 1 card from each opponent on it.';
@@ -635,6 +654,29 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         (selectionManager.treasonMode !== 'place_knight' || !treasonSupplyAvailable || !treasonHasLegalPlacement);
 
 
+    const handleRollDiceClick = async () => {
+        const optimisticId = `roll-dice-${roomId}`;
+
+        // Apply optimistic update to change phase to main_phase immediately
+        applyOptimisticUpdate(optimisticId, (state) => {
+            if (state.currentTurn !== playerId || state.phase !== 'waiting_for_roll') return state;
+            return {
+                ...state,
+                phase: 'main_phase'
+            };
+        });
+
+        try {
+            await rollDice(roomId, playerId);
+            console.log('[Client] Roll Dice server action completed successfully');
+        } catch (e) {
+            console.error('Failed to roll dice', e);
+        } finally {
+            console.log('[Client] Clearing optimistic update:', optimisticId);
+            clearOptimisticUpdate(optimisticId);
+        }
+    };
+
     const handleEndTurnClick = async () => {
         const cardCount = currentPlayer?.progressCards?.length ?? 0;
         if (isCitiesAndKnights && cardCount > 4) {
@@ -664,6 +706,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setTurnSubmitted(true);
         try {
             await endTurn(roomId, playerId);
+            console.log('[Client] End Turn server action completed successfully');
         } catch (e: any) {
             const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
             if (!message.includes('not your turn')) {
@@ -671,6 +714,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             }
             console.error('Failed to end turn', e);
         } finally {
+            console.log('[Client] Clearing optimistic update:', optimisticId);
             clearOptimisticUpdate(optimisticId);
         }
     };
@@ -776,7 +820,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         type: 'engineer',
                         selectedCityId: selectionManager.selectedEngineerCityId ?? undefined
                     } : selectionManager.selectingCityForMedicine ? {
-                        type: 'medicine'
+                        type: 'medicine',
+                        selectedCityId: selectionManager.selectedMedicineCityId ?? undefined
                     } : selectionManager.selectingCityForMetropolis ? {
                         type: 'metropolis',
                         cityType: selectionManager.selectingCityForMetropolis,
@@ -925,6 +970,18 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 />
             )}
 
+            {showMedicinePrompt && (
+                <BoardSelectionPrompt
+                    title="Medicine"
+                    description="Upgrade a settlement to a city for a discounted cost (2 ore + 1 wheat)."
+                    status={medicinePromptStatus}
+                    onCancel={handleCancelSelection}
+                    onFinish={progressCardController.handleConfirmMedicineBuild}
+                    finishLabel="Upgrade"
+                    finishDisabled={!selectionManager.selectedMedicineCityId || selectionManager.isSubmittingMedicine}
+                />
+            )}
+
             {showRoadBuildingPrompt && (
                 <BoardSelectionPrompt
                     title="Road Building"
@@ -933,6 +990,17 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     onCancel={progressCardController.handleCancelRoadBuildingProgress}
                     onFinish={progressCardController.handleFinalizeRoadBuildingProgress}
                     finishLabel="Build"
+                    finishDisabled={(roadBuildingEffect?.placedEdges?.length ?? 0) < 2}
+                />
+            )}
+
+            {showInventorPrompt && !selectionManager.isInventorConfirmOpen && (
+                <BoardSelectionPrompt
+                    title="Inventor"
+                    description="Swap any two number tokens (not 2, 6, 8, or 12)."
+                    status={inventorPromptStatus}
+                    onCancel={handleCancelSelection}
+                    onFinish={undefined}
                 />
             )}
 
@@ -958,10 +1026,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                         className="relative bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-6 w-[360px] space-y-4 pointer-events-auto"
                         onClick={e => e.stopPropagation()}
                     >
-                        <h3 className="text-lg font-bold">Confirm Inventor Swap</h3>
+                        <h3 className="text-lg font-bold">Inventor</h3>
                         <p className="text-sm text-slate-200">
-                            Swap <span className="font-semibold text-emerald-300">#{selectionManager.inventorSelection.firstValue}</span> with{' '}
-                            <span className="font-semibold text-cyan-300">#{selectionManager.inventorSelection.secondValue}</span>?
+                            Swapping <span className="font-semibold text-emerald-300">#{selectionManager.inventorSelection.firstValue}</span> with{' '}
+                            <span className="font-semibold text-cyan-300">#{selectionManager.inventorSelection.secondValue}</span>
                         </p>
                         {selectionManager.inventorError && (
                             <div className="text-sm text-red-200 bg-red-900/50 border border-red-600 rounded-md px-3 py-2">
@@ -979,7 +1047,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                                 className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow cursor-pointer"
                                 onClick={progressCardController.handleConfirmInventorSwap}
                             >
-                                Confirm Swap
+                                Swap
                             </button>
                         </div>
                     </div>
@@ -1030,15 +1098,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 const theft = gameState.lastTheft;
                 const isThief = theft.thiefId === playerId;
 
-                // Find the specific item stolen from/to this player
-                let stolenItem = null;
+                // Find the specific items stolen from/to this player
+                let stolenItems = null;
                 if (isThief) {
                     // Show total stolen across all victims
-                    stolenItem = theft.items?.[0] || null;
+                    stolenItems = theft.items || null;
                 } else {
                     // Show what was stolen from this specific victim
                     const victimData = theft.victims?.find(v => v.victimId === playerId);
-                    stolenItem = victimData?.items?.[0] || null;
+                    stolenItems = victimData?.items || null;
                 }
 
                 const thief = gameState.players.find(p => p.id === theft.thiefId);
@@ -1048,7 +1116,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 return (
                     <RobberTheftNotification
                         isOpen={showTheftNotification}
-                        stolenItem={stolenItem}
+                        stolenItem={stolenItems?.[0] || null}
+                        stolenItems={stolenItems || undefined}
                         wasVictim={!isThief}
                         thiefName={thief?.name}
                         victimName={victim?.name}
@@ -1324,8 +1393,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                             gameState={gameState}
                             playerId={playerId}
                             onOpenTrade={() => setShowTrade(true)}
+                            onRollDice={handleRollDiceClick}
                             onEndTurn={handleEndTurnClick}
                             turnSubmitted={turnSubmitted}
+                            hasOptimisticUpdates={hasOptimisticUpdates()}
                         />
                     </div>
 

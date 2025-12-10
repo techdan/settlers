@@ -12,6 +12,11 @@ interface RobberTheftNotificationProps {
         value: ResourceType | CommodityType;
         count: number;
     } | null;
+    stolenItems?: {
+        type: 'resource' | 'commodity';
+        value: ResourceType | CommodityType;
+        count: number;
+    }[];
     wasVictim: boolean; // true if player was stolen from, false if player stole
     thiefName?: string;
     victimName?: string;
@@ -21,16 +26,26 @@ interface RobberTheftNotificationProps {
 export const RobberTheftNotification: React.FC<RobberTheftNotificationProps> = ({
     isOpen,
     stolenItem,
+    stolenItems,
     wasVictim,
     thiefName,
     victimName,
     onDismiss
 }) => {
-    if (!isOpen || !stolenItem) return null;
+    // Use stolenItems if provided, otherwise fall back to single stolenItem
+    const items = stolenItems && stolenItems.length > 0 ? stolenItems : (stolenItem ? [stolenItem] : []);
 
-    const itemName = stolenItem.value.charAt(0).toUpperCase() + stolenItem.value.slice(1);
-    const count = stolenItem.count || 1;
+    if (!isOpen || items.length === 0) return null;
+
+    // For backward compatibility with single item display
+    const primaryItem = items[0];
+    const itemName = primaryItem.value.charAt(0).toUpperCase() + primaryItem.value.slice(1);
+    const count = primaryItem.count || 1;
     const isPlural = count > 1;
+
+    // Calculate total count and build description
+    const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+    const multipleItems = items.length > 1;
 
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
@@ -71,18 +86,40 @@ export const RobberTheftNotification: React.FC<RobberTheftNotificationProps> = (
 
                     {/* Stolen item display */}
                     <div className="bg-slate-700 rounded-lg p-4 mb-4">
-                        <div className="flex items-center justify-center gap-3">
-                            <GameIcon
-                                type={stolenItem.value}
-                                size={48}
-                            />
-                            <div className="text-left">
-                                <div className="text-2xl font-bold text-white">
-                                    {count > 1 && <span className="text-yellow-400">{count}x </span>}
-                                    {itemName}
+                        {multipleItems ? (
+                            <div className="space-y-2">
+                                {items.map((item, index) => {
+                                    const name = item.value.charAt(0).toUpperCase() + item.value.slice(1);
+                                    return (
+                                        <div key={index} className="flex items-center justify-center gap-3">
+                                            <GameIcon
+                                                type={item.value}
+                                                size={40}
+                                            />
+                                            <div className="text-left">
+                                                <div className="text-xl font-bold text-white">
+                                                    {item.count > 1 && <span className="text-yellow-400">{item.count}x </span>}
+                                                    {name}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center gap-3">
+                                <GameIcon
+                                    type={primaryItem.value}
+                                    size={48}
+                                />
+                                <div className="text-left">
+                                    <div className="text-2xl font-bold text-white">
+                                        {count > 1 && <span className="text-yellow-400">{count}x </span>}
+                                        {itemName}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Message */}
@@ -90,11 +127,22 @@ export const RobberTheftNotification: React.FC<RobberTheftNotificationProps> = (
                         {wasVictim ? (
                             <>
                                 <span className="font-semibold text-red-400">{thiefName}</span> stole{' '}
-                                <span className="font-semibold">{count > 1 ? `${count} ${itemName}` : itemName}</span> from you
+                                <span className="font-semibold">
+                                    {multipleItems
+                                        ? `${totalCount} cards`
+                                        : (count > 1 ? `${count} ${itemName}` : itemName)
+                                    }
+                                </span> from you
                             </>
                         ) : (
                             <>
-                                You stole <span className="font-semibold">{count > 1 ? `${count} ${itemName}` : itemName}</span> from{' '}
+                                You stole{' '}
+                                <span className="font-semibold">
+                                    {multipleItems
+                                        ? `${totalCount} cards`
+                                        : (count > 1 ? `${count} ${itemName}` : itemName)
+                                    }
+                                </span>{' '}from{' '}
                                 <span className="font-semibold text-yellow-400">{victimName}</span>
                             </>
                         )}

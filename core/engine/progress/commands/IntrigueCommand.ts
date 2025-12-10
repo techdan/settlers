@@ -16,6 +16,11 @@ export class IntrigueCommand implements ProgressCardCommand {
       throw new Error('Player not found');
     }
 
+    // C&K Rule: Knight displacement cannot occur before first barbarian attack
+    if (state.gameMode === 'cities_and_knights' && !state.hasBarbariansAttacked) {
+      throw new Error('Cannot displace knights before the first barbarian attack');
+    }
+
     const opponentId = options?.opponentId as string | undefined;
     const knightId = options?.knightId as string | undefined;
 

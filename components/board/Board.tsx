@@ -54,7 +54,7 @@ export const Board: React.FC<BoardProps> = ({
     } else if (pendingPlacement.type === 'city') {
       return baseVertices.map(vertex => {
         if (vertex.id === pendingPlacement.id) {
-          return { ...vertex, structure: 'city' as const };
+          return { ...vertex, owner: playerId, structure: 'city' as const };
         }
         return vertex;
       });

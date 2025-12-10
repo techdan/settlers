@@ -4,7 +4,7 @@ import { addLog } from '../utilities/StateManagement';
 
 /**
  * Saboteur Card Command
- * Politics card: Each opponent with more VP must discard half their resource cards
+ * Politics card: Each opponent with equal or more VP must discard half their resource cards
  *
  * This creates a discardContext and changes phase to 'discarding' for opponent responses
  *
@@ -17,10 +17,10 @@ export class SaboteurCommand implements ProgressCardCommand {
       throw new Error('Player not found');
     }
 
-    // Find opponents with more victory points
+    // Find opponents with equal or more victory points
     const playerVP = player.victoryPoints ?? 0;
     const targets = state.players.filter(
-      (p) => p.id !== playerId && (p.victoryPoints ?? 0) > playerVP
+      (p) => p.id !== playerId && (p.victoryPoints ?? 0) >= playerVP
     );
 
     // Clear any stale discard tracking/context
@@ -31,7 +31,7 @@ export class SaboteurCommand implements ProgressCardCommand {
     if (targets.length === 0) {
       addLog(
         state,
-        'played Saboteur but no opponents have more victory points',
+        'played Saboteur but no opponents have equal or more victory points',
         playerId
       );
       return state;
@@ -45,7 +45,7 @@ export class SaboteurCommand implements ProgressCardCommand {
     if (targetsWithCards.length === 0) {
       addLog(
         state,
-        'played Saboteur but higher-VP opponents have no resource cards to discard',
+        'played Saboteur but affected opponents have no resource cards to discard',
         playerId
       );
       return state;

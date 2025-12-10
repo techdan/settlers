@@ -121,16 +121,9 @@ export function useBoardActions(
       return;
     }
 
-    // Medicine card - upgrade to city
+    // Medicine card - select settlement for upgrade (does not execute yet)
     if (citySelection?.type === 'medicine' && validation.validVertices.has(vertexId)) {
-      startTransition(async () => {
-        try {
-          await onMedicineCitySelected?.(vertexId);
-          onCancelBuild();
-        } catch (e) {
-          console.error('Failed to upgrade city with Medicine', e);
-        }
-      });
+      onMedicineCitySelected?.(vertexId);
       return;
     }
 
@@ -212,9 +205,14 @@ export function useBoardActions(
     // Setup phase placement
     if (gameState.phase.startsWith('setup')) {
       if (isValidSetupSettlement(gameState, vertexId, playerId)) {
+        // In Cities & Knights, second placement is a city
+        const isSecondPlacement = gameState.phase === 'setup_round_2_settlement';
+        const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
+        const shouldPlaceCity = isSecondPlacement && isCitiesAndKnights;
+
         // Show pending placement for confirmation
         setPendingPlacement({
-          type: 'settlement',
+          type: shouldPlaceCity ? 'city' : 'settlement',
           id: vertexId,
           phase: 'setup'
         });
@@ -457,16 +455,29 @@ export function useBoardActions(
         });
       }
     } else if (type === 'city') {
-      startTransition(async () => {
-        try {
-          await buildCity(gameState.roomId, playerId, id);
-          setPendingPlacement(null);
-          onCancelBuild();
-        } catch (e) {
-          console.error('Failed to build city', e);
-          setPendingPlacement(null);
-        }
-      });
+      if (phase === 'setup') {
+        // During setup, use placeSettlement (which handles city placement for Cities & Knights)
+        startTransition(async () => {
+          try {
+            await placeSettlement(gameState.roomId, playerId, id);
+            setPendingPlacement(null);
+          } catch (e) {
+            console.error('Failed to place city', e);
+            setPendingPlacement(null);
+          }
+        });
+      } else {
+        startTransition(async () => {
+          try {
+            await buildCity(gameState.roomId, playerId, id);
+            setPendingPlacement(null);
+            onCancelBuild();
+          } catch (e) {
+            console.error('Failed to build city', e);
+            setPendingPlacement(null);
+          }
+        });
+      }
     } else if (type === 'knight') {
       startTransition(async () => {
         try {

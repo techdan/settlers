@@ -3,7 +3,7 @@ import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-r
 import {
     makeCommercialHarborOffers,
     respondToCommercialHarbor
-} from '@/core/engine/progress/progress-card-manager';
+} from '@/core/engine/progress/utilities/CommercialHarborHelpers';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { ResourceType } from '@/core/rules/board-constants';
 

@@ -18,8 +18,10 @@ export interface ProgressCardControllerDeps {
   gameState: GameState | null;
   selectionManager: SelectionState;
   merchantPrompt: ProgressPrompt;
+  inventorPrompt: ProgressPrompt;
   taxationPrompt: ProgressPrompt;
   engineeringPrompt: ProgressPrompt;
+  medicinePrompt: ProgressPrompt;
   roadBuildingPrompt: ProgressPrompt & { hide: () => void };
   getOptimisticState: (state: GameState) => GameState;
   clearSelectedCard: () => void;
@@ -62,7 +64,8 @@ export interface ProgressCardController {
 
   // Medicine card
   handleStartMedicineSelection: () => void;
-  handleMedicineCitySelected: (vertexId: string) => Promise<void>;
+  handleMedicineCitySelected: (vertexId: string) => void;
+  handleConfirmMedicineBuild: () => Promise<void>;
 
   // Treason card
   handleStartTreasonSelection: () => void;
@@ -99,8 +102,10 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     gameState,
     selectionManager,
     merchantPrompt,
+    inventorPrompt,
     taxationPrompt,
     engineeringPrompt,
+    medicinePrompt,
     roadBuildingPrompt,
     getOptimisticState,
     clearSelectedCard,
@@ -176,6 +181,18 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
       return;
     }
 
+    if (cardType === 'inventor') {
+      selectionManager.setSelectingHexForCard('inventor');
+      selectionManager.setInventorSelection({});
+      selectionManager.setInventorError(null);
+      selectionManager.setIsInventorConfirmOpen(false);
+      inventorPrompt.begin('Select first hex with a number token to swap.');
+      selectionManager.setBuildMode(null);
+      selectionManager.setMovingKnightId(null);
+      selectionManager.setBuildingMetropolisType(null);
+      return;
+    }
+
     selectionManager.setSelectingHexForCard(cardType);
     selectionManager.setBuildMode(null);
     selectionManager.setMovingKnightId(null);
@@ -199,6 +216,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
       if (!inventorSelection.firstHexId || inventorSelection.firstHexId === hexId) {
         selectionManager.setInventorSelection({ firstHexId: hexId, firstValue: tokenValue });
         selectionManager.setInventorError(null);
+        inventorPrompt.setStatus(`Selected #${tokenValue}. Click another hex to swap.`);
         return;
       }
 
@@ -207,6 +225,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
 
       selectionManager.setInventorSelection({ ...inventorSelection, secondHexId: hexId, secondValue: tokenValue });
       selectionManager.setInventorError(null);
+      inventorPrompt.setStatus(`Swapping #${inventorSelection.firstValue} with #${tokenValue}`);
       selectionManager.setIsInventorConfirmOpen(true);
       return;
     }
@@ -527,15 +546,38 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     }
 
     selectionManager.clearAllSelections();
+    selectionManager.setSelectedMedicineCityId(null);
+    medicinePrompt.begin('Select a settlement to upgrade to a city.');
     selectionManager.setSelectingCityForMedicine(true);
   };
 
-  const handleMedicineCitySelected = async (vertexId: string) => {
+  const handleMedicineCitySelected = (vertexId: string) => {
+    if (selectionManager.isSubmittingMedicine) return;
+    if (selectionManager.selectedMedicineCityId === vertexId) {
+      selectionManager.setSelectedMedicineCityId(null);
+      medicinePrompt.setStatus('Select a settlement to upgrade to a city.');
+      return;
+    }
+    selectionManager.setSelectedMedicineCityId(vertexId);
+    medicinePrompt.setStatus('Settlement selected. Click Upgrade to confirm.');
+  };
+
+  const handleConfirmMedicineBuild = async () => {
+    if (!selectionManager.selectedMedicineCityId) return;
+    selectionManager.setIsSubmittingMedicine(true);
+    medicinePrompt.setStatus('Upgrading settlement to city...');
     try {
-      await handlePlayProgressCard('medicine', { vertexId });
+      await handlePlayProgressCard('medicine', { vertexId: selectionManager.selectedMedicineCityId });
       selectionManager.setSelectingCityForMedicine(false);
-    } catch (e) {
+      selectionManager.setSelectedMedicineCityId(null);
+      medicinePrompt.clear();
+      clearSelectedCard();
+    } catch (e: any) {
+      const message = e?.message || 'Failed to upgrade settlement with Medicine';
+      medicinePrompt.setStatus(message);
       console.error('Failed to upgrade settlement with Medicine', e);
+    } finally {
+      selectionManager.setIsSubmittingMedicine(false);
     }
   };
 
@@ -771,6 +813,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     handleConfirmEngineerBuild,
     handleStartMedicineSelection,
     handleMedicineCitySelected,
+    handleConfirmMedicineBuild,
     handleStartTreasonSelection,
     handleConfirmTreasonOpponent,
     handleConfirmTreasonKnightRemoval,

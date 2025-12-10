@@ -163,6 +163,14 @@ export function getTotalCards(player: PlayerState): number {
 }
 
 /**
+ * Alias for getTotalCards - used by legacy code
+ * @deprecated Use getTotalCards instead
+ */
+export function getTotalCardCount(player: PlayerState): number {
+  return getTotalCards(player);
+}
+
+/**
  * Check if player has enough resources
  */
 export function hasResources(
@@ -189,4 +197,29 @@ export function hasCommodities(
     ([commodity, required]) =>
       (playerCommodities[commodity as CommodityType] || 0) >= (required || 0)
   );
+}
+
+/**
+ * Steal a random resource from a player
+ * Used by robber and Taxation card
+ */
+export function stealRandomResource(victim: PlayerState): ResourceType | null {
+  const availableResources: ResourceType[] = [];
+
+  Object.entries(victim.resources).forEach(([resource, count]) => {
+    for (let i = 0; i < (count || 0); i++) {
+      availableResources.push(resource as ResourceType);
+    }
+  });
+
+  if (availableResources.length === 0) {
+    return null;
+  }
+
+  const randomIndex = Math.floor(Math.random() * availableResources.length);
+  const stolenResource = availableResources[randomIndex];
+
+  victim.resources[stolenResource] = (victim.resources[stolenResource] || 0) - 1;
+
+  return stolenResource;
 }

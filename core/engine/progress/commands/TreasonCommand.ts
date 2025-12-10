@@ -28,6 +28,11 @@ export class TreasonCommand implements ProgressCardCommand {
       throw new Error('Player not found');
     }
 
+    // C&K Rule: Knight-related cards cannot be played before first barbarian attack
+    if (state.gameMode === 'cities_and_knights' && !state.hasBarbariansAttacked) {
+      throw new Error('Cannot play Treason before the first barbarian attack');
+    }
+
     const opponentId = options?.opponentId as string | undefined;
     if (!opponentId) {
       throw new Error('Treason requires selecting an opponent');
