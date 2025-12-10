@@ -4,7 +4,7 @@ import React from 'react';
 import { PlayerState, GameState } from '@/lib/types';
 import { Tooltip } from '@/components/ui/tooltip';
 import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementBar';
-import { IMPROVEMENT_TOOLTIPS } from './CityManagementDialog';
+import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 
 interface CompactPlayerCardProps {
@@ -291,9 +291,8 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                             <button
                                 type="button"
                                 onClick={() => canOpenCityManagement && onOpenCityManagement?.()}
-                                className={`flex items-center gap-1 focus:outline-none rounded px-0.5 py-0.5 transition ${
-                                    canOpenCityManagement ? 'hover:bg-slate-700/60 cursor-pointer' : 'cursor-default'
-                                }`}
+                                className={`flex items-center gap-1 focus:outline-none rounded px-0.5 py-0.5 transition ${canOpenCityManagement ? 'hover:bg-slate-700/60 cursor-pointer' : 'cursor-default'
+                                    }`}
                             >
                                 <span className="font-bold" style={{ color }}>{label}</span>
                                 <div className="scale-[0.85] origin-left">

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
-import { GuildSelectionList, SelectionMap, getSelectionCount } from './GuildSelectionList';
+import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/GuildSelectionList';
 import { submitWeddingGiftsAction } from '@/app/actions';
 import { WeddingSelection } from '@/lib/types/game';
 
@@ -114,11 +114,10 @@ export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, p
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting || selectedCount !== required}
-                        className={`px-4 py-2 rounded font-medium transition-colors ${
-                            isSubmitting || selectedCount !== required
+                        className={`px-4 py-2 rounded font-medium transition-colors ${isSubmitting || selectedCount !== required
                                 ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
                                 : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                        }`}
+                            }`}
                     >
                         {isSubmitting ? 'Submitting...' : 'Give Cards'}
                     </button>

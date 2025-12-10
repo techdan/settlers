@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { GameState } from '@/lib/types';
-import { CompactPlayerCard } from './CompactPlayerCard';
+import { CompactPlayerCard } from '../player/CompactPlayerCard';
 
 interface CompactGameStatusProps {
     gameState: GameState;

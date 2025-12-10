@@ -5,7 +5,7 @@ import { ProgressCardController } from '@/lib/controllers/progress-card-controll
 import { MerchantPlacementModal } from './MerchantPlacementModal';
 import { TaxationPlacementModal } from './TaxationPlacementModal';
 import { TreasonPlacementModal } from './TreasonPlacementModal';
-import { BoardSelectionPrompt } from './BoardSelectionPrompt';
+import { BoardSelectionPrompt } from '../overlays/BoardSelectionPrompt';
 import { ResourceType } from '@/core/rules/board-constants';
 
 interface ProgressCardPromptsProps {
@@ -139,9 +139,9 @@ export const ProgressCardPrompts: React.FC<ProgressCardPromptsProps> = ({
           onSelectOpponent={
             selectionManager.treasonMode === 'select_opponent'
               ? id => {
-                  selectionManager.setTreasonSelectedOpponentId(selectionManager.treasonSelectedOpponentId === id ? null : id);
-                  selectionManager.setTreasonError(null);
-                }
+                selectionManager.setTreasonSelectedOpponentId(selectionManager.treasonSelectedOpponentId === id ? null : id);
+                selectionManager.setTreasonError(null);
+              }
               : undefined
           }
           onConfirm={

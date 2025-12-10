@@ -1,15 +1,15 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
 import { DebugPanel } from './DebugPanel';
-import { BuildControls } from './BuildControls';
-import { PlayerHand } from './PlayerHand';
-import { PlayerDevCards } from './PlayerDevCards';
-import { ProgressCardHand } from './ProgressCardHand';
+import { BuildControls } from '../city/BuildControls';
+import { PlayerHand } from '../player/PlayerHand';
+import { PlayerDevCards } from '../player/PlayerDevCards';
+import { ProgressCardHand } from '../progress/ProgressCardHand';
 import { ActionControls } from './ActionControls';
 import { DiceDisplay } from './DiceDisplay';
 import { SidebarTabs } from './SidebarTabs';
 import { CompactGameStatus } from './CompactGameStatus';
-import { BarbarianTrack } from './BarbarianTrack';
+import { BarbarianTrack } from '../overlays/BarbarianTrack';
 import { ProgressCardType } from '@/lib/types/player';
 
 interface GameLayoutPanelsProps {

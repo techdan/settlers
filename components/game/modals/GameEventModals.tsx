@@ -1,9 +1,9 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
-import { TradeModal } from './TradeModal';
-import { AqueductModal } from './AqueductModal';
-import { CommercialHarborModal } from './CommercialHarborModal';
-import { WeddingGiftModal } from './WeddingGiftModal';
+import { TradeModal } from '../trade/TradeModal';
+import { AqueductModal } from '../progress/AqueductModal';
+import { CommercialHarborModal } from '../progress/CommercialHarborModal';
+import { WeddingGiftModal } from '../progress/WeddingGiftModal';
 import { TradeController } from '@/lib/controllers/trade-controller';
 
 interface GameEventModalsProps {

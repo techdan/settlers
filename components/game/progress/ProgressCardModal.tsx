@@ -5,7 +5,7 @@ import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
 import { getCanonicalVertexId } from '@/lib/hex';
-import { GuildSelectionList, SelectionMap, getSelectionCount } from './GuildSelectionList';
+import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/GuildSelectionList';
 import { Tooltip } from '@/components/ui/tooltip';
 
 function calculateIrrigationGain(gameState: GameState, playerId: string) {
@@ -662,13 +662,13 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 : guildRequiredPicks === 1
                     ? 'Select 1 resource or commodity'
                     : 'Select 2 resources or commodities'
-        : !espionageReady && isEspionage
-            ? 'Select a progress card to steal'
-        : !merchantFleetReady && requiresMerchantFleetSelection
-            ? 'Select a resource or commodity'
-            : higherVPBlocked
-                ? 'No opponents have more victory points'
-            : undefined;
+            : !espionageReady && isEspionage
+                ? 'Select a progress card to steal'
+                : !merchantFleetReady && requiresMerchantFleetSelection
+                    ? 'Select a resource or commodity'
+                    : higherVPBlocked
+                        ? 'No opponents have more victory points'
+                        : undefined;
 
     const handleSelectOpponent = () => {
         if (!opponentId) {
@@ -747,11 +747,10 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                     <button
                         onClick={onClose}
                         disabled={espionageCommitted || guildDuesCommitted}
-                        className={`px-4 py-2 rounded transition-colors ${
-                            espionageCommitted || guildDuesCommitted
+                        className={`px-4 py-2 rounded transition-colors ${espionageCommitted || guildDuesCommitted
                                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
                                 : 'bg-slate-700 hover:bg-slate-600 text-white cursor-pointer'
-                        }`}
+                            }`}
                     >
                         Cancel
                     </button>
@@ -759,11 +758,10 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         <button
                             onClick={handleSelectOpponent}
                             disabled={!canCommit}
-                            className={`px-4 py-2 rounded font-medium transition-colors ${
-                                !canCommit
+                            className={`px-4 py-2 rounded font-medium transition-colors ${!canCommit
                                     ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
                                     : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                            }`}
+                                }`}
                         >
                             Select
                         </button>
@@ -772,13 +770,12 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             <button
                                 onClick={handlePlay}
                                 disabled={disablePlay}
-                                className={`px-4 py-2 rounded font-medium transition-colors ${
-                                    disablePlay
+                                className={`px-4 py-2 rounded font-medium transition-colors ${disablePlay
                                         ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
                                         : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-                                }`}
+                                    }`}
                             >
-                            {actionLabel}
+                                {actionLabel}
                             </button>
                         </Tooltip>
                     )}
