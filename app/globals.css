@@ -113,6 +113,7 @@
 }
 
 @layer base {
+
   /**
    * Game-Specific Colors
    * Source of truth: docs/ui/icons.md
@@ -198,6 +199,7 @@
 }
 
 @layer base {
+
   /* Fallbacks for environments without CSS relative color (oklch(from ...)) support */
   @supports not (color: oklch(0.5 0 0)) {
     :root {
@@ -274,56 +276,164 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
 @layer utilities {
-  /* Resource text/bg utilities */
-  .text-resource-wood { color: var(--color-resource-wood); }
-  .text-resource-brick { color: var(--color-resource-brick); }
-  .text-resource-sheep { color: var(--color-resource-sheep); }
-  .text-resource-wheat { color: var(--color-resource-wheat); }
-  .text-resource-ore { color: var(--color-resource-ore); }
 
-  .bg-resource-wood { background-color: var(--color-resource-wood); }
-  .bg-resource-brick { background-color: var(--color-resource-brick); }
-  .bg-resource-sheep { background-color: var(--color-resource-sheep); }
-  .bg-resource-wheat { background-color: var(--color-resource-wheat); }
-  .bg-resource-ore { background-color: var(--color-resource-ore); }
+  /* Resource text/bg utilities */
+  .text-resource-wood {
+    color: var(--color-resource-wood);
+  }
+
+  .text-resource-brick {
+    color: var(--color-resource-brick);
+  }
+
+  .text-resource-sheep {
+    color: var(--color-resource-sheep);
+  }
+
+  .text-resource-wheat {
+    color: var(--color-resource-wheat);
+  }
+
+  .text-resource-ore {
+    color: var(--color-resource-ore);
+  }
+
+  .bg-resource-wood {
+    background-color: var(--color-resource-wood);
+  }
+
+  .bg-resource-brick {
+    background-color: var(--color-resource-brick);
+  }
+
+  .bg-resource-sheep {
+    background-color: var(--color-resource-sheep);
+  }
+
+  .bg-resource-wheat {
+    background-color: var(--color-resource-wheat);
+  }
+
+  .bg-resource-ore {
+    background-color: var(--color-resource-ore);
+  }
 
   /* Commodity text/bg utilities */
-  .text-commodity-paper { color: var(--color-commodity-paper); }
-  .text-commodity-cloth { color: var(--color-commodity-cloth); }
-  .text-commodity-coin { color: var(--color-commodity-coin); }
+  .text-commodity-paper {
+    color: var(--color-commodity-paper);
+  }
 
-  .bg-commodity-paper { background-color: var(--color-commodity-paper); }
-  .bg-commodity-cloth { background-color: var(--color-commodity-cloth); }
-  .bg-commodity-coin { background-color: var(--color-commodity-coin); }
+  .text-commodity-cloth {
+    color: var(--color-commodity-cloth);
+  }
+
+  .text-commodity-coin {
+    color: var(--color-commodity-coin);
+  }
+
+  .bg-commodity-paper {
+    background-color: var(--color-commodity-paper);
+  }
+
+  .bg-commodity-cloth {
+    background-color: var(--color-commodity-cloth);
+  }
+
+  .bg-commodity-coin {
+    background-color: var(--color-commodity-coin);
+  }
 
   /* Card type utilities (aligned to improvements) */
-  .text-card-science { color: var(--color-improvement-science); }
-  .text-card-trade { color: var(--color-improvement-trade); }
-  .text-card-politics { color: var(--color-improvement-politics); }
+  .text-card-science {
+    color: var(--color-improvement-science);
+  }
 
-  .bg-card-science { background-color: var(--color-improvement-science); }
-  .bg-card-trade { background-color: var(--color-improvement-trade); }
-  .bg-card-politics { background-color: var(--color-improvement-politics); }
+  .text-card-trade {
+    color: var(--color-improvement-trade);
+  }
+
+  .text-card-politics {
+    color: var(--color-improvement-politics);
+  }
+
+  .bg-card-science {
+    background-color: var(--color-improvement-science);
+  }
+
+  .bg-card-trade {
+    background-color: var(--color-improvement-trade);
+  }
+
+  .bg-card-politics {
+    background-color: var(--color-improvement-politics);
+  }
 
   /* Knight level utilities */
-  .text-knight-basic { color: var(--color-knight-basic); }
-  .text-knight-strong { color: var(--color-knight-strong); }
-  .text-knight-mighty { color: var(--color-knight-mighty); }
+  .text-knight-basic {
+    color: var(--color-knight-basic);
+  }
+
+  .text-knight-strong {
+    color: var(--color-knight-strong);
+  }
+
+  .text-knight-mighty {
+    color: var(--color-knight-mighty);
+  }
 
   /* Player utilities */
-  .text-player-1 { color: var(--color-player-1); }
-  .text-player-2 { color: var(--color-player-2); }
-  .text-player-3 { color: var(--color-player-3); }
-  .text-player-4 { color: var(--color-player-4); }
+  .text-player-1 {
+    color: var(--color-player-1);
+  }
 
-  .bg-player-1 { background-color: var(--color-player-1); }
-  .bg-player-2 { background-color: var(--color-player-2); }
-  .bg-player-3 { background-color: var(--color-player-3); }
-  .bg-player-4 { background-color: var(--color-player-4); }
+  .text-player-2 {
+    color: var(--color-player-2);
+  }
+
+  .text-player-3 {
+    color: var(--color-player-3);
+  }
+
+  .text-player-4 {
+    color: var(--color-player-4);
+  }
+
+  .bg-player-1 {
+    background-color: var(--color-player-1);
+  }
+
+  .bg-player-2 {
+    background-color: var(--color-player-2);
+  }
+
+  .bg-player-3 {
+    background-color: var(--color-player-3);
+  }
+
+  .bg-player-4 {
+    background-color: var(--color-player-4);
+  }
+
+  /* Interactive Button Utility - Maximum Compatibility */
+  .btn-interactive {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s ease;
+    will-change: transform;
+    cursor: pointer;
+  }
+
+  .btn-interactive:hover {
+    transform: scale(1.02);
+    filter: brightness(1.1);
+  }
+
+  .btn-interactive:active {
+    transform: scale(0.95);
+  }
 }

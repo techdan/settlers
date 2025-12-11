@@ -8,9 +8,9 @@ import { LobbyView } from '@/components/lobby-view';
 export async function generateMetadata({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-    const roomId = params?.id;
+    const { id: roomId } = await params;
     const normalizedRoomId = roomId ? roomId.toUpperCase() : undefined;
 
     return {
@@ -25,15 +25,15 @@ export default async function RoomPage({
     params,
     searchParams,
 }: {
-    params: { id: string };
-    searchParams?: { playerId?: string };
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<{ playerId?: string }>;
 }) {
-    const roomId = params.id;
+    const { id: roomId } = await params;
 
     if (!roomId) {
         notFound();
     }
-    const playerId = searchParams?.playerId;
+    const { playerId } = (await searchParams) || {};
 
     let room: Awaited<ReturnType<typeof db.query.rooms.findFirst>>;
     try {

@@ -5,7 +5,7 @@ import { HexTileData } from '@/core/engine/board/board-generator';
 import { HexTile } from '@/themes/flat/HexTile';
 import { VoxelHexTile } from '@/themes/voxel/HexTile';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { ZoomIn, ZoomOut, Box, Layers } from 'lucide-react';
+import { BoardControls } from '@/components/board/BoardControls';
 
 interface BoardPreviewProps {
     board: HexTileData[];
@@ -40,30 +40,12 @@ export function BoardPreview({ board }: BoardPreviewProps) {
             >
                 {({ zoomIn, zoomOut, resetTransform }) => (
                     <>
-                        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-                            <button
-                                onClick={() => setIs3D(!is3D)}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-700 dark:text-slate-200"
-                                title={is3D ? "Switch to 2D" : "Switch to 3D"}
-                            >
-                                {is3D ? <Layers size={20} /> : <Box size={20} />}
-                            </button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
-                            <button
-                                onClick={() => zoomIn()}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-700 dark:text-slate-200"
-                                title="Zoom In"
-                            >
-                                <ZoomIn size={20} />
-                            </button>
-                            <button
-                                onClick={() => zoomOut()}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors text-slate-700 dark:text-slate-200"
-                                title="Zoom Out"
-                            >
-                                <ZoomOut size={20} />
-                            </button>
-                        </div>
+                        <BoardControls
+                            onZoomIn={() => zoomIn(0.1)}
+                            onZoomOut={() => zoomOut(0.1)}
+                            is3D={is3D}
+                            onToggle3D={() => setIs3D(!is3D)}
+                        />
 
                         <TransformComponent
                             wrapperClass="w-full h-full"

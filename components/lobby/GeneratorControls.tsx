@@ -74,7 +74,7 @@ export function GeneratorControls({
                     <button
                         onClick={handleGenerate}
                         disabled={isPending}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg font-medium btn-interactive"
                     >
                         {isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
                         Generate New Board

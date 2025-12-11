@@ -13,6 +13,7 @@ import { Knight } from '@/lib/types/player';
 import { BoardSelectionState } from '@/lib/types/board-selection-state';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
+import { BoardControls } from './BoardControls';
 
 /**
  * BoardCanvas - Pure rendering component for the game board
@@ -116,36 +117,12 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       >
         {({ zoomIn, zoomOut, resetTransform, setTransform }) => (
           <>
-            {/* Map Controls: Zoom In, Zoom Out, 2D/3D Toggle */}
-            <div className="absolute top-4 left-4 z-10 pointer-events-auto flex items-center gap-1">
-              <Tooltip content="Zoom In" placement="bottom">
-                <button
-                  onClick={() => zoomIn(0.1)}
-                  className="bg-slate-800/90 text-white w-9 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-lg cursor-pointer"
-                >
-                  +
-                </button>
-              </Tooltip>
-              <Tooltip content="Zoom Out" placement="bottom">
-                <button
-                  onClick={() => zoomOut(0.1)}
-                  className="bg-slate-800/90 text-white w-9 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-lg cursor-pointer"
-                >
-                  −
-                </button>
-              </Tooltip>
-              <Tooltip
-                content={theme === 'flat' ? 'Switch to 3D View' : 'Switch to 2D View'}
-                placement="bottom"
-              >
-                <button
-                  onClick={onToggleTheme}
-                  className="bg-slate-800/90 text-white px-3 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 font-bold text-sm cursor-pointer"
-                >
-                  {theme === 'flat' ? '3D' : '2D'}
-                </button>
-              </Tooltip>
-            </div>
+            <BoardControls
+              onZoomIn={() => zoomIn(0.1)}
+              onZoomOut={() => zoomOut(0.1)}
+              is3D={theme === 'voxel'}
+              onToggle3D={onToggleTheme}
+            />
 
             <TransformComponent
               wrapperClass="w-full h-full"
@@ -170,17 +147,17 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                       tile.id === hexCardSelection?.inventorSelection?.firstHexId
                         ? 'primary'
                         : tile.id === hexCardSelection?.inventorSelection?.secondHexId
-                        ? 'secondary'
-                        : hexCardSelection?.type === 'merchant' && hexCardSelection?.selectedHexId === tile.id
-                        ? 'primary'
-                        : hexCardSelection?.type === 'taxation' && hexCardSelection?.selectedHexId === tile.id
-                        ? 'primary'
-                        : null;
+                          ? 'secondary'
+                          : hexCardSelection?.type === 'merchant' && hexCardSelection?.selectedHexId === tile.id
+                            ? 'primary'
+                            : hexCardSelection?.type === 'taxation' && hexCardSelection?.selectedHexId === tile.id
+                              ? 'primary'
+                              : null;
 
                     const selectionVariant =
                       hexCardSelection?.type === 'inventor' ||
-                      hexCardSelection?.type === 'merchant' ||
-                      hexCardSelection?.type === 'taxation'
+                        hexCardSelection?.type === 'merchant' ||
+                        hexCardSelection?.type === 'taxation'
                         ? 'cursor'
                         : 'glow';
 
@@ -218,7 +195,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     const isDiplomatSelected =
                       edgeCardSelection?.type === 'diplomat' &&
                       (edge.id === edgeCardSelection.selectedEdgeId ||
-                       edge.id === edgeCardSelection.removedEdgeId);
+                        edge.id === edgeCardSelection.removedEdgeId);
                     return (
                       <EdgeRenderer
                         key={edge.id}

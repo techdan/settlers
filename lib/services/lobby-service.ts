@@ -161,6 +161,7 @@ export class LobbyService {
                 })),
                 boardPreview: null,
                 fairMode: false, // Default to false
+                gameMode: 'base',
                 pendingRequests: []
             };
 
@@ -195,6 +196,7 @@ export class LobbyService {
         if (needsUpdate) {
             state = {
                 ...state,
+                gameMode: state.gameMode ?? 'base',
                 hostId: effectiveHostId,
                 players: lobbyPlayers,
                 pendingRequests: filteredPendingRequests
@@ -285,6 +287,8 @@ export class LobbyService {
         return state;
     }
 
+
+
     /**
      * Toggle fairness mode
      */
@@ -319,5 +323,30 @@ export class LobbyService {
         await this.updateLobbyState(roomId, state);
 
         return state;
+    }
+
+    /**
+     * Set the game mode for the lobby
+     */
+    static async setGameMode(roomId: string, hostId: string, gameMode: 'base' | 'cities_and_knights'): Promise<LobbyState> {
+        // Optimization: Try to use existing state if valid to avoid expensive DB syncs and player fetching
+        let state = await this.getLobbyState(roomId);
+
+        if (state && state.hostId === hostId) {
+            state.gameMode = gameMode;
+            await this.updateLobbyState(roomId, state);
+            return state;
+        }
+
+        const fullState = await this.getOrInitLobbyState(roomId, hostId);
+
+        if (fullState.hostId !== hostId) {
+            throw new Error('Only host can set game mode');
+        }
+
+        fullState.gameMode = gameMode;
+        await this.updateLobbyState(roomId, fullState);
+
+        return fullState;
     }
 }

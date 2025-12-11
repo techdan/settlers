@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setLobbyPlayerColor, startGame } from '@/app/actions';
+import { setLobbyPlayerColor, setLobbyGameMode, startGame } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ui/ConnectionStatus';
 import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
@@ -88,7 +88,19 @@ export function LobbyView({
     const lobbyState: LobbyState | null = room.metadata ? JSON.parse(room.metadata) : null;
     const board = lobbyState?.boardPreview ?? [];
     const fairMode = lobbyState?.fairMode ?? false;
+    const syncedGameMode = lobbyState?.gameMode ?? 'base';
     const pendingRequests = lobbyState?.pendingRequests ?? [];
+
+    useEffect(() => {
+        setGameMode(syncedGameMode);
+    }, [syncedGameMode]);
+
+    const handleGameModeChange = async (mode: 'base' | 'cities_and_knights') => {
+        setGameMode(mode); // Optimistic update
+        if (isHost) {
+            await setLobbyGameMode(roomId, currentPlayerId, mode);
+        }
+    };
 
     useEffect(() => {
         fetchWithRetryRef.current = fetchWithRetry;
@@ -260,8 +272,8 @@ export function LobbyView({
                                                                         : 'Only the player can change their color'
                                                         }
                                                         className={`w-7 h-7 rounded-full border-2 border-slate-200 dark:border-slate-700 transition-all duration-150 ${isSelected
-                                                                ? 'ring-2 ring-offset-2 ring-slate-900 dark:ring-white ring-offset-white dark:ring-offset-slate-800'
-                                                                : 'ring-0'
+                                                            ? 'ring-2 ring-offset-2 ring-slate-900 dark:ring-white ring-offset-white dark:ring-offset-slate-800'
+                                                            : 'ring-0'
                                                             } ${interactionClass
                                                             }`}
                                                         style={{ backgroundColor: option.swatch }}
@@ -284,37 +296,44 @@ export function LobbyView({
                 </div>
 
                 <div className="p-6 border-t bg-slate-50 dark:bg-slate-950 space-y-4">
-                    {isHost && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                Game Mode
-                            </label>
+                    {/* Game Mode Selection - Visible to all, editable by host */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                            Game Mode {isHost ? '(Host)' : '(Selected by Host)'}
+                        </label>
+                        {isHost ? (
                             <select
                                 value={gameMode}
-                                onChange={(e) => setGameMode(e.target.value as 'base' | 'cities_and_knights')}
+                                onChange={(e) => handleGameModeChange(e.target.value as 'base' | 'cities_and_knights')}
                                 className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                             >
                                 <option value="base">Base Game (10 VP)</option>
                                 <option value="cities_and_knights">Cities & Knights (13 VP)</option>
                             </select>
-                            {gameMode === 'cities_and_knights' && (
-                                <p className="text-xs text-slate-600 dark:text-slate-400">
-                                    Adds commodities, city improvements, knights, barbarian attacks, progress cards, and metropolises.
-                                </p>
-                            )}
-                        </div>
-                    )}
+                        ) : (
+                            <div className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-medium cursor-not-allowed opacity-90">
+                                {gameMode === 'base' ? 'Base Game (10 VP)' : 'Cities & Knights (13 VP)'}
+                            </div>
+                        )}
+                        {gameMode === 'cities_and_knights' && (
+                            <p className="text-xs text-slate-600 dark:text-slate-400 animate-fadeIn">
+                                Adds commodities, city improvements, knights, barbarian attacks, progress cards, and metropolises.
+                            </p>
+                        )}
+                    </div>
+
+
 
                     {isHost ? (
                         <button
                             onClick={() => startGame(roomId, gameMode)}
-                            className="w-full bg-green-600 text-white px-6 py-4 rounded-xl text-lg font-bold hover:bg-green-700 transition-all shadow-lg hover:shadow-green-500/20 active:scale-95"
+                            className="w-full bg-green-600 text-white px-6 py-4 rounded-xl text-lg font-bold shadow-lg hover:shadow-green-500/20 btn-interactive"
                         >
                             Start Game
                         </button>
                     ) : (
                         <div className="text-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 animate-pulse">
-                            Waiting for host...
+                            Waiting for host to start {gameMode === 'base' ? 'Base Game' : 'Cities & Knights'}...
                         </div>
                     )}
                 </div>

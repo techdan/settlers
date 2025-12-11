@@ -486,6 +486,12 @@ export async function setLobbyStandardBoard(roomId: string, hostId: string) {
     return result;
 }
 
+export async function setLobbyGameMode(roomId: string, hostId: string, gameMode: 'base' | 'cities_and_knights') {
+    const result = await LobbyService.setGameMode(roomId, hostId, gameMode);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
 export async function setLobbyPlayerColor(roomId: string, playerId: string, color: PlayerColor) {
     const result = await LobbyService.setPlayerColor(roomId, playerId, color);
     revalidatePath(`/room/${roomId}`);

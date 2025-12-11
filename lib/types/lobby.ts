@@ -15,5 +15,6 @@ export interface LobbyState {
     players: LobbyPlayer[];
     boardPreview: HexTileData[] | null;
     fairMode: boolean;
+    gameMode: 'base' | 'cities_and_knights'; // The selected game mode
     pendingRequests: string[]; // List of player IDs requesting a new board
 }
