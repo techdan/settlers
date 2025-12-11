@@ -1,6 +1,17 @@
 import { GameState } from '@/lib/types/game';
 import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
+import { getCardMetadata } from '../progress-card-definitions';
+import {
+  rollEventDie,
+  processEventDieRoll,
+  getCategoryFromColor,
+  getEligiblePlayersForCardDraw,
+} from '../../dice/event-die-manager';
+import { distributeResources, getTotalResources, logDistribution } from '../../resources/resource-manager';
+import { distributeCommodities, getTotalCommodities } from '../../resources/commodity-manager';
+import { getRobberDiscardThreshold } from '../../../utils/city-wall-utils';
+import { drawProgressCard } from '../progress-card-manager';
 
 /**
  * Alchemist Card Command
@@ -38,24 +49,13 @@ export class AlchemistCommand implements ProgressCardCommand {
     const total = d1 + d2;
 
     // Log the Alchemy play
-    const { getCardMetadata } = require('@/core/engine/progress/progress-card-definitions');
     const cardMeta = getCardMetadata('alchemist');
     addLog(state, `played ${cardMeta.name} and chose ${d1} + ${d2} = ${total}`, playerId);
 
     // Set the dice roll
     state.diceRoll = { d1, d2, total };
 
-    // Import dice and resource utilities
-    const {
-      rollEventDie,
-      processEventDieRoll,
-      getCategoryFromColor,
-      getEligiblePlayersForCardDraw,
-    } = require('@/core/engine/dice/event-die-manager');
-    const { distributeResources, getTotalResources, logDistribution } = require('@/core/engine/resources/resource-manager');
-    const { distributeCommodities, getTotalCommodities } = require('@/core/engine/resources/commodity-manager');
-    const { getRobberDiscardThreshold } = require('@/core/utils/city-wall-utils');
-    const { drawProgressCard } = require('@/core/engine/progress/progress-card-manager');
+    // Import dice and resource utilities (static imports at top)
 
     // Roll and process event die (C&K expansion only)
     if (state.gameMode === 'cities_and_knights') {

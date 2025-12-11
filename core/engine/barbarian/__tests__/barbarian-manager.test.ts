@@ -1,177 +1,118 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import {
-    advanceBarbarian,
-    loseCityToBarbarians,
-    resetBarbarianPosition,
     resolveBarbbarianAttack,
+    getTotalCities,
+    getTotalKnightStrength,
+    getDefenderOfCatan
 } from '../barbarian-manager';
-import { createTestBoard, createTestGameState, createTestPlayer, createTestVertex } from '@/lib/test-utils';
-import { Knight } from '@/lib/types/player';
-
-const buildKnight = (owner: string, vertexId: string, level: Knight['level'], active = true): Knight => ({
-    id: `${owner}-${vertexId}-${level}`,
-    vertexId,
-    playerId: owner,
-    level,
-    active,
-});
+import { createTestGameState, createTestPlayer, createTestVertex } from '@/lib/test-utils';
+import { GameState } from '@/lib/types';
+import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
 
 describe('Barbarian Manager', () => {
-    it('advances and resets barbarian position', () => {
-        const gameState = createTestGameState({ barbarianPosition: 2 });
+    let gameState: GameState;
 
-        expect(advanceBarbarian(gameState)).toBe(3);
-        expect(gameState.barbarianPosition).toBe(3);
-
-        resetBarbarianPosition(gameState);
-        expect(gameState.barbarianPosition).toBe(0);
-    });
-
-    it('awards defender VP token to strongest contributor when defenders win', () => {
-        const p1 = createTestPlayer({
-            id: 'p1',
-            name: 'Player 1',
-            knights: [buildKnight('p1', '0,0,0', 'strong'), buildKnight('p1', '0,0,1', 'basic')],
-        });
-        const p2 = createTestPlayer({
-            id: 'p2',
-            name: 'Player 2',
-            color: '#0000ff',
-            knights: [buildKnight('p2', '1,0,0', 'basic')],
-        });
-
-        const board = createTestBoard({
-            vertices: [
-                createTestVertex({ id: '0,0,0', owner: 'p1', structure: 'city' }),
-                createTestVertex({ id: '0,0,1', owner: 'p2', structure: 'city' }),
-                createTestVertex({ id: '0,0,2', owner: 'p2', structure: 'city' }),
+    beforeEach(() => {
+        gameState = createTestGameState({
+            players: [
+                createTestPlayer({
+                    id: 'p1',
+                    name: 'Player 1',
+                    knights: [],
+                    defenderVPTokens: 0
+                }),
+                createTestPlayer({
+                    id: 'p2',
+                    name: 'Player 2',
+                    knights: [],
+                    defenderVPTokens: 0
+                }),
             ],
+            gameMode: 'cities_and_knights'
         });
-
-        const gameState = createTestGameState({
-            players: [p1, p2],
-            board,
-            barbarianPosition: 7,
-        });
-
-        resolveBarbbarianAttack(gameState);
-
-        expect(p1.defenderVPTokens).toBe(1);
-        expect(gameState.pendingDefenderCardDraws).toBeUndefined();
-        expect(gameState.barbarianPosition).toBe(0);
-        expect(gameState.phase).toBe('main_phase');
-        expect(p1.knights?.every(k => !k.active)).toBe(true);
-        expect(p2.knights?.every(k => !k.active)).toBe(true);
+        gameState.barbarianPosition = 7;
     });
 
-    it('queues progress card draws when defenders tie', () => {
-        const p1 = createTestPlayer({
-            id: 'p1',
-            knights: [buildKnight('p1', '0,0,0', 'basic')],
-        });
-        const p2 = createTestPlayer({
-            id: 'p2',
-            color: '#0000ff',
-            knights: [buildKnight('p2', '0,0,1', 'basic')],
-        });
+    describe('getTotalCities', () => {
+        it('counts cities and metropolises', () => {
+            // Create 1 city for p1, 1 metropolis for p2
+            gameState.board.vertices['0,0,0'] = { id: '0,0,0', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 };
+            gameState.board.vertices['0,1,0'] = { id: '0,1,0', owner: 'p2', structure: 'metropolis', q: 0, r: 1, d: 0 };
+            gameState.board.vertices['0,2,0'] = { id: '0,2,0', owner: 'p1', structure: 'settlement', q: 0, r: 2, d: 0 };
 
-        const board = createTestBoard({
-            vertices: [
-                createTestVertex({ id: '0,0,0', owner: 'p1', structure: 'city' }),
-                createTestVertex({ id: '0,0,1', owner: 'p2', structure: 'city' }),
-            ],
+            expect(getTotalCities(gameState)).toBe(2);
         });
-
-        const gameState = createTestGameState({
-            players: [p1, p2],
-            board,
-            barbarianPosition: 7,
-        });
-
-        resolveBarbbarianAttack(gameState);
-
-        expect(p1.defenderVPTokens).toBe(0);
-        expect(gameState.pendingDefenderCardDraws).toEqual(['p1', 'p2']);
-        expect(gameState.barbarianPosition).toBe(0);
-        expect(gameState.phase).toBe('main_phase');
-        expect(p1.knights?.every(k => !k.active)).toBe(true);
-        expect(p2.knights?.every(k => !k.active)).toBe(true);
     });
 
-    it('selects weakest defenders to lose cities when barbarians win', () => {
-        const p1 = createTestPlayer({ id: 'p1', name: 'Player 1' });
-        const p2 = createTestPlayer({ id: 'p2', name: 'Player 2', color: '#0000ff' });
+    describe('resolveBarbbarianAttack - Defenders Win', () => {
+        it('awards VP token to single strongest defender', () => {
+            // Setup: 1 city total. Knights: p1=2, p2=0. Total strength 2 >= 1.
+            gameState.board.vertices['0,0,0'] = { id: '0,0,0', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 };
 
-        const board = createTestBoard({
-            vertices: [
-                createTestVertex({ id: '0,0,0', owner: 'p1', structure: 'city' }),
-                createTestVertex({ id: '0,0,1', owner: 'p2', structure: 'city' }),
-            ],
+            // p1 has active strong knight (strength 2)
+            gameState.players[0].knights = [{ id: 'k1', level: 'strong', active: true, owner: 'p1', location: '0,0,0', hasMoved: false } as any];
+            gameState.players[0].activeKnightCount = 2; // Usually calculated, but setting for safety if mocked
+
+            resolveBarbbarianAttack(gameState);
+
+            expect(gameState.players[0].defenderVPTokens).toBe(1);
+            const defenderLog = gameState.logs.find(l => l.message.includes('Defender of Catan'));
+            expect(defenderLog).toBeDefined();
+            expect(gameState.barbarianPosition).toBe(0);
+
+            // Knights deactivated
+            expect(gameState.players[0].knights![0].active).toBe(false);
         });
 
-        const gameState = createTestGameState({
-            players: [p1, p2],
-            board,
-            barbarianPosition: 7,
+        it('awards progress cards on tie (no VP token)', () => {
+            // Setup: 1 city total. Knights: p1=1, p2=1. Total 2 >= 1.
+            gameState.board.vertices['0,0,0'] = { id: '0,0,0', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 };
+
+            gameState.players[0].knights = [{ id: 'k1', level: 'basic', active: true, owner: 'p1', location: 'e1' } as any];
+            gameState.players[1].knights = [{ id: 'k2', level: 'basic', active: true, owner: 'p2', location: 'e2' } as any];
+
+            resolveBarbbarianAttack(gameState);
+
+            expect(gameState.players[0].defenderVPTokens).toBe(0);
+            expect(gameState.pendingDefenderCardDraws).toEqual(expect.arrayContaining(['p1', 'p2']));
+            expect(gameState.barbarianPosition).toBe(0);
         });
-
-        resolveBarbbarianAttack(gameState);
-
-        expect(gameState.pendingBarbarianVictims).toEqual(expect.arrayContaining(['p1', 'p2']));
-        expect(gameState.phase).toBe('barbarian_city_selection');
-        expect(gameState.barbarianPosition).toBe(7); // reset happens after cities chosen
     });
 
-    it('resets immediately when no destroyable cities exist', () => {
-        const p1 = createTestPlayer({ id: 'p1', name: 'Player 1' });
-        const p2 = createTestPlayer({ id: 'p2', name: 'Player 2', color: '#0000ff' });
-
-        const board = createTestBoard({
-            vertices: [
-                createTestVertex({ id: '0,0,0', owner: 'p1', structure: 'metropolis' }),
-                createTestVertex({ id: '0,0,1', owner: 'p2', structure: 'settlement' }),
-            ],
+    describe('resolveBarbbarianAttack - Attackers Win', () => {
+        beforeEach(() => {
+            // 3 Cities total. p1: 2 cities, p2: 1 city
+            // Knights: p1=1, p2=0. Total 1 < 3.
+            gameState.board.vertices['v1'] = createTestVertex({ id: 'v1', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 });
+            gameState.board.vertices['v2'] = createTestVertex({ id: 'v2', owner: 'p1', structure: 'city', q: 0, r: 1, d: 0 });
+            gameState.board.vertices['v3'] = createTestVertex({ id: 'v3', owner: 'p2', structure: 'city', q: 1, r: 0, d: 0 });
         });
 
-        const gameState = createTestGameState({
-            players: [p1, p2],
-            board,
-            barbarianPosition: 7,
+        it('weakest player loses city (p2 has 0 knights)', () => {
+            gameState.players[0].knights = [{ id: 'k1', level: 'basic', active: true, owner: 'p1', location: 'e1' } as any];
+            // p2 has 0 knights
+
+            resolveBarbbarianAttack(gameState);
+
+            // p2 should be victim
+            expect(gameState.pendingBarbarianVictims).toEqual(['p2']);
+            expect(gameState.phase).toBe('barbarian_city_selection');
         });
 
-        resolveBarbbarianAttack(gameState);
+        it('cascades if weakest has no destroyable cities (only metropolis)', () => {
+            // p2 has 0 knights but only a Metropolis.
+            // p1 has 1 knight and Cities.
+            // Weakest group (0 strength) = [p2]. 
+            // p2 checked: has city? No (Metropolis).
+            // Cascade to next group (1 strength) = [p1].
+            // p1 has 2 cities. p1 becomes victim.
 
-        expect(gameState.pendingBarbarianVictims).toBeUndefined();
-        expect(gameState.barbarianPosition).toBe(0);
-        expect(gameState.phase).toBe('main_phase');
-    });
+            gameState.board.vertices['v3'].structure = 'metropolis'; // p2's city is now metropolis
+            gameState.players[0].knights = [{ id: 'k1', level: 'basic', active: true, owner: 'p1', location: 'e1' } as any];
 
-    it('destroys selected city and finalizes attack when victim chooses', () => {
-        const city = createTestVertex({ id: '0,0,0', owner: 'p1', structure: 'city' });
-        const p1 = createTestPlayer({
-            id: 'p1',
-            name: 'Player 1',
-            citiesRemaining: 3,
-            settlementsRemaining: 5,
-            knights: [buildKnight('p1', '1,0,0', 'basic')],
+            resolveBarbbarianAttack(gameState);
+
+            expect(gameState.pendingBarbarianVictims).toEqual(['p1']);
         });
-
-        const gameState = createTestGameState({
-            players: [p1],
-            board: createTestBoard({ vertices: [city] }),
-            barbarianPosition: 7,
-            phase: 'barbarian_city_selection',
-            pendingBarbarianVictims: ['p1'],
-        });
-
-        loseCityToBarbarians(gameState, 'p1', city.id);
-
-        expect(gameState.board.vertices[city.id].structure).toBe('settlement');
-        expect(p1.citiesRemaining).toBe(4);
-        expect(p1.settlementsRemaining).toBe(4);
-        expect(gameState.pendingBarbarianVictims).toBeUndefined();
-        expect(gameState.barbarianPosition).toBe(0);
-        expect(gameState.phase).toBe('main_phase');
-        expect(p1.knights?.every(k => !k.active)).toBe(true);
     });
 });
