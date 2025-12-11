@@ -44,6 +44,12 @@ export const IMPROVEMENT_TOOLTIPS: Record<ImprovementType, string> = {
     politics: 'Politics Improvement Track (Blue)\nUpgrade with Coin commodities.\n\nLevel 3: Fortress\nYou may promote Strong Knights to Mighty Knights.'
 };
 
+const IMPROVEMENT_LEVEL3_DESCRIPTIONS: Record<ImprovementType, string> = {
+    science: 'Level 3 Aqueduct: If you produce no resources on a dice roll (except 7), you may take any one resource.',
+    trade: 'Level 3 Trading House: You may trade any 2 identical commodities for any 1 other commodity or resource.',
+    politics: 'Level 3 Fortress: You may promote Strong Knights to Mighty Knights.'
+};
+
 export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     gameState,
     playerId,
@@ -74,6 +80,16 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     const handleUpgrade = async (improvement: ImprovementType) => {
         if (!canAct) return;
 
+        // Check if this upgrade will require metropolis placement
+        const level = player.improvements?.[improvement] || 0;
+        const metropolis = gameState.metropolises?.[improvement];
+        const metropolisOwner = metropolis?.owner ? gameState.players.find(p => p.id === metropolis.owner) : null;
+        const metropolisOwnerLevel = metropolisOwner?.improvements?.[improvement] || 0;
+
+        const willBuildMetropolis = level === 3 && !metropolis?.owner;
+        const willStealMetropolis = level === 4 && metropolis?.owner && metropolis?.owner !== playerId && metropolisOwnerLevel < 5;
+        const requiresMetropolisPlacement = willBuildMetropolis || willStealMetropolis;
+
         setIsSubmitting(true);
         setError(null);
         try {
@@ -82,6 +98,10 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                 onClose();
             } else if (onUpgradeImprovement) {
                 await onUpgradeImprovement(improvement);
+                // Close modal if metropolis placement is required
+                if (requiresMetropolisPlacement) {
+                    onClose();
+                }
             } else {
                 throw new Error('Upgrade handler not provided');
             }
@@ -177,18 +197,23 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                         return (
                             <div key={type} className="bg-slate-700/50 p-4 rounded border border-slate-600">
                                 <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 flex-1">
                                         <Tooltip content={IMPROVEMENT_TOOLTIPS[type]} placement="left" tooltipClassName="whitespace-pre-line">
                                             <div className="flex items-center justify-center w-12 h-12 cursor-default">
                                                 <GameIcon type={type} size={40} />
                                             </div>
                                         </Tooltip>
-                                        <div>
-                                            <div className="font-bold text-lg text-white">
-                                                {IMPROVEMENT_NAMES[type]}
+                                        <div className="flex-1 flex items-center gap-6">
+                                            <div className="flex-shrink-0">
+                                                <div className="font-bold text-lg text-white">
+                                                    {IMPROVEMENT_NAMES[type]}
+                                                </div>
+                                                <div className="text-sm text-slate-400 whitespace-nowrap">
+                                                    Level {level} / {CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL}
+                                                </div>
                                             </div>
-                                            <div className="text-sm text-slate-400">
-                                                Level {level} / {CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL}
+                                            <div className={`text-xs px-3 ${level >= 3 ? 'text-green-400' : 'text-white'}`}>
+                                                {IMPROVEMENT_LEVEL3_DESCRIPTIONS[type]}
                                             </div>
                                         </div>
                                     </div>

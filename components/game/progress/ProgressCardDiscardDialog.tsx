@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ProgressCardType } from '@/lib/types/player';
 import { getCardMetadata } from '@/core/engine/progress/progress-card-definitions';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface ProgressCardDiscardDialogProps {
     cards: ProgressCardType[];
@@ -78,31 +79,37 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                         const isSelected = selectedCards.includes(card);
 
                         return (
-                            <button
+                            <Tooltip
                                 key={`${card}-${index}`}
-                                onClick={() => toggleCard(card)}
-                                disabled={isSubmitting}
-                                className={`
-                                    p-4 rounded-lg border-2 transition-all
-                                    ${isSelected
-                                        ? 'bg-red-600 border-red-400 scale-95'
-                                        : 'bg-slate-700 border-slate-600 hover:border-slate-400'
-                                    }
-                                    ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                                `}
+                                content={metadata.description}
+                                placement="top"
+                                tooltipClassName="whitespace-pre-line max-w-xs"
                             >
-                                <div className="text-sm font-bold text-white mb-1">
-                                    {metadata.name}
-                                </div>
-                                <div className="text-xs text-slate-300">
-                                    {metadata.category}
-                                </div>
-                                {isSelected && (
-                                    <div className="text-xs text-red-200 mt-2 font-bold">
-                                        ✓ Selected
+                                <button
+                                    onClick={() => toggleCard(card)}
+                                    disabled={isSubmitting}
+                                    className={`
+                                        p-4 rounded-lg border-2 transition-all w-full
+                                        ${isSelected
+                                            ? 'bg-red-600 border-red-400 scale-95'
+                                            : 'bg-slate-700 border-slate-600 hover:border-slate-400'
+                                        }
+                                        ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                                    `}
+                                >
+                                    <div className="text-sm font-bold text-white mb-1">
+                                        {metadata.name}
                                     </div>
-                                )}
-                            </button>
+                                    <div className="text-xs text-slate-300">
+                                        {metadata.category}
+                                    </div>
+                                    {isSelected && (
+                                        <div className="text-xs text-red-200 mt-2 font-bold">
+                                            ✓ Selected
+                                        </div>
+                                    )}
+                                </button>
+                            </Tooltip>
                         );
                     })}
                 </div>

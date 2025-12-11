@@ -193,7 +193,7 @@ export function Tooltip({
                           position: 'fixed',
                           top: coords?.top ?? -9999,
                           left: coords?.left ?? -9999,
-                          zIndex: 60,
+                          zIndex: 10000,
                       }}
                       className={cn(
                           'pointer-events-auto rounded-md border border-slate-700 bg-slate-950/90 px-3 py-2 text-xs leading-snug text-slate-100 shadow-xl backdrop-blur-sm',

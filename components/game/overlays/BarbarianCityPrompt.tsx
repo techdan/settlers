@@ -15,7 +15,7 @@ export const BarbarianCityPrompt: React.FC<BarbarianCityPromptProps> = ({ gameSt
 
   return (
     <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
-      <h3 className="text-xl font-bold">ƒs"‹,? Barbarians Attacked!</h3>
+      <h3 className="text-xl font-bold">Barbarians Attacked!</h3>
       <p className="text-center">
         The barbarians have sacked your lands!
         <br />

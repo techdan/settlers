@@ -96,6 +96,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   const {
     hexCardSelection,
     vertexCardSelection,
+    edgeCardSelection,
     citySelection,
     movingKnightId,
     smithSelection
@@ -214,6 +215,10 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                   {/* Edges (Roads) */}
                   {renderEdges.map(edge => {
                     const isPending = pendingPlacement?.type === 'road' && pendingPlacement.id === edge.id;
+                    const isDiplomatSelected =
+                      edgeCardSelection?.type === 'diplomat' &&
+                      (edge.id === edgeCardSelection.selectedEdgeId ||
+                       edge.id === edgeCardSelection.removedEdgeId);
                     return (
                       <EdgeRenderer
                         key={edge.id}
@@ -222,6 +227,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         color={gameState.players.find(p => p.id === edge.owner)?.color}
                         onClick={onEdgeClick}
                         isValid={validation.validEdges.has(edge.id)}
+                        isSelected={isDiplomatSelected}
                         theme={theme}
                         isPendingPlacement={isPending}
                         onConfirmPlacement={onConfirmPlacement}
@@ -246,6 +252,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     const isSmithCancel = !!(smithSelection?.selectableKnightIds && validation.validVertices.has(vertex.id));
                     const isEngineerSelected = !!(
                       citySelection?.type === 'engineer' && citySelection?.selectedCityId === vertex.id
+                    );
+                    const isMedicineSelected = !!(
+                      citySelection?.type === 'medicine' && citySelection?.selectedCityId === vertex.id
                     );
                     const isMetropolisSelected = !!(
                       citySelection?.type === 'metropolis' && citySelection?.selectedCityId === vertex.id
@@ -297,6 +306,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         cancelIconTitle={isMedicineCancel ? 'Cancel Medicine' : 'Cancel Smithing'}
                         isSelectedForAction={
                           isEngineerSelected ||
+                          isMedicineSelected ||
                           isMetropolisSelected ||
                           isSmithSelected ||
                           isIntrigueSelected ||

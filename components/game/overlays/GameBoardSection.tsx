@@ -114,6 +114,10 @@ export const GameBoardSection: React.FC<GameBoardSectionProps> = ({
             ? {
                 type: selectionManager.selectingEdgeForCard,
                 stage: selectionManager.diplomatStage ?? undefined,
+                selectedEdgeId:
+                  selectionManager.diplomatStage === 'remove'
+                    ? selectionManager.diplomatSelectedEdgeId ?? undefined
+                    : undefined,
                 removedEdgeId:
                   selectionManager.diplomatStage === 'rebuild'
                     ? selectionManager.diplomatSelectedEdgeId ?? undefined

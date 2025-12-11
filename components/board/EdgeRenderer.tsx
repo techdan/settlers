@@ -10,13 +10,14 @@ interface EdgeRendererProps {
     color?: string;
     onClick?: (edgeId: string) => void;
     isValid?: boolean;
+    isSelected?: boolean;
     theme?: 'flat' | 'voxel';
     isPendingPlacement?: boolean;
     onConfirmPlacement?: () => void;
     onCancelPlacement?: () => void;
 }
 
-export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, onClick, isValid, theme = 'flat', isPendingPlacement, onConfirmPlacement, onCancelPlacement }) => {
+export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, onClick, isValid, isSelected, theme = 'flat', isPendingPlacement, onConfirmPlacement, onCancelPlacement }) => {
     const pixel = hexEdgeToPixel(createHex(edge.q, edge.r), edge.d, size);
     // Edge 0 is vertical (connecting 330 and 30 deg).
     const rotation = 60 * edge.d;
@@ -45,15 +46,26 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                     <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={ownerColor || 'gray'} stroke="var(--color-highlight-ink)" strokeWidth={1} />
                 )
             )}
-            {edge.structure === 'road' && isValid && (
+            {edge.structure === 'road' && isSelected && (
                 <rect
                     x={-6}
                     y={-size * 0.32}
                     width={12}
                     height={size * 0.64}
                     fill="none"
-                    stroke="var(--color-improvement-trade)"
-                    strokeWidth={2}
+                    stroke="#00cc00"
+                    strokeWidth={4}
+                />
+            )}
+            {edge.structure === 'road' && isValid && !isSelected && (
+                <rect
+                    x={-6}
+                    y={-size * 0.32}
+                    width={12}
+                    height={size * 0.64}
+                    fill="none"
+                    stroke="var(--color-highlight-white)"
+                    strokeWidth={4}
                     className="animate-pulse"
                 />
             )}

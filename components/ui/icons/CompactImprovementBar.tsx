@@ -29,7 +29,7 @@ export const CompactImprovementBar: React.FC<{
     const color = IMPROVEMENT_COLORS[type];
     const segmentSize = size === 'sm' ? 'w-2 h-2' : 'w-3 h-3';
     const gap = size === 'sm' ? 'gap-0.5' : 'gap-1';
-    const metropolisClass = size === 'sm' ? 'text-[10px] ml-0.5' : 'text-[14px] ml-1';
+    const metropolisClass = size === 'sm' ? 'text-[10px]' : 'text-[14px]';
 
     return (
         <div
@@ -40,6 +40,14 @@ export const CompactImprovementBar: React.FC<{
                 const segmentLevel = i + 1;
                 const isFilled = segmentLevel <= level;
                 const isUnlockLevel = segmentLevel === unlockLevel;
+
+                // If player has metropolis, show the icon at level 5 position (index 4)
+                // instead of the 5th circle
+                if (hasMetropolis && segmentLevel === 5) {
+                    return (
+                        <span key={i} className={metropolisClass} title="Metropolis">🏛️</span>
+                    );
+                }
 
                 return (
                     <div
@@ -55,9 +63,6 @@ export const CompactImprovementBar: React.FC<{
                     />
                 );
             })}
-            {hasMetropolis && (
-                <span className={metropolisClass} title="Metropolis">🏛️</span>
-            )}
         </div>
     );
 };

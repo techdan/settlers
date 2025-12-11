@@ -42,8 +42,9 @@ export interface BoardSelectionState {
   edgeCardSelection?: {
     type: 'diplomat';
     stage?: 'remove' | 'rebuild';
-    removedEdgeId?: string;
-    relocatedEdgeId?: string;
+    selectedEdgeId?: string; // Currently selected edge during 'remove' stage
+    removedEdgeId?: string; // Edge that was removed (used during 'rebuild' stage)
+    relocatedEdgeId?: string; // New location for the road (during 'rebuild' stage)
   };
 
   // City selections (engineer, medicine, metropolis)

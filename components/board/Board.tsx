@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useThemeStore } from '@/lib/theme-store';
 import { BoardCanvas } from './BoardCanvas';
 import { useBoardValidation } from '@/lib/hooks/useBoardValidation';
@@ -36,39 +36,72 @@ export const Board: React.FC<BoardProps> = ({
     phase: 'setup' | 'main';
   } | null>(null);
 
+  // Clear pending placement when build mode changes (e.g., when toggling build buttons)
+  useEffect(() => {
+    if (pendingPlacement) {
+      setPendingPlacement(null);
+    }
+    // We only want to clear when buildMode changes, not when pendingPlacement changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionState.buildMode]);
+
   // Base vertices from game state
   const baseVertices = Object.values(gameState.board.vertices);
   const baseEdges = Object.values(gameState.board.edges);
 
   // Show pending placement (settlement, city, knight, city_wall)
   const vertices = useMemo(() => {
-    if (!pendingPlacement) return baseVertices;
+    let processedVertices = baseVertices;
 
-    if (pendingPlacement.type === 'settlement') {
-      return baseVertices.map(vertex => {
-        if (vertex.id === pendingPlacement.id) {
-          return { ...vertex, owner: playerId, structure: 'settlement' as const };
-        }
-        return vertex;
-      });
-    } else if (pendingPlacement.type === 'city') {
-      return baseVertices.map(vertex => {
-        if (vertex.id === pendingPlacement.id) {
-          return { ...vertex, owner: playerId, structure: 'city' as const };
-        }
-        return vertex;
-      });
-    } else if (pendingPlacement.type === 'city_wall') {
-      return baseVertices.map(vertex => {
-        if (vertex.id === pendingPlacement.id) {
-          return { ...vertex, hasCityWall: true };
+    // Handle pending placement
+    if (pendingPlacement) {
+      if (pendingPlacement.type === 'settlement') {
+        processedVertices = processedVertices.map(vertex => {
+          if (vertex.id === pendingPlacement.id) {
+            return { ...vertex, owner: playerId, structure: 'settlement' as const };
+          }
+          return vertex;
+        });
+      } else if (pendingPlacement.type === 'city') {
+        processedVertices = processedVertices.map(vertex => {
+          if (vertex.id === pendingPlacement.id) {
+            return { ...vertex, owner: playerId, structure: 'city' as const };
+          }
+          return vertex;
+        });
+      } else if (pendingPlacement.type === 'city_wall') {
+        processedVertices = processedVertices.map(vertex => {
+          if (vertex.id === pendingPlacement.id) {
+            return { ...vertex, hasCityWall: true };
+          }
+          return vertex;
+        });
+      }
+      // Knights are handled separately via knightsMap
+    }
+
+    // Handle Medicine card selection - show settlement as city preview
+    if (selectionState.citySelection?.type === 'medicine' && selectionState.citySelection.selectedCityId) {
+      processedVertices = processedVertices.map(vertex => {
+        if (vertex.id === selectionState.citySelection?.selectedCityId) {
+          return { ...vertex, structure: 'city' as const };
         }
         return vertex;
       });
     }
-    // Knights are handled separately via knightsMap
-    return baseVertices;
-  }, [baseVertices, pendingPlacement, playerId]);
+
+    // Handle Metropolis selection - show city as metropolis preview
+    if (selectionState.citySelection?.type === 'metropolis' && selectionState.citySelection.selectedCityId) {
+      processedVertices = processedVertices.map(vertex => {
+        if (vertex.id === selectionState.citySelection?.selectedCityId) {
+          return { ...vertex, structure: 'metropolis' as const };
+        }
+        return vertex;
+      });
+    }
+
+    return processedVertices;
+  }, [baseVertices, pendingPlacement, playerId, selectionState.citySelection]);
 
   // Handle diplomat edge modifications and pending road placement
   const renderEdges = useMemo(() => {

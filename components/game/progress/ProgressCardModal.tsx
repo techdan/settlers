@@ -405,6 +405,11 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 );
 
             case 'espionage':
+                const CATEGORY_ICONS = {
+                    science: '🟢',
+                    trade: '🟡',
+                    politics: '🔵'
+                };
                 return (
                     <div className="space-y-4">
                         {!espionageCommitted ? (
@@ -437,24 +442,40 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                     Stealing from: <span className="font-semibold text-emerald-300">{gameState.players.find(p => p.id === opponentId)?.name}</span>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium block mb-1">Select card to steal:</label>
-                                    <select
-                                        value={stolenCard}
-                                        onChange={(e) => setStolenCard(e.target.value as ProgressCardType)}
-                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-                                    >
-                                        <option value="">Select card</option>
-                                        {getOpponentCards(opponentId).map(c => {
-                                            const meta = PROGRESS_CARD_DEFINITIONS[c];
-                                            return <option key={c} value={c}>{meta.name}</option>;
-                                        })}
-                                    </select>
+                                    <label className="text-sm font-medium block mb-2">Select card to steal:</label>
+                                    {getOpponentCards(opponentId).length === 0 ? (
+                                        <div className="text-sm text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
+                                            This opponent has no progress cards to steal.
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-2">
+                                            {getOpponentCards(opponentId).map((c, index) => {
+                                                const meta = PROGRESS_CARD_DEFINITIONS[c];
+                                                const icon = CATEGORY_ICONS[meta.category];
+                                                const isSelected = stolenCard === c;
+                                                return (
+                                                    <Tooltip key={`${c}-${index}`} content={meta.description} placement="left" tooltipClassName="whitespace-pre-line">
+                                                        <button
+                                                            onClick={() => setStolenCard(c)}
+                                                            className={`w-full text-left px-4 py-3 rounded border transition-colors cursor-pointer ${
+                                                                isSelected
+                                                                    ? 'bg-blue-600/60 border-blue-400 ring-2 ring-blue-400'
+                                                                    : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-lg">{icon}</span>
+                                                                <span className="font-semibold text-white">
+                                                                    {meta.name}
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    </Tooltip>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
-                                {getOpponentCards(opponentId).length === 0 && (
-                                    <div className="text-sm text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
-                                        This opponent has no progress cards to steal.
-                                    </div>
-                                )}
                             </>
                         )}
                     </div>
@@ -715,13 +736,15 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         <h2 className="text-xl font-bold">{cardMeta.name}</h2>
                         <p className="text-sm text-slate-300 mt-1">{cardMeta.description}</p>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none cursor-pointer"
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
+                    {!espionageCommitted && !guildDuesCommitted && (
+                        <button
+                            onClick={onClose}
+                            className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none cursor-pointer"
+                            aria-label="Close"
+                        >
+                            ×
+                        </button>
+                    )}
                 </div>
 
                 {/* Body */}
@@ -765,12 +788,12 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         >
                             Select
                         </button>
-                    ) : (
+                    ) : playTooltip ? (
                         <Tooltip content={playTooltip} placement="top" tooltipClassName="whitespace-pre-line">
                             <button
                                 onClick={handlePlay}
                                 disabled={disablePlay}
-                                className={`px-4 py-2 rounded font-medium transition-colors ${disablePlay
+                                className={`px-4 py-2 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-slate-800 ${disablePlay
                                         ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
                                         : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
                                     }`}
@@ -778,6 +801,17 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                 {actionLabel}
                             </button>
                         </Tooltip>
+                    ) : (
+                        <button
+                            onClick={handlePlay}
+                            disabled={disablePlay}
+                            className={`px-4 py-2 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-slate-800 ${disablePlay
+                                    ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
+                                    : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                                }`}
+                        >
+                            {actionLabel}
+                        </button>
                     )}
                 </div>
             </div>

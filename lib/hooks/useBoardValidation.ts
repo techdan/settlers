@@ -156,6 +156,11 @@ export function useBoardValidation(
 
     // Medicine card - city upgrade
     if (citySelection?.type === 'medicine') {
+      // If a city is already selected, don't show red circles on other settlements
+      if (citySelection.selectedCityId) {
+        return valid;
+      }
+      // Otherwise, show all valid settlements
       vertices.forEach(v => {
         if (isValidMainPhaseCity(gameState, v.id, playerId)) {
           valid.add(v.id);
@@ -182,6 +187,11 @@ export function useBoardValidation(
 
     // Metropolis selection - player's cities
     if (citySelection?.type === 'metropolis') {
+      // If a city is already selected, don't show red circles on other cities
+      if (citySelection.selectedCityId) {
+        return valid;
+      }
+      // Otherwise, show all valid cities
       vertices.forEach(v => {
         if (v.owner === playerId && v.structure === 'city') {
           valid.add(v.id);

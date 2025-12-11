@@ -403,6 +403,8 @@ export function useBoardActions(
   // Handle placement cancellation
   const handleCancelPlacement = () => {
     setPendingPlacement(null);
+    // Cancel the entire build process when user clicks red X
+    onCancelBuild();
   };
 
   // Handle placement confirmation
