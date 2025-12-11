@@ -85,7 +85,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         </div>
       )}
 
-      <div className="absolute bottom-4 left-4 flex items-end gap-4 pointer-events-auto">
+      <div className="absolute bottom-4 left-4 flex items-end gap-4 pointer-events-auto origin-bottom-left transition-transform duration-300 scale-75 xl:scale-85 2xl:scale-100">
         <div className="flex flex-col items-end gap-2">
           {isDebugMode && currentPlayer && (
             <div className="self-start pointer-events-auto">
@@ -130,7 +130,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
       </div>
 
       <div className="absolute bottom-4 right-4 flex items-end gap-4 pointer-events-auto">
-        <div className={`flex flex-col items-center gap-2 ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}`}>
+        <div className={`flex flex-col items-center gap-2 ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''} origin-bottom-right transition-transform duration-300 scale-75 xl:scale-85 2xl:scale-100`}>
           <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
           <ActionControls
             gameState={gameState}

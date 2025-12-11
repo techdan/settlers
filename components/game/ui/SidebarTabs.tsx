@@ -59,7 +59,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
             </div>
 
             {/* Tab Content - taller height with vertical scroll (30rem = 480px, 50% taller than h-80/20rem) */}
-            <div className="h-[30rem] overflow-hidden flex flex-col">
+            <div className="h-[45vh] min-h-[16rem] max-h-[30rem] overflow-hidden flex flex-col">
                 {activeTab === 'log' && (
                     <div className="h-full overflow-hidden p-2">
                         <GameLog logs={logs} players={players} />
