@@ -9,7 +9,6 @@ import {
 } from '../commodity-manager';
 import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
 import { GameState } from '@/lib/types';
-import { Hex as BoardHex } from '@/lib/types/board';
 
 type Hex = any;
 

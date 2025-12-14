@@ -37,8 +37,8 @@ describe('Port Generator', () => {
             const ports = generatePorts(60);
             ports.forEach(p => {
                 expect(p.vertices).toHaveLength(2);
-                expect(p.vertices[0]).toHaveProperty('x');
-                expect(p.vertices[0]).toHaveProperty('y');
+                expect(p.vertices?.[0]).toHaveProperty('x');
+                expect(p.vertices?.[1]).toHaveProperty('y');
             });
         });
     });

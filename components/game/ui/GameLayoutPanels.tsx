@@ -10,6 +10,7 @@ import { DiceDisplay } from './DiceDisplay';
 import { SidebarTabs } from './SidebarTabs';
 import { CompactGameStatus } from './CompactGameStatus';
 import { BarbarianTrack } from '../overlays/BarbarianTrack';
+import { ProgressDecksPanel } from '../overlays/ProgressDecksPanel';
 import { ProgressCardType } from '@/lib/types/player';
 
 interface GameLayoutPanelsProps {
@@ -80,8 +81,9 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
       </div>
 
       {isCitiesAndKnights && (
-        <div className="absolute left-4 pointer-events-auto z-20" style={{ top: '4.25rem' }}>
+        <div className="absolute left-4 pointer-events-auto z-20 flex flex-col gap-3" style={{ top: '4.25rem' }}>
           <BarbarianTrack gameState={gameState} />
+          <ProgressDecksPanel gameState={gameState} />
         </div>
       )}
 

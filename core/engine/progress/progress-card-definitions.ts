@@ -6,12 +6,11 @@ import { ProgressCardCategory } from '@/core/rules/commodity-constants';
  * Defines all 25 unique progress card types across three categories
  *
  * Categories:
- * - Science (green): 10 cards
- * - Trade (yellow): 6 cards
- * - Politics (blue): 9 cards
+ * - Science (green): 10 unique cards, 18 total cards in deck
+ * - Trade (yellow): 6 unique cards, 18 total cards in deck
+ * - Politics (blue): 9 unique cards, 18 total cards in deck
  *
- * Total: 25 unique card types
- * Note: Total deck contains 54 cards (many cards appear multiple times)
+ * Total: 25 unique card types, 54 total cards across all decks
  */
 
 export interface ProgressCardMetadata {
@@ -237,45 +236,50 @@ export const PROGRESS_CARD_DEFINITIONS: Record<ProgressCardType, ProgressCardMet
 /**
  * Create progress card decks
  * Returns three shuffled decks (science, trade, politics)
+ * Each deck has 18 cards total (54 cards across all decks)
  */
 export function createProgressDecks(): {
     science: ProgressCardType[];
     trade: ProgressCardType[];
     politics: ProgressCardType[];
 } {
-    // Define deck compositions
+    // Define deck compositions with correct quantities (18 cards per deck)
+
+    // Science deck - 18 cards
     const scienceDeck: ProgressCardType[] = [
-        'alchemist',
-        'crane',
-        'engineer',
-        'inventor',
-        'irrigation',
-        'medicine',
-        'mining',
-        'printer',
-        'road_building_progress',
-        'smith',
+        'alchemist', 'alchemist', // 2
+        'crane', 'crane', // 2
+        'engineer', // 1
+        'inventor', 'inventor', // 2
+        'irrigation', 'irrigation', // 2
+        'medicine', 'medicine', // 2
+        'mining', 'mining', // 2
+        'road_building_progress', 'road_building_progress', // 2
+        'smith', 'smith', // 2
+        'printer', // 1 (VP card)
     ];
 
+    // Trade deck - 18 cards
     const tradeDeck: ProgressCardType[] = [
-        'commercial_harbor',
-        'guild_dues',
-        'merchant',
-        'merchant_fleet',
-        'resource_monopoly',
-        'trade_monopoly',
+        'commercial_harbor', 'commercial_harbor', // 2
+        'guild_dues', 'guild_dues', // 2 (Guild Master in official rules)
+        'merchant_fleet', 'merchant_fleet', // 2 (Master Merchant in official rules)
+        'merchant', 'merchant', 'merchant', 'merchant', 'merchant', 'merchant', // 6
+        'resource_monopoly', 'resource_monopoly', 'resource_monopoly', 'resource_monopoly', // 4
+        'trade_monopoly', 'trade_monopoly', // 2
     ];
 
+    // Politics deck - 18 cards
     const politicsDeck: ProgressCardType[] = [
-        'constitution',
-        'diplomat',
-        'encouragement',
-        'espionage',
-        'intrigue',
-        'saboteur',
-        'taxation',
-        'treason',
-        'wedding',
+        'encouragement', 'encouragement', // 2 (Bishop in official rules)
+        'diplomat', 'diplomat', // 2
+        'treason', 'treason', // 2 (Deserter in official rules)
+        'intrigue', 'intrigue', // 2
+        'saboteur', 'saboteur', // 2
+        'espionage', 'espionage', 'espionage', // 3 (Spy in official rules)
+        'taxation', 'taxation', // 2 (Warlord in official rules)
+        'wedding', 'wedding', // 2
+        'constitution', // 1 (VP card)
     ];
 
     // Shuffle each deck

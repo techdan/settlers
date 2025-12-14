@@ -127,11 +127,11 @@ describe('Event Die Manager', () => {
                 players: [
                     createTestPlayer({
                         id: 'p1',
-                        improvements: { science: 3 }
+                        improvements: { science: 3, trade: 0, politics: 0 }
                     }),
                     createTestPlayer({
                         id: 'p2',
-                        improvements: { science: 1 }
+                        improvements: { science: 1, trade: 0, politics: 0 }
                     }),
                 ],
                 gameMode: 'cities_and_knights'

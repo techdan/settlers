@@ -87,8 +87,8 @@ describe('Metropolis Manager', () => {
         it('returns true if stealing with higher level', () => {
             // p2 owns science metropolis at level 4
             gameState.players[1].improvements!.science = 4;
-            gameState.metropolises!.science.owner = 'p2';
-            gameState.metropolises!.science.vertexId = '0,0,1';
+            gameState.metropolises!.science!.owner = 'p2';
+            gameState.metropolises!.science!.vertexId = '0,0,1';
 
             // p1 has level 5
             gameState.players[0].improvements!.science = 5;
@@ -99,8 +99,8 @@ describe('Metropolis Manager', () => {
         it('returns false if stealing with equal level', () => {
             // p2 owns science metropolis at level 4
             gameState.players[1].improvements!.science = 4;
-            gameState.metropolises!.science.owner = 'p2';
-            gameState.metropolises!.science.vertexId = '0,0,1';
+            gameState.metropolises!.science!.owner = 'p2';
+            gameState.metropolises!.science!.vertexId = '0,0,1';
 
             // p1 has level 4
             gameState.players[0].improvements!.science = 4;
@@ -117,8 +117,8 @@ describe('Metropolis Manager', () => {
 
             expect(success).toBe(true);
             expect(gameState.board.vertices['0,0,0'].structure).toBe('metropolis');
-            expect(gameState.metropolises!.science.owner).toBe('p1');
-            expect(gameState.metropolises!.science.vertexId).toBe('0,0,0');
+            expect(gameState.metropolises!.science!.owner).toBe('p1');
+            expect(gameState.metropolises!.science!.vertexId).toBe('0,0,0');
             expect(gameState.players[0].metropolisOwned).toContain('science');
             expect(calculateMetropolisVP(gameState.players[0])).toBe(2);
         });
@@ -136,7 +136,7 @@ describe('Metropolis Manager', () => {
             expect(success).toBe(true);
 
             // P1 has it
-            expect(gameState.metropolises!.science.owner).toBe('p1');
+            expect(gameState.metropolises!.science!.owner).toBe('p1');
             expect(gameState.players[0].metropolisOwned).toContain('science');
             expect(gameState.board.vertices['0,0,0'].structure).toBe('metropolis');
 
@@ -170,8 +170,8 @@ describe('Metropolis Manager', () => {
             // Check ownership
             checkMetropolisOwnership(gameState, 'science');
 
-            expect(gameState.metropolises!.science.owner).toBe('p2');
-            expect(gameState.metropolises!.science.vertexId).toBe('0,0,1'); // moved to p2's city
+            expect(gameState.metropolises!.science!.owner).toBe('p2');
+            expect(gameState.metropolises!.science!.vertexId).toBe('0,0,1'); // moved to p2's city
             expect(gameState.board.vertices['0,0,0'].structure).toBe('city'); // p1 downgraded
             expect(gameState.board.vertices['0,0,1'].structure).toBe('metropolis'); // p2 upgraded
             expect(gameState.players[0].metropolisOwned).not.toContain('science');

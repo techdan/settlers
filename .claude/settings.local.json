@@ -35,7 +35,8 @@
       "Bash(test:*)",
       "Bash(npm test:*)",
       "Bash(npm run test:coverage:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(cut:*)"
     ],
     "deny": [],
     "ask": []
