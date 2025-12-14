@@ -1,6 +1,7 @@
 import React, { useState, useTransition } from 'react';
 import { GameState, TradeOffer } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
+import { CommodityType } from '@/core/rules/commodity-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
 
 interface TradeOfferDisplayProps {
@@ -17,6 +18,12 @@ const RESOURCE_ICONS: Record<ResourceType, string> = {
     ore: '🪨'
 };
 
+const COMMODITY_ICONS: Record<CommodityType, string> = {
+    paper: '📜',
+    cloth: '🧶',
+    coin: '🪙'
+};
+
 export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId, tradeController }) => {
     const [isPending, startTransition] = useTransition();
     const [pendingAction, setPendingAction] = useState<'accept' | 'reject' | null>(null);
@@ -25,6 +32,10 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
     if (!offer || offer.status !== 'open') return null;
 
     const isInitiator = offer.initiator === playerId;
+    const hasRejected = offer.rejectedBy?.includes(playerId) ?? false;
+
+    // If this player has already rejected, don't show the trade offer to them
+    if (!isInitiator && hasRejected) return null;
     const initiatorName = gameState.players.find(p => p.id === offer.initiator)?.name || 'Unknown';
     const player = gameState.players.find(p => p.id === playerId);
 
@@ -37,6 +48,14 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
             if ((player.resources[res as ResourceType] || 0) < amount) {
                 canAfford = false;
                 break;
+            }
+        }
+        if (offer.getCommodities) {
+            for (const [comm, amount] of Object.entries(offer.getCommodities)) {
+                if ((player.commodities?.[comm as CommodityType] || 0) < amount) {
+                    canAfford = false;
+                    break;
+                }
             }
         }
     }
@@ -87,12 +106,21 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
                 {/* They Give */}
                 <div className="bg-slate-800 p-2 rounded border border-slate-700">
                     <div className="text-xs text-slate-400 mb-1 text-center">{isInitiator ? 'You Give' : 'They Give'}</div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         {Object.entries(offer.give).map(([res, amount]) => {
                             if (amount === 0) return null;
                             return (
                                 <div key={res} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
                                     <span>{RESOURCE_ICONS[res as ResourceType]}</span>
+                                    <span className="font-bold text-white">{amount}</span>
+                                </div>
+                            );
+                        })}
+                        {offer.giveCommodities && Object.entries(offer.giveCommodities).map(([comm, amount]) => {
+                            if (amount === 0) return null;
+                            return (
+                                <div key={comm} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
+                                    <span>{COMMODITY_ICONS[comm as CommodityType]}</span>
                                     <span className="font-bold text-white">{amount}</span>
                                 </div>
                             );
@@ -105,12 +133,21 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
                 {/* They Get */}
                 <div className="bg-slate-800 p-2 rounded border border-slate-700">
                     <div className="text-xs text-slate-400 mb-1 text-center">{isInitiator ? 'You Get' : 'They Want'}</div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         {Object.entries(offer.get).map(([res, amount]) => {
                             if (amount === 0) return null;
                             return (
                                 <div key={res} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
                                     <span>{RESOURCE_ICONS[res as ResourceType]}</span>
+                                    <span className="font-bold text-white">{amount}</span>
+                                </div>
+                            );
+                        })}
+                        {offer.getCommodities && Object.entries(offer.getCommodities).map(([comm, amount]) => {
+                            if (amount === 0) return null;
+                            return (
+                                <div key={comm} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
+                                    <span>{COMMODITY_ICONS[comm as CommodityType]}</span>
                                     <span className="font-bold text-white">{amount}</span>
                                 </div>
                             );

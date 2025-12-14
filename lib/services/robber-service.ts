@@ -66,32 +66,10 @@ export async function moveRobber(
     // Steal resource
     let stealLog = '';
 
-    // Find potential victims if not provided
-    let targetVictimId = victimId;
-    if (!targetVictimId) {
-        const [q, r] = hexId.split(',').map(Number);
-        const potentialVictims = new Set<string>();
-
-        for (let d = 0; d < 6; d++) {
-            const vId = getCanonicalVertexId(q, r, d);
-            const vertex = gameState.board.vertices[vId];
-            if (vertex && vertex.owner && vertex.owner !== playerId) {
-                // Check if they have resources
-                const victim = gameState.players.find(p => p.id === vertex.owner);
-                if (victim && getTotalResources(victim) > 0) {
-                    potentialVictims.add(vertex.owner);
-                }
-            }
-        }
-
-        if (potentialVictims.size > 0) {
-            const victimsArray = Array.from(potentialVictims);
-            targetVictimId = victimsArray[Math.floor(Math.random() * victimsArray.length)];
-        }
-    }
-
-    if (targetVictimId) {
-        const victim = gameState.players.find(p => p.id === targetVictimId);
+    // Victim should be selected by the client before calling this action
+    // No random selection on server side
+    if (victimId) {
+        const victim = gameState.players.find(p => p.id === victimId);
         const thief = gameState.players.find(p => p.id === playerId);
 
         if (victim && thief) {

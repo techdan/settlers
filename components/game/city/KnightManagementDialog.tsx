@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { GameState, PlayerState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
 import { CK_CONSTANTS, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST } from '@/core/rules/commodity-constants';
-import { canAffordKnightActivation, canAffordKnightUpgrade } from '@/core/validation/knight-validator';
+import { canAffordKnightActivation, canAffordKnightUpgrade, isKnightAdjacentToRobber } from '@/core/validation/knight-validator';
 import { getKnightOwner } from '@/core/validation/knight-validator';
 import { Tooltip } from '@/components/ui/tooltip';
 
@@ -16,6 +16,7 @@ interface KnightManagementDialogProps {
     onActivate: (knightId: string) => Promise<void>;
     onUpgrade: (knightId: string) => Promise<void>;
     onMove: (knightId: string) => void; // Enter move mode
+    onChaseRobber: (knightId: string) => Promise<void>;
 }
 
 export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
@@ -25,7 +26,8 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
     onClose,
     onActivate,
     onUpgrade,
-    onMove
+    onMove,
+    onChaseRobber
 }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -78,11 +80,26 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
         onClose();
     };
 
+    const handleChaseRobber = async () => {
+        if (!canAct) return;
+        setIsSubmitting(true);
+        setError(null);
+        try {
+            await onChaseRobber(knightId);
+            onClose();
+        } catch (e: any) {
+            setError(e.message || 'Failed to chase away robber');
+            setIsSubmitting(false);
+        }
+    };
+
     // Check capabilities
     const canAffordActivate = canAffordKnightActivation(player);
     const canAffordUpgrade = canAffordKnightUpgrade(player);
     const isMaxLevel = knight.level === 'mighty';
     const strength = CK_CONSTANTS.KNIGHT_STRENGTH[knight.level];
+    const isAdjacentToRobber = isKnightAdjacentToRobber(gameState, knight);
+    const canChaseRobber = knight.active && isAdjacentToRobber && gameState.hasBarbariansAttacked;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
@@ -184,6 +201,23 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                                 `}
                             >
                                 Move Knight
+                            </button>
+                        )}
+
+                        {/* Chase Away Robber */}
+                        {canChaseRobber && (
+                            <button
+                                onClick={handleChaseRobber}
+                                disabled={!canAct}
+                                className={`
+                                    w-full py-3 rounded font-bold flex items-center justify-center transition-all
+                                    ${canAct
+                                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
+                                    }
+                                `}
+                            >
+                                Chase Away Robber
                             </button>
                         )}
 

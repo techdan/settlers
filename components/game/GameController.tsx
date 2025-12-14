@@ -581,6 +581,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     onActivate={knightController.handleActivateKnight}
                     onUpgrade={knightController.handleUpgradeKnight}
                     onMove={knightController.handleMoveKnight}
+                    onChaseRobber={knightController.handleChaseAwayRobber}
                 />
             )}
 

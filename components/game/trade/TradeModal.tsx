@@ -39,6 +39,12 @@ const createEmptyOffer = (): Record<ResourceType, number> => ({
     ore: 0
 });
 
+const createEmptyCommodityOffer = (): Record<CommodityType, number> => ({
+    paper: 0,
+    cloth: 0,
+    coin: 0
+});
+
 function isCommodity(type: string): type is CommodityType {
     return ['paper', 'cloth', 'coin'].includes(type);
 }
@@ -94,6 +100,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     // Domestic State
     const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>(() => createEmptyOffer());
     const [offerGet, setOfferGet] = useState<Record<ResourceType, number>>(() => createEmptyOffer());
+    const [offerGiveCommodities, setOfferGiveCommodities] = useState<Record<CommodityType, number>>(() => createEmptyCommodityOffer());
+    const [offerGetCommodities, setOfferGetCommodities] = useState<Record<CommodityType, number>>(() => createEmptyCommodityOffer());
 
     if (!player) return null;
 
@@ -156,9 +164,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const handleOfferTrade = () => {
         startTransition(async () => {
             try {
-                await tradeController.handleOfferTrade(offerGive, offerGet);
+                await tradeController.handleOfferTrade(offerGive, offerGet, offerGiveCommodities, offerGetCommodities);
                 setOfferGive(createEmptyOffer());
                 setOfferGet(createEmptyOffer());
+                setOfferGiveCommodities(createEmptyCommodityOffer());
+                setOfferGetCommodities(createEmptyCommodityOffer());
             } catch (e) {
                 console.error("Failed to offer trade", e);
             }
@@ -175,6 +185,20 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
             const current = offerGet[res];
             if (current + delta >= 0) {
                 setOfferGet(prev => ({ ...prev, [res]: current + delta }));
+            }
+        }
+    };
+
+    const updateCommodityOffer = (type: 'give' | 'get', comm: CommodityType, delta: number) => {
+        if (type === 'give') {
+            const current = offerGiveCommodities[comm];
+            if (current + delta >= 0 && current + delta <= (player.commodities?.[comm] || 0)) {
+                setOfferGiveCommodities(prev => ({ ...prev, [comm]: current + delta }));
+            }
+        } else {
+            const current = offerGetCommodities[comm];
+            if (current + delta >= 0) {
+                setOfferGetCommodities(prev => ({ ...prev, [comm]: current + delta }));
             }
         }
     };
@@ -273,6 +297,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                                 <h3 className="text-center text-slate-300 mb-4 font-bold">You Give</h3>
                                 <div className="space-y-2">
+                                    {/* Resources */}
                                     {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
                                         const current = player.resources[res] || 0;
                                         const giving = offerGive[res] || 0;
@@ -299,6 +324,33 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                             </div>
                                         );
                                     })}
+                                    {/* Commodities */}
+                                    {(['paper', 'cloth', 'coin'] as CommodityType[]).map(comm => {
+                                        const current = player.commodities?.[comm] || 0;
+                                        const giving = offerGiveCommodities[comm] || 0;
+                                        const getting = offerGetCommodities[comm] || 0;
+                                        const projected = current - giving + getting;
+
+                                        let colorClass = 'text-slate-300';
+                                        if (projected < current) colorClass = 'text-red-400';
+                                        if (projected > current) colorClass = 'text-green-400';
+
+                                        return (
+                                            <div key={comm} className="flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{COMMODITY_ICONS[comm]}</span>
+                                                    <span className={`text-sm capitalize ${colorClass}`}>
+                                                        {comm} ({projected})
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => updateCommodityOffer('give', comm, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
+                                                    <span className="w-4 text-center text-slate-100">{offerGiveCommodities[comm]}</span>
+                                                    <button onClick={() => updateCommodityOffer('give', comm, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer" disabled={offerGiveCommodities[comm] >= (player.commodities?.[comm] || 0)}>+</button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -306,6 +358,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                                 <h3 className="text-center text-slate-300 mb-4 font-bold">You Get</h3>
                                 <div className="space-y-2">
+                                    {/* Resources */}
                                     {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => {
                                         const current = player.resources[res] || 0;
                                         const giving = offerGive[res] || 0;
@@ -328,6 +381,33 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                                     <button onClick={() => updateOffer('get', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
                                                     <span className="w-4 text-center text-slate-100">{offerGet[res]}</span>
                                                     <button onClick={() => updateOffer('get', res, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">+</button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {/* Commodities */}
+                                    {(['paper', 'cloth', 'coin'] as CommodityType[]).map(comm => {
+                                        const current = player.commodities?.[comm] || 0;
+                                        const giving = offerGiveCommodities[comm] || 0;
+                                        const getting = offerGetCommodities[comm] || 0;
+                                        const projected = current - giving + getting;
+
+                                        let colorClass = 'text-slate-300';
+                                        if (projected < current) colorClass = 'text-red-400';
+                                        if (projected > current) colorClass = 'text-green-400';
+
+                                        return (
+                                            <div key={comm} className="flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{COMMODITY_ICONS[comm]}</span>
+                                                    <span className={`text-sm capitalize ${colorClass}`}>
+                                                        {comm} ({projected})
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => updateCommodityOffer('get', comm, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
+                                                    <span className="w-4 text-center text-slate-100">{offerGetCommodities[comm]}</span>
+                                                    <button onClick={() => updateCommodityOffer('get', comm, 1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">+</button>
                                                 </div>
                                             </div>
                                         );

@@ -85,7 +85,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         </div>
       )}
 
-      <div className="absolute bottom-4 left-4 flex items-end gap-4 pointer-events-auto origin-bottom-left transition-transform duration-300 scale-75 xl:scale-85 2xl:scale-100">
+      <div className="absolute bottom-4 left-4 flex items-end gap-4 pointer-events-none origin-bottom-left transition-transform duration-300 scale-75 xl:scale-85 2xl:scale-100">
         <div className="flex flex-col items-end gap-2">
           {isDebugMode && currentPlayer && (
             <div className="self-start pointer-events-auto">
@@ -93,17 +93,17 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
             </div>
           )}
 
-          <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : ''}>
+          <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : 'pointer-events-auto'}>
             <BuildControls gameState={gameState} playerId={playerId} buildMode={selectionManager.buildMode} onSetBuildMode={selectionManager.setBuildMode} />
           </div>
-          <div className="flex items-center gap-4 max-w-full overflow-x-auto">
+          <div className="flex items-center gap-4 max-w-full overflow-x-auto pointer-events-auto">
             {currentPlayer && <PlayerHand player={currentPlayer} roomId={gameState.roomId} lastTheft={gameState.lastTheft} />}
             {!isCitiesAndKnights && <PlayerDevCards gameState={gameState} playerId={playerId} />}
           </div>
         </div>
 
         {isCitiesAndKnights && currentPlayer && (
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 pointer-events-auto">
             <ProgressCardHand
               player={currentPlayer}
               roomId={gameState.roomId}
@@ -129,8 +129,8 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         )}
       </div>
 
-      <div className="absolute bottom-4 right-4 flex items-end gap-4 pointer-events-auto">
-        <div className={`flex flex-col items-center gap-2 ${promptBlocksUI ? 'opacity-60 pointer-events-none' : ''} origin-bottom-right transition-transform duration-300 scale-75 xl:scale-85 2xl:scale-100`}>
+      <div className="absolute bottom-4 right-4 flex items-end gap-4 pointer-events-none">
+        <div className={`flex flex-col items-center gap-2 ${promptBlocksUI ? 'opacity-60 pointer-events-none' : 'pointer-events-auto'} origin-bottom-right transition-transform duration-300 scale-75 xl:scale-85 2xl:scale-100`}>
           <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
           <ActionControls
             gameState={gameState}
@@ -143,7 +143,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
           />
         </div>
 
-        <div className="w-80">
+        <div className="w-80 pointer-events-auto">
           <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} />
         </div>
       </div>

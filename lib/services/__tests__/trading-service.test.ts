@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { tradeWithBank, offerTrade, acceptTrade } from '../trading-service';
+import { tradeWithBank, offerTrade, acceptTrade, rejectTrade } from '../trading-service';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
 import { GameState } from '@/lib/types';
 import * as PortGenerator from '@/core/engine/board/port-generator';
@@ -90,11 +90,42 @@ describe('Trading Service', () => {
             expect(result.tradeOffer).toBeDefined();
             expect(result.tradeOffer?.initiator).toBe('p1');
             expect(result.tradeOffer?.status).toBe('open');
+            expect(result.tradeOffer?.rejectedBy).toEqual([]);
         });
 
         it('throws if insufficient resources to offer', async () => {
             await expect(offerTrade('room-1', 'p1', { sheep: 1, wood: 0, brick: 0, wheat: 0, ore: 0 }, { brick: 1, wood: 0, sheep: 0, wheat: 0, ore: 0 }))
                 .rejects.toThrow('Not enough sheep to offer');
+        });
+
+        it('creates a trade offer with commodities', async () => {
+            mockGameState.players[0].commodities = { paper: 2, cloth: 1, coin: 0 };
+            const result = await offerTrade(
+                'room-1',
+                'p1',
+                { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                { brick: 1, wood: 0, sheep: 0, wheat: 0, ore: 0 },
+                { paper: 1, cloth: 0, coin: 0 }, // giving commodities
+                { cloth: 1, paper: 0, coin: 0 }  // getting commodities
+            );
+
+            expect(result.tradeOffer).toBeDefined();
+            expect(result.tradeOffer?.giveCommodities).toEqual({ paper: 1, cloth: 0, coin: 0 });
+            expect(result.tradeOffer?.getCommodities).toEqual({ cloth: 1, paper: 0, coin: 0 });
+        });
+
+        it('throws if insufficient commodities to offer', async () => {
+            mockGameState.players[0].commodities = { paper: 0, cloth: 0, coin: 0 };
+            await expect(
+                offerTrade(
+                    'room-1',
+                    'p1',
+                    { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                    { brick: 0, wood: 0, sheep: 0, wheat: 0, ore: 0 },
+                    { paper: 1, cloth: 0, coin: 0 },
+                    undefined
+                )
+            ).rejects.toThrow('Not enough paper to offer');
         });
     });
 
@@ -106,7 +137,8 @@ describe('Trading Service', () => {
                 initiator: 'p1',
                 give: { wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 },
                 get: { ore: 1, wood: 0, brick: 0, sheep: 0, wheat: 0 }, // p1 wants ore from p2
-                status: 'open'
+                status: 'open',
+                rejectedBy: []
             };
         });
 
@@ -124,6 +156,98 @@ describe('Trading Service', () => {
             expect(result.players[1].resources.wood).toBe(1);
 
             expect(result.tradeOffer).toBeNull();
+        });
+
+        it('executes trade with commodities between players', async () => {
+            mockGameState.players[0].commodities = { paper: 2, cloth: 0, coin: 0 };
+            mockGameState.players[1].commodities = { paper: 0, cloth: 1, coin: 0 };
+
+            mockGameState.tradeOffer = {
+                id: 'trade-2',
+                initiator: 'p1',
+                give: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                get: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                giveCommodities: { paper: 1, cloth: 0, coin: 0 },
+                getCommodities: { cloth: 1, paper: 0, coin: 0 },
+                status: 'open',
+                rejectedBy: []
+            };
+
+            const result = await acceptTrade('room-1', 'p2');
+
+            // p1: -1 paper, +1 cloth
+            expect(result.players[0].commodities?.paper).toBe(1);
+            expect(result.players[0].commodities?.cloth).toBe(1);
+
+            // p2: -1 cloth, +1 paper
+            expect(result.players[1].commodities?.paper).toBe(1);
+            expect(result.players[1].commodities?.cloth).toBe(0);
+
+            expect(result.tradeOffer).toBeNull();
+        });
+    });
+
+    describe('rejectTrade', () => {
+        beforeEach(async () => {
+            mockGameState = createTestGameState({
+                id: 'game-1',
+                players: [
+                    createTestPlayer({ id: 'p1', name: 'Player 1' }),
+                    createTestPlayer({ id: 'p2', name: 'Player 2' }),
+                    createTestPlayer({ id: 'p3', name: 'Player 3' }),
+                ],
+                currentTurn: 'p1',
+                phase: 'main_phase'
+            });
+            // Setup open trade
+            mockGameState.tradeOffer = {
+                id: 'trade-1',
+                initiator: 'p1',
+                give: { wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                get: { ore: 1, wood: 0, brick: 0, sheep: 0, wheat: 0 },
+                status: 'open',
+                rejectedBy: []
+            };
+            vi.mocked(getGameStateByRoomId).mockResolvedValue(mockGameState);
+        });
+
+        it('adds player to rejectedBy array when rejecting', async () => {
+            const result = await rejectTrade('room-1', 'p2');
+
+            expect(result.tradeOffer).toBeDefined();
+            expect(result.tradeOffer?.rejectedBy).toEqual(['p2']);
+            expect(result.tradeOffer?.status).toBe('open');
+        });
+
+        it('allows multiple players to reject the same trade', async () => {
+            await rejectTrade('room-1', 'p2');
+            const result = await rejectTrade('room-1', 'p3');
+
+            expect(result.tradeOffer).toBeDefined();
+            expect(result.tradeOffer?.rejectedBy).toEqual(['p2', 'p3']);
+            expect(result.tradeOffer?.status).toBe('open');
+        });
+
+        it('does not duplicate rejections from same player', async () => {
+            await rejectTrade('room-1', 'p2');
+            const result = await rejectTrade('room-1', 'p2');
+
+            expect(result.tradeOffer).toBeDefined();
+            expect(result.tradeOffer?.rejectedBy).toEqual(['p2']);
+        });
+
+        it('logs rejection message to initiator', async () => {
+            const result = await rejectTrade('room-1', 'p2');
+
+            const rejectLog = result.logs.find(log => log.message.includes('rejected'));
+            expect(rejectLog).toBeDefined();
+            expect(rejectLog?.playerId).toBe('p1'); // Message is for the initiator
+            expect(rejectLog?.message).toContain('Player 2 rejected');
+        });
+
+        it('throws error if initiator tries to reject', async () => {
+            await expect(rejectTrade('room-1', 'p1'))
+                .rejects.toThrow('Trade initiator should cancel instead of rejecting');
         });
     });
 });

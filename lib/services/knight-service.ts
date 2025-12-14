@@ -1,6 +1,6 @@
 import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { placeKnight, activateKnight, moveKnight, upgradeKnight, updateActiveKnightCount, relocateKnight } from '@/core/engine/knights/knight-manager';
+import { placeKnight, activateKnight, moveKnight, upgradeKnight, updateActiveKnightCount, relocateKnight, chaseAwayRobber } from '@/core/engine/knights/knight-manager';
 import { getHexesForVertex } from '@/lib/hex';
 import {
     isValidKnightPlacement,
@@ -9,7 +9,8 @@ import {
     isValidKnightUpgrade,
     canAffordKnight,
     canAffordKnightActivation,
-    canAffordKnightUpgrade
+    canAffordKnightUpgrade,
+    canChaseAwayRobber
 } from '@/core/validation/knight-validator';
 import { removeResources } from '@/core/engine/resources/resource-manager';
 import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST } from '@/core/rules/commodity-constants';
@@ -273,6 +274,53 @@ export async function relocateKnightAction(
     relocateKnight(gameState, playerId, knightId, targetVertexId);
 
     // 4. Save to database
+    await updateGameState(gameState);
+
+    return gameState;
+}
+
+/**
+ * Chase away the robber using an active knight
+ * Knight must be active and adjacent to the robber
+ * Knight becomes inactive after chasing the robber
+ *
+ * @param roomId - Room ID
+ * @param playerId - Player ID
+ * @param knightId - Knight to use for chasing
+ * @returns Updated game state
+ */
+export async function chaseAwayRobberAction(
+    roomId: string,
+    playerId: string,
+    knightId: string
+): Promise<GameState> {
+    // 1. Get game state
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    // 2. Validate C&K mode
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Knights are only available in Cities & Knights mode');
+    }
+
+    // 3. Validate turn
+    if (gameState.currentTurn !== playerId) {
+        throw new Error('Not your turn');
+    }
+
+    if (gameState.phase !== 'main_phase') {
+        throw new Error('Can only chase the robber during main phase');
+    }
+
+    // 4. Validate chase action
+    if (!canChaseAwayRobber(gameState, knightId, playerId)) {
+        throw new Error('Cannot chase away robber with this knight');
+    }
+
+    // 5. Chase away robber
+    chaseAwayRobber(gameState, knightId);
+
+    // 6. Save to database
     await updateGameState(gameState);
 
     return gameState;

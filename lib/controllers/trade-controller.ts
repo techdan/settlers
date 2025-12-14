@@ -14,7 +14,9 @@ export interface TradeController {
   ) => Promise<void>;
   handleOfferTrade: (
     offering: Record<ResourceType, number>,
-    requesting: Record<ResourceType, number>
+    requesting: Record<ResourceType, number>,
+    offeringCommodities?: Record<CommodityType, number>,
+    requestingCommodities?: Record<CommodityType, number>
   ) => Promise<void>;
   handleAcceptTrade: () => Promise<void>;
   handleRejectTrade: () => Promise<void>;
@@ -37,9 +39,11 @@ export function createTradeController(deps: TradeControllerDeps): TradeControlle
 
   const handleOfferTrade = async (
     offering: Record<ResourceType, number>,
-    requesting: Record<ResourceType, number>
+    requesting: Record<ResourceType, number>,
+    offeringCommodities?: Record<CommodityType, number>,
+    requestingCommodities?: Record<CommodityType, number>
   ) => {
-    await offerTrade(roomId, playerId, offering, requesting);
+    await offerTrade(roomId, playerId, offering, requesting, offeringCommodities, requestingCommodities);
   };
 
   const handleAcceptTrade = async () => {

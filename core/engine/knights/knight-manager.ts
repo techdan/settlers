@@ -139,32 +139,6 @@ export function moveKnight(
     if (!knight || !player) throw new Error('Knight not found');
     if (!knight.active) throw new Error('Knight must be active to move');
 
-    // Check for robber adjacency (Chase Robber)
-    let nextPhase: GamePhase = 'main_phase';
-    const [q, r, d] = targetVertexId.split(',').map(Number);
-    const adjacentHexes = getHexesForVertex(q, r, d);
-    const isAdjacentToRobber = adjacentHexes.some(h => `${h.q},${h.r}` === gameState.robberHexId);
-
-    if (isAdjacentToRobber) {
-        // C&K Rule: Cannot chase robber before first barbarian attack
-        if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `${player.name}'s knight moved next to the robber, but cannot chase it until the first barbarian attack.`,
-                playerId: player.id
-            });
-        } else {
-            nextPhase = 'robber_placement';
-            gameState.logs.push({
-                id: `${Date.now()}-${Math.random()}`,
-                timestamp: Date.now(),
-                message: `${player.name}'s knight chased the robber!`,
-                playerId: player.id
-            });
-        }
-    }
-
     // Check for opponent knight
     const opponentKnight = getKnightAtVertex(gameState, targetVertexId);
     if (opponentKnight) {
@@ -180,13 +154,8 @@ export function moveKnight(
             throw new Error('Cannot displace a knight of equal or greater strength');
         }
 
-        // Displace
-        displaceKnight(gameState, opponentKnight, nextPhase);
-    } else {
-        // If no displacement, set phase directly if changed
-        if (nextPhase !== 'main_phase') {
-            gameState.phase = nextPhase;
-        }
+        // Displace (main_phase will be preserved after displacement)
+        displaceKnight(gameState, opponentKnight, 'main_phase');
     }
 
     // Move the knight
@@ -535,4 +504,66 @@ export function relocateKnight(
     // Restore phase
     gameState.phase = gameState.pendingDisplacement.previousPhase;
     gameState.pendingDisplacement = undefined;
+}
+
+/**
+ * Chase away the robber using an active knight
+ * Knight must be active and adjacent to the robber
+ * Knight becomes inactive after chasing the robber
+ * Player enters robber placement phase
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight to use for chasing
+ * @returns Updated knight
+ */
+export function chaseAwayRobber(gameState: GameState, knightId: string): Knight {
+    // Find knight and its owner
+    let knight: Knight | undefined;
+    let player: PlayerState | undefined;
+
+    for (const p of gameState.players) {
+        if (!p.knights) continue;
+        const k = p.knights.find(kn => kn.id === knightId);
+        if (k) {
+            knight = k;
+            player = p;
+            break;
+        }
+    }
+
+    if (!knight || !player) throw new Error('Knight not found');
+    if (!knight.active) throw new Error('Knight must be active to chase the robber');
+
+    // Verify knight is adjacent to robber
+    const [q, r, d] = knight.vertexId.split(',').map(Number);
+    const adjacentHexes = getHexesForVertex(q, r, d);
+    const isAdjacentToRobber = adjacentHexes.some(h => `${h.q},${h.r}` === gameState.robberHexId);
+
+    if (!isAdjacentToRobber) {
+        throw new Error('Knight is not adjacent to the robber');
+    }
+
+    // C&K Rule: Cannot chase robber before first barbarian attack
+    if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+        throw new Error('Cannot chase the robber before the first barbarian attack');
+    }
+
+    // Knight becomes inactive
+    knight.active = false;
+
+    // Update cached knight strength
+    updateActiveKnightCount(player);
+
+    // Set phase to robber placement
+    gameState.phase = 'robber_placement';
+
+    // Log action
+    gameState.logs.push({
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: `${player.name}'s knight chased the robber!`,
+        playerId: player.id
+    });
+
+    return knight;
 }

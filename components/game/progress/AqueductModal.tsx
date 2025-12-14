@@ -52,10 +52,10 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
                             key={res}
                             onClick={() => setSelectedResource(res)}
                             className={`
-                                p-3 rounded-lg flex flex-col items-center gap-1 transition-all
+                                p-3 rounded-lg flex flex-col items-center gap-1 transition-all cursor-pointer
                                 ${selectedResource === res
                                     ? 'bg-green-600 ring-2 ring-green-400 scale-105'
-                                    : 'bg-slate-800 hover:bg-slate-700'
+                                    : 'bg-slate-800 hover:bg-slate-700 hover:scale-105'
                                 }
                             `}
                         >
@@ -69,7 +69,13 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
                 <button
                     onClick={handleClaim}
                     disabled={!selectedResource || isSubmitting}
-                    className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                    className={`
+                        w-full font-bold py-3 px-6 rounded-lg transition-all
+                        ${!selectedResource || isSubmitting
+                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                            : 'bg-green-600 hover:bg-green-500 cursor-pointer hover:scale-105'
+                        }
+                    `}
                 >
                     {isSubmitting ? 'Claiming...' : 'Claim Resource'}
                 </button>

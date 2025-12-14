@@ -3,7 +3,7 @@ import { Knight } from '@/lib/types/player';
 import { hasKnightAtVertex, getKnightAtVertex } from '@/core/engine/knights/knight-manager';
 import { hasResources } from '@/core/engine/resources/resource-manager';
 import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST, CK_CONSTANTS } from '@/core/rules/commodity-constants';
-import { getAdjacentEdgesForVertex, getEdgeEndpoints } from '@/lib/hex';
+import { getAdjacentEdgesForVertex, getEdgeEndpoints, getHexesForVertex } from '@/lib/hex';
 
 /**
  * Knight Validator (Cities & Knights Expansion)
@@ -345,4 +345,60 @@ export function getKnightOwner(gameState: GameState, knightId: string): PlayerSt
         if (knight) return player;
     }
     return null;
+}
+
+/**
+ * Check if a knight is adjacent to the robber
+ *
+ * @param gameState - Current game state
+ * @param knight - Knight to check
+ * @returns true if knight is adjacent to robber
+ */
+export function isKnightAdjacentToRobber(gameState: GameState, knight: Knight): boolean {
+    if (!knight.vertexId || knight.vertexId === 'displaced') return false;
+
+    const [q, r, d] = knight.vertexId.split(',').map(Number);
+    const adjacentHexes = getHexesForVertex(q, r, d);
+
+    return adjacentHexes.some(h => `${h.q},${h.r}` === gameState.robberHexId);
+}
+
+/**
+ * Validate chase away robber action
+ *
+ * Rules:
+ * 1. Knight must exist and belong to player
+ * 2. Knight must be active
+ * 3. Knight must be adjacent to robber
+ * 4. Cannot chase robber before first barbarian attack
+ *
+ * @param gameState - Current game state
+ * @param knightId - Knight to use
+ * @param playerId - Player chasing the robber
+ * @returns true if valid chase action
+ */
+export function canChaseAwayRobber(
+    gameState: GameState,
+    knightId: string,
+    playerId: string
+): boolean {
+    // Find the knight
+    const knight = findKnight(gameState, knightId);
+    if (!knight) return false;
+
+    // Check ownership
+    if (knight.playerId !== playerId) return false;
+
+    // Check knight is active
+    if (!knight.active) return false;
+
+    // Check adjacent to robber
+    if (!isKnightAdjacentToRobber(gameState, knight)) return false;
+
+    // C&K Rule: Cannot chase robber before first barbarian attack
+    if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+        return false;
+    }
+
+    return true;
 }

@@ -1,7 +1,7 @@
 import { GameState } from '@/lib/types';
 import { SelectionState } from '@/lib/hooks/useSelectionManager';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
-import { activateKnight, upgradeKnight, relocateKnight } from '@/app/actions';
+import { activateKnight, upgradeKnight, relocateKnight, chaseAwayRobber } from '@/app/actions';
 
 /**
  * Knight Controller
@@ -23,6 +23,7 @@ export interface KnightController {
   handleActivateKnight: (knightId: string) => Promise<void>;
   handleMoveKnight: (knightId: string) => void;
   handleUpgradeKnight: (knightId: string) => Promise<void>;
+  handleChaseAwayRobber: (knightId: string) => Promise<void>;
   handleStartSmithSelection: () => void;
   handleSmithKnightSelected: (knightId: string) => void;
   handleConfirmSmithPromotions: () => Promise<void>;
@@ -152,11 +153,24 @@ export function createKnightController(deps: KnightControllerDeps): KnightContro
     }
   };
 
+  /**
+   * Chase away the robber using an active knight
+   * Knight must be active and adjacent to the robber
+   */
+  const handleChaseAwayRobber = async (knightId: string) => {
+    try {
+      await chaseAwayRobber(roomId, playerId, knightId);
+    } catch (e) {
+      console.error('Error chasing away robber:', e);
+    }
+  };
+
   return {
     handleKnightClick,
     handleActivateKnight,
     handleMoveKnight,
     handleUpgradeKnight,
+    handleChaseAwayRobber,
     handleStartSmithSelection,
     handleSmithKnightSelected,
     handleConfirmSmithPromotions,

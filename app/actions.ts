@@ -158,8 +158,15 @@ export async function claimAqueductResource(roomId: string, playerId: string, re
     return gameService.claimAqueductResource(roomId, playerId, resource);
 }
 
-export async function offerTrade(roomId: string, playerId: string, give: Record<ResourceType, number>, get: Record<ResourceType, number>) {
-    return tradingService.offerTrade(roomId, playerId, give, get);
+export async function offerTrade(
+    roomId: string,
+    playerId: string,
+    give: Record<ResourceType, number>,
+    get: Record<ResourceType, number>,
+    giveCommodities?: Record<CommodityType, number>,
+    getCommodities?: Record<CommodityType, number>
+) {
+    return tradingService.offerTrade(roomId, playerId, give, get, giveCommodities, getCommodities);
 }
 
 export async function acceptTrade(roomId: string, playerId: string) {
@@ -211,6 +218,10 @@ export async function upgradeKnight(roomId: string, playerId: string, knightId: 
 
 export async function relocateKnight(roomId: string, playerId: string, knightId: string, targetVertexId: string | null) {
     return knightService.relocateKnightAction(roomId, playerId, knightId, targetVertexId);
+}
+
+export async function chaseAwayRobber(roomId: string, playerId: string, knightId: string) {
+    return knightService.chaseAwayRobberAction(roomId, playerId, knightId);
 }
 
 export async function buildCityWall(roomId: string, playerId: string, vertexId: string) {

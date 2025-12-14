@@ -156,13 +156,17 @@ export async function tradeWithBank(
  * @param playerId - Player ID
  * @param give - Resources to give
  * @param get - Resources to get
+ * @param giveCommodities - Commodities to give (optional)
+ * @param getCommodities - Commodities to get (optional)
  * @returns Updated game state
  */
 export async function offerTrade(
     roomId: string,
     playerId: string,
     give: Record<ResourceType, number>,
-    get: Record<ResourceType, number>
+    get: Record<ResourceType, number>,
+    giveCommodities?: Record<CommodityType, number>,
+    getCommodities?: Record<CommodityType, number>
 ): Promise<GameState> {
     // Get game state
     const gameState = await getGameStateByRoomId(roomId);
@@ -188,20 +192,58 @@ export async function offerTrade(
         }
     }
 
+    // Validate commodities
+    if (giveCommodities) {
+        for (const [comm, amount] of Object.entries(giveCommodities)) {
+            if ((player.commodities?.[comm as CommodityType] || 0) < amount) {
+                throw new Error(`Not enough ${comm} to offer`);
+            }
+        }
+    }
+
     // Create trade offer
     gameState.tradeOffer = {
         id: `${Date.now()}-${Math.random()}`,
         initiator: playerId,
         give,
         get,
-        status: 'open'
+        giveCommodities,
+        getCommodities,
+        status: 'open',
+        rejectedBy: []
     };
+
+    // Format trade message
+    const giveItems: string[] = [];
+    if (Object.values(give).some(v => v > 0)) {
+        giveItems.push(formatResourceList(give));
+    }
+    if (giveCommodities && Object.values(giveCommodities).some(v => v > 0)) {
+        const commParts = Object.entries(giveCommodities)
+            .filter(([, amount]) => amount > 0)
+            .map(([comm, amount]) => `${amount} ${comm}`);
+        if (commParts.length) giveItems.push(commParts.join(', '));
+    }
+
+    const getItems: string[] = [];
+    if (Object.values(get).some(v => v > 0)) {
+        getItems.push(formatResourceList(get));
+    }
+    if (getCommodities && Object.values(getCommodities).some(v => v > 0)) {
+        const commParts = Object.entries(getCommodities)
+            .filter(([, amount]) => amount > 0)
+            .map(([comm, amount]) => `${amount} ${comm}`);
+        if (commParts.length) getItems.push(commParts.join(', '));
+    }
+
+    const giveText = giveItems.length ? giveItems.join(', ') : 'nothing';
+    const getText = getItems.length ? getItems.join(', ') : 'nothing';
 
     // Add log
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} offered a trade: give ${formatResourceList(give)} for ${formatResourceList(get)}`,
+        message: `${player.name} offered a trade: give ${giveText} for ${getText}`,
         playerId
     });
 
@@ -248,12 +290,20 @@ export async function acceptTrade(
         }
     }
 
+    // Validate acceptor commodities
+    if (gameState.tradeOffer.getCommodities) {
+        for (const [comm, amount] of Object.entries(gameState.tradeOffer.getCommodities)) {
+            if ((acceptor.commodities?.[comm as CommodityType] || 0) < amount) {
+                throw new Error(`Not enough ${comm} to accept trade`);
+            }
+        }
+    }
+
     // Execute trade
     // Initiator gives 'give', gets 'get'
     // Acceptor gives 'get', gets 'give'
-    const offeredGive = formatResourceList(gameState.tradeOffer.give);
-    const offeredGet = formatResourceList(gameState.tradeOffer.get);
 
+    // Transfer resources
     for (const [res, amount] of Object.entries(gameState.tradeOffer.give)) {
         initiator.resources[res as ResourceType] -= amount;
         acceptor.resources[res as ResourceType] += amount;
@@ -263,6 +313,53 @@ export async function acceptTrade(
         acceptor.resources[res as ResourceType] -= amount;
         initiator.resources[res as ResourceType] += amount;
     }
+
+    // Transfer commodities
+    if (gameState.tradeOffer.giveCommodities) {
+        if (!initiator.commodities) initiator.commodities = { paper: 0, cloth: 0, coin: 0 };
+        if (!acceptor.commodities) acceptor.commodities = { paper: 0, cloth: 0, coin: 0 };
+
+        for (const [comm, amount] of Object.entries(gameState.tradeOffer.giveCommodities)) {
+            initiator.commodities[comm as CommodityType] -= amount;
+            acceptor.commodities[comm as CommodityType] += amount;
+        }
+    }
+
+    if (gameState.tradeOffer.getCommodities) {
+        if (!initiator.commodities) initiator.commodities = { paper: 0, cloth: 0, coin: 0 };
+        if (!acceptor.commodities) acceptor.commodities = { paper: 0, cloth: 0, coin: 0 };
+
+        for (const [comm, amount] of Object.entries(gameState.tradeOffer.getCommodities)) {
+            acceptor.commodities[comm as CommodityType] -= amount;
+            initiator.commodities[comm as CommodityType] += amount;
+        }
+    }
+
+    // Format log message
+    const giveItems: string[] = [];
+    if (Object.values(gameState.tradeOffer.give).some(v => v > 0)) {
+        giveItems.push(formatResourceList(gameState.tradeOffer.give));
+    }
+    if (gameState.tradeOffer.giveCommodities && Object.values(gameState.tradeOffer.giveCommodities).some(v => v > 0)) {
+        const commParts = Object.entries(gameState.tradeOffer.giveCommodities)
+            .filter(([, amount]) => amount > 0)
+            .map(([comm, amount]) => `${amount} ${comm}`);
+        if (commParts.length) giveItems.push(commParts.join(', '));
+    }
+
+    const getItems: string[] = [];
+    if (Object.values(gameState.tradeOffer.get).some(v => v > 0)) {
+        getItems.push(formatResourceList(gameState.tradeOffer.get));
+    }
+    if (gameState.tradeOffer.getCommodities && Object.values(gameState.tradeOffer.getCommodities).some(v => v > 0)) {
+        const commParts = Object.entries(gameState.tradeOffer.getCommodities)
+            .filter(([, amount]) => amount > 0)
+            .map(([comm, amount]) => `${amount} ${comm}`);
+        if (commParts.length) getItems.push(commParts.join(', '));
+    }
+
+    const offeredGive = giveItems.length ? giveItems.join(', ') : 'nothing';
+    const offeredGet = getItems.length ? getItems.join(', ') : 'nothing';
 
     // Clear trade offer
     gameState.tradeOffer = null;
@@ -312,7 +409,13 @@ export async function rejectTrade(
         throw new Error('Player not found');
     }
 
-    gameState.tradeOffer = null;
+    // Add player to rejectedBy array if not already there
+    if (!offer.rejectedBy) {
+        offer.rejectedBy = [];
+    }
+    if (!offer.rejectedBy.includes(playerId)) {
+        offer.rejectedBy.push(playerId);
+    }
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,

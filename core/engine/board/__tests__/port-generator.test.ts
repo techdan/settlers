@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
     generatePorts,
     getTradeRatio,
+    getPortForVertex,
+    getBestTradeRatio,
     PortType
 } from '../port-generator';
 
@@ -54,6 +56,74 @@ describe('Port Generator', () => {
 
         it('returns 4 for no port (null)', () => {
             expect(getTradeRatio(null, 'wood')).toBe(4);
+        });
+    });
+
+    describe('getPortForVertex', () => {
+        it('returns the correct port type for a wood port vertex', () => {
+            // Wood port is at index 12: { index: 12, type: 'wood' }
+            // COASTLINE_EDGES[12] = { q: 2, r: 0, edgeIndex: 1 }
+            // Edge 1 connects corners 1 and 2
+            // Canonical vertex IDs are: 1,1,5 and 1,0,0
+            const portType1 = getPortForVertex('1,1,5');
+            const portType2 = getPortForVertex('1,0,0');
+
+            expect(portType1).toBe('wood');
+            expect(portType2).toBe('wood');
+        });
+
+        it('returns the correct port type for a brick port vertex', () => {
+            // Brick port is at index 9: { index: 9, type: 'brick' }
+            // COASTLINE_EDGES[9] = { q: 2, r: -1, edgeIndex: 0 }
+            // Canonical vertex IDs are: 2,-1,0 and 1,0,5
+            const portType1 = getPortForVertex('2,-1,0');
+            const portType2 = getPortForVertex('1,0,5');
+
+            expect(portType1).toBe('brick');
+            expect(portType2).toBe('brick');
+        });
+
+        it('returns null for vertices without ports', () => {
+            // Center hex (0,0) should have no ports
+            const portType = getPortForVertex('0,0,0');
+            expect(portType).toBeNull();
+        });
+    });
+
+    describe('getBestTradeRatio', () => {
+        it('returns 4 for no ports', () => {
+            const ratio = getBestTradeRatio(['0,0,0', '0,0,1'], 'wood');
+            expect(ratio).toBe(4);
+        });
+
+        it('returns 2 for matching resource port', () => {
+            // Wood port canonical vertices: 1,1,5 and 1,0,0
+            const ratio = getBestTradeRatio(['1,1,5', '1,0,0'], 'wood');
+            expect(ratio).toBe(2);
+        });
+
+        it('returns 3 for generic port', () => {
+            // Generic port canonical vertices: 1,-3,0 and 1,-2,5
+            const ratio = getBestTradeRatio(['1,-3,0', '1,-2,5'], 'wood');
+            expect(ratio).toBe(3);
+        });
+
+        it('returns best ratio when player has multiple ports', () => {
+            // Mix of generic (3:1) and wood port (2:1) for wood
+            const ratio = getBestTradeRatio(['1,-3,0', '1,1,5'], 'wood');
+            expect(ratio).toBe(2); // Should pick the wood port
+        });
+
+        it('returns 4 when specific port does not match resource', () => {
+            // Wood port vertices but trading brick
+            const ratio = getBestTradeRatio(['1,1,5', '1,0,0'], 'brick');
+            expect(ratio).toBe(4);
+        });
+
+        it('returns 3 when only generic port available for non-matching resource', () => {
+            // Generic port for brick
+            const ratio = getBestTradeRatio(['1,-3,0', '1,-2,5'], 'brick');
+            expect(ratio).toBe(3);
         });
     });
 });

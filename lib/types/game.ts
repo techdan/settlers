@@ -43,15 +43,18 @@ export interface GameLogEntry {
 }
 
 /**
- * Trade offer
+ * Trade offer - supports both resources and commodities
  */
 export interface TradeOffer {
     id: string;
     initiator: string;
     give: Record<ResourceType, number>;
     get: Record<ResourceType, number>;
+    giveCommodities?: Record<CommodityType, number>; // Optional commodity support
+    getCommodities?: Record<CommodityType, number>; // Optional commodity support
     status: 'open' | 'accepted' | 'cancelled';
     acceptedBy?: string;
+    rejectedBy?: string[]; // Track which players have rejected the trade
 }
 
 /**

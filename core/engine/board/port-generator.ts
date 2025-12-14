@@ -1,5 +1,5 @@
 import { Port, PortType } from '@/types/board';
-import { hexToPixel, createHex } from '@/lib/hex';
+import { hexToPixel, createHex, getCanonicalVertexId } from '@/lib/hex';
 
 // Re-export PortType for backward compatibility with legacy imports
 export type { PortType };
@@ -52,7 +52,7 @@ const PORT_INDICES = [
     { index: 3, type: 'generic' },
     { index: 6, type: 'generic' },
     { index: 9, type: 'brick' },
-    { index: 13, type: 'wood' },
+    { index: 12, type: 'wood' }, // Corrected to include vertex 1,1,5
     { index: 16, type: 'generic' },
     { index: 19, type: 'wheat' },
     { index: 23, type: 'ore' },
@@ -109,10 +109,42 @@ export const generatePorts = (hexSize: number): Port[] => {
     });
 };
 
-// Trading helper functions (stubs - TODO: implement properly)
+// Map each port to its adjacent vertices
+// Each edge connects two vertices, and ports are on edges
+// For pointy-top hexes, edge d connects corner d and corner (d+1)%6
+function getEdgeVertices(q: number, r: number, edgeIndex: number): string[] {
+    const corner1 = edgeIndex;
+    const corner2 = (edgeIndex + 1) % 6;
+
+    // Use getCanonicalVertexId to get consistent vertex IDs
+    const v1 = getCanonicalVertexId(q, r, corner1);
+    const v2 = getCanonicalVertexId(q, r, corner2);
+
+    return [v1, v2];
+}
+
+// Build a map from vertex ID to port type
+const PORT_VERTEX_MAP: Map<string, PortType> = new Map();
+
+// Initialize the port-vertex mapping
+function initializePortVertexMap() {
+    if (PORT_VERTEX_MAP.size > 0) return; // Already initialized
+
+    PORT_INDICES.forEach(config => {
+        const edgeDef = COASTLINE_EDGES[config.index];
+        const vertices = getEdgeVertices(edgeDef.q, edgeDef.r, edgeDef.edgeIndex);
+
+        vertices.forEach(vertexId => {
+            // A vertex can only have one port, but we'll overwrite if needed
+            PORT_VERTEX_MAP.set(vertexId, config.type as PortType);
+        });
+    });
+}
+
+// Trading helper functions
 export function getPortForVertex(vertexId: string): PortType | null {
-    // TODO: Implement - should return the port type for a given vertex
-    return null;
+    initializePortVertexMap();
+    return PORT_VERTEX_MAP.get(vertexId) || null;
 }
 
 export function getTradeRatio(portType: PortType | null, resourceType: any): number {
@@ -123,6 +155,21 @@ export function getTradeRatio(portType: PortType | null, resourceType: any): num
 }
 
 export function getBestTradeRatio(vertexIds: string[], resourceType: any): number {
-    // TODO: Implement - should find the best port among player's vertices
-    return 4; // Default 4:1 ratio
+    initializePortVertexMap();
+
+    let bestRatio = 4; // Default 4:1 ratio
+
+    for (const vertexId of vertexIds) {
+        const portType = PORT_VERTEX_MAP.get(vertexId);
+
+        if (portType === 'generic') {
+            // Generic port gives 3:1 for any resource
+            bestRatio = Math.min(bestRatio, 3);
+        } else if (portType === resourceType) {
+            // Specific port gives 2:1 for matching resource
+            return 2; // Best possible, return immediately
+        }
+    }
+
+    return bestRatio;
 }
