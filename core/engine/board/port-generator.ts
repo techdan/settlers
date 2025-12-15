@@ -1,5 +1,5 @@
 import { Port, PortType } from '@/types/board';
-import { hexToPixel, createHex, getCanonicalVertexId } from '@/lib/hex';
+import { hexToPixel, createHex, getEdgeEndpoints } from '@/lib/hex';
 
 // Re-export PortType for backward compatibility with legacy imports
 export type { PortType };
@@ -109,20 +109,6 @@ export const generatePorts = (hexSize: number): Port[] => {
     });
 };
 
-// Map each port to its adjacent vertices
-// Each edge connects two vertices, and ports are on edges
-// For pointy-top hexes, edge d connects corner d and corner (d+1)%6
-function getEdgeVertices(q: number, r: number, edgeIndex: number): string[] {
-    const corner1 = edgeIndex;
-    const corner2 = (edgeIndex + 1) % 6;
-
-    // Use getCanonicalVertexId to get consistent vertex IDs
-    const v1 = getCanonicalVertexId(q, r, corner1);
-    const v2 = getCanonicalVertexId(q, r, corner2);
-
-    return [v1, v2];
-}
-
 // Build a map from vertex ID to port type
 const PORT_VERTEX_MAP: Map<string, PortType> = new Map();
 
@@ -132,7 +118,7 @@ function initializePortVertexMap() {
 
     PORT_INDICES.forEach(config => {
         const edgeDef = COASTLINE_EDGES[config.index];
-        const vertices = getEdgeVertices(edgeDef.q, edgeDef.r, edgeDef.edgeIndex);
+        const vertices = getEdgeEndpoints(edgeDef.q, edgeDef.r, edgeDef.edgeIndex);
 
         vertices.forEach(vertexId => {
             // A vertex can only have one port, but we'll overwrite if needed

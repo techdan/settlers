@@ -73,8 +73,9 @@ describe('Verify ALL ports are correctly mapped', () => {
 
         PORT_INDICES.forEach(config => {
             const edge = COASTLINE_EDGES[config.index];
-            const corner1 = edge.edgeIndex;
-            const corner2 = (edge.edgeIndex + 1) % 6;
+            // Edge d connects corner (d+5)%6 and corner d (matching lib/hex.ts getEdgeEndpoints)
+            const corner1 = (edge.edgeIndex + 5) % 6;
+            const corner2 = edge.edgeIndex;
 
             const v1 = getCanonicalVertexId(edge.q, edge.r, corner1);
             const v2 = getCanonicalVertexId(edge.q, edge.r, corner2);
@@ -105,41 +106,44 @@ describe('Verify ALL ports are correctly mapped', () => {
     });
 
     it('verifies specific known port vertices from the game', () => {
-        // These are the actual vertices from the working game
+        // These are the actual vertices from the debug overlay
         // If you have a settlement on these vertices, you should get the port
 
-        // Wood port (confirmed working with settlement at 1,1,5)
+        // Wood port: Edge 12 (Hex 2,0 E1) -> '2,0,0', '1,1,5'
         expect(getPortForVertex('1,1,5')).toBe('wood');
-        expect(getPortForVertex('1,0,0')).toBe('wood');
+        expect(getPortForVertex('2,0,0')).toBe('wood');
 
-        // Wheat port (confirmed working with city at -2,2,5)
-        expect(getPortForVertex('-2,2,5')).toBe('wheat');
+        // Wheat port: Edge 19 (Hex -1,2 E2) -> '-2,3,5', '-2,2,0'
         expect(getPortForVertex('-2,2,0')).toBe('wheat');
+        expect(getPortForVertex('-2,3,5')).toBe('wheat');
 
-        // Brick port
+        // Brick port: Edge 9 (Hex 2,-1 E0) -> '2,-1,5', '2,-1,0'
+        expect(getPortForVertex('2,-1,5')).toBe('brick');
         expect(getPortForVertex('2,-1,0')).toBe('brick');
-        expect(getPortForVertex('1,0,5')).toBe('brick');
 
-        // Sheep port
+        // Sheep port: Edge 29 (Hex -1,-1 E4) -> '-2,-1,5', '-1,-2,0'
         expect(getPortForVertex('-1,-2,0')).toBe('sheep');
-        expect(getPortForVertex('-1,-1,5')).toBe('sheep');
+        expect(getPortForVertex('-2,-1,5')).toBe('sheep');
 
-        // Ore port
+        // Ore port: Edge 23 (Hex -2,1 E2) -> '-3,2,5', '-3,1,0'
         expect(getPortForVertex('-3,1,0')).toBe('ore');
-        expect(getPortForVertex('-3,1,5')).toBe('ore');
+        expect(getPortForVertex('-3,2,5')).toBe('ore');
 
-        // Generic ports
+        // Generic port #1: Edge 3 (Hex 1,-2 E4) -> '0,-2,5', '1,-3,0'
         expect(getPortForVertex('1,-3,0')).toBe('generic');
-        expect(getPortForVertex('1,-2,5')).toBe('generic');
+        expect(getPortForVertex('0,-2,5')).toBe('generic');
 
+        // Generic port #2: Edge 6 (Hex 2,-2 E5) -> '2,-3,0', '2,-2,5'
+        expect(getPortForVertex('2,-3,0')).toBe('generic');
         expect(getPortForVertex('2,-2,5')).toBe('generic');
-        expect(getPortForVertex('2,-2,0')).toBe('generic');
 
+        // Generic port #3: Edge 16 (Hex 0,2 E1) -> '0,2,0', '-1,3,5'
         expect(getPortForVertex('-1,3,5')).toBe('generic');
-        expect(getPortForVertex('-1,2,0')).toBe('generic');
+        expect(getPortForVertex('0,2,0')).toBe('generic');
 
+        // Generic port #4: Edge 26 (Hex -2,0 E3) -> '-3,0,0', '-3,0,5'
         expect(getPortForVertex('-3,0,5')).toBe('generic');
-        expect(getPortForVertex('-2,-1,0')).toBe('generic');
+        expect(getPortForVertex('-3,0,0')).toBe('generic');
     });
 
     it('verifies non-port vertices return null', () => {

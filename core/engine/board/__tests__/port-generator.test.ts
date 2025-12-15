@@ -63,10 +63,10 @@ describe('Port Generator', () => {
         it('returns the correct port type for a wood port vertex', () => {
             // Wood port is at index 12: { index: 12, type: 'wood' }
             // COASTLINE_EDGES[12] = { q: 2, r: 0, edgeIndex: 1 }
-            // Edge 1 connects corners 1 and 2
-            // Canonical vertex IDs are: 1,1,5 and 1,0,0
+            // Edge 1 connects corners (1+5)%6=0 and 1
+            // Canonical vertex IDs are: 2,0,0 and 1,1,5
             const portType1 = getPortForVertex('1,1,5');
-            const portType2 = getPortForVertex('1,0,0');
+            const portType2 = getPortForVertex('2,0,0');
 
             expect(portType1).toBe('wood');
             expect(portType2).toBe('wood');
@@ -75,9 +75,10 @@ describe('Port Generator', () => {
         it('returns the correct port type for a brick port vertex', () => {
             // Brick port is at index 9: { index: 9, type: 'brick' }
             // COASTLINE_EDGES[9] = { q: 2, r: -1, edgeIndex: 0 }
-            // Canonical vertex IDs are: 2,-1,0 and 1,0,5
-            const portType1 = getPortForVertex('2,-1,0');
-            const portType2 = getPortForVertex('1,0,5');
+            // Edge 0 connects corners (0+5)%6=5 and 0
+            // Canonical vertex IDs are: 2,-1,5 and 2,-1,0
+            const portType1 = getPortForVertex('2,-1,5');
+            const portType2 = getPortForVertex('2,-1,0');
 
             expect(portType1).toBe('brick');
             expect(portType2).toBe('brick');

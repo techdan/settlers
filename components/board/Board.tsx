@@ -36,6 +36,7 @@ export const Board: React.FC<BoardProps> = ({
     phase: 'setup' | 'main';
   } | null>(null);
 
+
   // Clear pending placement when build mode changes (e.g., when toggling build buttons)
   useEffect(() => {
     if (pendingPlacement) {

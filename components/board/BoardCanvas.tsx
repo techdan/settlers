@@ -7,13 +7,14 @@ import { VoxelHexTile } from '@/themes/voxel/HexTile';
 import { FlatPort } from '@/themes/flat/Port';
 import { VoxelPort } from '@/themes/voxel/Port';
 import { Tooltip } from '@/components/ui/tooltip';
-import { generatePorts } from '@/core/engine/board/port-generator';
+import { generatePorts, getPortForVertex } from '@/core/engine/board/port-generator';
 import { GameState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
 import { BoardSelectionState } from '@/lib/types/board-selection-state';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { BoardControls } from './BoardControls';
+import { createHex, hexCornerToPixel } from '@/lib/hex';
 
 /**
  * BoardCanvas - Pure rendering component for the game board
@@ -92,6 +93,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   // Select tile and port components based on theme
   const TileComponent = theme === 'flat' ? FlatHexTile : VoxelHexTile;
   const PortComponent = theme === 'flat' ? FlatPort : VoxelPort;
+
 
   // Extract selection state for rendering
   const {
