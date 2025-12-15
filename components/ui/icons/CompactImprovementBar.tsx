@@ -38,37 +38,21 @@ export const CompactImprovementBar: React.FC<{
         >
             {Array.from({ length: maxLevel }, (_, i) => {
                 const segmentLevel = i + 1;
-                const isFilled = segmentLevel <= level;
                 const isUnlockLevel = segmentLevel === unlockLevel;
 
-                // If player has metropolis, show the icon at position 4 (index 3)
-                // Level 4: ●●●🏛️○ (3 filled, metropolis, 1 empty)
-                // Level 5: ●●●●🏛️ (4 filled, metropolis)
-                if (hasMetropolis && segmentLevel === 4) {
+                // If player has metropolis, the icon REPLACES the dot at their current level
+                // Level 4 with metropolis: ●●●🏛️○ (dots 1-3, metropolis at position 4, empty at position 5)
+                // Level 5 with metropolis: ●●●●🏛️ (dots 1-4, metropolis at position 5)
+                if (hasMetropolis && segmentLevel === level) {
                     return (
                         <span key={i} className={metropolisClass} title="Metropolis">🏛️</span>
                     );
                 }
 
-                // Don't show 5th dot if we have a metropolis (metropolis replaces position 4)
-                if (hasMetropolis && segmentLevel === 5) {
-                    // For level 4 metropolis, show empty dot at position 5
-                    // For level 5 metropolis, don't show anything (metropolis is final)
-                    if (level === 4) {
-                        return (
-                            <div
-                                key={i}
-                                className={`${segmentSize} rounded-sm transition-all`}
-                                style={{
-                                    backgroundColor: 'var(--color-highlight-muted)',
-                                    boxShadow: 'none',
-                                }}
-                            />
-                        );
-                    }
-                    return null;
-                }
-
+                // For all other positions, show filled/empty dots
+                // With metropolis: filled if before the metropolis (< level)
+                // Without metropolis: filled if at or before current level (<= level)
+                const isFilled = hasMetropolis ? segmentLevel < level : segmentLevel <= level;
                 return (
                     <div
                         key={i}
