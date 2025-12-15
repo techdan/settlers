@@ -41,12 +41,32 @@ export const CompactImprovementBar: React.FC<{
                 const isFilled = segmentLevel <= level;
                 const isUnlockLevel = segmentLevel === unlockLevel;
 
-                // If player has metropolis, show the icon at level 5 position (index 4)
-                // instead of the 5th circle
-                if (hasMetropolis && segmentLevel === 5) {
+                // If player has metropolis, show the icon at position 4 (index 3)
+                // Level 4: ●●●🏛️○ (3 filled, metropolis, 1 empty)
+                // Level 5: ●●●●🏛️ (4 filled, metropolis)
+                if (hasMetropolis && segmentLevel === 4) {
                     return (
                         <span key={i} className={metropolisClass} title="Metropolis">🏛️</span>
                     );
+                }
+
+                // Don't show 5th dot if we have a metropolis (metropolis replaces position 4)
+                if (hasMetropolis && segmentLevel === 5) {
+                    // For level 4 metropolis, show empty dot at position 5
+                    // For level 5 metropolis, don't show anything (metropolis is final)
+                    if (level === 4) {
+                        return (
+                            <div
+                                key={i}
+                                className={`${segmentSize} rounded-sm transition-all`}
+                                style={{
+                                    backgroundColor: 'var(--color-highlight-muted)',
+                                    boxShadow: 'none',
+                                }}
+                            />
+                        );
+                    }
+                    return null;
                 }
 
                 return (

@@ -1,6 +1,6 @@
 import { GameState } from '@/lib/types';
 import { getEdgeEndpoints } from '@/lib/hex';
-import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
+import { updateAllVictoryPoints, checkVictoryCondition } from '@/core/rules/victory-conditions';
 
 /**
  * Calculate the longest continuous road for a player
@@ -122,6 +122,7 @@ export function updateLongestRoad(gameState: GameState): void {
 
         // Update all players' victory points to reflect longest road loss
         updateAllVictoryPoints(gameState);
+        maybeSetWinner(gameState);
         return;
     }
 
@@ -148,6 +149,7 @@ export function updateLongestRoad(gameState: GameState): void {
 
         // Update all players' victory points to reflect longest road loss
         updateAllVictoryPoints(gameState);
+        maybeSetWinner(gameState);
         return;
     }
 
@@ -174,6 +176,14 @@ export function updateLongestRoad(gameState: GameState): void {
 
     // Update all players' victory points to reflect longest road changes
     updateAllVictoryPoints(gameState);
+    maybeSetWinner(gameState);
+}
+
+function maybeSetWinner(gameState: GameState): void {
+    const winnerId = checkVictoryCondition(gameState);
+    if (!winnerId) return;
+    gameState.winner = winnerId;
+    gameState.phase = 'game_over';
 }
 
 /**

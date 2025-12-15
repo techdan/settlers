@@ -1,8 +1,9 @@
 import React, { useState, useTransition } from 'react';
-import { GameState, TradeOffer } from '@/lib/types';
+import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface TradeOfferDisplayProps {
     gameState: GameState;
@@ -10,18 +11,18 @@ interface TradeOfferDisplayProps {
     tradeController: TradeController;
 }
 
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: '🌲',
-    brick: '🧱',
-    sheep: '🐑',
-    wheat: '🌾',
-    ore: '🪨'
+const RESOURCE_LABELS: Record<ResourceType, string> = {
+    wood: 'Wood',
+    brick: 'Brick',
+    sheep: 'Sheep',
+    wheat: 'Wheat',
+    ore: 'Ore'
 };
 
-const COMMODITY_ICONS: Record<CommodityType, string> = {
-    paper: '📜',
-    cloth: '🧶',
-    coin: '🪙'
+const COMMODITY_LABELS: Record<CommodityType, string> = {
+    paper: 'Paper',
+    cloth: 'Cloth',
+    coin: 'Coin'
 };
 
 export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId, tradeController }) => {
@@ -110,18 +111,24 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
                         {Object.entries(offer.give).map(([res, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={res} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
-                                    <span>{RESOURCE_ICONS[res as ResourceType]}</span>
-                                    <span className="font-bold text-white">{amount}</span>
+                                <div key={res} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                    <div className="flex flex-col items-center leading-none">
+                                        <GameIcon type={res as ResourceType} size={28} />
+                                        <span className="text-[10px] text-slate-300">{RESOURCE_LABELS[res as ResourceType]}</span>
+                                    </div>
+                                    <span className="font-bold text-white text-sm">{amount}</span>
                                 </div>
                             );
                         })}
                         {offer.giveCommodities && Object.entries(offer.giveCommodities).map(([comm, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={comm} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
-                                    <span>{COMMODITY_ICONS[comm as CommodityType]}</span>
-                                    <span className="font-bold text-white">{amount}</span>
+                                <div key={comm} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                    <div className="flex flex-col items-center leading-none">
+                                        <GameIcon type={comm as CommodityType} size={28} />
+                                        <span className="text-[10px] text-slate-300">{COMMODITY_LABELS[comm as CommodityType]}</span>
+                                    </div>
+                                    <span className="font-bold text-white text-sm">{amount}</span>
                                 </div>
                             );
                         })}
@@ -137,18 +144,24 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
                         {Object.entries(offer.get).map(([res, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={res} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
-                                    <span>{RESOURCE_ICONS[res as ResourceType]}</span>
-                                    <span className="font-bold text-white">{amount}</span>
+                                <div key={res} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                    <div className="flex flex-col items-center leading-none">
+                                        <GameIcon type={res as ResourceType} size={28} />
+                                        <span className="text-[10px] text-slate-300">{RESOURCE_LABELS[res as ResourceType]}</span>
+                                    </div>
+                                    <span className="font-bold text-white text-sm">{amount}</span>
                                 </div>
                             );
                         })}
                         {offer.getCommodities && Object.entries(offer.getCommodities).map(([comm, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={comm} className="flex items-center gap-1 bg-slate-700 px-2 py-1 rounded">
-                                    <span>{COMMODITY_ICONS[comm as CommodityType]}</span>
-                                    <span className="font-bold text-white">{amount}</span>
+                                <div key={comm} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                    <div className="flex flex-col items-center leading-none">
+                                        <GameIcon type={comm as CommodityType} size={28} />
+                                        <span className="text-[10px] text-slate-300">{COMMODITY_LABELS[comm as CommodityType]}</span>
+                                    </div>
+                                    <span className="font-bold text-white text-sm">{amount}</span>
                                 </div>
                             );
                         })}

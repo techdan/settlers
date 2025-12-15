@@ -90,6 +90,13 @@ export const CK_CONSTANTS = {
         strong: 2,
         mighty: 3,
     } as const,
+
+    /** Maximum number of knight pieces per level per player */
+    KNIGHT_PIECE_LIMITS: {
+        basic: 2,
+        strong: 2,
+        mighty: 2,
+    } as const,
 } as const;
 
 /**

@@ -105,6 +105,45 @@ describe('Knight Manager', () => {
             upgradeKnight(gameState, knight.id); // mighty
             expect(() => upgradeKnight(gameState, knight.id)).toThrow('already at maximum level');
         });
+
+        it('fails to upgrade to strong if player already has 2 strong knights', () => {
+            // Place and upgrade 2 knights to strong
+            const k1 = placeKnight(gameState, 'p1', '0,0,0');
+            const k2 = placeKnight(gameState, 'p1', '-1,0,0');
+            upgradeKnight(gameState, k1.id); // strong
+            upgradeKnight(gameState, k2.id); // strong
+
+            // Try to upgrade a third knight to strong - should fail
+            const k3 = placeKnight(gameState, 'p1', '1,0,0');
+            expect(() => upgradeKnight(gameState, k3.id)).toThrow('You already have 2 strong knights');
+        });
+
+        it('fails to upgrade to mighty if player already has 2 mighty knights', () => {
+            gameState.players[0].improvements!.politics = 3;
+
+            // Place and upgrade 2 knights to mighty
+            const k1 = placeKnight(gameState, 'p1', '0,0,0');
+            const k2 = placeKnight(gameState, 'p1', '-1,0,0');
+            upgradeKnight(gameState, k1.id); // strong
+            upgradeKnight(gameState, k1.id); // mighty
+            upgradeKnight(gameState, k2.id); // strong
+            upgradeKnight(gameState, k2.id); // mighty
+
+            // Try to upgrade a third knight to mighty - should fail
+            const k3 = placeKnight(gameState, 'p1', '1,0,0');
+            upgradeKnight(gameState, k3.id); // strong
+            expect(() => upgradeKnight(gameState, k3.id)).toThrow('You already have 2 mighty knights');
+        });
+
+        it('allows upgrading basic to strong when one strong knight exists', () => {
+            const k1 = placeKnight(gameState, 'p1', '0,0,0');
+            upgradeKnight(gameState, k1.id); // strong
+
+            // Should be able to upgrade a second knight to strong
+            const k2 = placeKnight(gameState, 'p1', '-1,0,0');
+            upgradeKnight(gameState, k2.id); // strong
+            expect(k2.level).toBe('strong');
+        });
     });
 
     describe('moveKnight', () => {

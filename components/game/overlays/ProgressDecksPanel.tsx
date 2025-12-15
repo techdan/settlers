@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface ProgressDecksPanelProps {
     gameState: GameState;
@@ -29,7 +30,7 @@ export const ProgressDecksPanel: React.FC<ProgressDecksPanelProps> = ({ gameStat
         label: string;
         color: string;
         bgColor: string;
-        icon: string;
+        icon: React.ReactNode;
     }> = [
         {
             category: 'science',
@@ -37,7 +38,7 @@ export const ProgressDecksPanel: React.FC<ProgressDecksPanelProps> = ({ gameStat
             label: 'Science',
             color: 'text-green-400',
             bgColor: 'bg-green-900/50',
-            icon: '🔬',
+            icon: <GameIcon type="science" size={26} />,
         },
         {
             category: 'trade',
@@ -45,7 +46,7 @@ export const ProgressDecksPanel: React.FC<ProgressDecksPanelProps> = ({ gameStat
             label: 'Trade',
             color: 'text-yellow-400',
             bgColor: 'bg-yellow-900/50',
-            icon: '💰',
+            icon: <GameIcon type="trade" size={26} />,
         },
         {
             category: 'politics',
@@ -53,7 +54,7 @@ export const ProgressDecksPanel: React.FC<ProgressDecksPanelProps> = ({ gameStat
             label: 'Politics',
             color: 'text-blue-400',
             bgColor: 'bg-blue-900/50',
-            icon: '⚖️',
+            icon: <GameIcon type="politics" size={26} />,
         },
     ];
 

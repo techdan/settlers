@@ -130,17 +130,14 @@ export class AlchemistCommand implements ProgressCardCommand {
 
         if (eligibleForAqueduct.length > 0) {
           state.pendingAqueduct = eligibleForAqueduct;
-          if (state.phase === 'waiting_for_roll' || state.phase === 'main_phase') {
-            state.phase = 'aqueduct_selection';
-            const names = eligibleForAqueduct
-              .map((id) => state.players.find((p) => p.id === id)?.name)
-              .join(', ');
-            state.logs.push({
-              id: `${Date.now()}-${Math.random()}`,
-              timestamp: Date.now(),
-              message: `Aqueduct triggered! ${names} can choose a resource.`,
-            });
-          }
+          const names = eligibleForAqueduct
+            .map((id) => state.players.find((p) => p.id === id)?.name)
+            .join(', ');
+          state.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `Aqueduct triggered! ${names} can choose a resource.`,
+          });
         }
       }
 

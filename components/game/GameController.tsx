@@ -51,6 +51,7 @@ import { RobberTheftNotification } from './overlays/RobberTheftNotification';
 import { GameOverModal } from './modals/GameOverModal';
 import { RobberModals } from './overlays/RobberModals';
 import { GameLayoutPanels } from './ui/GameLayoutPanels';
+import { GameOverOverlay } from './overlays/GameOverOverlay';
 
 // Controllers and hooks
 import { useSelectionManager } from '@/lib/hooks/useSelectionManager';
@@ -370,6 +371,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     if (!gameState) return <div className="flex items-center justify-center h-screen text-white">Loading game state...</div>;
 
     const shouldShowGameOverModal = showGameOverModal && (gameState.phase === 'game_over' || !!gameState.winner);
+    const shouldShowGameOverOverlay = gameState.phase === 'game_over' && !!gameState.winner;
 
     const activeProgressCard: ProgressCardType | 'metropolis' | null = (() => {
         if (showRoadBuildingPrompt) return 'road_building_progress';
@@ -411,6 +413,15 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     winnerId={gameState.winner}
                     isOpen={shouldShowGameOverModal}
                     onClose={() => setShowGameOverModal(false)}
+                />
+            )}
+
+            {shouldShowGameOverOverlay && (
+                <GameOverOverlay
+                    gameState={gameState}
+                    onShowBreakdown={() => {
+                        setShowGameOverModal(true);
+                    }}
                 />
             )}
 

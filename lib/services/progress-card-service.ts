@@ -2,6 +2,7 @@ import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
+import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { TreasonEffect, WeddingSelection } from '@/lib/types/game';
 import { updateActiveKnightCount } from '@/core/engine/knights/knight-manager';
 import { isValidKnightPlacement } from '@/core/validation/knight-validator';
@@ -77,6 +78,9 @@ export async function cancelRoadBuildingProgress(roomId: string, playerId: strin
 
     updateLongestRoad(gameState);
     updateAllVictoryPoints(gameState);
+    checkAndUpdateVictory(gameState);
+
+    checkAndUpdateVictory(gameState);
 
     await updateGameState(gameState);
     return gameState;

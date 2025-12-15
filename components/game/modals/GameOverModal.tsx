@@ -197,7 +197,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
                         </div>
                     </div>
                     <button
-                        className="px-3 py-2 rounded-lg border border-amber-300/70 text-amber-50 hover:bg-amber-400/20 transition-colors font-semibold cursor-pointer"
+                        className="relative z-10 px-4 py-3 rounded-lg border border-amber-300/70 text-amber-50 hover:bg-amber-400/20 transition-colors font-semibold cursor-pointer min-h-[44px]"
                         onClick={onClose}
                     >
                         View Board

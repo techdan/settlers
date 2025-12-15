@@ -4,6 +4,7 @@ import { getPortForVertex } from '@/core/engine/board/port-generator';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
+import { GameIcon } from '@/components/ui/icons/GameIcon';
 
 interface TradeModalProps {
     gameState: GameState;
@@ -12,24 +13,23 @@ interface TradeModalProps {
     tradeController: TradeController;
 }
 
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: '🌲',
-    brick: '🧱',
-    sheep: '🐑',
-    wheat: '🌾',
-    ore: '🪨'
-};
-
-const COMMODITY_ICONS: Record<CommodityType, string> = {
-    paper: '📜',
-    cloth: '🧶',
-    coin: '🪙'
-};
+type TradeItem = ResourceType | CommodityType;
 
 const ALL_TYPES = [
     'wood', 'brick', 'sheep', 'wheat', 'ore',
     'paper', 'cloth', 'coin'
 ] as const;
+
+const TRADE_ITEM_LABELS: Record<TradeItem, string> = {
+    wood: 'Wood',
+    brick: 'Brick',
+    sheep: 'Sheep',
+    wheat: 'Wheat',
+    ore: 'Ore',
+    paper: 'Paper',
+    cloth: 'Cloth',
+    coin: 'Coin'
+};
 
 const createEmptyOffer = (): Record<ResourceType, number> => ({
     wood: 0,
@@ -49,25 +49,20 @@ function isCommodity(type: string): type is CommodityType {
     return ['paper', 'cloth', 'coin'].includes(type);
 }
 
-function getIcon(type: string): string {
-    if (isCommodity(type)) return COMMODITY_ICONS[type as CommodityType];
-    return RESOURCE_ICONS[type as ResourceType];
-}
-
 export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onClose, tradeController }) => {
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'bank' | 'domestic'>('bank');
     const [tradeConfirmation, setTradeConfirmation] = useState<{
-        gave: ResourceType | CommodityType;
+        gave: TradeItem;
         gaveAmount: number;
-        received: ResourceType | CommodityType;
+        received: TradeItem;
     } | null>(null);
 
     type MerchantFleetEffect = {
         type: 'merchant_fleet';
         playerId: string;
-        tradeItem: ResourceType | CommodityType;
+        tradeItem: TradeItem;
     };
 
     const terrainToResource: Record<string, ResourceType | null> = {
@@ -94,8 +89,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const merchantFleetTradeItem = merchantFleetEffect?.tradeItem;
 
     // Bank State
-    const [giveRes, setGiveRes] = useState<ResourceType | CommodityType>('wood');
-    const [getRes, setGetRes] = useState<ResourceType | CommodityType>('brick');
+    const [giveRes, setGiveRes] = useState<TradeItem>('wood');
+    const [getRes, setGetRes] = useState<TradeItem>('brick');
 
     // Domestic State
     const [offerGive, setOfferGive] = useState<Record<ResourceType, number>>(() => createEmptyOffer());
@@ -227,6 +222,10 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             {/* Give Side */}
                             <div className="flex-1 bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col items-center">
                                 <div className="text-xs text-slate-400 uppercase mb-2">Give</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <GameIcon type={giveRes as TradeItem} size={32} />
+                                    <span className="text-sm text-white font-semibold">{TRADE_ITEM_LABELS[giveRes as TradeItem]}</span>
+                                </div>
                                 <select
                                     value={giveRes}
                                     onChange={e => setGiveRes(e.target.value as ResourceType | CommodityType)}
@@ -235,7 +234,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                     {ALL_TYPES.map(r => {
                                         const count = isCommodity(r) ? (player.commodities?.[r as CommodityType] || 0) : (player.resources[r as ResourceType] || 0);
                                         return (
-                                            <option key={r} value={r}>{getIcon(r)} {r} ({count})</option>
+                                            <option key={r} value={r}>{TRADE_ITEM_LABELS[r as TradeItem]} ({count})</option>
                                         );
                                     })}
                                 </select>
@@ -246,6 +245,10 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             {/* Get Side */}
                             <div className="flex-1 bg-slate-800 p-4 rounded-lg border border-slate-700 flex flex-col items-center">
                                 <div className="text-xs text-slate-400 uppercase mb-2">Get</div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <GameIcon type={getRes as TradeItem} size={32} />
+                                    <span className="text-sm text-white font-semibold">{TRADE_ITEM_LABELS[getRes as TradeItem]}</span>
+                                </div>
                                 <select
                                     value={getRes}
                                     onChange={e => setGetRes(e.target.value as ResourceType | CommodityType)}
@@ -254,7 +257,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                     {ALL_TYPES.map(r => {
                                         const count = isCommodity(r) ? (player.commodities?.[r as CommodityType] || 0) : (player.resources[r as ResourceType] || 0);
                                         return (
-                                            <option key={r} value={r}>{getIcon(r)} {r} ({count})</option>
+                                            <option key={r} value={r}>{TRADE_ITEM_LABELS[r as TradeItem]} ({count})</option>
                                         );
                                     })}
                                 </select>
@@ -287,7 +290,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             disabled={!canAffordBank || giveRes === getRes || isPending}
                             className="w-full bg-orange-600 hover:bg-orange-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed"
                         >
-                            {isPending ? 'Trading...' : `Trade ${ratio} ${giveRes} for 1 ${getRes}`}
+                            {isPending
+                                ? 'Trading...'
+                                : `Trade ${ratio} ${TRADE_ITEM_LABELS[giveRes]} for 1 ${TRADE_ITEM_LABELS[getRes]}`}
                         </button>
                     </>
                 ) : (
@@ -311,10 +316,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                         return (
                                             <div key={res} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
-                                                    <span>{RESOURCE_ICONS[res]}</span>
-                                                    <span className={`text-sm capitalize ${colorClass}`}>
-                                                        {res} ({projected})
-                                                    </span>
+                                                    <GameIcon type={res} size={22} />
+                                                    <span className={`text-sm capitalize ${colorClass}`}>{TRADE_ITEM_LABELS[res]}</span>
+                                                    <span className="text-xs text-slate-400">({projected})</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => updateOffer('give', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
@@ -338,10 +342,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                         return (
                                             <div key={comm} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
-                                                    <span>{COMMODITY_ICONS[comm]}</span>
-                                                    <span className={`text-sm capitalize ${colorClass}`}>
-                                                        {comm} ({projected})
-                                                    </span>
+                                                    <GameIcon type={comm} size={22} />
+                                                    <span className={`text-sm capitalize ${colorClass}`}>{TRADE_ITEM_LABELS[comm]}</span>
+                                                    <span className="text-xs text-slate-400">({projected})</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => updateCommodityOffer('give', comm, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
@@ -372,10 +375,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                         return (
                                             <div key={res} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
-                                                    <span>{RESOURCE_ICONS[res]}</span>
-                                                    <span className={`text-sm capitalize ${colorClass}`}>
-                                                        {res} ({projected})
-                                                    </span>
+                                                    <GameIcon type={res} size={22} />
+                                                    <span className={`text-sm capitalize ${colorClass}`}>{TRADE_ITEM_LABELS[res]}</span>
+                                                    <span className="text-xs text-slate-400">({projected})</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => updateOffer('get', res, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
@@ -399,10 +401,9 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                                         return (
                                             <div key={comm} className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
-                                                    <span>{COMMODITY_ICONS[comm]}</span>
-                                                    <span className={`text-sm capitalize ${colorClass}`}>
-                                                        {comm} ({projected})
-                                                    </span>
+                                                    <GameIcon type={comm} size={22} />
+                                                    <span className={`text-sm capitalize ${colorClass}`}>{TRADE_ITEM_LABELS[comm]}</span>
+                                                    <span className="text-xs text-slate-400">({projected})</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button onClick={() => updateCommodityOffer('get', comm, -1)} className="w-6 h-6 bg-slate-700 rounded hover:bg-slate-600 cursor-pointer">-</button>
@@ -437,20 +438,26 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
 
                                 {/* Trade details */}
                                 <div className="bg-slate-700 rounded-lg p-4 mb-4">
-                                    <div className="flex items-center justify-center gap-2 text-lg">
-                                        <span className="text-white font-semibold">
-                                            {tradeConfirmation.gaveAmount} {getIcon(tradeConfirmation.gave)} {tradeConfirmation.gave}
-                                        </span>
+                                    <div className="flex items-center justify-center gap-3 text-lg">
+                                        <div className="flex items-center gap-2">
+                                            <GameIcon type={tradeConfirmation.gave as TradeItem} size={22} />
+                                            <span className="text-white font-semibold">
+                                                {tradeConfirmation.gaveAmount} {TRADE_ITEM_LABELS[tradeConfirmation.gave as TradeItem]}
+                                            </span>
+                                        </div>
                                         <span className="text-slate-400">→</span>
-                                        <span className="text-white font-semibold">
-                                            1 {getIcon(tradeConfirmation.received)} {tradeConfirmation.received}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <GameIcon type={tradeConfirmation.received as TradeItem} size={22} />
+                                            <span className="text-white font-semibold">
+                                                1 {TRADE_ITEM_LABELS[tradeConfirmation.received as TradeItem]}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <p className="text-slate-300 mb-6">
-                                    You traded <span className="font-semibold text-yellow-400">{tradeConfirmation.gaveAmount} {tradeConfirmation.gave}</span> for{' '}
-                                    <span className="font-semibold text-yellow-400">1 {tradeConfirmation.received}</span>
+                                    You traded <span className="font-semibold text-yellow-400">{tradeConfirmation.gaveAmount} {TRADE_ITEM_LABELS[tradeConfirmation.gave as TradeItem]}</span> for{' '}
+                                    <span className="font-semibold text-yellow-400">1 {TRADE_ITEM_LABELS[tradeConfirmation.received as TradeItem]}</span>
                                 </p>
 
                                 {/* OK button */}

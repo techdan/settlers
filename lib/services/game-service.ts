@@ -219,6 +219,11 @@ export async function rollDice(
         throw new Error('Not your turn');
     }
 
+    // Block rolling if Aqueduct selections from the previous turn are still pending
+    if (gameState.pendingAqueduct && gameState.pendingAqueduct.length > 0 && gameState.phase === 'aqueduct_selection') {
+        throw new Error('Cannot roll until pending Aqueduct selections are finished');
+    }
+
     if (gameState.phase !== 'waiting_for_roll') {
         console.error('[rollDice] Phase mismatch! Expected: waiting_for_roll, Got:', gameState.phase);
         throw new Error('Not waiting for dice roll');
@@ -333,16 +338,12 @@ export async function rollDice(
 
             if (eligibleForAqueduct.length > 0) {
                 gameState.pendingAqueduct = eligibleForAqueduct;
-                // If we are in waiting_for_roll (normal flow), switch to aqueduct selection
-                if (gameState.phase === 'waiting_for_roll') {
-                    gameState.phase = 'aqueduct_selection';
-                    const names = eligibleForAqueduct.map(id => gameState.players.find(p => p.id === id)?.name).join(', ');
-                    gameState.logs.push({
-                        id: `${Date.now()}-${Math.random()}`,
-                        timestamp: Date.now(),
-                        message: `Aqueduct triggered! ${names} can choose a resource.`,
-                    });
-                }
+                const names = eligibleForAqueduct.map(id => gameState.players.find(p => p.id === id)?.name).join(', ');
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `Aqueduct triggered! ${names} can choose a resource.`,
+                });
             }
         }
 
@@ -420,7 +421,9 @@ export async function endTurn(
     const nextIndex = (currentIndex + 1) % gameState.turnOrder.length;
     const nextPlayerId = gameState.turnOrder[nextIndex];
     gameState.currentTurn = nextPlayerId;
-    gameState.phase = 'waiting_for_roll';
+    const hasPendingAqueduct = !!(gameState.pendingAqueduct && gameState.pendingAqueduct.length > 0);
+    gameState.phase = hasPendingAqueduct ? 'aqueduct_selection' : 'waiting_for_roll';
+    gameState.aqueductResumePhase = hasPendingAqueduct ? 'waiting_for_roll' : undefined;
 
     // Clear dice roll
     gameState.diceRoll = undefined;
@@ -501,15 +504,13 @@ export async function claimAqueductResource(
     const gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
-    // Validate phase
-    if (gameState.phase !== 'aqueduct_selection') {
-        throw new Error('Not in Aqueduct selection phase');
-    }
-
     // Validate player eligibility
     if (!gameState.pendingAqueduct || !gameState.pendingAqueduct.includes(playerId)) {
         throw new Error('You are not eligible for Aqueduct');
     }
+
+    const resolvingFromBlockedPhase = gameState.phase === 'aqueduct_selection';
+    const resumePhase = gameState.aqueductResumePhase;
 
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
@@ -530,9 +531,17 @@ export async function claimAqueductResource(
     });
 
     // If no more pending players, return to main phase
-    if (gameState.pendingAqueduct.length === 0) {
-        gameState.phase = 'main_phase';
+    const hasPendingAqueduct = gameState.pendingAqueduct.length > 0;
+    if (!hasPendingAqueduct) {
         gameState.pendingAqueduct = undefined;
+        gameState.aqueductResumePhase = undefined;
+
+        // Resume the phase we were blocking, or fall back to main_phase if none was set
+        if (resumePhase) {
+            gameState.phase = resumePhase;
+        } else if (resolvingFromBlockedPhase) {
+            gameState.phase = 'main_phase';
+        }
     }
 
     // Save

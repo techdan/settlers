@@ -1,6 +1,8 @@
 import { GameState } from '@/lib/types/game';
 import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
+import { hasAdjacentBuilding } from '@/core/engine/progress/utilities/BoardScanning';
+import { updateAllVictoryPoints, checkVictoryCondition } from '@/core/rules/victory-conditions';
 
 /**
  * Merchant Card Command
@@ -28,8 +30,6 @@ export class MerchantCommand implements ProgressCardCommand {
     }
 
     // Validate hex is adjacent to player's settlement/city
-    const { hasAdjacentBuilding } = require('@/core/engine/progress/utilities/BoardScanning');
-
     if (!hasAdjacentBuilding(state, hex.id, playerId)) {
       throw new Error('Merchant must be placed on a hex adjacent to your settlement or city');
     }
@@ -39,7 +39,6 @@ export class MerchantCommand implements ProgressCardCommand {
     state.activeMerchant = playerId; // Track who has active Merchant (grants 1 VP)
 
     // Update victory points to reflect the merchant VP
-    const { updateAllVictoryPoints } = require('@/core/rules/victory-conditions');
     updateAllVictoryPoints(state);
 
     addLog(
@@ -47,6 +46,12 @@ export class MerchantCommand implements ProgressCardCommand {
       `placed the merchant on a ${hex.terrain} hex (2:1 trade + 1 VP)`,
       playerId
     );
+
+    const winnerId = checkVictoryCondition(state);
+    if (winnerId) {
+      state.winner = winnerId;
+      state.phase = 'game_over';
+    }
 
     return state;
   }

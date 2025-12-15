@@ -103,7 +103,6 @@ Play immediately. Worth 1 VP.
 # Global Progress Card Rules
 - Max 4 progress cards in hand at end of turn.
 - VP cards are not kept in hand.
-- Level 3+ improvements: draw 2, keep 1.
 - Only **Alchemy** is played before rolling.
 - All others played after rolling on your turn.
 - Multiple cards may be played per turn.

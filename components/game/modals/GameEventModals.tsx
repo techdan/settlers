@@ -34,7 +34,7 @@ export const GameEventModals: React.FC<GameEventModalsProps> = ({
         />
       )}
 
-      {gameState.phase === 'aqueduct_selection' && gameState.pendingAqueduct?.includes(playerId) && (
+      {gameState.pendingAqueduct?.includes(playerId) && (
         <AqueductModal gameState={gameState} playerId={playerId} />
       )}
 

@@ -3,6 +3,8 @@ import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-r
 import { resolveBarbbarianAttack } from '@/core/engine/barbarian/barbarian-manager';
 import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
+import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
+import { checkAndUpdateVictory } from '@/lib/services/game-service';
 
 /**
  * C&K Game Service
@@ -37,7 +39,13 @@ export async function resolveBarbarianAttackAction(roomId: string): Promise<Game
     // 4. Resolve attack
     resolveBarbbarianAttack(gameState);
 
-    // 5. Save to database
+    // 5. Recalculate victory points (Defender tokens, metropolises, merchant, etc.)
+    updateAllVictoryPoints(gameState);
+
+    // 6. Check for victory immediately
+    checkAndUpdateVictory(gameState);
+
+    // 7. Save to database
     await updateGameState(gameState);
 
     return gameState;
@@ -115,6 +123,19 @@ export async function loseCityToBarbarianAction(
     // 4. Handle city loss
     const { loseCityToBarbarians } = require('@/core/engine/barbarian/barbarian-manager');
     loseCityToBarbarians(gameState, playerId, vertexId);
+
+    // If all victims have chosen and Aqueduct is pending, surface the selection now
+    if ((!gameState.pendingBarbarianVictims || gameState.pendingBarbarianVictims.length === 0) &&
+        gameState.pendingAqueduct && gameState.pendingAqueduct.length > 0) {
+        const names = gameState.pendingAqueduct
+            .map(id => gameState.players.find(p => p.id === id)?.name)
+            .join(', ');
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `Aqueduct triggered! ${names} can choose a resource.`,
+        });
+    }
 
     // 5. Save to database
     await updateGameState(gameState);

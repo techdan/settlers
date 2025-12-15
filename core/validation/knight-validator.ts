@@ -1,8 +1,8 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
-import { hasKnightAtVertex, getKnightAtVertex } from '@/core/engine/knights/knight-manager';
+import { hasKnightAtVertex, getKnightAtVertex, countKnightsByLevel } from '@/core/engine/knights/knight-manager';
 import { hasResources } from '@/core/engine/resources/resource-manager';
-import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST, CK_CONSTANTS } from '@/core/rules/commodity-constants';
+import { KNIGHT_COST, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST, CK_CONSTANTS, KnightLevel } from '@/core/rules/commodity-constants';
 import { getAdjacentEdgesForVertex, getEdgeEndpoints, getHexesForVertex } from '@/lib/hex';
 
 /**
@@ -280,7 +280,8 @@ export function canMoveKnightToVertex(
  * Rules:
  * 1. Knight must exist and belong to player
  * 2. Knight must not be at maximum level (mighty)
- * 3. Player must have resources (1 sheep + 1 ore)
+ * 3. Player must have available knight pieces of the target level
+ * 4. Player must have resources (1 sheep + 1 ore)
  *
  * @param gameState - Current game state
  * @param knightId - Knight to upgrade
@@ -301,6 +302,22 @@ export function isValidKnightUpgrade(
 
     // Check not at max level
     if (knight.level === 'mighty') return false;
+
+    // Determine target level
+    const targetLevel: KnightLevel = knight.level === 'basic' ? 'strong' : 'mighty';
+
+    // Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return false;
+
+    // Check if player has available pieces of the target level
+    // Each player has 2 pieces of each level. When upgrading, we need a piece available.
+    const currentCountAtTargetLevel = countKnightsByLevel(player, targetLevel);
+    const maxPiecesAtTargetLevel = CK_CONSTANTS.KNIGHT_PIECE_LIMITS[targetLevel];
+
+    if (currentCountAtTargetLevel >= maxPiecesAtTargetLevel) {
+        return false; // No available pieces of target level
+    }
 
     return true;
 }

@@ -174,6 +174,7 @@ export interface GameState {
     currentTurn: string; // Player ID
     turnOrder: string[]; // Array of Player IDs
     phase: GamePhase;
+    aqueductResumePhase?: GamePhase; // Phase to return to after Aqueduct selections resolve
     winner: string | null;
     lastPlacedSettlementId: string | null; // For setup phase road validation
     robberHexId: string | null; // ID of the hex where the robber is

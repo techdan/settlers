@@ -222,6 +222,14 @@ export function upgradeKnight(gameState: GameState, knightId: string): Knight {
         throw new Error('Knight is already at maximum level');
     }
 
+    // Check if player has available pieces of the target level
+    const currentCountAtTargetLevel = countKnightsByLevel(player, newLevel);
+    const maxPiecesAtTargetLevel = CK_CONSTANTS.KNIGHT_PIECE_LIMITS[newLevel];
+
+    if (currentCountAtTargetLevel >= maxPiecesAtTargetLevel) {
+        throw new Error(`You already have ${maxPiecesAtTargetLevel} ${newLevel} knights. Cannot upgrade.`);
+    }
+
     // Upgrade the knight
     knight.level = newLevel;
 
@@ -290,6 +298,18 @@ export function getActiveKnights(player: PlayerState): Knight[] {
 export function getInactiveKnights(player: PlayerState): Knight[] {
     if (!player.knights) return [];
     return player.knights.filter(k => !k.active);
+}
+
+/**
+ * Count knights by level for a player
+ *
+ * @param player - Player state
+ * @param level - Knight level to count
+ * @returns Number of knights at the specified level
+ */
+export function countKnightsByLevel(player: PlayerState, level: KnightLevel): number {
+    if (!player.knights) return 0;
+    return player.knights.filter(k => k.level === level).length;
 }
 
 /**
