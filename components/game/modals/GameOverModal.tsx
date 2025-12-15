@@ -12,8 +12,7 @@ type CategoryKey =
     | 'defenderTokens'
     | 'progressVP'
     | 'merchant'
-    | 'devCards'
-    | 'other';
+    | 'devCards';
 
 interface CategoryConfig {
     key: CategoryKey;
@@ -39,7 +38,6 @@ const categoryPalettes: Record<CategoryKey, string> = {
     progressVP: 'from-lime-300/90 to-emerald-400/90',
     merchant: 'from-amber-300/90 to-amber-400/90',
     devCards: 'from-rose-300/90 to-pink-400/90',
-    other: 'from-slate-400/90 to-slate-500/90',
 };
 
 const baseCategories: CategoryConfig[] = [
@@ -58,7 +56,6 @@ const citiesAndKnightsCategories: CategoryConfig[] = [
     { key: 'defenderTokens', label: 'Defender', accent: categoryPalettes.defenderTokens },
     { key: 'progressVP', label: 'Progress VP', accent: categoryPalettes.progressVP, hint: 'Printer / Constitution' },
     { key: 'merchant', label: 'Merchant', accent: categoryPalettes.merchant },
-    { key: 'other', label: 'Other', accent: categoryPalettes.other, hint: 'Misc bonuses' },
 ];
 
 const getSettlementVP = (player: PlayerState) =>
@@ -94,7 +91,6 @@ const getBreakdown = (player: PlayerState, gameState: GameState) => {
             defenderTokens: 0,
             progressVP: 0,
             merchant: 0,
-            other: 0,
         };
     }
 
@@ -102,18 +98,6 @@ const getBreakdown = (player: PlayerState, gameState: GameState) => {
     const defenderTokens = player.defenderVPTokens || 0;
     const progressVP = player.revealedVPCards?.length || 0;
     const merchant = gameState.activeMerchant === player.id ? 1 : 0;
-    const other = Math.max(
-        0,
-        player.victoryPoints - (
-            settlementVP +
-            cityVP +
-            longestRoad +
-            metropolis +
-            defenderTokens +
-            progressVP +
-            merchant
-        )
-    );
 
     return {
         ...baseTotals,
@@ -121,7 +105,6 @@ const getBreakdown = (player: PlayerState, gameState: GameState) => {
         defenderTokens,
         progressVP,
         merchant,
-        other,
         largestArmy: 0,
         devCards: 0,
     };
@@ -153,7 +136,6 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
             progressVP: 0,
             merchant: 0,
             devCards: 0,
-            other: 0,
         });
 
         const winningPlayer = sorted.find(p => p.id === winnerId) || sorted[0];
@@ -174,7 +156,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
 
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/70" />
 
             {/* Celebration glow layers */}
             <div className="absolute inset-0 pointer-events-none">
