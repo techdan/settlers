@@ -15,6 +15,8 @@ import { getCanonicalVertexId, getCanonicalEdgeId } from '@/lib/hex';
 import { randomUUID } from 'crypto';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
+import { canRollDice } from '@/lib/services/obligation-tracker';
+import { startTurnTimer, stopTurnTimer } from '@/lib/services/timer-service';
 
 /**
  * Game Service
@@ -222,12 +224,21 @@ export async function rollDice(
     playerId: string
 ): Promise<GameState> {
     // Get game state
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
     // Validate turn
     if (gameState.currentTurn !== playerId) {
         throw new Error('Not your turn');
+    }
+
+    // Check for pending obligations (global gating rule)
+    const obligationCheck = canRollDice(gameState);
+    if (!obligationCheck.canRollDice) {
+        const waitingOnPlayers = obligationCheck.waitingOn
+            .map(id => gameState.players.find(p => p.id === id)?.name || id)
+            .join(', ');
+        throw new Error(`Cannot roll dice. Waiting on: ${waitingOnPlayers}`);
     }
 
     // Block rolling if Aqueduct selections from the previous turn are still pending
@@ -364,6 +375,11 @@ export async function rollDice(
         }
     }
 
+    // Start turn timer when entering main_phase
+    if (gameState.phase === 'main_phase') {
+        gameState = startTurnTimer(gameState);
+    }
+
     // Save to database
     await updateGameState(gameState);
 
@@ -382,7 +398,7 @@ export async function endTurn(
     playerId: string
 ): Promise<GameState> {
     // Get game state
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
     // Validate turn
@@ -393,6 +409,9 @@ export async function endTurn(
     if (gameState.phase !== 'main_phase') {
         throw new Error('Can only end turn during main phase');
     }
+
+    // Stop turn timer and refund unused time
+    gameState = stopTurnTimer(gameState, playerId);
 
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
