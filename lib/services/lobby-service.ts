@@ -2,6 +2,7 @@ import { generateBoard } from '@/core/engine/board/board-generator';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
 import * as lobbyRepository from '@/lib/repositories/lobby-repository';
+import { DEFAULT_TIMER_CONFIG } from '@/lib/types/timer';
 
 const PLAYER_COLORS: PlayerColor[] = ['#ff0000', '#0000ff', '#d4b483', '#ff7a00'];
 const LEGACY_COLOR_MAP: Record<string, PlayerColor> = {
@@ -162,7 +163,8 @@ export class LobbyService {
                 boardPreview: null,
                 fairMode: false, // Default to false
                 gameMode: 'base',
-                pendingRequests: []
+                pendingRequests: [],
+                timerConfig: DEFAULT_TIMER_CONFIG // Initialize with default timer config
             };
 
             // Save initial state

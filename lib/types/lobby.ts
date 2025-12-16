@@ -1,5 +1,6 @@
 import { HexTileData } from '@/core/engine/board/board-generator';
 import { PlayerColor } from './player';
+import { TimerConfig } from './timer';
 
 export interface LobbyPlayer {
     id: string;
@@ -17,4 +18,5 @@ export interface LobbyState {
     fairMode: boolean;
     gameMode: 'base' | 'cities_and_knights'; // The selected game mode
     pendingRequests: string[]; // List of player IDs requesting a new board
+    timerConfig?: TimerConfig; // Timer configuration (optional, added for turn timer feature)
 }

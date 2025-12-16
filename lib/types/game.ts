@@ -3,6 +3,7 @@ import { PlayerState, DevCardType, ProgressCardType, Knight } from './player';
 import { BoardState } from './board';
 import type { MetropolisType, EventDieFace, CommodityType } from '@/core/rules/commodity-constants';
 import type { ActiveEffect } from '@/lib/types/effects';
+import type { TimerConfig, TurnExtensionTracking } from './timer';
 
 /**
  * Game mode selection
@@ -221,4 +222,13 @@ export interface GameState {
     };
     lastVPCardGain?: VictoryPointCardGain;
     discardContext?: DiscardContext;
+
+    // Turn timer state (added for turn timer feature)
+    timerConfig?: TimerConfig;                              // Timer configuration (copied from lobby)
+    turnStartTime?: number;                                 // Unix timestamp (ms) when turn began
+    turnTimeLimit?: number;                                 // Effective limit for current turn (base + extensions)
+    timerLocked?: boolean;                                  // Is turn in locked state (timeout reached)?
+    playerTimeBanks?: Record<string, number>;               // Remaining bank per player (seconds)
+    playerTotalTime?: Record<string, number>;               // Total time played per player (seconds)
+    currentTurnExtensions?: TurnExtensionTracking;          // Extension tracking (current turn only)
 }

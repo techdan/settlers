@@ -150,6 +150,9 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
     // 6. Find desert hex for robber
     const desertHexId = getDesertHexId(hexes);
 
+    // 6.1. Get timer configuration from lobby
+    const timerConfig = lobbyState?.timerConfig;
+
     // 7. Create Game State
     const gameState: GameState = {
         id: randomUUID(),
@@ -188,6 +191,14 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         } : undefined,
         progressDecks,
         eventDieRoll: undefined,
+        // Timer fields (initialized from lobby config)
+        timerConfig: timerConfig?.enabled ? timerConfig : undefined,
+        playerTimeBanks: timerConfig?.enabled
+            ? Object.fromEntries(turnOrder.map(playerId => [playerId, timerConfig.timeBank]))
+            : undefined,
+        playerTotalTime: timerConfig?.enabled
+            ? Object.fromEntries(turnOrder.map(playerId => [playerId, 0]))
+            : undefined,
     };
 
     // 8. Save to database

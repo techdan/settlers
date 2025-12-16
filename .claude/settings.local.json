@@ -37,7 +37,8 @@
       "Bash(npm run test:coverage:*)",
       "Bash(node:*)",
       "Bash(cut:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
