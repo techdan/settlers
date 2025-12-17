@@ -1,11 +1,13 @@
 import React from 'react';
-import { DiceStats, DICE_TOTALS, EventDieStats, EVENT_DIE_FACES } from '@/lib/types';
+import { DiceStats, DICE_TOTALS, EventDieStats, EVENT_DIE_FACES, GameState } from '@/lib/types';
 import { EventDieFace } from '@/core/rules/commodity-constants';
 import { Tooltip } from '@/components/ui/tooltip';
+import { formatTime } from '@/lib/hooks/useTimerState';
 
 interface DiceStatsPanelProps {
     stats: DiceStats;
     eventStats?: EventDieStats;
+    gameState?: GameState;
     onClose?: () => void;
 }
 
@@ -16,9 +18,14 @@ const EVENT_FACE_LABELS: Record<EventDieFace, { label: string; color: string }> 
     blue: { label: 'Politics', color: 'bg-blue-500' },
 };
 
-export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStats, onClose }) => {
+export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStats, gameState, onClose }) => {
     const totalRolls = DICE_TOTALS.reduce((sum, total) => sum + (stats[total] || 0), 0);
     const totalEventRolls = EVENT_DIE_FACES.reduce((sum, face) => sum + ((eventStats && eventStats[face]) || 0), 0);
+
+    // Calculate total gameplay time
+    const totalGameplayTime = gameState?.playerTotalTime
+        ? Object.values(gameState.playerTotalTime).reduce((sum, time) => sum + time, 0)
+        : 0;
 
     return (
         <div className="bg-slate-900/85 text-slate-100 border border-slate-700 rounded-lg shadow-xl p-3 w-72 backdrop-blur-sm pointer-events-auto">
@@ -81,6 +88,19 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Total Gameplay Time */}
+            {gameState?.timerConfig?.enabled && totalGameplayTime > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                    <div className="flex items-center justify-between text-sm">
+                        <span className="font-semibold text-slate-300">Total Gameplay Time:</span>
+                        <span className="font-bold text-amber-400 tabular-nums">{formatTime(totalGameplayTime)}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-400">
+                        Sum of all players' active turn time
                     </div>
                 </div>
             )}
