@@ -66,8 +66,10 @@ export function stopTurnTimer(
   const newBank = currentBank + refund;
 
   // Update total time played
+  // Cap at effectiveLimit - overtime doesn't count toward gameplay time
+  const countedTime = Math.min(elapsedSeconds, effectiveLimit);
   const currentTotal = gameState.playerTotalTime?.[playerId] || 0;
-  const newTotal = currentTotal + elapsedSeconds;
+  const newTotal = currentTotal + countedTime;
 
   return {
     ...gameState,
@@ -199,6 +201,8 @@ export function requestExtension(
       ...gameState.playerTimeBanks,
       [playerId]: newBankBalance,
     },
+    // Clear the locked state when extension is granted
+    timerLocked: false,
   };
 
   return {

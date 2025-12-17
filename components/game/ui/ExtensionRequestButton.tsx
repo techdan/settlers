@@ -70,7 +70,7 @@ export function ExtensionRequestButton({
         title={tooltipMessage}
         className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
           canRequest
-            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
+            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg cursor-pointer'
             : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
         } ${isRequesting ? 'opacity-50' : ''}`}
       >

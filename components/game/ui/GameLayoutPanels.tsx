@@ -12,6 +12,7 @@ import { CompactGameStatus } from './CompactGameStatus';
 import { BarbarianTrack } from '../overlays/BarbarianTrack';
 import { ProgressDecksPanel } from '../overlays/ProgressDecksPanel';
 import { ProgressCardType } from '@/lib/types/player';
+import { TurnTimerBar } from './TurnTimerBar';
 
 interface GameLayoutPanelsProps {
   gameState: GameState;
@@ -76,6 +77,11 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
 }) => {
   return (
     <div className="absolute inset-0 pointer-events-none p-4">
+      {/* Turn Timer Bar (top center) */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 max-w-md w-full pointer-events-auto">
+        <TurnTimerBar gameState={gameState} currentPlayerId={playerId} />
+      </div>
+
       <div className="absolute top-4 right-4 w-80 pointer-events-auto overflow-x-visible">
         <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={handleOpenPlayerCityManagement} />
       </div>
@@ -146,7 +152,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         </div>
 
         <div className="w-80 pointer-events-auto">
-          <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} />
+          <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} />
         </div>
       </div>
     </div>

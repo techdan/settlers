@@ -532,6 +532,6 @@ export async function requestTimeExtension(roomId: string, playerId: string) {
         await updateGameState(result.newState);
     }
 
-    revalidatePath(`/board/flat`);
+    revalidatePath(`/room/${roomId}`);
     return result;
 }

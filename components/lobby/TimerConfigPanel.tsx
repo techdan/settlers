@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { TimerConfig, TIMER_PRESETS } from '@/lib/types/timer';
 
 interface TimerConfigPanelProps {
@@ -16,15 +16,49 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
   const [timeBank, setTimeBank] = useState(config.timeBank);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Local state for advanced settings
+  const [extensionIncrement, setExtensionIncrement] = useState(config.extensionIncrement);
+  const [maxExtensions, setMaxExtensions] = useState(config.maxExtensionsPerTurn);
+  const [maxExtraSeconds, setMaxExtraSeconds] = useState(config.maxExtraSecondsPerTurn);
+
+  // Debounce timer for slider changes
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Determine which preset is selected based on current turn time limit
   useEffect(() => {
     const preset = TIMER_PRESETS.find(p => p.value === config.turnTimeLimit);
     setSelectedPreset(preset ? preset.value : -1);
   }, [config.turnTimeLimit]);
 
+  // Sync advanced settings from server config
+  useEffect(() => {
+    setExtensionIncrement(config.extensionIncrement);
+    setMaxExtensions(config.maxExtensionsPerTurn);
+    setMaxExtraSeconds(config.maxExtraSecondsPerTurn);
+  }, [config.extensionIncrement, config.maxExtensionsPerTurn, config.maxExtraSecondsPerTurn]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Debounced onChange for sliders (500ms delay)
+  const debouncedOnChange = useCallback((newConfig: TimerConfig) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      onChange(newConfig);
+    }, 500);
+  }, [onChange]);
+
   const handleEnabledChange = (newEnabled: boolean) => {
     setEnabled(newEnabled);
-    onChange({ ...config, enabled: newEnabled });
+    onChange({ ...config, enabled: newEnabled }); // Immediate for toggle
   };
 
   const handlePresetChange = (value: number) => {
@@ -32,7 +66,7 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
     if (value !== -1) {
       // Preset selected
       setCustomTime(value);
-      onChange({ ...config, turnTimeLimit: value });
+      onChange({ ...config, turnTimeLimit: value }); // Immediate for button clicks
     }
   };
 
@@ -40,25 +74,28 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
     const clampedValue = Math.max(30, Math.min(600, value));
     setCustomTime(clampedValue);
     setSelectedPreset(-1); // Switch to custom
-    onChange({ ...config, turnTimeLimit: clampedValue });
+    debouncedOnChange({ ...config, turnTimeLimit: clampedValue }); // Debounced for slider
   };
 
   const handleTimeBankChange = (value: number) => {
     const clampedValue = Math.max(0, Math.min(900, value));
     setTimeBank(clampedValue);
-    onChange({ ...config, timeBank: clampedValue });
+    debouncedOnChange({ ...config, timeBank: clampedValue }); // Debounced for slider
   };
 
   const handleExtensionIncrementChange = (value: number) => {
-    onChange({ ...config, extensionIncrement: value });
+    setExtensionIncrement(value); // Immediate UI update
+    debouncedOnChange({ ...config, extensionIncrement: value }); // Debounced for slider
   };
 
   const handleMaxExtensionsChange = (value: number) => {
-    onChange({ ...config, maxExtensionsPerTurn: value });
+    setMaxExtensions(value); // Immediate UI update
+    debouncedOnChange({ ...config, maxExtensionsPerTurn: value }); // Debounced for slider
   };
 
   const handleMaxExtraSecondsChange = (value: number) => {
-    onChange({ ...config, maxExtraSecondsPerTurn: value });
+    setMaxExtraSeconds(value); // Immediate UI update
+    debouncedOnChange({ ...config, maxExtraSecondsPerTurn: value }); // Debounced for slider
   };
 
   const formatTime = (seconds: number): string => {
@@ -231,14 +268,14 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
             <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700 animate-fadeIn">
               <div className="space-y-2">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Extension Increment: {config.extensionIncrement}s
+                  Extension Increment: {extensionIncrement}s
                 </label>
                 <input
                   type="range"
                   min="30"
                   max="120"
                   step="30"
-                  value={config.extensionIncrement}
+                  value={extensionIncrement}
                   onChange={(e) => handleExtensionIncrementChange(parseInt(e.target.value))}
                   className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
                 />
@@ -246,14 +283,14 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Max Extensions per Turn: {config.maxExtensionsPerTurn}
+                  Max Extensions per Turn: {maxExtensions}
                 </label>
                 <input
                   type="range"
                   min="1"
                   max="5"
                   step="1"
-                  value={config.maxExtensionsPerTurn}
+                  value={maxExtensions}
                   onChange={(e) => handleMaxExtensionsChange(parseInt(e.target.value))}
                   className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
                 />
@@ -261,14 +298,14 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Max Extra Time per Turn: {formatTime(config.maxExtraSecondsPerTurn)}
+                  Max Extra Time per Turn: {formatTime(maxExtraSeconds)}
                 </label>
                 <input
                   type="range"
                   min="60"
                   max="300"
                   step="30"
-                  value={config.maxExtraSecondsPerTurn}
+                  value={maxExtraSeconds}
                   onChange={(e) => handleMaxExtraSecondsChange(parseInt(e.target.value))}
                   className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
                 />

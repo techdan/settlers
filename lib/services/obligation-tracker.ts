@@ -18,9 +18,9 @@ function needsToDiscard(gameState: GameState, playerId: string): boolean {
   const player = gameState.players.find(p => p.id === playerId);
   if (!player) return false;
 
-  const threshold = getRobberDiscardThreshold(player);
-  const resourceCount = getTotalResources(player.resources);
-  const commodityCount = player.commodities ? getTotalCommodities(player.commodities) : 0;
+  const threshold = getRobberDiscardThreshold(gameState, playerId);
+  const resourceCount = getTotalResources(player);
+  const commodityCount = player.commodities ? getTotalCommodities(player) : 0;
   const totalCards = resourceCount + commodityCount;
 
   return totalCards > threshold;

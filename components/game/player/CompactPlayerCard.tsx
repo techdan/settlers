@@ -6,6 +6,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementBar';
 import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
+import { TimeBankDisplay } from '../ui/TimeBankDisplay';
 
 interface CompactPlayerCardProps {
     player: PlayerState;
@@ -225,6 +226,14 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         </Tooltip>
                     )}
                 </div>
+
+                {/* Time Bank (if timer enabled) */}
+                {gameState.timerConfig?.enabled && (
+                    <>
+                        <span className="text-slate-600 mx-0.5">│</span>
+                        <TimeBankDisplay gameState={gameState} playerId={player.id} compact={true} />
+                    </>
+                )}
 
                 {/* Divider for special VP */}
                 {isCK && <span className="text-slate-600 mx-0.5">│</span>}

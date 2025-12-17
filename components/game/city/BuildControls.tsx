@@ -167,7 +167,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                             }`}
                     >
                         <div className="flex items-center gap-1.5">
-                            <GameIcon type="dice" size={18} />
+                            <GameIcon type="paper" size={18} />
                             <span>Dev Card</span>
                         </div>
                         <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">

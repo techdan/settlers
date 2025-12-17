@@ -1,7 +1,8 @@
 import React, { useTransition } from 'react';
 import { GameState } from '@/lib/types';
-import { endTurn, rollDice } from '@/app/actions';
+import { endTurn, rollDice, requestTimeExtension } from '@/app/actions';
 import { Tooltip } from '@/components/ui/tooltip';
+import { ExtensionRequestButton } from './ExtensionRequestButton';
 
 interface ActionControlsProps {
     gameState: GameState;
@@ -85,6 +86,17 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
 
             {gameState.phase === 'main_phase' && (
                 <div className="flex flex-col gap-2">
+                    {/* Timer Extension Button */}
+                    {gameState.timerConfig?.enabled && (
+                        <ExtensionRequestButton
+                            gameState={gameState}
+                            playerId={playerId}
+                            onRequestExtension={async () => {
+                                await requestTimeExtension(gameState.roomId, playerId);
+                            }}
+                        />
+                    )}
+
                     <div className="flex gap-2">
                         <button
                             onClick={onOpenTrade}

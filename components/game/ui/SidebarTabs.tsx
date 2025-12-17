@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import { GameLog } from './GameLog';
 import { DiceStatsPanel } from './DiceStatsPanel';
-import { DiceStats, EventDieStats, GameLogEntry, PlayerState } from '@/lib/types';
+import { DiceStats, EventDieStats, GameLogEntry, GameState, PlayerState } from '@/lib/types';
 
 interface SidebarTabsProps {
     logs: GameLogEntry[];
     diceStats?: DiceStats;
     eventDieStats?: EventDieStats;
     players?: PlayerState[];
+    gameState: GameState;
 }
 
 type TabType = 'log' | 'chat' | 'stats';
@@ -23,6 +24,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     diceStats,
     eventDieStats,
     players,
+    gameState,
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('log');
 
@@ -80,6 +82,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                         <DiceStatsPanel
                             stats={diceStats}
                             eventStats={eventDieStats}
+                            gameState={gameState}
                         />
                     </div>
                 )}

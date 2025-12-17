@@ -33,11 +33,11 @@ export const DEFAULT_TIMER_CONFIG: TimerConfig = {
  * Timer presets for lobby configuration
  */
 export const TIMER_PRESETS = [
-  { label: '60s', value: 60 },
-  { label: '90s', value: 90 },
-  { label: '120s', value: 120 },
-  { label: '180s (Default)', value: 180 },
-  { label: '300s', value: 300 },
+  { label: '1m', value: 60 },
+  { label: '1.5m', value: 90 },
+  { label: '2m', value: 120 },
+  { label: '3m (Default)', value: 180 },
+  { label: '5m', value: 300 },
   { label: 'Custom', value: -1 },
 ] as const;
 

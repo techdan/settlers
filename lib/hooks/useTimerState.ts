@@ -10,6 +10,14 @@ import { getTimerStatus } from '@/lib/services/timer-service';
 export function useTimerState(gameState: GameState): TimerStatus {
   const [tick, setTick] = useState(0);
 
+  // Force a re-render when critical gameState values change
+  useEffect(() => {
+    setTick(prev => prev + 1);
+  }, [
+    gameState.currentTurnExtensions?.totalBorrowed,
+    gameState.timerLocked
+  ]);
+
   // Recalculate every second
   useEffect(() => {
     if (!gameState.timerConfig?.enabled || !gameState.turnStartTime) {
@@ -21,9 +29,13 @@ export function useTimerState(gameState: GameState): TimerStatus {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [gameState.turnStartTime, gameState.timerConfig?.enabled]);
+  }, [
+    gameState.turnStartTime,
+    gameState.timerConfig?.enabled
+  ]);
 
   // Calculate current timer status
+  // Note: This recalculates on every render when tick changes OR when gameState changes
   return getTimerStatus(gameState);
 }
 
@@ -61,8 +73,16 @@ export function getTimerColorClass(timeRemaining: number, timeLimit: number): st
 
 /**
  * Get progress bar width percentage
+ * Progress is calculated against the BASE time limit only, not including extensions.
+ * This means the bar fills to 100% over the base time, and extensions are "bonus time"
+ * that doesn't show progress beyond 100%.
  */
-export function getProgressPercentage(timeElapsed: number, timeLimit: number): number {
-  if (timeLimit === 0) return 0;
-  return Math.min(100, (timeElapsed / timeLimit) * 100);
+export function getProgressPercentage(
+  timeElapsed: number,
+  timeLimit: number,
+  baseTimeLimit: number
+): number {
+  if (baseTimeLimit === 0) return 0;
+  // Calculate progress based on base time only, cap at 100%
+  return Math.min(100, (timeElapsed / baseTimeLimit) * 100);
 }

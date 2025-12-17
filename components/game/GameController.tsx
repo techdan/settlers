@@ -52,6 +52,7 @@ import { GameOverModal } from './modals/GameOverModal';
 import { RobberModals } from './overlays/RobberModals';
 import { GameLayoutPanels } from './ui/GameLayoutPanels';
 import { GameOverOverlay } from './overlays/GameOverOverlay';
+import { WaitingOverlay } from './modals/WaitingOverlay';
 
 // Controllers and hooks
 import { useSelectionManager } from '@/lib/hooks/useSelectionManager';
@@ -640,6 +641,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 playerId={playerId}
                 onRemoveDisplacedKnight={knightController.handleRemoveDisplacedKnight}
             />
+
+            <WaitingOverlay gameState={gameState} currentPlayerId={playerId} />
 
             <GameLayoutPanels
                 gameState={gameState}

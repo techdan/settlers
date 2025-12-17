@@ -18,7 +18,13 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn);
   const playerName = currentPlayer?.name || 'Player';
 
-  const progressPercentage = getProgressPercentage(timerStatus.timeElapsed, timerStatus.timeLimit);
+  // Get base time limit (without extensions) for progress bar calculation
+  const baseTimeLimit = gameState.timerConfig?.turnTimeLimit || 180;
+  const progressPercentage = getProgressPercentage(
+    timerStatus.timeElapsed,
+    timerStatus.timeLimit,
+    baseTimeLimit
+  );
   const colorClass = getTimerColorClass(timerStatus.timeRemaining, timerStatus.timeLimit);
 
   return (
