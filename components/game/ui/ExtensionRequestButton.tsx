@@ -79,19 +79,23 @@ export function ExtensionRequestButton({
   // Build button text and tooltip message
   const buttonText = isRequesting ? 'Requesting...' : `Request ${formatTimeWords(actualExtension)}`;
 
-  let tooltipMessage = '';
+  const tooltipLines: string[] = [];
   if (!canRequest) {
     if (extensions.count >= config.maxExtensionsPerTurn) {
-      tooltipMessage = `Maximum ${config.maxExtensionsPerTurn} extensions reached`;
+      tooltipLines.push(`Maximum ${config.maxExtensionsPerTurn} extensions reached`);
     } else if (extensions.totalBorrowed >= config.maxExtraSecondsPerTurn) {
-      tooltipMessage = `Maximum ${formatTime(config.maxExtraSecondsPerTurn)} extra time reached`;
+      tooltipLines.push(`Maximum ${formatTime(config.maxExtraSecondsPerTurn)} extra time reached`);
     } else if (timeBank === 0) {
-      tooltipMessage = 'No time remaining in bank';
+      tooltipLines.push('No time remaining in bank');
     }
   } else {
     const newBankBalance = timeBank - actualExtension;
-    tooltipMessage = `Add ${formatTimeWords(actualExtension)} of turn time from your time bank (${formatTime(timeBank)} → ${formatTime(newBankBalance)})`;
+    tooltipLines.push(
+      `Add ${formatTimeWords(actualExtension)} of turn time from your time bank (${formatTime(timeBank)} → ${formatTime(newBankBalance)})`
+    );
   }
+  tooltipLines.push(`${extensions.count}/${config.maxExtensionsPerTurn} extensions used`);
+  const tooltipMessage = tooltipLines.join('\n');
 
   return (
     <div className="space-y-1">
@@ -107,13 +111,6 @@ export function ExtensionRequestButton({
       >
         {buttonText}
       </button>
-
-      {/* Extension count indicator */}
-      {extensions.count > 0 && (
-        <div className="text-xs text-center text-slate-600 dark:text-slate-400">
-          {extensions.count}/{config.maxExtensionsPerTurn} extensions used
-        </div>
-      )}
 
       {/* Error message */}
       {error && (
