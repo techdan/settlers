@@ -10,6 +10,24 @@ interface ExtensionRequestButtonProps {
   onRequestExtension: () => Promise<void>;
 }
 
+/**
+ * Format seconds as "X min Y sec" or just "X sec" for display
+ */
+function formatTimeWords(seconds: number): string {
+  if (seconds < 0) return '0 sec';
+
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+
+  if (minutes > 0 && secs > 0) {
+    return `${minutes} min ${secs} sec`;
+  } else if (minutes > 0) {
+    return `${minutes} min`;
+  } else {
+    return `${secs} sec`;
+  }
+}
+
 export function ExtensionRequestButton({
   gameState,
   playerId,
@@ -27,11 +45,21 @@ export function ExtensionRequestButton({
   const timeBank = gameState.playerTimeBanks?.[playerId] ?? 0;
   const extensions = gameState.currentTurnExtensions || { count: 0, totalBorrowed: 0 };
 
+  // Calculate the actual extension amount
+  // Use the configured increment, or whatever is left in the bank (whichever is smaller)
+  const maxPossibleExtension = Math.min(
+    config.extensionIncrement,
+    config.maxExtraSecondsPerTurn - extensions.totalBorrowed,
+    timeBank
+  );
+
+  const actualExtension = maxPossibleExtension > 0 ? maxPossibleExtension : 0;
+
   // Check if extension is allowed
   const canRequest =
     extensions.count < config.maxExtensionsPerTurn &&
     extensions.totalBorrowed < config.maxExtraSecondsPerTurn &&
-    timeBank >= config.extensionIncrement;
+    timeBank > 0;
 
   const handleRequest = async () => {
     if (!canRequest || isRequesting) return;
@@ -48,18 +76,21 @@ export function ExtensionRequestButton({
     }
   };
 
-  // Build tooltip message
+  // Build button text and tooltip message
+  const buttonText = isRequesting ? 'Requesting...' : `Request ${formatTimeWords(actualExtension)}`;
+
   let tooltipMessage = '';
   if (!canRequest) {
     if (extensions.count >= config.maxExtensionsPerTurn) {
       tooltipMessage = `Maximum ${config.maxExtensionsPerTurn} extensions reached`;
     } else if (extensions.totalBorrowed >= config.maxExtraSecondsPerTurn) {
       tooltipMessage = `Maximum ${formatTime(config.maxExtraSecondsPerTurn)} extra time reached`;
-    } else if (timeBank < config.extensionIncrement) {
-      tooltipMessage = `Insufficient time bank (need ${formatTime(config.extensionIncrement)})`;
+    } else if (timeBank === 0) {
+      tooltipMessage = 'No time remaining in bank';
     }
   } else {
-    tooltipMessage = `Request +${formatTime(config.extensionIncrement)}? (${formatTime(timeBank)} remaining in bank)`;
+    const newBankBalance = timeBank - actualExtension;
+    tooltipMessage = `Add ${formatTimeWords(actualExtension)} of turn time from your time bank (${formatTime(timeBank)} → ${formatTime(newBankBalance)})`;
   }
 
   return (
@@ -74,7 +105,7 @@ export function ExtensionRequestButton({
             : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
         } ${isRequesting ? 'opacity-50' : ''}`}
       >
-        {isRequesting ? 'Requesting...' : `+${formatTime(config.extensionIncrement)}`}
+        {buttonText}
       </button>
 
       {/* Extension count indicator */}
@@ -88,13 +119,6 @@ export function ExtensionRequestButton({
       {error && (
         <div className="text-xs text-center text-red-600 dark:text-red-400">
           {error}
-        </div>
-      )}
-
-      {/* Tooltip on hover */}
-      {canRequest && (
-        <div className="text-xs text-center text-slate-500 dark:text-slate-500">
-          {tooltipMessage}
         </div>
       )}
     </div>

@@ -9,10 +9,10 @@ import { ActionControls } from './ActionControls';
 import { DiceDisplay } from './DiceDisplay';
 import { SidebarTabs } from './SidebarTabs';
 import { CompactGameStatus } from './CompactGameStatus';
+import { TurnTimerExpiredNotification } from './TurnTimerExpiredNotification';
 import { BarbarianTrack } from '../overlays/BarbarianTrack';
 import { ProgressDecksPanel } from '../overlays/ProgressDecksPanel';
 import { ProgressCardType } from '@/lib/types/player';
-import { TurnTimerBar } from './TurnTimerBar';
 
 interface GameLayoutPanelsProps {
   gameState: GameState;
@@ -77,9 +77,9 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
 }) => {
   return (
     <div className="absolute inset-0 pointer-events-none p-4">
-      {/* Turn Timer Bar (top center) */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 max-w-md w-full pointer-events-auto">
-        <TurnTimerBar gameState={gameState} currentPlayerId={playerId} />
+      {/* Timer expired notification at top center */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-lg pointer-events-auto px-4">
+        <TurnTimerExpiredNotification gameState={gameState} currentPlayerId={playerId} />
       </div>
 
       <div className="absolute top-4 right-4 w-80 pointer-events-auto overflow-x-visible">

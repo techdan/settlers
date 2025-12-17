@@ -16,7 +16,7 @@ import { randomUUID } from 'crypto';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
 import { canRollDice } from '@/lib/services/obligation-tracker';
-import { startTurnTimer, stopTurnTimer } from '@/lib/services/timer-service';
+import { setPhase, stopTurnTimer } from '@/lib/services/timer-service';
 
 /**
  * Game Service
@@ -226,6 +226,8 @@ export async function rollDice(
     // Get game state
     let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
+    // Const alias for use in closures (TypeScript doesn't preserve null narrowing for let variables in callbacks)
+    const state = gameState;
 
     // Validate turn
     if (gameState.currentTurn !== playerId) {
@@ -236,7 +238,7 @@ export async function rollDice(
     const obligationCheck = canRollDice(gameState);
     if (!obligationCheck.canRollDice) {
         const waitingOnPlayers = obligationCheck.waitingOn
-            .map(id => gameState.players.find(p => p.id === id)?.name || id)
+            .map(id => state.players.find(p => p.id === id)?.name || id)
             .join(', ');
         throw new Error(`Cannot roll dice. Waiting on: ${waitingOnPlayers}`);
     }
@@ -284,9 +286,9 @@ export async function rollDice(
         // Handle progress card draws immediately when a color is rolled
         if (eventDieResult !== 'ship') {
             const category = getCategoryFromColor(eventDieResult);
-            const eligiblePlayerIds = getEligiblePlayersForCardDraw(gameState, category, d1);
+            const eligiblePlayerIds = getEligiblePlayersForCardDraw(state, category, d1);
             eligiblePlayerIds.forEach(id => {
-                drawProgressCard(gameState, id, category);
+                drawProgressCard(state, id, category);
             });
         }
     }
@@ -299,7 +301,7 @@ export async function rollDice(
         // Check if any players need to discard
         // City walls increase the discard threshold (7 + 2 per wall)
         const playersToDiscard = gameState.players.filter(p => {
-            const threshold = getRobberDiscardThreshold(gameState, p.id);
+            const threshold = getRobberDiscardThreshold(state, p.id);
             return getTotalResources(p) > threshold;
         });
 
@@ -314,7 +316,7 @@ export async function rollDice(
         } else {
             // C&K Rule: Robber doesn't move until first barbarian attack
             if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
-                gameState.phase = 'main_phase';
+                gameState = setPhase(gameState, 'main_phase');
                 gameState.logs.push({
                     id: `${Date.now()}-${Math.random()}`,
                     timestamp: Date.now(),
@@ -360,7 +362,7 @@ export async function rollDice(
 
             if (eligibleForAqueduct.length > 0) {
                 gameState.pendingAqueduct = eligibleForAqueduct;
-                const names = eligibleForAqueduct.map(id => gameState.players.find(p => p.id === id)?.name).join(', ');
+                const names = eligibleForAqueduct.map(id => state.players.find(p => p.id === id)?.name).join(', ');
                 gameState.logs.push({
                     id: `${Date.now()}-${Math.random()}`,
                     timestamp: Date.now(),
@@ -371,13 +373,8 @@ export async function rollDice(
 
         // Set to main phase if not changed by event die processing or Aqueduct
         if (gameState.phase === 'waiting_for_roll') {
-            gameState.phase = 'main_phase';
+            gameState = setPhase(gameState, 'main_phase');
         }
-    }
-
-    // Start turn timer when entering main_phase
-    if (gameState.phase === 'main_phase') {
-        gameState = startTurnTimer(gameState);
     }
 
     // Save to database
@@ -531,7 +528,7 @@ export async function claimAqueductResource(
     resource: ResourceType
 ): Promise<GameState> {
     // Get game state
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
     // Validate player eligibility
@@ -570,7 +567,7 @@ export async function claimAqueductResource(
         if (resumePhase) {
             gameState.phase = resumePhase;
         } else if (resolvingFromBlockedPhase) {
-            gameState.phase = 'main_phase';
+            gameState = setPhase(gameState, 'main_phase');
         }
     }
 

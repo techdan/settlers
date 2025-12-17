@@ -1,5 +1,6 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
+import { setPhase } from '@/lib/services/timer-service';
 
 /**
  * Barbarian Manager (Cities & Knights Expansion)
@@ -35,7 +36,7 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
         // Deactivate all knights and reset position (defenders won)
         deactivateAllKnights(gameState);
         gameState.barbarianPosition = 0;
-        gameState.phase = 'main_phase';
+        setPhase(gameState, 'main_phase');
     } else {
         // Attackers win
         handleAttackersWin(gameState, totalCities, totalKnightStrength);
@@ -44,7 +45,7 @@ export function resolveBarbbarianAttack(gameState: GameState): void {
         if (!gameState.pendingBarbarianVictims || gameState.pendingBarbarianVictims.length === 0) {
             deactivateAllKnights(gameState);
             gameState.barbarianPosition = 0;
-            gameState.phase = 'main_phase';
+            setPhase(gameState, 'main_phase');
         }
         // Otherwise, phase is already set to 'barbarian_city_selection'
         // Cleanup will happen after cities are chosen
@@ -395,7 +396,7 @@ export function loseCityToBarbarians(gameState: GameState, playerId: string, ver
         gameState.barbarianPosition = 0;
 
         // Return to main phase
-        gameState.phase = 'main_phase';
+        setPhase(gameState, 'main_phase');
         gameState.pendingBarbarianVictims = undefined;
     }
 }

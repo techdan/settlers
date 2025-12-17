@@ -4,6 +4,7 @@ import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-r
 import { getCanonicalVertexId } from '@/lib/hex';
 import { stealRandomResource, getTotalResources } from '@/core/engine/resources/resource-manager';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
+import { setPhase } from './timer-service';
 
 /**
  * Robber Service
@@ -43,7 +44,7 @@ export async function moveRobber(
     victimId?: string
 ): Promise<GameState> {
     // Get game state
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
     // Validate turn
@@ -92,9 +93,6 @@ export async function moveRobber(
         }
     }
 
-    // Update phase
-    gameState.phase = 'main_phase';
-
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
 
@@ -105,6 +103,9 @@ export async function moveRobber(
         message: `${player?.name} moved the robber${stealLog}`,
         playerId
     });
+
+    // Update phase and start timer
+    gameState = setPhase(gameState, 'main_phase');
 
     // Save to database
     await updateGameState(gameState);
@@ -126,8 +127,10 @@ export async function discardCards(
     resources: Record<ResourceType, number>
 ): Promise<GameState> {
     // Get game state
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
+    // Const alias for use in closures (TypeScript doesn't preserve null narrowing for let variables in callbacks)
+    const state = gameState;
 
     // Validate phase
     if (gameState.phase !== 'discarding') {
@@ -138,7 +141,7 @@ export async function discardCards(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    const requiredDiscard = getRequiredDiscardCount(gameState, playerId);
+    const requiredDiscard = getRequiredDiscardCount(state, playerId);
     if (requiredDiscard === 0) {
         throw new Error('No need to discard');
     }
@@ -176,14 +179,14 @@ export async function discardCards(
 
     // Check if everyone is done
     const pendingPlayers = gameState.players.filter(p => {
-        const needed = getRequiredDiscardCount(gameState, p.id);
+        const needed = getRequiredDiscardCount(state, p.id);
         if (needed === 0) return false;
         return !p.discardedThisTurn;
     });
 
     if (pendingPlayers.length === 0) {
         if (gameState.discardContext?.type === 'sabotage') {
-            gameState.phase = 'main_phase';
+            gameState = setPhase(gameState, 'main_phase');
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
                 timestamp: Date.now(),
@@ -192,7 +195,7 @@ export async function discardCards(
         } else {
             // C&K Rule: Robber doesn't move until first barbarian attack
             if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
-                gameState.phase = 'main_phase';
+                gameState = setPhase(gameState, 'main_phase');
                 gameState.logs.push({
                     id: `${Date.now()}-${Math.random()}`,
                     timestamp: Date.now(),

@@ -7,6 +7,7 @@ import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementB
 import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { TimeBankDisplay } from '../ui/TimeBankDisplay';
+import { formatTime } from '@/lib/hooks/useTimerState';
 
 interface CompactPlayerCardProps {
     player: PlayerState;
@@ -138,6 +139,20 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                     {isCurrentPlayer && <span className="text-xs text-slate-400 ml-1">(You)</span>}
                 </span>
 
+                {/* Time Bank (if timer enabled) - before VP */}
+                {gameState.timerConfig?.enabled && (
+                    <Tooltip
+                        content={`Time Bank: ${formatTime(gameState.playerTimeBanks?.[player.id] ?? 0)}\nRemaining time for extensions\nTotal time played: ${formatTime(gameState.playerTotalTime?.[player.id] ?? 0)}`}
+                        className="cursor-default"
+                        tooltipClassName={tooltipClassName}
+                        placement="bottom"
+                    >
+                        <div>
+                            <TimeBankDisplay gameState={gameState} playerId={player.id} compact={true} />
+                        </div>
+                    </Tooltip>
+                )}
+
                 {/* VP */}
                 <Tooltip
                     content={getVPBreakdown()}
@@ -149,11 +164,6 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         {player.victoryPoints}
                     </span>
                 </Tooltip>
-
-                {/* Turn indicator */}
-                {isTurn && (
-                    <span className="text-sm" title="Current turn">🏴</span>
-                )}
             </div>
 
             {/* Row 2: Stats + Special VP */}
@@ -226,14 +236,6 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         </Tooltip>
                     )}
                 </div>
-
-                {/* Time Bank (if timer enabled) */}
-                {gameState.timerConfig?.enabled && (
-                    <>
-                        <span className="text-slate-600 mx-0.5">│</span>
-                        <TimeBankDisplay gameState={gameState} playerId={player.id} compact={true} />
-                    </>
-                )}
 
                 {/* Divider for special VP */}
                 {isCK && <span className="text-slate-600 mx-0.5">│</span>}

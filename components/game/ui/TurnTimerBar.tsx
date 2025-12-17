@@ -51,11 +51,14 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
         </div>
       </div>
 
-      {/* Locked state warning */}
-      {timerStatus.isLocked && isMyTurn && (
-        <div className="mt-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm font-medium text-red-800 dark:text-red-200">
-            ⏱️ Time expired! Complete required actions and end your turn.
+      {/* Time expired warning */}
+      {timerStatus.isExpired && isMyTurn && (
+        <div className="mt-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+          <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+            ⏱️ Time is up! Most actions are now disabled. Please complete any required actions and end your turn.
+            {(gameState.playerTimeBanks?.[currentPlayerId] ?? 0) > 0 && (
+              <> You can request more time from your time bank ({formatTime(gameState.playerTimeBanks?.[currentPlayerId] ?? 0)} remaining).</>
+            )}
           </p>
         </div>
       )}

@@ -8,6 +8,7 @@ import { updateLargestArmy } from '@/core/engine/scoring/largest-army';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { isValidMainPhaseRoad } from '@/core/validation/building-validator';
+import { setPhase } from '@/lib/services/timer-service';
 
 /**
  * Development Card Service
@@ -249,7 +250,7 @@ export async function placeBonusRoad(
     edgeId: string
 ): Promise<GameState> {
     // Get game state
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
     // Validate turn
@@ -317,7 +318,7 @@ export async function placeBonusRoad(
                 playerId
             });
         } else {
-            gameState.phase = 'main_phase';
+            gameState = setPhase(gameState, 'main_phase');
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
                 timestamp: Date.now(),
@@ -326,7 +327,7 @@ export async function placeBonusRoad(
             });
         }
     } else {
-        gameState.phase = 'main_phase';
+        gameState = setPhase(gameState, 'main_phase');
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),

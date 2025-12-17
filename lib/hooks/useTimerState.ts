@@ -56,7 +56,7 @@ export function formatTime(seconds: number): string {
 }
 
 /**
- * Get color class based on time remaining
+ * Get color class based on time remaining (for progress bars with backgrounds)
  */
 export function getTimerColorClass(timeRemaining: number, timeLimit: number): string {
   if (timeRemaining <= 0) {
@@ -69,6 +69,22 @@ export function getTimerColorClass(timeRemaining: number, timeLimit: number): st
     return 'bg-yellow-500 text-slate-900'; // Yellow (60s)
   }
   return 'bg-green-500 text-white'; // Green (normal)
+}
+
+/**
+ * Get text color class based on time remaining (for text-only displays)
+ */
+export function getTimerTextColorClass(timeRemaining: number, timeLimit: number): string {
+  if (timeRemaining <= 0) {
+    return 'text-red-600'; // Expired
+  } else if (timeRemaining <= 10) {
+    return 'text-red-500 animate-pulse'; // Red pulsing (10s)
+  } else if (timeRemaining <= 30) {
+    return 'text-orange-500'; // Orange (30s)
+  } else if (timeRemaining <= 60) {
+    return 'text-yellow-500'; // Yellow (60s)
+  }
+  return 'text-green-500'; // Green (normal)
 }
 
 /**

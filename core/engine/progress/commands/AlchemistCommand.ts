@@ -12,6 +12,7 @@ import { distributeResources, getTotalResources, logDistribution } from '../../r
 import { distributeCommodities, getTotalCommodities } from '../../resources/commodity-manager';
 import { getRobberDiscardThreshold } from '../../../utils/city-wall-utils';
 import { drawProgressCard } from '../progress-card-manager';
+import { setPhase } from '@/lib/services/timer-service';
 
 /**
  * Alchemist Card Command
@@ -89,7 +90,7 @@ export class AlchemistCommand implements ProgressCardCommand {
         });
       } else {
         if (state.gameMode === 'cities_and_knights' && !state.hasBarbariansAttacked) {
-          state.phase = 'main_phase';
+          state = setPhase(state, 'main_phase');
           state.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
@@ -142,7 +143,7 @@ export class AlchemistCommand implements ProgressCardCommand {
       }
 
       if (state.phase === 'waiting_for_roll') {
-        state.phase = 'main_phase';
+        state = setPhase(state, 'main_phase');
       }
     }
 

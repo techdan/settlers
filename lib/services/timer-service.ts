@@ -1,4 +1,4 @@
-import { GameState } from '@/lib/types/game';
+import { GameState, GamePhase } from '@/lib/types/game';
 import { TimerStatus, ExtensionRequestResult } from '@/lib/types/timer';
 
 /**
@@ -9,26 +9,57 @@ import { TimerStatus, ExtensionRequestResult } from '@/lib/types/timer';
  */
 
 /**
+ * Centralized phase transition helper.
+ * Automatically starts the timer when entering main_phase.
+ *
+ * Use this instead of directly setting gameState.phase to ensure
+ * the timer is started consistently across all code paths.
+ *
+ * @param gameState Current game state
+ * @param newPhase The phase to transition to
+ * @returns Updated game state with new phase and timer started if applicable
+ */
+export function setPhase(gameState: GameState, newPhase: GamePhase): GameState {
+  gameState.phase = newPhase;
+
+  // Automatically start timer when entering main_phase
+  // startTurnTimer is idempotent, so safe to call multiple times
+  if (newPhase === 'main_phase') {
+    gameState = startTurnTimer(gameState);
+  }
+
+  return gameState;
+}
+
+/**
  * Start the turn timer for the current player.
  * Should be called when phase transitions to main_phase after rolling dice.
+ *
+ * This function is idempotent - it will not restart a timer that's already running.
+ * Mutates gameState in place for consistency with the codebase's mutation pattern.
  */
 export function startTurnTimer(gameState: GameState): GameState {
   if (!gameState.timerConfig?.enabled) {
     return gameState; // Timer disabled, no-op
   }
 
+  // Idempotent: don't restart if timer is already running
+  if (gameState.turnStartTime) {
+    return gameState;
+  }
+
   const now = Date.now();
 
-  return {
-    ...gameState,
-    turnStartTime: now,
-    turnTimeLimit: gameState.timerConfig.turnTimeLimit,
-    timerLocked: false, // Reset locked state for new turn
-    currentTurnExtensions: {
-      count: 0,
-      totalBorrowed: 0,
-    },
+  // Mutate in place for consistency with codebase patterns
+  gameState.turnStartTime = now;
+  gameState.turnTimeLimit = gameState.timerConfig.turnTimeLimit;
+  gameState.timerLocked = false; // Reset locked state for new turn
+  gameState.currentTurnExtensions = {
+    count: 0,
+    totalBorrowed: 0,
   };
+
+  return gameState;
 }
 
 /**
@@ -170,29 +201,54 @@ export function requestExtension(
     };
   }
 
-  // Check total borrowed limit
-  const newTotalBorrowed = extensions.totalBorrowed + config.extensionIncrement;
-  if (newTotalBorrowed > config.maxExtraSecondsPerTurn) {
+  // Check time bank balance
+  if (bank === 0) {
+    return {
+      success: false,
+      error: 'No time remaining in bank',
+    };
+  }
+
+  // Calculate actual extension amount
+  // Use the configured increment, or whatever is available (whichever is smaller)
+  const maxAllowedByLimit = config.maxExtraSecondsPerTurn - extensions.totalBorrowed;
+  const actualExtension = Math.min(
+    config.extensionIncrement,
+    maxAllowedByLimit,
+    bank
+  );
+
+  if (actualExtension <= 0) {
     return {
       success: false,
       error: `Maximum ${config.maxExtraSecondsPerTurn}s extra time per turn`,
     };
   }
 
-  // Check time bank balance
-  if (bank < config.extensionIncrement) {
-    return {
-      success: false,
-      error: `Insufficient time bank (need ${config.extensionIncrement}s, have ${bank}s)`,
-    };
-  }
-
   // Grant extension
-  const newBankBalance = bank - config.extensionIncrement;
+  const newTotalBorrowed = extensions.totalBorrowed + actualExtension;
+  const newBankBalance = bank - actualExtension;
+
+  // When granting an extension, we need to prevent "time leakage" where seconds spent
+  // after the timer expires eat into the extension. We do this by adjusting the turn
+  // start time backward to ensure the player gets the full extension amount.
+  const now = Date.now();
+  const currentElapsed = Math.floor((now - (gameState.turnStartTime || now)) / 1000);
+  const currentLimit = config.turnTimeLimit + extensions.totalBorrowed;
+
+  // If the timer has expired, calculate how much overtime has passed
+  const overtime = Math.max(0, currentElapsed - currentLimit);
+
+  // Adjust the turn start time forward by the overtime amount, effectively "forgiving"
+  // the time spent after expiry and giving the player the full extension
+  const adjustedStartTime = (gameState.turnStartTime || now) + (overtime * 1000);
+
   const newTimeLimit = config.turnTimeLimit + newTotalBorrowed;
 
   const newState: GameState = {
     ...gameState,
+    turnStartTime: adjustedStartTime,
+    turnTimeLimit: newTimeLimit,
     currentTurnExtensions: {
       count: extensions.count + 1,
       totalBorrowed: newTotalBorrowed,

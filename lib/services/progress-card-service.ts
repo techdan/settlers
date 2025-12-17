@@ -14,6 +14,7 @@ import { CommodityType } from '@/core/rules/commodity-constants';
 import { ResourceType } from '@/core/rules/board-constants';
 import { randomUUID } from 'crypto';
 import { isRoadBuildingEffect, isTreasonEffect, type RoadBuildingEffect } from '@/lib/types/effects';
+import { setPhase } from '@/lib/services/timer-service';
 
 type ProgressCardOptions = Record<string, unknown>;
 
@@ -41,10 +42,12 @@ function removeRoadBuildingEffect(gameState: GameState, playerId: string): void 
 }
 
 export async function cancelRoadBuildingProgress(roomId: string, playerId: string): Promise<GameState> {
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) {
         throw new Error('Game not found');
     }
+    // Const alias for use in closures (TypeScript doesn't preserve null narrowing for let variables in callbacks)
+    const state = gameState;
 
     if (gameState.currentTurn !== playerId) {
         throw new Error('Not your turn');
@@ -64,7 +67,7 @@ export async function cancelRoadBuildingProgress(roomId: string, playerId: strin
     let removedCount = 0;
 
     placedEdges.forEach(edgeId => {
-        const edge = gameState.board.edges[edgeId];
+        const edge = state.board.edges[edgeId];
         if (edge && edge.owner === playerId && edge.structure === 'road') {
             edge.owner = null;
             edge.structure = null;
@@ -73,7 +76,7 @@ export async function cancelRoadBuildingProgress(roomId: string, playerId: strin
         }
     });
 
-    gameState.phase = 'main_phase';
+    gameState = setPhase(gameState, 'main_phase');
     removeRoadBuildingEffect(gameState, playerId);
 
     updateLongestRoad(gameState);
@@ -87,7 +90,7 @@ export async function cancelRoadBuildingProgress(roomId: string, playerId: strin
 }
 
 export async function finalizeRoadBuildingProgress(roomId: string, playerId: string): Promise<GameState> {
-    const gameState = await getGameStateByRoomId(roomId);
+    let gameState = await getGameStateByRoomId(roomId);
     if (!gameState) {
         throw new Error('Game not found');
     }
@@ -108,7 +111,7 @@ export async function finalizeRoadBuildingProgress(roomId: string, playerId: str
 
     const placedRoadCount = effect.placedEdges?.length || 0;
 
-    gameState.phase = 'main_phase';
+    gameState = setPhase(gameState, 'main_phase');
 
     if (player.progressCards) {
         player.progressCards = player.progressCards.filter(c => c !== 'road_building_progress');
