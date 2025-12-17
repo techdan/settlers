@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setLobbyPlayerColor, setLobbyGameMode, startGame } from '@/app/actions';
+import { setLobbyPlayerColor, setLobbyGameMode, startGame, setLobbyTimerConfig } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ui/ConnectionStatus';
 import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
@@ -15,8 +15,10 @@ import {
 
 import { BoardPreview } from './lobby/BoardPreview';
 import { GeneratorControls } from './lobby/GeneratorControls';
+import { TimerConfigPanel } from './lobby/TimerConfigPanel';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
+import { DEFAULT_TIMER_CONFIG } from '@/lib/types/timer';
 
 type Player = {
     id: string;
@@ -90,6 +92,7 @@ export function LobbyView({
     const fairMode = lobbyState?.fairMode ?? false;
     const syncedGameMode = lobbyState?.gameMode ?? 'base';
     const pendingRequests = lobbyState?.pendingRequests ?? [];
+    const timerConfig = lobbyState?.timerConfig ?? DEFAULT_TIMER_CONFIG;
 
     useEffect(() => {
         setGameMode(syncedGameMode);
@@ -99,6 +102,12 @@ export function LobbyView({
         setGameMode(mode); // Optimistic update
         if (isHost) {
             await setLobbyGameMode(roomId, currentPlayerId, mode);
+        }
+    };
+
+    const handleTimerConfigChange = async (newConfig: typeof DEFAULT_TIMER_CONFIG) => {
+        if (isHost) {
+            await setLobbyTimerConfig(roomId, currentPlayerId, newConfig);
         }
     };
 
@@ -322,7 +331,14 @@ export function LobbyView({
                         )}
                     </div>
 
-
+                    {/* Timer Configuration */}
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <TimerConfigPanel
+                            config={timerConfig}
+                            isHost={isHost}
+                            onChange={handleTimerConfigChange}
+                        />
+                    </div>
 
                     {isHost ? (
                         <button

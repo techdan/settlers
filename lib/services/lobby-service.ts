@@ -351,4 +351,29 @@ export class LobbyService {
 
         return fullState;
     }
+
+    /**
+     * Set the timer configuration for the lobby
+     */
+    static async setTimerConfig(roomId: string, hostId: string, timerConfig: import('@/lib/types/timer').TimerConfig): Promise<LobbyState> {
+        // Optimization: Try to use existing state if valid
+        let state = await this.getLobbyState(roomId);
+
+        if (state && state.hostId === hostId) {
+            state.timerConfig = timerConfig;
+            await this.updateLobbyState(roomId, state);
+            return state;
+        }
+
+        const fullState = await this.getOrInitLobbyState(roomId, hostId);
+
+        if (fullState.hostId !== hostId) {
+            throw new Error('Only host can set timer config');
+        }
+
+        fullState.timerConfig = timerConfig;
+        await this.updateLobbyState(roomId, fullState);
+
+        return fullState;
+    }
 }

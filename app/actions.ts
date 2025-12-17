@@ -508,3 +508,9 @@ export async function setLobbyPlayerColor(roomId: string, playerId: string, colo
     revalidatePath(`/room/${roomId}`);
     return result;
 }
+
+export async function setLobbyTimerConfig(roomId: string, hostId: string, timerConfig: import('@/lib/types/timer').TimerConfig) {
+    const result = await LobbyService.setTimerConfig(roomId, hostId, timerConfig);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
