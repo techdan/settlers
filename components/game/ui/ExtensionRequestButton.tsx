@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { GameState } from '@/lib/types/game';
 import { formatTime } from '@/lib/hooks/useTimerState';
 import { Tooltip } from '@/components/ui/tooltip';
+import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
 
 interface ExtensionRequestButtonProps {
   gameState: GameState;
@@ -77,10 +78,8 @@ export function ExtensionRequestButton({
     }
   };
 
-  // Build button text with time bank indicator
-  const buttonText = isRequesting
-    ? 'Requesting...'
-    : `More Time (🏦 ${formatTime(timeBank)})`;
+  const buttonLabel = isRequesting ? 'Requesting...' : 'More Time';
+  const subLabel = `Bank: ${formatTime(timeBank)}${actualExtension > 0 ? ` | +${formatTimeWords(actualExtension)}` : ''}`;
 
   const tooltipLines: string[] = [];
   if (!canRequest) {
@@ -94,14 +93,14 @@ export function ExtensionRequestButton({
   } else {
     const newBankBalance = timeBank - actualExtension;
     tooltipLines.push(
-      `Add ${formatTimeWords(actualExtension)} of turn time from your time bank (${formatTime(timeBank)} → ${formatTime(newBankBalance)})`
+      `Add ${formatTimeWords(actualExtension)} of turn time from your time bank (${formatTime(timeBank)} -> ${formatTime(newBankBalance)})`
     );
   }
   tooltipLines.push(`${extensions.count}/${config.maxExtensionsPerTurn} extensions used`);
   const tooltipMessage = tooltipLines.join('\n');
 
   return (
-    <div className="space-y-1">
+    <div className="flex flex-col items-end gap-1">
       <Tooltip
         content={tooltipMessage}
         placement="top"
@@ -110,13 +109,23 @@ export function ExtensionRequestButton({
         <button
           onClick={handleRequest}
           disabled={!canRequest || isRequesting}
-          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+          aria-label="Request more time"
+          className={`pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 text-sm font-semibold shadow-lg shadow-sky-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-0 overflow-hidden shadow-inner ${
             canRequest
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg cursor-pointer'
-              : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
-          } ${isRequesting ? 'opacity-50' : ''}`}
+              ? 'border-blue-200/70 bg-gradient-to-br from-sky-500 to-indigo-600 text-white focus-visible:ring-sky-200 cursor-pointer'
+              : 'border-slate-300/70 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed'
+          } ${isRequesting ? 'opacity-60' : ''}`}
         >
-          {buttonText}
+          <ColoredSvgIcon
+            src="/icons/backward-time.svg"
+            color="#e0f2fe"
+            backgroundColor="#0ea5e9"
+            size={56}
+            className="h-full w-full rounded-lg"
+          />
+          <span className="sr-only">
+            {buttonLabel} ({subLabel})
+          </span>
         </button>
       </Tooltip>
 

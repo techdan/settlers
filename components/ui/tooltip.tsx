@@ -209,7 +209,7 @@ export function Tooltip({
     return (
         <div
             ref={triggerRef}
-            className={cn('relative inline-flex', className)}
+            className={cn('relative inline-flex items-center w-fit h-fit', className)}
             aria-describedby={open ? tooltipId : undefined}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}

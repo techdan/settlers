@@ -1,6 +1,6 @@
 # Icon Mapping Configuration
 
-This file maps SVG icons from `/public/icons` to game elements with their associated colors.
+This file maps SVG icons from `/public/icons` to game elements with their associated colors. Game icons come from https://game-icons.net/
 
 ## Instructions
 
@@ -14,6 +14,7 @@ Fill in the following columns:
 
 | SVG Filename | Maps To | Color | Category | Notes |
 |--------------|---------|-------|----------|-------|
+| backward-time.svg | More Time Button | | Action Button | |
 | bandana.svg | | | | |
 | bank.svg | | | | |
 | barbarian-ship.svg | | | | |
@@ -46,11 +47,13 @@ Fill in the following columns:
 | mounted-knight.svg | | | | |
 | mustache.svg | merchant | | | |
 | pilgrim-hat.svg | | | | |
+| player-next.svg | End Turn Button | | Action Button | |
 | ribbon-shield.svg | | | | |
 | road.svg | cloth | off white (faded yellow?) / pasture green background | commodity | |
 | robber.svg | robber | | | |
 | robber-mask.svg | | | | |
 | rolled-cloth.svg | | | | |
+| rolling-dices.svg | Roll Dice | | Action Button | |
 | scales.svg | Trade | | City Improvement / Event Die | |
 | science.svg | | | | |
 | scroll-unfurled.svg | paper | parchment color (faded yellow?) / forest green background  | commodity | |
@@ -60,7 +63,8 @@ Fill in the following columns:
 | spy.svg | | | | |
 | stone-block.svg | | | | |
 | stone-pile.svg | ore | stone grey / ore grey background | resource | make sure constrasts |
-| trade.svg | | | | |
+| time-trap.svg |  | | | |
+| trade.svg | Trade Button | | Action Button | |
 | trophy.svg | | | | |
 | village.svg | settlement | | | |
 | wheat.svg | wheat | wheat yellow / field yellwo background | resource | make sure contrasts |
