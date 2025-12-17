@@ -514,3 +514,24 @@ export async function setLobbyTimerConfig(roomId: string, hostId: string, timerC
     revalidatePath(`/room/${roomId}`);
     return result;
 }
+
+export async function requestTimeExtension(roomId: string, playerId: string) {
+    const { requestExtension } = await import('@/lib/services/timer-service');
+    const { getGameStateByRoomId, updateGameState } = await import('@/lib/repositories/game-repository');
+
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) throw new Error('Game not found');
+
+    const result = requestExtension(gameState, playerId);
+
+    if (!result.success) {
+        throw new Error(result.error || 'Failed to request extension');
+    }
+
+    if (result.newState) {
+        await updateGameState(result.newState);
+    }
+
+    revalidatePath(`/board/flat`);
+    return result;
+}
