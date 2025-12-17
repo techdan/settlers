@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { GameLog } from './GameLog';
 import { DiceStatsPanel } from './DiceStatsPanel';
+import { ChatPanel } from './ChatPanel';
 import { DiceStats, EventDieStats, GameLogEntry, GameState, PlayerState } from '@/lib/types';
 
 interface SidebarTabsProps {
@@ -11,13 +12,15 @@ interface SidebarTabsProps {
     eventDieStats?: EventDieStats;
     players?: PlayerState[];
     gameState: GameState;
+    roomId: string;
+    playerId: string;
 }
 
 type TabType = 'log' | 'chat' | 'stats';
 
 /**
  * Tabbed content panel for the right sidebar.
- * Contains Log, Chat (placeholder), and Stats tabs.
+ * Contains Log, Chat, and Stats tabs.
  */
 export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     logs,
@@ -25,14 +28,37 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     eventDieStats,
     players,
     gameState,
+    roomId,
+    playerId,
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('log');
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    const tabs: { id: TabType; label: string; disabled?: boolean }[] = [
+    // Handle new chat message notification
+    const handleNewChatMessage = useCallback(() => {
+        if (activeTab !== 'chat') {
+            setUnreadCount(prev => prev + 1);
+        }
+    }, [activeTab]);
+
+    // Handle tab change
+    const handleTabChange = (tabId: TabType) => {
+        setActiveTab(tabId);
+        if (tabId === 'chat') {
+            setUnreadCount(0);
+        }
+    };
+
+    const tabs: { id: TabType; label: string; badge?: number }[] = [
         { id: 'log', label: 'Log' },
-        { id: 'chat', label: 'Chat', disabled: true },
+        { id: 'chat', label: 'Chat', badge: unreadCount > 0 ? unreadCount : undefined },
         { id: 'stats', label: 'Stats' },
     ];
+
+    // Format badge display
+    const formatBadge = (count: number) => {
+        return count > 99 ? '99+' : count.toString();
+    };
 
     return (
         <div className="flex flex-col bg-slate-900/90 rounded-lg border border-slate-700 shadow-xl backdrop-blur-sm overflow-hidden text-neutral-200">
@@ -41,27 +67,29 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => !tab.disabled && setActiveTab(tab.id)}
-                        disabled={tab.disabled}
+                        onClick={() => handleTabChange(tab.id)}
                         className={`
                             flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider
-                            transition-colors cursor-pointer
+                            transition-colors cursor-pointer relative
                             ${activeTab === tab.id
                                 ? 'bg-slate-700/80 text-white border-b-2 border-amber-500'
-                                : tab.disabled
-                                    ? 'text-slate-600 cursor-not-allowed'
-                                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                             }
                         `}
-                        title={tab.disabled ? 'Coming soon' : undefined}
                     >
                         {tab.label}
+                        {/* Unread badge */}
+                        {tab.badge !== undefined && tab.badge > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-slate-900 text-[10px] font-bold rounded-full flex items-center justify-center">
+                                {formatBadge(tab.badge)}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
 
-            {/* Tab Content - taller height with vertical scroll (30rem = 480px, 50% taller than h-80/20rem) */}
-            <div className="h-[45vh] min-h-[16rem] max-h-[30rem] overflow-hidden flex flex-col">
+            {/* Tab Content */}
+            <div className="h-[45vh] min-h-[16rem] max-h-[30rem] overflow-hidden flex flex-col relative">
                 {activeTab === 'log' && (
                     <div className="h-full overflow-hidden p-2">
                         <GameLog logs={logs} players={players} />
@@ -69,12 +97,12 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                 )}
 
                 {activeTab === 'chat' && (
-                    <div className="h-full flex items-center justify-center p-4">
-                        <div className="text-center text-slate-500">
-                            <div className="text-2xl mb-2">💬</div>
-                            <div className="text-sm">Chat coming soon</div>
-                        </div>
-                    </div>
+                    <ChatPanel
+                        roomId={roomId}
+                        playerId={playerId}
+                        players={players}
+                        onNewMessage={handleNewChatMessage}
+                    />
                 )}
 
                 {activeTab === 'stats' && diceStats && (

@@ -31,3 +31,13 @@ export const games = pgTable('games', {
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+export const chatMessages = pgTable('chat_messages', {
+    id: text('id').primaryKey(), // UUID
+    roomId: text('room_id').references(() => rooms.id).notNull(),
+    playerId: text('player_id').references(() => players.id), // nullable for system messages
+    message: text('message').notNull(),
+    messageType: text('message_type').notNull().default('player'), // 'player' | 'system'
+    clientMessageId: text('client_message_id'), // for deduplication
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});

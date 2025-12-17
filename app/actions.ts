@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { randomUUID, randomInt } from 'crypto';
 import * as roomRepository from '@/lib/repositories/room-repository';
 import * as playerRepository from '@/lib/repositories/player-repository';
+import * as chatService from '@/lib/services/chat-service';
 
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -533,5 +534,20 @@ export async function requestTimeExtension(roomId: string, playerId: string) {
     }
 
     revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
+export async function sendChatMessage(
+    roomId: string,
+    playerId: string,
+    message: string,
+    clientMessageId?: string
+) {
+    const result = await chatService.sendChatMessage(roomId, playerId, message, clientMessageId);
+
+    if (result.success) {
+        revalidatePath(`/room/${roomId}`);
+    }
+
     return result;
 }

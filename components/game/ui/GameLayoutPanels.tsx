@@ -152,7 +152,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         </div>
 
         <div className="w-80 pointer-events-auto">
-          <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} />
+          <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
         </div>
       </div>
     </div>
