@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { GameState } from '@/lib/types/game';
 import { formatTime } from '@/lib/hooks/useTimerState';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface ExtensionRequestButtonProps {
   gameState: GameState;
@@ -76,8 +77,10 @@ export function ExtensionRequestButton({
     }
   };
 
-  // Build button text and tooltip message
-  const buttonText = isRequesting ? 'Requesting...' : `Request ${formatTimeWords(actualExtension)}`;
+  // Build button text with time bank indicator
+  const buttonText = isRequesting
+    ? 'Requesting...'
+    : `More Time (🏦 ${formatTime(timeBank)})`;
 
   const tooltipLines: string[] = [];
   if (!canRequest) {
@@ -99,18 +102,23 @@ export function ExtensionRequestButton({
 
   return (
     <div className="space-y-1">
-      <button
-        onClick={handleRequest}
-        disabled={!canRequest || isRequesting}
-        title={tooltipMessage}
-        className={`w-full px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-          canRequest
-            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg cursor-pointer'
-            : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
-        } ${isRequesting ? 'opacity-50' : ''}`}
+      <Tooltip
+        content={tooltipMessage}
+        placement="top"
+        longPressDelayMs={300}
       >
-        {buttonText}
-      </button>
+        <button
+          onClick={handleRequest}
+          disabled={!canRequest || isRequesting}
+          className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
+            canRequest
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg cursor-pointer'
+              : 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-500 cursor-not-allowed'
+          } ${isRequesting ? 'opacity-50' : ''}`}
+        >
+          {buttonText}
+        </button>
+      </Tooltip>
 
       {/* Error message */}
       {error && (

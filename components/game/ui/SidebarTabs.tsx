@@ -33,17 +33,38 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('log');
     const [unreadCount, setUnreadCount] = useState(0);
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const tabBarRef = React.useRef<HTMLDivElement>(null);
+    const [tabBarHeight, setTabBarHeight] = useState<number>(44);
+
+    // Measure tab bar height for collapse target
+    React.useEffect(() => {
+        const measure = () => {
+            if (tabBarRef.current) {
+                setTabBarHeight(tabBarRef.current.getBoundingClientRect().height || 44);
+            }
+        };
+        measure();
+        window.addEventListener('resize', measure);
+        return () => window.removeEventListener('resize', measure);
+    }, []);
 
     // Handle new chat message notification
     const handleNewChatMessage = useCallback(() => {
-        if (activeTab !== 'chat') {
+        if (activeTab !== 'chat' || isCollapsed) {
             setUnreadCount(prev => prev + 1);
         }
-    }, [activeTab]);
+    }, [activeTab, isCollapsed]);
 
-    // Handle tab change
-    const handleTabChange = (tabId: TabType) => {
-        setActiveTab(tabId);
+    // Handle tab change and collapse toggle
+    const handleTabClick = (tabId: TabType) => {
+        if (tabId === activeTab) {
+            setIsCollapsed(prev => !prev);
+        } else {
+            setActiveTab(tabId);
+            setIsCollapsed(false);
+        }
+
         if (tabId === 'chat') {
             setUnreadCount(0);
         }
@@ -61,13 +82,19 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     };
 
     return (
-        <div className="flex flex-col bg-slate-900/90 rounded-lg border border-slate-700 shadow-xl backdrop-blur-sm overflow-hidden text-neutral-200">
-            {/* Tab Buttons */}
-            <div className="flex border-b border-slate-700">
+        <div
+            className="flex flex-col bg-slate-900/90 rounded-lg border border-slate-700 shadow-xl backdrop-blur-sm overflow-hidden text-neutral-200 transition-[max-height] duration-300 ease-in-out"
+            style={{ maxHeight: isCollapsed ? tabBarHeight : '30rem' }}
+        >
+            {/* Tab Buttons (always at top when expanded) */}
+            <div
+                ref={tabBarRef}
+                className="flex border-b border-slate-700 transition-transform duration-300 ease-in-out"
+            >
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
-                        onClick={() => handleTabChange(tab.id)}
+                        onClick={() => handleTabClick(tab.id)}
                         className={`
                             flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider
                             transition-colors cursor-pointer relative
@@ -89,40 +116,44 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
             </div>
 
             {/* Tab Content */}
-            <div className="h-[45vh] min-h-[16rem] max-h-[30rem] overflow-hidden flex flex-col relative">
-                {activeTab === 'log' && (
-                    <div className="h-full overflow-hidden p-2">
-                        <GameLog logs={logs} players={players} />
-                    </div>
-                )}
-
-                {activeTab === 'chat' && (
-                    <ChatPanel
-                        roomId={roomId}
-                        playerId={playerId}
-                        players={players}
-                        onNewMessage={handleNewChatMessage}
-                    />
-                )}
-
-                {activeTab === 'stats' && diceStats && (
-                    <div className="h-full overflow-y-auto p-2">
-                        <DiceStatsPanel
-                            stats={diceStats}
-                            eventStats={eventDieStats}
-                            gameState={gameState}
-                        />
-                    </div>
-                )}
-
-                {activeTab === 'stats' && !diceStats && (
-                    <div className="h-full flex items-center justify-center p-4">
-                        <div className="text-center text-slate-500">
-                            <div className="text-sm">No dice stats yet</div>
-                            <div className="text-xs text-slate-600">Roll the dice to see statistics</div>
+            <div
+                className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out flex flex-col relative ${isCollapsed ? 'max-h-0 opacity-0 pointer-events-none' : 'max-h-[30rem] opacity-100'}`}
+            >
+                <div className={`h-[45vh] ${isCollapsed ? '' : 'min-h-[16rem]'} max-h-[30rem] flex flex-col`}>
+                    {activeTab === 'log' && (
+                        <div className="h-full overflow-hidden p-2">
+                            <GameLog logs={logs} players={players} />
                         </div>
-                    </div>
-                )}
+                    )}
+
+                    {activeTab === 'chat' && (
+                        <ChatPanel
+                            roomId={roomId}
+                            playerId={playerId}
+                            players={players}
+                            onNewMessage={handleNewChatMessage}
+                        />
+                    )}
+
+                    {activeTab === 'stats' && diceStats && (
+                        <div className="h-full overflow-y-auto p-2">
+                            <DiceStatsPanel
+                                stats={diceStats}
+                                eventStats={eventDieStats}
+                                gameState={gameState}
+                            />
+                        </div>
+                    )}
+
+                    {activeTab === 'stats' && !diceStats && (
+                        <div className="h-full flex items-center justify-center p-4">
+                            <div className="text-center text-slate-500">
+                                <div className="text-sm">No dice stats yet</div>
+                                <div className="text-xs text-slate-600">Roll the dice to see statistics</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

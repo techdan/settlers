@@ -85,16 +85,18 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
             )}
 
             {gameState.phase === 'main_phase' && (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 items-end">
                     {/* Timer Extension Button */}
                     {gameState.timerConfig?.enabled && (
-                        <ExtensionRequestButton
-                            gameState={gameState}
-                            playerId={playerId}
-                            onRequestExtension={async () => {
-                                await requestTimeExtension(gameState.roomId, playerId);
-                            }}
-                        />
+                        <div className="w-auto">
+                            <ExtensionRequestButton
+                                gameState={gameState}
+                                playerId={playerId}
+                                onRequestExtension={async () => {
+                                    await requestTimeExtension(gameState.roomId, playerId);
+                                }}
+                            />
+                        </div>
                     )}
 
                     <div className="flex gap-2">

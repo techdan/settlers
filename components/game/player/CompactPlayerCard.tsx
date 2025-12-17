@@ -6,8 +6,6 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementBar';
 import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
-import { TimeBankDisplay } from '../ui/TimeBankDisplay';
-import { formatTime } from '@/lib/hooks/useTimerState';
 
 interface CompactPlayerCardProps {
     player: PlayerState;
@@ -138,20 +136,6 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                     {player.name}
                     {isCurrentPlayer && <span className="text-xs text-slate-400 ml-1">(You)</span>}
                 </span>
-
-                {/* Time Bank (if timer enabled) - before VP */}
-                {gameState.timerConfig?.enabled && (
-                    <Tooltip
-                        content={`Time Bank: ${formatTime(gameState.playerTimeBanks?.[player.id] ?? 0)}\nRemaining time for extensions\nTotal time played: ${formatTime(gameState.playerTotalTime?.[player.id] ?? 0)}`}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <div>
-                            <TimeBankDisplay gameState={gameState} playerId={player.id} compact={true} />
-                        </div>
-                    </Tooltip>
-                )}
 
                 {/* VP */}
                 <Tooltip
