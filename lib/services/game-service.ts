@@ -563,11 +563,13 @@ export async function claimAqueductResource(
         gameState.pendingAqueduct = undefined;
         gameState.aqueductResumePhase = undefined;
 
-        // Resume the phase we were blocking, or fall back to main_phase if none was set
+        // Resume the phase we were blocking, or fall back to waiting_for_roll if none was set
+        // Note: We don't use setPhase here because aqueduct_selection happens between turns
+        // (after the previous turn's timer stopped), so we shouldn't start a new timer
         if (resumePhase) {
             gameState.phase = resumePhase;
         } else if (resolvingFromBlockedPhase) {
-            gameState = setPhase(gameState, 'main_phase');
+            gameState.phase = 'waiting_for_roll';
         }
     }
 
