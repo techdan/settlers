@@ -42,20 +42,38 @@ const EVENT_DIE_SVGS: Record<EventDieFace, string> = {
 const DIE_OUTER_STYLE =
     'inline-flex h-14 w-14 rounded-2xl border-2 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:shadow-xl p-0 cursor-default';
 
-const DIE_INNER_STYLE = 'flex h-full w-full items-center justify-center overflow-hidden rounded-[14px] shadow-inner';
+const DIE_INNER_STYLE =
+    'relative flex h-full w-full items-center justify-center overflow-hidden rounded-[14px] shadow-inner';
 
 function DieFrame({
     outerClassName,
     innerClassName,
+    innerStyle,
+    rimColor,
+    rimWidthPx = 4,
     children,
 }: {
     outerClassName: string;
     innerClassName?: string;
+    innerStyle?: React.CSSProperties;
+    rimColor?: string;
+    rimWidthPx?: number;
     children: React.ReactNode;
 }) {
     return (
         <div className={`${DIE_OUTER_STYLE} ${outerClassName}`} style={{ padding: 2 }}>
-            <div className={`${DIE_INNER_STYLE} ${innerClassName ?? ''}`}>{children}</div>
+            <div
+                className={`${DIE_INNER_STYLE} ${innerClassName ?? ''}`}
+                style={innerStyle}
+            >
+                {children}
+                {rimColor && (
+                    <div
+                        className="pointer-events-none absolute inset-0 rounded-[14px]"
+                        style={{ boxShadow: `inset 0 0 0 ${rimWidthPx}px ${rimColor}` }}
+                    />
+                )}
+            </div>
         </div>
     );
 }
@@ -79,16 +97,17 @@ function RegularDie({
                 <DieFrame
                     outerClassName="border-white/30"
                     innerClassName="bg-transparent"
+                    rimColor={backgroundColor}
                 >
                     <ColoredSvgIcon
                         src={src}
                         // Dice SVGs are structured as: full-bleed background + foreground path with "pip holes".
-                        // To get "background die with pip color showing through", we set:
+                        // To get "die background with pip color showing through", we set:
                         // - backgroundColor = pip color (fills the full-bleed background)
                         // - color = die body color (fills the foreground path)
                         color={backgroundColor}
                         backgroundColor={pipColor}
-                        size={52}
+                        size={48}
                         alt={label}
                     />
                 </DieFrame>
@@ -101,7 +120,7 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
     if (!diceRoll) return null;
 
     return (
-        <div className="bg-black/60 p-3 rounded-lg text-white flex items-center gap-4 backdrop-blur-sm border border-white/10 pointer-events-auto">
+        <div className="bg-transparent p-3 rounded-lg text-white flex items-center gap-4 pointer-events-auto">
             {/* Regular Dice */}
             <div className="flex gap-2">
                 <RegularDie
@@ -136,11 +155,12 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                         <div aria-label={`Event die: ${EVENT_DIE_TEXT[eventDieRoll.face].title}`}>
                             <DieFrame
                                 outerClassName={`${EVENT_DIE_COLORS[eventDieRoll.face].bg} border-white/20 cursor-pointer`}
+                                innerClassName="bg-transparent"
                             >
                                 <ColoredSvgIcon
                                     src={EVENT_DIE_SVGS[eventDieRoll.face]}
                                     color={EVENT_DIE_COLORS[eventDieRoll.face].iconColor}
-                                    size={52}
+                                    size={48}
                                     alt={EVENT_DIE_COLORS[eventDieRoll.face].label}
                                 />
                             </DieFrame>

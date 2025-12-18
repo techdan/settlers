@@ -152,6 +152,7 @@ export async function playDevCard(
             break;
 
         case 'victory_point':
+            player.revealedDevCardVictoryPoints = (player.revealedDevCardVictoryPoints || 0) + 1;
             logMessage += '. +1 Victory Point!';
             break;
 

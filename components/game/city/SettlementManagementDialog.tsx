@@ -6,6 +6,7 @@ import { isValidMainPhaseCity } from '@/core/validation/building-validator';
 import { BUILDING_COSTS, canAfford } from '@/core/rules/building-costs';
 import { GameIcon } from '@/components/ui/icons/GameIcon';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useTimerState } from '@/lib/hooks/useTimerState';
 
 interface SettlementManagementDialogProps {
     gameState: GameState;
@@ -25,6 +26,9 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Check timer status
+    const timerStatus = useTimerState(gameState);
+
     const player = gameState.players.find(p => p.id === playerId);
     const vertex = gameState.board.vertices[vertexId];
 
@@ -34,7 +38,7 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
 
     const isMyTurn = gameState.currentTurn === playerId;
     const isMainPhase = gameState.phase === 'main_phase';
-    const canAct = isMyTurn && isMainPhase && !isSubmitting;
+    const canAct = isMyTurn && isMainPhase && !isSubmitting && !timerStatus.isLocked;
 
     // Check if player can afford city upgrade
     const isValidVertex = isValidMainPhaseCity(gameState, vertexId, playerId);

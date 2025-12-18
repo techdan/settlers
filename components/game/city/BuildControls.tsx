@@ -3,6 +3,7 @@ import { GameState } from '@/lib/types';
 import { buyDevCard } from '@/app/actions';
 import { GameIcon } from '@/components/ui/icons/GameIcon';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useTimerState } from '@/lib/hooks/useTimerState';
 
 interface BuildControlsProps {
     gameState: GameState;
@@ -59,8 +60,11 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const canBuildKnight = canAffordKnight && knightsRemaining > 0;
     const canBuildCityWall = resources.brick >= 2 && wallsRemaining > 0 && hasEligibleCityForWall;
 
-    // Enable building only when it's the player's turn and in main phase
-    const canInteract = isMyTurn && gameState.phase === 'main_phase';
+    // Check timer status
+    const timerStatus = useTimerState(gameState);
+
+    // Enable building only when it's the player's turn, in main phase, and timer not locked
+    const canInteract = isMyTurn && gameState.phase === 'main_phase' && !timerStatus.isLocked;
 
     return (
         <div className="flex gap-2 bg-slate-800/80 p-2 rounded-xl backdrop-blur-sm border border-slate-700 pointer-events-auto">

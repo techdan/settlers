@@ -75,6 +75,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
             knightsPlayed: 0,
             hasPlayedDevCard: false,
             devCardsBoughtThisTurn: [],
+            revealedDevCardVictoryPoints: 0,
             defenderVPTokens: 0, // C&K field, but required in type
         };
 

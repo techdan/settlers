@@ -5,6 +5,7 @@ import { GameLog } from './GameLog';
 import { DiceStatsPanel } from './DiceStatsPanel';
 import { ChatPanel } from './ChatPanel';
 import { DiceStats, EventDieStats, GameLogEntry, GameState, PlayerState } from '@/lib/types';
+import { useChatSubscription } from '@/lib/hooks/useChatSubscription';
 
 interface SidebarTabsProps {
     logs: GameLogEntry[];
@@ -37,6 +38,25 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
     const tabBarRef = React.useRef<HTMLDivElement>(null);
     const [tabBarHeight, setTabBarHeight] = useState<number>(44);
 
+    // Handle new chat message notification
+    const handleNewChatMessage = useCallback(() => {
+        if (activeTab !== 'chat' || isCollapsed) {
+            setUnreadCount(prev => {
+                const newCount = prev + 1;
+                console.log('[SidebarTabs] New chat message, incrementing badge:', newCount);
+                return newCount;
+            });
+        } else {
+            console.log('[SidebarTabs] New chat message ignored (chat tab active and expanded)');
+        }
+    }, [activeTab, isCollapsed]);
+
+    // Subscribe to chat at the parent level so we get notifications even when not on chat tab
+    const { messages, isLoading, error, isRealtimeEnabled, addMessage } = useChatSubscription({
+        roomId,
+        onNewMessage: handleNewChatMessage,
+    });
+
     // Measure tab bar height for collapse target
     React.useEffect(() => {
         const measure = () => {
@@ -48,13 +68,6 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
         window.addEventListener('resize', measure);
         return () => window.removeEventListener('resize', measure);
     }, []);
-
-    // Handle new chat message notification
-    const handleNewChatMessage = useCallback(() => {
-        if (activeTab !== 'chat' || isCollapsed) {
-            setUnreadCount(prev => prev + 1);
-        }
-    }, [activeTab, isCollapsed]);
 
     // Handle tab change and collapse toggle
     const handleTabClick = (tabId: TabType) => {
@@ -97,17 +110,17 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                         onClick={() => handleTabClick(tab.id)}
                         className={`
                             flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider
-                            transition-colors cursor-pointer relative
+                            transition-colors cursor-pointer relative flex items-center justify-center gap-1.5
                             ${activeTab === tab.id
                                 ? 'bg-slate-700/80 text-white border-b-2 border-amber-500'
                                 : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                             }
                         `}
                     >
-                        {tab.label}
+                        <span>{tab.label}</span>
                         {/* Unread badge */}
                         {tab.badge !== undefined && tab.badge > 0 && (
-                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-amber-500 text-slate-900 text-[10px] font-bold rounded-full flex items-center justify-center">
+                            <span className="min-w-[18px] h-[18px] px-1 bg-amber-500 text-slate-900 text-[10px] font-bold rounded-full flex items-center justify-center">
                                 {formatBadge(tab.badge)}
                             </span>
                         )}
@@ -131,7 +144,11 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                             roomId={roomId}
                             playerId={playerId}
                             players={players}
-                            onNewMessage={handleNewChatMessage}
+                            messages={messages}
+                            isLoading={isLoading}
+                            error={error}
+                            isRealtimeEnabled={isRealtimeEnabled}
+                            addMessage={addMessage}
                         />
                     )}
 

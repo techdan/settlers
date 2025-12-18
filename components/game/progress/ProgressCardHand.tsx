@@ -10,6 +10,7 @@ import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useTimerState } from '@/lib/hooks/useTimerState';
 
 interface ProgressCardHandProps {
     player: PlayerState;
@@ -103,6 +104,9 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     const [manualFollowupCard, setManualFollowupCard] = useState<ProgressCardType | null>(null);
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
     const currentActiveFollowup = modalCard ?? activeFollowupCard ?? manualFollowupCard ?? null;
+
+    // Check timer status
+    const timerStatus = useTimerState(gameState);
 
     // Only show in C&K mode
     if (!player.progressCards) {
@@ -328,7 +332,9 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                 // Build tooltip: show description + any restrictions
                                 let tooltipParts: string[] = [info.description];
 
-                                if (notPlayerTurn) {
+                                if (timerStatus.isLocked) {
+                                    tooltipParts.push('\n⏱️ Time expired - cannot play cards');
+                                } else if (notPlayerTurn) {
                                     tooltipParts.push('\n⚠️ Can only play on your turn');
                                 } else if (wrongPhase) {
                                     tooltipParts.push(isAlchemist
@@ -356,11 +362,11 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                                     <Tooltip key={`${cardType}-${index}`} content={disabledTitle || info.description} placement="left" tooltipClassName="whitespace-pre-line">
                                         <button
                                             onClick={onCardClick}
-                                            disabled={isPending || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled}
+                                            disabled={isPending || timerStatus.isLocked || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled}
                                             className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
                                                 ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
                                                 : 'hover:bg-slate-700/50'
-                                                } ${phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                } ${timerStatus.isLocked || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                         >
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg">{icon}</span>

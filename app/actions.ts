@@ -380,6 +380,53 @@ export async function debugGiveProgressCard(roomId: string, playerId: string, ca
         .where(eq(games.id, gameState.id));
 }
 
+export async function debugGiveDevCard(roomId: string, playerId: string, cardType: DevCardType) {
+    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
+    if (!game) throw new Error('Game not found');
+    const gameState = JSON.parse(game.state) as GameState;
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // Be defensive against older serialized states.
+    if (!player.devCards) {
+        player.devCards = {
+            knight: 0,
+            monopoly: 0,
+            road_building: 0,
+            victory_point: 0,
+            year_of_plenty: 0
+        };
+    }
+    player.devCards[cardType] = (player.devCards[cardType] || 0) + 1;
+
+    updateAllVictoryPoints(gameState);
+
+    const winnerId = checkVictoryCondition(gameState);
+    if (winnerId) {
+        gameState.winner = winnerId;
+        gameState.phase = 'game_over';
+
+        const winner = gameState.players.find(p => p.id === winnerId);
+        gameState.logs.push({
+            id: randomUUID(),
+            timestamp: Date.now(),
+            message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
+        });
+    }
+
+    gameState.logs.push({
+        id: randomUUID(),
+        timestamp: Date.now(),
+        message: `DEBUG: ${player.name} gave themselves 1 ${cardType.replace(/_/g, ' ')} development card.`,
+        playerId
+    });
+
+    await db.update(games)
+        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
+        .where(eq(games.id, gameState.id));
+}
+
 export async function playProgressCard(
     roomId: string,
     playerId: string,

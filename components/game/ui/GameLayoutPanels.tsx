@@ -101,13 +101,52 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
             </div>
           )}
 
-          <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : 'pointer-events-auto'}>
-            <BuildControls gameState={gameState} playerId={playerId} buildMode={selectionManager.buildMode} onSetBuildMode={selectionManager.setBuildMode} />
-          </div>
-          <div className="flex items-center gap-4 max-w-full overflow-x-auto pointer-events-auto">
-            {currentPlayer && <PlayerHand player={currentPlayer} roomId={gameState.roomId} lastTheft={gameState.lastTheft} />}
-            {!isCitiesAndKnights && <PlayerDevCards gameState={gameState} playerId={playerId} />}
-          </div>
+          {/* Base game: stack Build above Resources, Dev Cards span both rows */}
+          {!isCitiesAndKnights && (
+            <div className="flex items-end gap-4 max-w-full overflow-x-auto pointer-events-auto">
+              {/* Left column: Build stacked above Resources (same width) */}
+              <div className="flex flex-col gap-0">
+                <div className={promptBlocksUI ? 'opacity-60 pointer-events-none w-full' : 'pointer-events-auto w-full'}>
+                  <BuildControls
+                    gameState={gameState}
+                    playerId={playerId}
+                    buildMode={selectionManager.buildMode}
+                    onSetBuildMode={selectionManager.setBuildMode}
+                  />
+                </div>
+
+                {currentPlayer && (
+                  <div className="w-full mt-2.5">
+                    <PlayerHand player={currentPlayer} roomId={gameState.roomId} lastTheft={gameState.lastTheft} />
+                  </div>
+                )}
+              </div>
+
+              {/* Right column: Dev Cards natural height (no stretching) */}
+              {currentPlayer && (
+                <div className="self-end">
+                  <PlayerDevCards gameState={gameState} playerId={playerId} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cities & Knights: keep Progress Cards layout */}
+          {isCitiesAndKnights && (
+            <>
+              <div className={promptBlocksUI ? 'opacity-60 pointer-events-none' : 'pointer-events-auto'}>
+                <BuildControls
+                  gameState={gameState}
+                  playerId={playerId}
+                  buildMode={selectionManager.buildMode}
+                  onSetBuildMode={selectionManager.setBuildMode}
+                />
+              </div>
+              <div className="flex items-center gap-4 max-w-full overflow-x-auto pointer-events-auto">
+                {currentPlayer && <PlayerHand player={currentPlayer} roomId={gameState.roomId} lastTheft={gameState.lastTheft} />}
+              </div>
+            </>
+          )}
         </div>
 
         {isCitiesAndKnights && currentPlayer && (

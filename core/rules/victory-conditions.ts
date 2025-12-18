@@ -50,7 +50,9 @@ export function calculateTotalVictoryPoints(
     points += citiesBuilt * GAME_CONSTANTS.VP_FROM_CITY;
 
     // Victory Point Dev Cards
-    points += player.devCards.victory_point || 0;
+    // - Hidden VP dev cards remain in `player.devCards.victory_point`
+    // - Revealed VP dev cards are tracked separately (public) for UI display
+    points += (player.devCards.victory_point || 0) + (player.revealedDevCardVictoryPoints || 0);
 
     // Longest Road
     if (gameState.longestRoadOwner === playerId) {
@@ -105,6 +107,9 @@ export function calculatePublicVictoryPoints(
     // Cities
     const citiesBuilt = GAME_CONSTANTS.STARTING_PIECES.cities - player.citiesRemaining;
     points += citiesBuilt * GAME_CONSTANTS.VP_FROM_CITY;
+
+    // Revealed VP dev cards are public; hidden VP dev cards are excluded from public scoring.
+    points += player.revealedDevCardVictoryPoints || 0;
 
     // Longest Road
     if (gameState.longestRoadOwner === playerId) {

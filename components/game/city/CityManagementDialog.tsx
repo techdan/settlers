@@ -7,6 +7,7 @@ import { canAffordImprovement, getUpgradeCost } from '@/core/engine/improvements
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { GameIcon } from '@/components/ui/icons/GameIcon';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useTimerState } from '@/lib/hooks/useTimerState';
 
 interface CityManagementDialogProps {
     gameState: GameState;
@@ -64,6 +65,9 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Check timer status
+    const timerStatus = useTimerState(gameState);
+
     const player = gameState.players.find(p => p.id === playerId);
     const vertex = vertexId ? gameState.board.vertices[vertexId] : null;
 
@@ -74,7 +78,7 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
 
     const isMyTurn = gameState.currentTurn === playerId;
     const isMainPhase = gameState.phase === 'main_phase';
-    const canAct = isMyTurn && isMainPhase && !isSubmitting;
+    const canAct = isMyTurn && isMainPhase && !isSubmitting && !timerStatus.isLocked;
     const upgradeDiscount = isCraneMode ? 1 : 0;
 
     const handleUpgrade = async (improvement: ImprovementType) => {

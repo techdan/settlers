@@ -6,6 +6,8 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementBar';
 import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
+import { GAME_CONSTANTS } from '@/core/rules/constants';
+import { calculatePublicVictoryPoints } from '@/core/rules/victory-conditions';
 
 interface CompactPlayerCardProps {
     player: PlayerState;
@@ -33,6 +35,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
     const isCK = gameState.gameMode === 'cities_and_knights';
     const tooltipClassName = 'min-w-[12rem] max-w-[20rem] whitespace-pre-line text-xs';
     const canOpenCityManagement = isCK && isCurrentPlayer && !!onOpenCityManagement;
+    const publicVictoryPoints = calculatePublicVictoryPoints(gameState, player.id);
 
     // Calculate stats
     const resourceCount = Object.values(player.resources).reduce((a, b) => a + b, 0);
@@ -72,6 +75,8 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
     const defenseTooltip = `Active knight strength: ${activeKnightStrength}\nUsed to defend against Barbarian attacks`;
 
+    const armyTooltip = `Knights played: ${player.knightsPlayed || 0}\nLargest Army (>=${GAME_CONSTANTS.MIN_LARGEST_ARMY_COUNT}) grants ${GAME_CONSTANTS.VP_FROM_LARGEST_ARMY} VP.${gameState.largestArmyOwner === player.id ? '\n(Currently holds Largest Army)' : ''}`;
+
     const cardTooltip = isCK
         ? `Progress cards: ${progressCardCount}`
         : `Development cards: ${devCardCount}`;
@@ -86,6 +91,8 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
         ? 'Merchant: +1 VP\n2:1 trade ratio for the hex resource'
         : 'Merchant not owned';
 
+    const devVpTooltip = `VP Dev Cards (revealed): ${player.revealedDevCardVictoryPoints || 0}\nHidden VP dev cards are not shown here.`;
+
     // VP breakdown for tooltip
     const getVPBreakdown = () => {
         const settlements = 5 - player.settlementsRemaining;
@@ -94,6 +101,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
             `Settlements: ${settlements} VP`,
             `Cities: ${cities * 2} VP`,
         ];
+        if (!isCK) parts.push(`Dev Card VPs: ${player.revealedDevCardVictoryPoints || 0} VP`);
         if (hasLongestRoad) parts.push('Longest Road: 2 VP');
         if (isCK) {
             if (defenderVP > 0) parts.push(`Defender: ${defenderVP} VP`);
@@ -145,7 +153,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                     placement="left"
                 >
                     <span className="text-lg font-bold text-amber-400 tabular-nums">
-                        {player.victoryPoints}
+                        {publicVictoryPoints}
                     </span>
                 </Tooltip>
             </div>
@@ -208,7 +216,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         </Tooltip>
                     ) : (
                         <Tooltip
-                            content={`Knights played: ${player.knightsPlayed || 0}${gameState.largestArmyOwner === player.id ? '\n🏆 Largest Army (+2 VP)' : ''}`}
+                            content={armyTooltip}
                             className="cursor-default"
                             tooltipClassName={tooltipClassName}
                             placement="bottom"
@@ -220,6 +228,21 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                         </Tooltip>
                     )}
                 </div>
+
+                {/* Special VP (base game) */}
+                {!isCK && (
+                    <Tooltip
+                        content={devVpTooltip}
+                        className="cursor-default"
+                        tooltipClassName={tooltipClassName}
+                        placement="bottom"
+                    >
+                        <span className={`flex items-center gap-1 ${(player.revealedDevCardVictoryPoints || 0) > 0 ? 'text-amber-300' : 'text-slate-500'}`}>
+                            <span>🏆</span>
+                            <span className="font-bold tabular-nums">{player.revealedDevCardVictoryPoints || 0}</span>
+                        </span>
+                    </Tooltip>
+                )}
 
                 {/* Divider for special VP */}
                 {isCK && <span className="text-slate-600 mx-0.5">│</span>}

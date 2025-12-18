@@ -9,6 +9,7 @@ interface ColoredSvgIconProps {
   alt?: string;
   backgroundColor?: string;
   fallbackSrc?: string; // Fallback URL if primary src returns 404
+  stripFirstShape?: boolean; // Remove the first <path>/<rect>/... element (useful for dice faces with full-bleed background paths)
 }
 
 /**
@@ -28,6 +29,7 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
   alt = '',
   backgroundColor,
   fallbackSrc,
+  stripFirstShape = false,
 }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [currentSrc, setCurrentSrc] = useState<string>(src);
@@ -79,7 +81,7 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
             /<svg([^>]*?)>/,
             (match, attrs) => {
               // Remove style, width, height attributes
-              let newAttrs = attrs
+              const newAttrs = attrs
                 .replace(/\s*style="[^"]*"/g, '')
                 .replace(/\s*width="[^"]*"/g, '')
                 .replace(/\s*height="[^"]*"/g, '');
@@ -93,7 +95,8 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
         } else {
           const resolvedColor = resolveCssVar(color) || color;
           const resolvedBackground = resolveCssVar(backgroundColor) || backgroundColor;
-          setSvgContent(applyColorToSvg(svgText, resolvedColor, resolvedBackground));
+          const baseSvgText = stripFirstShape ? removeFirstShapeElement(svgText) : svgText;
+          setSvgContent(applyColorToSvg(baseSvgText, resolvedColor, resolvedBackground));
         }
       })
       .catch((err) => {
@@ -101,7 +104,7 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
         // Set empty content to prevent showing error HTML
         setSvgContent('');
       });
-  }, [currentSrc, color, backgroundColor, fallbackSrc]);
+  }, [currentSrc, color, backgroundColor, fallbackSrc, stripFirstShape]);
 
   if (!svgContent) {
     // Loading placeholder
@@ -131,11 +134,6 @@ export const ColoredSvgIcon: React.FC<ColoredSvgIconProps> = ({
     />
   );
 };
-
-/**
- * SVG Cache - Stores fetched SVG strings to avoid re-fetching
- */
-const svgCache = new Map<string, string>();
 
 /**
  * Apply color to SVG by replacing fill and stroke attributes
@@ -176,6 +174,13 @@ function applyColorToSvg(svgText: string, color: string, backgroundColor?: strin
   }
 
   return coloredSvg;
+}
+
+function removeFirstShapeElement(svgText: string): string {
+  // Removes the first SVG shape element (path/circle/rect/polygon/ellipse),
+  // including its closing tag when present.
+  const shapeElementRegex = /<(path|circle|rect|polygon|ellipse)\b[^>]*?(?:\/>|>[\s\S]*?<\/\1>)/i;
+  return svgText.replace(shapeElementRegex, '');
 }
 
 export default ColoredSvgIcon;

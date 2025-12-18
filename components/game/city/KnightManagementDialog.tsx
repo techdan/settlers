@@ -7,6 +7,7 @@ import { CK_CONSTANTS, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST } from '@/cor
 import { canAffordKnightActivation, canAffordKnightUpgrade, isKnightAdjacentToRobber } from '@/core/validation/knight-validator';
 import { getKnightOwner } from '@/core/validation/knight-validator';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useTimerState } from '@/lib/hooks/useTimerState';
 
 interface KnightManagementDialogProps {
     gameState: GameState;
@@ -32,6 +33,9 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Check timer status
+    const timerStatus = useTimerState(gameState);
+
     const player = gameState.players.find(p => p.id === playerId);
 
     // Find the knight
@@ -44,7 +48,7 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
 
     const isMyTurn = gameState.currentTurn === playerId;
     const isMainPhase = gameState.phase === 'main_phase';
-    const canAct = isMyTurn && isMainPhase && !isSubmitting;
+    const canAct = isMyTurn && isMainPhase && !isSubmitting && !timerStatus.isLocked;
 
     const handleActivate = async () => {
         if (!canAct) return;

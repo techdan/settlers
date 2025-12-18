@@ -22,6 +22,8 @@ export interface PlayerState {
     discardedThisTurn?: boolean;
     hasPlayedDevCard: boolean;
     devCardsBoughtThisTurn: DevCardType[];
+    /** Base game: revealed VP development cards (public). Hidden VP dev cards remain in `devCards.victory_point`. */
+    revealedDevCardVictoryPoints?: number;
 
     // Cities & Knights expansion fields (optional for backward compatibility)
     commodities?: Record<CommodityType, number>;

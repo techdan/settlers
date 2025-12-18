@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useChatSubscription, ChatMessage } from '@/lib/hooks/useChatSubscription';
+import { ChatMessage } from '@/lib/hooks/useChatSubscription';
 import { sendChatMessage } from '@/app/actions';
 import { PlayerState } from '@/lib/types';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -12,7 +12,11 @@ interface ChatPanelProps {
     roomId: string;
     playerId: string;
     players?: PlayerState[];
-    onNewMessage?: () => void;
+    messages: ChatMessage[];
+    isLoading: boolean;
+    error: string | null;
+    isRealtimeEnabled: boolean;
+    addMessage: (message: ChatMessage) => void;
 }
 
 const SCROLL_THRESHOLD = 40; // pixels from bottom to trigger auto-scroll
@@ -21,7 +25,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     roomId,
     playerId,
     players,
-    onNewMessage,
+    messages,
+    isLoading,
+    error,
+    isRealtimeEnabled,
+    addMessage,
 }) => {
     const [inputValue, setInputValue] = useState('');
     const [isSending, setIsSending] = useState(false);
@@ -31,17 +39,20 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     const messageListRef = useRef<HTMLDivElement>(null);
     const isNearBottomRef = useRef(true);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const prevMessagesLengthRef = useRef(messages.length);
 
-    const { messages, isLoading, error, isRealtimeEnabled, addMessage } = useChatSubscription({
-        roomId,
-        onNewMessage: useCallback((msg: ChatMessage) => {
-            // Only show pill if user scrolled up and message is from someone else
-            if (!isNearBottomRef.current && msg.playerId !== playerId) {
+    // Show "new messages" pill when messages arrive while scrolled up
+    useEffect(() => {
+        if (messages.length > prevMessagesLengthRef.current) {
+            const newMessages = messages.slice(prevMessagesLengthRef.current);
+            const hasOtherPlayerMessages = newMessages.some(m => m.playerId !== playerId);
+
+            if (!isNearBottomRef.current && hasOtherPlayerMessages) {
                 setShowNewMessagesPill(true);
             }
-            onNewMessage?.();
-        }, [playerId, onNewMessage]),
-    });
+        }
+        prevMessagesLengthRef.current = messages.length;
+    }, [messages, playerId]);
 
     // Resolve player color to CSS variable
     const resolvePlayerColor = (color?: string | null) => {

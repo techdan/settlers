@@ -73,12 +73,12 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
     };
 
     return (
-        <div className="relative px-6 py-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-2 overflow-hidden">
+        <div className={`relative px-6 py-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-2 overflow-hidden ${!hasCommodities ? 'w-full' : ''}`}>
             <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
             <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
 
             {/* Resources and Commodities in one row */}
-            <div className="relative z-10 flex items-center gap-3">
+            <div className={`relative z-10 flex items-center ${!hasCommodities ? 'w-full justify-evenly' : 'gap-3'}`}>
                 {/* Resources */}
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
                     <div key={res} className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>
