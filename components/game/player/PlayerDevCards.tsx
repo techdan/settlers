@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { GameState, DevCardType } from '@/lib/types';
-import { ResourceType } from '@/core/rules/board-constants';
 import { playDevCard } from '@/app/actions';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import { DevCardModal } from '@/components/game/modals/DevCardModal';
 
 interface PlayerDevCardsProps {
     gameState: GameState;
@@ -18,14 +19,6 @@ const DEV_CARD_LABELS: Record<DevCardType, string> = {
     road_building: 'Road Building',
     year_of_plenty: 'Year of Plenty',
     monopoly: 'Monopoly',
-};
-
-const DEV_CARD_DESCRIPTIONS: Record<DevCardType, string> = {
-    knight: 'Move the robber.',
-    victory_point: '+1 Victory Point.',
-    road_building: 'Place 2 roads.',
-    year_of_plenty: 'Take 2 resources.',
-    monopoly: 'Steal all of one resource.',
 };
 
 const DEV_CARD_TOOLTIP_TEXT: Record<DevCardType, { title: string; description: string }> = {
@@ -52,138 +45,156 @@ const DEV_CARD_TOOLTIP_TEXT: Record<DevCardType, { title: string; description: s
     victory_point: {
         title: 'Victory Point',
         description:
-            'Counts as 1 victory point toward the 10 needed to win. Reveal only at game end (keep face down until then)',
+            'Counts as 1 victory point toward the 10 needed to win. Reveal to claim your victory!',
     },
 };
 
-const devCardTooltipContent = (type: DevCardType) => (
-    <div className="space-y-1">
-        <div className="font-semibold text-slate-100">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
-        <div className="text-slate-200">{DEV_CARD_TOOLTIP_TEXT[type].description}</div>
-    </div>
-);
+const DEV_CARD_ICONS: Record<DevCardType, string> = {
+    knight: '⚔️',
+    victory_point: '🏆',
+    road_building: '🛤️',
+    year_of_plenty: '🌾',
+    monopoly: '💰',
+};
+
+const devCardTooltipContent = (type: DevCardType, canPlay: boolean, timerLocked: boolean, notPlayerTurn: boolean) => {
+    const parts: string[] = [DEV_CARD_TOOLTIP_TEXT[type].description];
+
+    if (timerLocked) {
+        parts.push('\n⏱️ Time expired - cannot play cards');
+    } else if (notPlayerTurn) {
+        parts.push('\n⚠️ Can only play on your turn');
+    } else if (!canPlay) {
+        parts.push('\n⚠️ You can only play one development card per turn');
+    }
+
+    return (
+        <div className="space-y-1 whitespace-pre-line">
+            <div className="font-semibold text-slate-100">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
+            <div className="text-slate-200">{parts.join('')}</div>
+        </div>
+    );
+};
 
 export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
-    const [selectedCard, setSelectedCard] = useState<DevCardType | null>(null);
-
-    const [resource1, setResource1] = useState<ResourceType>('wood');
-    const [resource2, setResource2] = useState<ResourceType>('brick');
-    const [monopolyRes, setMonopolyRes] = useState<ResourceType>('ore');
+    const [modalCard, setModalCard] = useState<DevCardType | null>(null);
 
     const timerStatus = useTimerState(gameState);
 
     if (!player) return null;
 
-    const handlePlay = () => {
-        if (!selectedCard) return;
-        startTransition(async () => {
-            try {
-                await playDevCard(gameState.roomId, playerId, selectedCard, {
-                    resource1,
-                    resource2,
-                    monopolyResource: monopolyRes
-                });
-                setSelectedCard(null);
-            } catch (e) {
-                console.error("Failed to play dev card", e);
-            }
-        });
+    const handlePlayCard = async (cardType: DevCardType, options: any) => {
+        await playDevCard(gameState.roomId, playerId, cardType, options);
     };
 
+    const handleCardClick = (type: DevCardType) => {
+        // Open modal for all cards
+        setModalCard(type);
+    };
+
+    // Collect all cards into a single list with their types
+    const allCards: DevCardType[] = [];
+    (Object.keys(player.devCards) as DevCardType[]).forEach(type => {
+        const count = player.devCards[type];
+        for (let i = 0; i < count; i++) {
+            allCards.push(type);
+        }
+    });
+
+    const notPlayerTurn = gameState.currentTurn !== playerId;
+    const wrongPhase = gameState.phase !== 'main_phase' && gameState.phase !== 'waiting_for_roll';
+
     return (
-        <div className="relative p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto flex flex-col h-full overflow-hidden">
-            <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
+        <>
+            <div className="relative p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto flex flex-col h-full overflow-hidden">
+                <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
+                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
 
-            <h3 className="relative z-10 text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
+                <h3 className="relative z-10 text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
 
-            <div className="relative z-10 space-y-2 flex-1 overflow-y-auto max-h-[300px]">
-                {(Object.keys(player.devCards) as DevCardType[]).map(type => {
-                    const count = player.devCards[type];
-                    if (count === 0) return null;
-                    const canPlay = type === 'victory_point' || !player.hasPlayedDevCard;
+                <div className="relative z-10 space-y-1 flex-1 overflow-y-auto max-h-[300px]">
+                    {allCards.length > 0 ? (
+                        allCards.map((type, index) => {
+                            const canPlay = type === 'victory_point' || !player.hasPlayedDevCard;
+                            const isDisabled = isPending || timerStatus.isLocked || notPlayerTurn || wrongPhase || !canPlay;
 
-                    return (
-                        <div key={type} className="bg-slate-700/50 p-2 rounded border border-slate-600">
-                            <Tooltip className="w-full" placement="top" content={devCardTooltipContent(type)}>
-                                <div
-                                    className={`flex justify-between items-center cursor-pointer ${selectedCard === type ? 'text-blue-400' : ''}`}
-                                    onClick={() => setSelectedCard(selectedCard === type ? null : type)}
+                            return (
+                                <Tooltip
+                                    key={`${type}-${index}`}
+                                    className="w-full"
+                                    placement="left"
+                                    content={devCardTooltipContent(type, canPlay, timerStatus.isLocked, notPlayerTurn)}
                                 >
-                                    <span className="font-bold text-sm">{DEV_CARD_LABELS[type]}</span>
-                                    <span className="font-bold">x{count}</span>
-                                </div>
-                            </Tooltip>
-
-                            {selectedCard === type && (
-                                <div className="mt-2 text-xs">
-                                    <p className="text-slate-400 mb-2">{DEV_CARD_DESCRIPTIONS[type]}</p>
-
-                                    {type === 'year_of_plenty' && (
-                                        <div className="mb-2 space-y-1">
-                                            <select value={resource1} onChange={e => setResource1(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full cursor-pointer">
-                                                {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
-                                            <select value={resource2} onChange={e => setResource2(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full cursor-pointer">
-                                                {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    {type === 'monopoly' && (
-                                        <div className="mb-2">
-                                            <select value={monopolyRes} onChange={e => setMonopolyRes(e.target.value as ResourceType)} className="bg-slate-600 text-white rounded p-1 w-full cursor-pointer">
-                                                {['wood', 'brick', 'sheep', 'wheat', 'ore'].map(r => <option key={r} value={r}>{r}</option>)}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    <Tooltip
-                                        content={
-                                            timerStatus.isLocked
-                                                ? "Time expired - cannot play cards"
-                                                : !canPlay
-                                                    ? "You can only play one development card per turn"
-                                                    : "Play"
-                                        }
-                                        placement="top"
+                                    <button
+                                        onClick={() => handleCardClick(type)}
+                                        disabled={isDisabled}
+                                        className={`relative group w-full text-left px-4 py-3 transition-colors rounded border border-slate-600 bg-slate-700/50 ${
+                                            isDisabled
+                                                ? 'opacity-50 cursor-not-allowed'
+                                                : 'hover:bg-slate-600/50 cursor-pointer'
+                                        }`}
                                     >
-                                        <button
-                                            onClick={handlePlay}
-                                            disabled={isPending || gameState.currentTurn !== playerId || !canPlay || timerStatus.isLocked}
-                                            className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-600 disabled:text-slate-400 text-white font-bold py-1 px-2 rounded transition-colors cursor-pointer disabled:cursor-not-allowed"
-                                        >
-                                            {isPending ? 'Playing...' : 'Play'}
-                                        </button>
-                                    </Tooltip>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-
-                {player.devCardsBoughtThisTurn && player.devCardsBoughtThisTurn.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-700">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">New (Wait 1 Turn)</h4>
-                        <div className="space-y-1">
-                            {player.devCardsBoughtThisTurn.map((type, i) => (
-                                <Tooltip key={`${type}-${i}`} className="w-full" placement="top" content={devCardTooltipContent(type)}>
-                                    <div className="bg-slate-800/50 p-2 rounded border border-slate-700 text-slate-400 flex justify-between items-center">
-                                        <span className="text-sm">{DEV_CARD_LABELS[type]}</span>
-                                    </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-lg">{DEV_CARD_ICONS[type]}</span>
+                                            <span className="font-semibold text-white group-hover:text-blue-300 transition-colors text-sm">
+                                                {DEV_CARD_LABELS[type]}
+                                            </span>
+                                        </div>
+                                    </button>
                                 </Tooltip>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                            );
+                        })
+                    ) : (
+                        <div className="text-slate-500 text-xs italic py-2">No cards</div>
+                    )}
 
-                {Object.values(player.devCards).every(c => c === 0) && (!player.devCardsBoughtThisTurn || player.devCardsBoughtThisTurn.length === 0) && (
-                    <div className="text-slate-500 text-xs italic">No cards</div>
-                )}
+                    {player.devCardsBoughtThisTurn && player.devCardsBoughtThisTurn.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-slate-700">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">New (Wait 1 Turn)</h4>
+                            <div className="space-y-1">
+                                {player.devCardsBoughtThisTurn.map((type, i) => (
+                                    <Tooltip
+                                        key={`new-${type}-${i}`}
+                                        className="w-full"
+                                        placement="left"
+                                        content={
+                                            <div className="space-y-1">
+                                                <div className="font-semibold text-slate-100">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
+                                                <div className="text-slate-200">{DEV_CARD_TOOLTIP_TEXT[type].description}</div>
+                                                <div className="text-amber-200 mt-1">Cannot be played until next turn.</div>
+                                            </div>
+                                        }
+                                    >
+                                        <div className="relative w-full px-4 py-3 rounded border border-slate-700 bg-slate-800/50 text-slate-400">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg opacity-50">{DEV_CARD_ICONS[type]}</span>
+                                                <span className="text-sm">{DEV_CARD_LABELS[type]}</span>
+                                            </div>
+                                        </div>
+                                    </Tooltip>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+
+            {modalCard && typeof window !== 'undefined' && createPortal(
+                <DevCardModal
+                    cardType={modalCard}
+                    isOpen={!!modalCard}
+                    onClose={() => setModalCard(null)}
+                    onPlay={async (cardType, options) => {
+                        await handlePlayCard(cardType, options);
+                        setModalCard(null);
+                    }}
+                    gameState={gameState}
+                    currentPlayer={player}
+                />,
+                document.body
+            )}
+        </>
     );
 };
-

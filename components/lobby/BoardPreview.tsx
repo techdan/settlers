@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { HexTileData } from '@/core/engine/board/board-generator';
 import { HexTile } from '@/themes/flat/HexTile';
 import { VoxelHexTile } from '@/themes/voxel/HexTile';
+import { FlatPort } from '@/themes/flat/Port';
+import { VoxelPort } from '@/themes/voxel/Port';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { BoardControls } from '@/components/board/BoardControls';
+import { generatePorts } from '@/core/engine/board/port-generator';
+import { hexToPixel } from '@/lib/hex';
 
 interface BoardPreviewProps {
     board: HexTileData[];
@@ -22,11 +26,50 @@ export function BoardPreview({ board }: BoardPreviewProps) {
         );
     }
 
-    // Calculate bounds to center the board
-    // Standard board is roughly -2 to 2 in q and r.
-    // Hex size 60 is good for preview.
     const HEX_SIZE = 60;
     const TileComponent = is3D ? VoxelHexTile : HexTile;
+    const PortComponent = is3D ? VoxelPort : FlatPort;
+
+    const ports = useMemo(() => generatePorts(HEX_SIZE), [HEX_SIZE]);
+
+    const viewBox = useMemo(() => {
+        // Include ports + port endpoints so connection lines never clip.
+        const points: Array<{ x: number; y: number }> = [];
+
+        for (const tile of board) {
+            points.push(hexToPixel(tile.hex, HEX_SIZE));
+        }
+
+        for (const port of ports) {
+            points.push(port.position);
+            if (port.vertices) {
+                points.push(...port.vertices);
+            }
+        }
+
+        if (points.length === 0) return '-450 -450 900 900';
+
+        let minX = Number.POSITIVE_INFINITY;
+        let minY = Number.POSITIVE_INFINITY;
+        let maxX = Number.NEGATIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+
+        for (const p of points) {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+
+        // Generous padding for tile geometry (and voxel depth), plus some breathing room.
+        const padding = HEX_SIZE * 3;
+        const x = minX - padding;
+        const y = minY - padding;
+        const width = (maxX - minX) + padding * 2;
+        const height = (maxY - minY) + padding * 2;
+
+        return `${x} ${y} ${width} ${height}`;
+    }, [board, ports]);
 
     return (
         <div className="w-full h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
@@ -56,7 +99,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                             <svg
                                 width="100%"
                                 height="100%"
-                                viewBox="-300 -200 600 500"
+                                viewBox={viewBox}
                                 preserveAspectRatio="xMidYMid meet"
                                 className="overflow-visible"
                             >
@@ -71,6 +114,10 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                             size={HEX_SIZE}
                                         // No interaction in preview
                                         />
+                                    ))}
+
+                                    {ports.map((port) => (
+                                        <PortComponent key={port.id} port={port} />
                                     ))}
                                 </g>
                             </svg>
