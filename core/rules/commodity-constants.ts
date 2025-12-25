@@ -38,7 +38,7 @@ export type MetropolisType = 'science' | 'trade' | 'politics';
 /**
  * Event die face types
  */
-export type EventDieFace = 'ship' | 'green' | 'yellow' | 'blue';
+export type EventDieFace = 'ship' | 'science' | 'trade' | 'politics';
 
 /**
  * Mapping from terrain to commodity (only cities produce commodities)
@@ -51,15 +51,6 @@ export const TERRAIN_TO_COMMODITY: Partial<Record<TerrainType, CommodityType>> =
     forest: 'paper',
     pasture: 'cloth',
     mountain: 'coin',
-};
-
-/**
- * Event die color to improvement category mapping
- */
-export const EVENT_COLOR_TO_CATEGORY: Record<Exclude<EventDieFace, 'ship'>, ProgressCardCategory> = {
-    green: 'science',
-    yellow: 'trade',
-    blue: 'politics',
 };
 
 /**

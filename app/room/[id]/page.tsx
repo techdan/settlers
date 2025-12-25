@@ -5,6 +5,10 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { LobbyView } from '@/components/lobby-view';
 
+// Force dynamic rendering to prevent caching of board state
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata({
     params,
 }: {

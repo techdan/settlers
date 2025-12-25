@@ -226,8 +226,8 @@ export function useBoardValidation(
       return valid;
     }
 
-    // Setup phase
-    if (gameState.phase.startsWith('setup')) {
+    // Setup phase - only highlight vertices during settlement placement
+    if (gameState.phase === 'setup_round_1_settlement' || gameState.phase === 'setup_round_2_settlement') {
       vertices.forEach(v => {
         if (isValidSetupSettlement(gameState, v.id, playerId)) {
           valid.add(v.id);

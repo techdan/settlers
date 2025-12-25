@@ -3,9 +3,9 @@ import { EventDieFace } from '@/core/rules/commodity-constants';
 
 const EXPECTED_PROB: Record<EventDieFace, number> = {
     ship: 0.5,
-    green: 1 / 6,
-    yellow: 1 / 6,
-    blue: 1 / 6,
+    science: 1 / 6,
+    trade: 1 / 6,
+    politics: 1 / 6,
 };
 
 const parseTrials = (argv: string[]): number => {
@@ -24,12 +24,12 @@ const parseTrials = (argv: string[]): number => {
 
 function main() {
     const trials = parseTrials(process.argv.slice(2));
-    const faces: EventDieFace[] = ['ship', 'green', 'yellow', 'blue'];
+    const faces: EventDieFace[] = ['ship', 'science', 'trade', 'politics'];
     const counts: Record<EventDieFace, number> = {
         ship: 0,
-        green: 0,
-        yellow: 0,
-        blue: 0,
+        science: 0,
+        trade: 0,
+        politics: 0,
     };
 
     for (let i = 0; i < trials; i++) {

@@ -36,6 +36,10 @@ export const FlatPort: React.FC<PortProps> = ({ port }) => {
     // Helper to round to 4 decimal places to avoid hydration mismatches
     const round = (n: number) => Math.round(n * 10000) / 10000;
 
+    // Round position coordinates to prevent hydration mismatches
+    const posX = round(port.position.x);
+    const posY = round(port.position.y);
+
     const v1Local = port.vertices ? {
         x: round(port.vertices[0].x - port.position.x),
         y: round(port.vertices[0].y - port.position.y)
@@ -47,7 +51,7 @@ export const FlatPort: React.FC<PortProps> = ({ port }) => {
     } : { x: 0, y: 0 };
 
     return (
-        <g transform={`translate(${port.position.x}, ${port.position.y})`}>
+        <g transform={`translate(${posX}, ${posY})`}>
             {/* Connection Lines to Vertices */}
             <line x1="0" y1="0" x2={v1Local.x} y2={v1Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
             <line x1="0" y1="0" x2={v2Local.x} y2={v2Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
@@ -60,14 +64,14 @@ export const FlatPort: React.FC<PortProps> = ({ port }) => {
 
             {/* Circular clip path for icon */}
             <defs>
-                <clipPath id={`port-clip-${port.position.x}-${port.position.y}`}>
+                <clipPath id={`port-clip-${posX}-${posY}`}>
                     <circle cx="0" cy="-6" r="12" />
                 </clipPath>
             </defs>
 
             {/* Resource Icon or Generic Icon */}
             {resourceType ? (
-                <g clipPath={`url(#port-clip-${port.position.x}-${port.position.y})`}>
+                <g clipPath={`url(#port-clip-${posX}-${posY})`}>
                     <foreignObject x="-13" y="-19" width="26" height="26">
                         <div style={{ width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <GameIcon type={resourceType} size={24} />

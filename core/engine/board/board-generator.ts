@@ -7,6 +7,7 @@ import {
     TerrainType,
     ResourceType
 } from '@/core/rules/board-constants';
+import { randomInt } from 'crypto';
 
 /**
  * Re-export types from constants for convenience
@@ -133,23 +134,95 @@ function tryGenerateBoard(options: BoardGenerationOptions): HexTileData[] {
 }
 
 function shuffleTerrains(fairMode: boolean): TerrainType[] {
-    const terrains: TerrainType[] = [];
+    if (!fairMode) {
+        // Simple random shuffle when fairness is disabled
+        const terrains: TerrainType[] = [];
+        Object.entries(TERRAIN_COUNTS).forEach(([type, count]) => {
+            for (let i = 0; i < count; i++) {
+                terrains.push(type as TerrainType);
+            }
+        });
+        for (let i = terrains.length - 1; i > 0; i--) {
+            const j = randomInt(0, i + 1);
+            [terrains[i], terrains[j]] = [terrains[j], terrains[i]];
+        }
+        return terrains;
+    }
+
+    // Fair mode: Place terrains to avoid clusters of 3+
+    // Build terrain pool
+    const pool: TerrainType[] = [];
     Object.entries(TERRAIN_COUNTS).forEach(([type, count]) => {
         for (let i = 0; i < count; i++) {
-            terrains.push(type as TerrainType);
+            pool.push(type as TerrainType);
         }
     });
 
-    // Simple shuffle
-    for (let i = terrains.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [terrains[i], terrains[j]] = [terrains[j], terrains[i]];
+    // Shuffle the pool for randomness
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = randomInt(0, i + 1);
+        [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    return terrains;
+    // Place terrains one by one, checking constraints
+    const result: (TerrainType | null)[] = new Array(SPIRAL_COORDS.length).fill(null);
+
+    for (let i = 0; i < SPIRAL_COORDS.length; i++) {
+        const coord = SPIRAL_COORDS[i];
+
+        // Find neighbors that are already placed
+        const neighborIndices = getNeighborIndices(i);
+        const placedNeighborTerrains = neighborIndices
+            .filter(ni => ni < i && result[ni] !== null)
+            .map(ni => result[ni]!);
+
+        // Count same-terrain neighbors for each candidate
+        const validCandidates = pool.filter(terrain => {
+            const sameCount = placedNeighborTerrains.filter(t => t === terrain).length;
+            // Allow this terrain only if it won't create a cluster with already-placed neighbors
+            return sameCount < 2;
+        });
+
+        if (validCandidates.length === 0) {
+            // No valid placement, fallback to random
+            const idx = randomInt(0, pool.length);
+            result[i] = pool[idx];
+            pool.splice(idx, 1);
+        } else {
+            // Pick randomly from valid candidates
+            const pick = validCandidates[randomInt(0, validCandidates.length)];
+            result[i] = pick;
+            pool.splice(pool.indexOf(pick), 1);
+        }
+    }
+
+    return result as TerrainType[];
+}
+
+function getNeighborIndices(index: number): number[] {
+    const coord = SPIRAL_COORDS[index];
+    const neighborCoords = [
+        { q: coord.q + 1, r: coord.r },
+        { q: coord.q + 1, r: coord.r - 1 },
+        { q: coord.q, r: coord.r - 1 },
+        { q: coord.q - 1, r: coord.r },
+        { q: coord.q - 1, r: coord.r + 1 },
+        { q: coord.q, r: coord.r + 1 },
+    ];
+
+    return neighborCoords
+        .map(nc => SPIRAL_COORDS.findIndex(c => c.q === nc.q && c.r === nc.r))
+        .filter(i => i !== -1);
 }
 
 function placeTokens(board: HexTileData[]) {
+    // Shuffle the token order for random placement
+    const tokens = [...SPIRAL_TOKEN_ORDER];
+    for (let i = tokens.length - 1; i > 0; i--) {
+        const j = randomInt(0, i + 1);
+        [tokens[i], tokens[j]] = [tokens[j], tokens[i]];
+    }
+
     let tokenIndex = 0;
 
     // Iterate through board in SPIRAL order (which matches SPIRAL_COORDS order)
@@ -160,8 +233,8 @@ function placeTokens(board: HexTileData[]) {
             continue;
         }
 
-        if (tokenIndex < SPIRAL_TOKEN_ORDER.length) {
-            const token = SPIRAL_TOKEN_ORDER[tokenIndex];
+        if (tokenIndex < tokens.length) {
+            const token = tokens[tokenIndex];
             tile.numberToken = token;
             tile.pips = TOKEN_PIPS[token];
             tokenIndex++;
@@ -296,7 +369,8 @@ function getNeighbors(board: HexTileData[], tile: HexTileData): HexTileData[] {
 }
 
 function checkFairness(board: HexTileData[]): boolean {
-    // 1. Terrain fairness: Avoid clusters of >=3 identical terrains
+    // 1. Terrain fairness: No clusters of 3+ identical terrains
+    // Check if any tile has 2+ neighbors of the same terrain (which would form a cluster of 3)
     for (const tile of board) {
         const neighbors = getNeighbors(board, tile);
         const sameTerrainNeighbors = neighbors.filter(n => n.terrain === tile.terrain);
@@ -305,16 +379,13 @@ function checkFairness(board: HexTileData[]): boolean {
         }
     }
 
-    // 2. Production fairness: No corner (3-hex intersection) exceeds pip threshold (default 11)
+    // 2. Production fairness: No corner (3-hex intersection) exceeds pip threshold
+    // Note: 6/8 adjacency is already handled by enforceAdjacencyRules
     const PIP_THRESHOLD = 11;
-
     for (const tile of board) {
         if (!tile.numberToken) continue;
-
-        // Check all 6 corners
         if (getPipsAtCorner(board, tile, 1, -1, 0, -1) > PIP_THRESHOLD) return false;
         if (getPipsAtCorner(board, tile, 1, -1, 1, 0) > PIP_THRESHOLD) return false;
-        // ... (simplified check for now, relies on random sampling to find valid boards)
     }
 
     return true;

@@ -376,4 +376,28 @@ export class LobbyService {
 
         return fullState;
     }
+
+    /**
+     * Kick a player from the lobby (host only)
+     */
+    static async kickPlayer(roomId: string, hostId: string, playerIdToKick: string): Promise<LobbyState> {
+        const state = await this.getOrInitLobbyState(roomId, hostId);
+
+        // Verify the requester is the host
+        if (state.hostId !== hostId) {
+            throw new Error('Only host can kick players');
+        }
+
+        // Prevent host from kicking themselves
+        if (playerIdToKick === hostId) {
+            throw new Error('Host cannot kick themselves');
+        }
+
+        // Delete the player from database
+        const { deletePlayer } = await import('@/lib/repositories/player-repository');
+        await deletePlayer(playerIdToKick);
+
+        // Return updated state (will be refreshed via realtime subscription)
+        return await this.getOrInitLobbyState(roomId, hostId);
+    }
 }

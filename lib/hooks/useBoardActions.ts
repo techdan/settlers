@@ -203,8 +203,8 @@ export function useBoardActions(
       }
     }
 
-    // Setup phase placement
-    if (gameState.phase.startsWith('setup')) {
+    // Setup phase placement - only allow settlements during settlement phases
+    if (gameState.phase === 'setup_round_1_settlement' || gameState.phase === 'setup_round_2_settlement') {
       if (isValidSetupSettlement(gameState, vertexId, playerId)) {
         // In Cities & Knights, second placement is a city
         const isSecondPlacement = gameState.phase === 'setup_round_2_settlement';
@@ -304,8 +304,8 @@ export function useBoardActions(
       return;
     }
 
-    // Setup phase
-    if (gameState.phase.startsWith('setup')) {
+    // Setup phase - only allow roads during road phases
+    if (gameState.phase === 'setup_round_1_road' || gameState.phase === 'setup_round_2_road') {
       if (isValidSetupRoad(gameState, edgeId, playerId)) {
         // Show pending placement for confirmation
         setPendingPlacement({

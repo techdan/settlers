@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { setLobbyPlayerColor, setLobbyGameMode, startGame, setLobbyTimerConfig } from '@/app/actions';
+import { setLobbyPlayerColor, setLobbyGameMode, startGame, setLobbyTimerConfig, kickPlayerFromLobby } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ui/ConnectionStatus';
 import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
@@ -74,6 +74,7 @@ export function LobbyView({
     const [gameMode, setGameMode] = useState<'base' | 'cities_and_knights'>('base');
     const [colorError, setColorError] = useState<string | null>(null);
     const [isColorPending, startColorTransition] = useTransition();
+    const [kickConfirmation, setKickConfirmation] = useState<{ playerId: string; playerName: string } | null>(null);
     const router = useRouter();
     const connectionStatus = useConnectionStatus();
     const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
@@ -202,6 +203,19 @@ export function LobbyView({
         });
     };
 
+    const handleKickPlayer = async (playerIdToKick: string) => {
+        if (!isHost) return;
+
+        try {
+            await kickPlayerFromLobby(roomId, currentPlayerId, playerIdToKick);
+            setKickConfirmation(null);
+            // Player will be removed via realtime subscription or next poll
+        } catch (err) {
+            console.error('Failed to kick player:', err);
+            setKickConfirmation(null);
+        }
+    };
+
     return (
         <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
             {/* Connection Status Indicator */}
@@ -248,6 +262,16 @@ export function LobbyView({
                                             </div>
                                             {player.isHost && <div className="text-xs text-amber-600 font-medium">HOST</div>}
                                         </div>
+                                        {isHost && !player.isHost && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setKickConfirmation({ playerId: player.id, playerName: player.name })}
+                                                className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-colors"
+                                                title={`Kick ${player.name}`}
+                                            >
+                                                Kick
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="mt-3 flex items-center gap-2">
                                         <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Color</span>
@@ -377,6 +401,34 @@ export function LobbyView({
                     </div>
                 </div>
             </div>
+
+            {/* Kick Confirmation Modal */}
+            {kickConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setKickConfirmation(null)}>
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Kick Player</h2>
+                        <p className="text-slate-600 dark:text-slate-300 mb-6">
+                            Are you sure you want to kick <span className="font-semibold text-slate-900 dark:text-white">{kickConfirmation.playerName}</span> from the lobby?
+                        </p>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setKickConfirmation(null)}
+                                className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleKickPlayer(kickConfirmation.playerId)}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                            >
+                                Kick Player
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

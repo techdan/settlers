@@ -22,7 +22,7 @@ export interface TimerConfig {
  */
 export const DEFAULT_TIMER_CONFIG: TimerConfig = {
   enabled: false,  // Opt-in
-  turnTimeLimit: 180,
+  turnTimeLimit: 120,
   timeBank: 300,
   extensionIncrement: 60,
   maxExtensionsPerTurn: 2,
@@ -35,8 +35,8 @@ export const DEFAULT_TIMER_CONFIG: TimerConfig = {
 export const TIMER_PRESETS = [
   { label: '1m', value: 60 },
   { label: '1.5m', value: 90 },
-  { label: '2m', value: 120 },
-  { label: '3m (Default)', value: 180 },
+  { label: '2m (Default)', value: 120 },
+  { label: '3m', value: 180 },
   { label: '5m', value: 300 },
   { label: 'Custom', value: -1 },
 ] as const;

@@ -72,7 +72,7 @@ export type DiceStats = Record<DiceTotal, number>;
 export type EventDieStats = Record<EventDieFace, number>;
 
 export const DICE_TOTALS: readonly DiceTotal[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-export const EVENT_DIE_FACES: readonly EventDieFace[] = ['ship', 'green', 'yellow', 'blue'];
+export const EVENT_DIE_FACES: readonly EventDieFace[] = ['ship', 'science', 'trade', 'politics'];
 
 export const EMPTY_DICE_STATS: DiceStats = DICE_TOTALS.reduce((acc, total) => {
     acc[total] = 0;
@@ -208,6 +208,7 @@ export interface GameState {
     pendingDefenderCardDraws?: string[]; // List of player IDs who need to draw a progress card (tied defenders)
     pendingAqueduct?: string[]; // List of player IDs eligible for Aqueduct (must choose a resource)
     pendingBarbarianVictims?: string[]; // List of player IDs who must choose a city to lose to barbarians
+    pendingRobberAfterBarbarian?: boolean; // True if a 7 was rolled during barbarian attack and robber handling is deferred
     pendingCommercialHarbor?: CommercialHarborState; // Pending Commercial Harbor trades awaiting responses
     pendingWedding?: WeddingState; // Pending Wedding gifts awaiting opponent selections
     lastTheft?: {

@@ -1,4 +1,4 @@
-import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS } from '@/lib/types';
+import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS, GamePhase } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { Edge, Vertex } from '@/lib/types/board';
 import { isMerchantFleetEffect } from '@/lib/types/effects';
@@ -298,38 +298,54 @@ export async function rollDice(
     gameState.discardContext = undefined;
 
     // Handle robber (7)
+    // IMPORTANT: If barbarian attack is pending city selection, defer robber handling
+    // Note: processEventDieRoll may have changed phase to 'barbarian_city_selection'
+    const currentPhase: GamePhase = gameState.phase;
     if (total === 7) {
-        // Check if any players need to discard
-        // City walls increase the discard threshold (7 + 2 per wall)
-        const playersToDiscard = gameState.players.filter(p => {
-            const threshold = getRobberDiscardThreshold(state, p.id);
-            return getTotalResources(p) > threshold;
-        });
-
-        if (playersToDiscard.length > 0) {
-            gameState.discardContext = { type: 'robber' };
-            gameState.phase = 'discarding';
+        // @ts-expect-error - processEventDieRoll can change phase to barbarian_city_selection
+        if (currentPhase === 'barbarian_city_selection') {
+            // Barbarian city selection takes priority - mark robber as pending
+            gameState.pendingRobberAfterBarbarian = true;
             gameState.logs.push({
                 id: `${Date.now()}-${Math.random()}`,
                 timestamp: Date.now(),
-                message: `Players exceeding their hand limit must discard half`
+                message: `7 rolled - robber will be handled after barbarian city selection`
             });
         } else {
-            // C&K Rule: Robber doesn't move until first barbarian attack
-            if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
-                gameState = setPhase(gameState, 'main_phase');
+            // Check if any players need to discard (resources + commodities count toward hand limit)
+            // City walls increase the discard threshold (7 + 2 per wall)
+            const playersToDiscard = gameState.players.filter(p => {
+                const threshold = getRobberDiscardThreshold(state, p.id);
+                const resourceCount = getTotalResources(p);
+                const commodityCount = p.commodities ? getTotalCommodities(p) : 0;
+                return (resourceCount + commodityCount) > threshold;
+            });
+
+            if (playersToDiscard.length > 0) {
+                gameState.discardContext = { type: 'robber' };
+                gameState.phase = 'discarding';
                 gameState.logs.push({
                     id: `${Date.now()}-${Math.random()}`,
                     timestamp: Date.now(),
-                    message: `7 rolled, but the robber stays in the desert until the first barbarian attack.`
+                    message: `Players exceeding their hand limit must discard half`
                 });
             } else {
-                gameState.phase = 'robber_placement';
-                gameState.logs.push({
-                    id: `${Date.now()}-${Math.random()}`,
-                    timestamp: Date.now(),
-                    message: `${player.name} must move the robber`
-                });
+                // C&K Rule: Robber doesn't move until first barbarian attack
+                if (gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked) {
+                    gameState = setPhase(gameState, 'main_phase');
+                    gameState.logs.push({
+                        id: `${Date.now()}-${Math.random()}`,
+                        timestamp: Date.now(),
+                        message: `7 rolled, but the robber stays in the desert until the first barbarian attack.`
+                    });
+                } else {
+                    gameState.phase = 'robber_placement';
+                    gameState.logs.push({
+                        id: `${Date.now()}-${Math.random()}`,
+                        timestamp: Date.now(),
+                        message: `${player.name} must move the robber`
+                    });
+                }
             }
         }
     } else {

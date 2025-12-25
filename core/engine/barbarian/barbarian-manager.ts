@@ -395,9 +395,48 @@ export function loseCityToBarbarians(gameState: GameState, playerId: string, ver
         // Reset barbarian position
         gameState.barbarianPosition = 0;
 
-        // Return to main phase
-        setPhase(gameState, 'main_phase');
-        gameState.pendingBarbarianVictims = undefined;
+        // Check if robber handling was deferred (7 rolled during barbarian attack)
+        if (gameState.pendingRobberAfterBarbarian) {
+            gameState.pendingRobberAfterBarbarian = false;
+            gameState.pendingBarbarianVictims = undefined;
+
+            // Import utilities for robber handling
+            const { getRobberDiscardThreshold } = require('@/core/utils/city-wall-utils');
+            const { getTotalResources } = require('@/core/engine/resources/resource-manager');
+            const { getTotalCommodities } = require('@/core/engine/resources/commodity-manager');
+
+            // Check if any players need to discard (resources + commodities count toward hand limit)
+            const playersToDiscard = gameState.players.filter(p => {
+                const threshold = getRobberDiscardThreshold(gameState, p.id);
+                const resourceCount = getTotalResources(p);
+                const commodityCount = p.commodities ? getTotalCommodities(p) : 0;
+                return (resourceCount + commodityCount) > threshold;
+            });
+
+            if (playersToDiscard.length > 0) {
+                // Transition to discard phase first
+                gameState.discardContext = { type: 'robber' };
+                setPhase(gameState, 'discarding');
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `Players exceeding their hand limit must discard half`
+                });
+            } else {
+                // Transition to robber placement
+                setPhase(gameState, 'robber_placement');
+                const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn);
+                gameState.logs.push({
+                    id: `${Date.now()}-${Math.random()}`,
+                    timestamp: Date.now(),
+                    message: `${currentPlayer?.name || 'Player'} must move the robber`
+                });
+            }
+        } else {
+            // Return to main phase
+            setPhase(gameState, 'main_phase');
+            gameState.pendingBarbarianVictims = undefined;
+        }
     }
 }
 

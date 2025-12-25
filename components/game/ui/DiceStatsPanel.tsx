@@ -14,9 +14,9 @@ interface DiceStatsPanelProps {
 
 const EVENT_FACE_LABELS: Record<EventDieFace, { label: string; color: string }> = {
     ship: { label: 'Barbarian', color: 'bg-slate-500' },
-    green: { label: 'Science', color: 'bg-green-500' },
-    yellow: { label: 'Trade', color: 'bg-yellow-400' },
-    blue: { label: 'Politics', color: 'bg-blue-500' },
+    science: { label: 'Science', color: 'bg-green-500' },
+    trade: { label: 'Trade', color: 'bg-yellow-400' },
+    politics: { label: 'Politics', color: 'bg-blue-500' },
 };
 
 export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStats, gameState, onClose }) => {

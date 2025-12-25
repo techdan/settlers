@@ -1,5 +1,5 @@
 import { EMPTY_EVENT_DIE_STATS, GameState } from '@/lib/types';
-import { EventDieFace, EVENT_COLOR_TO_CATEGORY, ProgressCardCategory } from '@/core/rules/commodity-constants';
+import { EventDieFace, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { canDrawProgressCard } from '@/core/engine/improvements/improvement-manager';
 
 /**
@@ -8,11 +8,11 @@ import { canDrawProgressCard } from '@/core/engine/improvements/improvement-mana
  *
  * Event die has 6 faces:
  * - 3 faces: Ship (barbarian advances)
- * - 1 face: Green/Science (progress card draw)
- * - 1 face: Yellow/Trade (progress card draw)
- * - 1 face: Blue/Politics (progress card draw)
+ * - 1 face: Science (progress card draw)
+ * - 1 face: Trade (progress card draw)
+ * - 1 face: Politics (progress card draw)
  *
- * When a color is rolled, players with improvement level ≥1 in that category
+ * When a category is rolled, players with improvement level ≥1 in that category
  * draw a progress card IF the Red Die value ≤ (improvement level + 1).
  *
  * Red Die Thresholds:
@@ -37,14 +37,14 @@ export function rollEventDie(): EventDieFace {
         return 'ship';
     }
 
-    // 50% chance of colors (3 faces out of 6, split evenly)
-    // Each color has 1/6 probability (16.67%)
+    // 50% chance of categories (3 faces out of 6, split evenly)
+    // Each category has 1/6 probability (16.67%)
     if (roll < 0.667) {
-        return 'green';
+        return 'science';
     } else if (roll < 0.834) {
-        return 'yellow';
+        return 'trade';
     } else {
-        return 'blue';
+        return 'politics';
     }
 }
 
@@ -112,16 +112,16 @@ function processBarbarianAdvance(gameState: GameState): void {
 }
 
 /**
- * Process progress card draw for a color
+ * Process progress card draw for a category
  * Players with improvement level ≥1 in the matching category AND
  * Red Die ≤ (improvement level + 1) draw a card
  *
  * @param gameState - Current game state
- * @param colorFace - Color rolled (green/yellow/blue)
+ * @param categoryFace - Category rolled (science/trade/politics)
  * @param redDieValue - Value of the red production die (1-6)
  */
-function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventDieFace, 'ship'>, redDieValue: number): void {
-    const category = EVENT_COLOR_TO_CATEGORY[colorFace];
+function processProgressCardDraw(gameState: GameState, categoryFace: Exclude<EventDieFace, 'ship'>, redDieValue: number): void {
+    const category = categoryFace;
 
     // Find all eligible players (considers red die threshold)
     const eligiblePlayers = gameState.players.filter(player =>
@@ -132,7 +132,7 @@ function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventD
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `Event die: ${colorFace} (${category}), Red die: ${redDieValue}. No players qualify to draw progress cards.`
+            message: `Event die: ${category}, Red die: ${redDieValue}. No players qualify to draw progress cards.`
         });
         return;
     }
@@ -142,7 +142,7 @@ function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventD
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `Event die: ${colorFace} (${category}), Red die: ${redDieValue}. ${playerNames} may draw progress cards.`
+        message: `Event die: ${category}, Red die: ${redDieValue}. ${playerNames} may draw progress cards.`
     });
 
     // Note: Actual card drawing is handled by progress-card-manager
@@ -151,13 +151,13 @@ function processProgressCardDraw(gameState: GameState, colorFace: Exclude<EventD
 }
 
 /**
- * Get the improvement category for an event die color
+ * Get the improvement category for an event die face
  *
- * @param colorFace - Color face (green/yellow/blue)
+ * @param categoryFace - Category face (science/trade/politics)
  * @returns Progress card category
  */
-export function getCategoryFromColor(colorFace: Exclude<EventDieFace, 'ship'>): ProgressCardCategory {
-    return EVENT_COLOR_TO_CATEGORY[colorFace];
+export function getCategoryFromColor(categoryFace: Exclude<EventDieFace, 'ship'>): ProgressCardCategory {
+    return categoryFace;
 }
 
 /**

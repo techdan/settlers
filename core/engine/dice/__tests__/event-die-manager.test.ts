@@ -88,13 +88,13 @@ describe('Event Die Manager', () => {
         });
 
         it('identifies eligible players for progress cards', () => {
-            // Roll 'green' (science), red die 3
+            // Roll 'science', red die 3
             // p1: science 3. Threshold: 3+1=4 >= 3. Eligible?
             // Rule: Red Die <= (Level + 1)
             // p1: Level 3. Limit 4. Red 3 <= 4. Eligible.
             // p2: Level 1. Limit 2. Red 3 > 2. Not eligible.
 
-            processEventDieRoll(gameState, 'green', 3);
+            processEventDieRoll(gameState, 'science', 3);
 
             const log = gameState.logs.find(l => l.message.includes('Player 1 may draw'));
             expect(log).toBeDefined();
@@ -102,10 +102,10 @@ describe('Event Die Manager', () => {
         });
 
         it('logs when no one is eligible', () => {
-            // Roll 'green', red die 6
+            // Roll 'science', red die 6
             // p1: Level 3 -> Limit 4. 6 > 4. No.
 
-            processEventDieRoll(gameState, 'green', 6);
+            processEventDieRoll(gameState, 'science', 6);
 
             const log = gameState.logs.find(l => l.message.includes('No players qualify'));
             expect(log).toBeDefined();
@@ -114,9 +114,9 @@ describe('Event Die Manager', () => {
 
     describe('getCategoryFromColor', () => {
         it('returns correct categories', () => {
-            expect(getCategoryFromColor('green')).toBe('science');
-            expect(getCategoryFromColor('yellow')).toBe('trade');
-            expect(getCategoryFromColor('blue')).toBe('politics');
+            expect(getCategoryFromColor('science')).toBe('science');
+            expect(getCategoryFromColor('trade')).toBe('trade');
+            expect(getCategoryFromColor('politics')).toBe('politics');
         });
     });
 

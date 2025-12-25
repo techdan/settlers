@@ -15,17 +15,17 @@ export const VPCardModal: React.FC<VPCardModalProps> = ({ type, onAcknowledge })
         </div>
         <p className="text-slate-200 text-sm mb-3">
           {type === 'printer'
-            ? 'Printing is a Victory Point progress card. It plays immediately and adds +1 VP to your total.'
-            : 'Constitution is a Victory Point progress card. It plays immediately and adds +1 VP to your total.'}
+            ? 'You drew Printing, a Victory Point progress card! This card has been automatically played and added +1 VP to your total.'
+            : 'You drew Constitution, a Victory Point progress card! This card has been automatically played and added +1 VP to your total.'}
         </p>
         <p className="text-slate-300 text-xs mb-4">
-          This card cannot be cancelled or held. Click &ldquo;Play Card&rdquo; to acknowledge and continue.
+          Victory Point cards are automatically played when drawn and cannot be held in your hand.
         </p>
         <button
           className="w-full bg-amber-400 text-slate-900 font-semibold py-2 rounded-lg hover:bg-amber-300 transition cursor-pointer"
           onClick={onAcknowledge}
         >
-          Play Card
+          Continue
         </button>
       </div>
     </div>

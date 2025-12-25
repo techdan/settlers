@@ -10,17 +10,17 @@ interface DiceDisplayProps {
 }
 
 const EVENT_DIE_COLORS: Record<EventDieFace, { bg: string; iconColor: string; label: string }> = {
-    ship: { bg: 'bg-slate-700', iconColor: '#ffffff', label: 'Barbarian Ship' },
-    green: { bg: 'bg-green-600', iconColor: '#ffffff', label: 'Science' },
-    yellow: { bg: 'bg-yellow-500', iconColor: '#0f172a', label: 'Trade' },
-    blue: { bg: 'bg-blue-600', iconColor: '#ffffff', label: 'Politics' }
+    ship: { bg: 'bg-white', iconColor: '#0f172a', label: 'Barbarian Ship' },
+    science: { bg: 'bg-white', iconColor: '#6bb97f', label: 'Science' },
+    trade: { bg: 'bg-white', iconColor: '#c6daa4', label: 'Trade' },
+    politics: { bg: 'bg-white', iconColor: '#d7dfd1', label: 'Politics' }
 };
 
 const EVENT_DIE_TEXT: Record<EventDieFace, { title: string; description: string }> = {
     ship: { title: 'Barbarian Advance', description: 'Barbarian moves forward one space' },
-    green: { title: 'Science', description: 'Progress cards drawn from Science' },
-    yellow: { title: 'Trade', description: 'Progress cards drawn from Trade' },
-    blue: { title: 'Politics', description: 'Progress cards drawn from Politics' }
+    science: { title: 'Science', description: 'Progress cards drawn from Science' },
+    trade: { title: 'Trade', description: 'Progress cards drawn from Trade' },
+    politics: { title: 'Politics', description: 'Progress cards drawn from Politics' }
 };
 
 const DICE_FACE_SVGS: Record<number, string> = {
@@ -34,9 +34,9 @@ const DICE_FACE_SVGS: Record<number, string> = {
 
 const EVENT_DIE_SVGS: Record<EventDieFace, string> = {
     ship: '/icons/drakkar.svg',
-    green: '/icons/freemasonry.svg',
-    yellow: '/icons/scales.svg',
-    blue: '/icons/shaking-hands.svg',
+    science: '/icons/freemasonry.svg',
+    trade: '/icons/scales.svg',
+    politics: '/icons/shaking-hands.svg',
 };
 
 const DIE_OUTER_STYLE =
@@ -154,11 +154,12 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                     >
                         <div aria-label={`Event die: ${EVENT_DIE_TEXT[eventDieRoll.face].title}`}>
                             <DieFrame
-                                outerClassName={`${EVENT_DIE_COLORS[eventDieRoll.face].bg} border-white/20 cursor-pointer`}
-                                innerClassName="bg-transparent"
+                                outerClassName="border-white/20 cursor-pointer"
+                                innerClassName={EVENT_DIE_COLORS[eventDieRoll.face].bg}
                             >
                                 <ColoredSvgIcon
                                     src={EVENT_DIE_SVGS[eventDieRoll.face]}
+                                    backgroundColor="#ffffff"
                                     color={EVENT_DIE_COLORS[eventDieRoll.face].iconColor}
                                     size={48}
                                     alt={EVENT_DIE_COLORS[eventDieRoll.face].label}

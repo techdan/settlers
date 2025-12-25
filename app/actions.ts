@@ -563,6 +563,12 @@ export async function setLobbyTimerConfig(roomId: string, hostId: string, timerC
     return result;
 }
 
+export async function kickPlayerFromLobby(roomId: string, hostId: string, playerIdToKick: string) {
+    const result = await LobbyService.kickPlayer(roomId, hostId, playerIdToKick);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
 export async function requestTimeExtension(roomId: string, playerId: string) {
     const { requestExtension } = await import('@/lib/services/timer-service');
     const { getGameStateByRoomId, updateGameState } = await import('@/lib/repositories/game-repository');
