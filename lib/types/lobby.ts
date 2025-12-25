@@ -19,4 +19,5 @@ export interface LobbyState {
     gameMode: 'base' | 'cities_and_knights'; // The selected game mode
     pendingRequests: string[]; // List of player IDs requesting a new board
     timerConfig?: TimerConfig; // Timer configuration (optional, added for turn timer feature)
+    skipFirstBarbarianAttack?: boolean; // Skip the first barbarian attack (C&K fairness rule)
 }

@@ -69,7 +69,9 @@ export const BarbarianTrack: React.FC<BarbarianTrackProps> = ({ gameState }) => 
 
             {/* Status Message */}
             <div className="mt-3 text-center text-xs">
-                {(barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION || gameState.phase === 'barbarian_city_selection') ? (
+                {gameState.skipFirstBarbarianAttack && !gameState.hasBarbariansAttacked && barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION ? (
+                    <span className="text-blue-400 font-bold">🛡️ First barbarian attack skipped</span>
+                ) : (barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION || gameState.phase === 'barbarian_city_selection') ? (
                     <span className="text-red-400 font-bold">⚔️ Barbarians Attack!</span>
                 ) : barbarianPosition === CK_CONSTANTS.BARBARIAN_ATTACK_POSITION - 1 ? (
                     <span className="text-orange-400 font-bold">⚠️ ATTACK IMMINENT!</span>

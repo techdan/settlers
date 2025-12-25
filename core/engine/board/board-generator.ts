@@ -5,9 +5,24 @@ import {
     SPIRAL_TOKEN_ORDER,
     TOKEN_PIPS,
     TerrainType,
-    ResourceType
+    ResourceType,
+    TERRAIN_TO_RESOURCE
 } from '@/core/rules/board-constants';
 import { randomInt } from 'crypto';
+
+// Port definitions: hex coordinates and resource type
+// Based on port-generator.ts COASTLINE_EDGES and PORT_INDICES
+const PORT_HEX_RESOURCES: { q: number; r: number; resource: ResourceType | 'generic' }[] = [
+    { q: -1, r: -1, resource: 'sheep' },   // sheep port
+    { q: 1, r: -2, resource: 'generic' },  // generic port
+    { q: 2, r: -2, resource: 'generic' },  // generic port
+    { q: 2, r: -1, resource: 'brick' },    // brick port
+    { q: 2, r: 0, resource: 'wood' },      // wood port
+    { q: 0, r: 2, resource: 'generic' },   // generic port
+    { q: -1, r: 2, resource: 'wheat' },    // wheat port
+    { q: -2, r: 1, resource: 'ore' },      // ore port
+    { q: -2, r: 0, resource: 'generic' },  // generic port
+];
 
 /**
  * Re-export types from constants for convenience
@@ -368,6 +383,16 @@ function getNeighbors(board: HexTileData[], tile: HexTileData): HexTileData[] {
     );
 }
 
+/**
+ * Calculate hex distance between two tiles (number of steps)
+ */
+function hexDistance(t1: HexTileData, t2: HexTileData): number {
+    const dq = Math.abs(t1.hex.q - t2.hex.q);
+    const dr = Math.abs(t1.hex.r - t2.hex.r);
+    const ds = Math.abs((-t1.hex.q - t1.hex.r) - (-t2.hex.q - t2.hex.r));
+    return Math.max(dq, dr, ds);
+}
+
 function checkFairness(board: HexTileData[]): boolean {
     // 1. Terrain fairness: No clusters of 3+ identical terrains
     // Check if any tile has 2+ neighbors of the same terrain (which would form a cluster of 3)
@@ -379,7 +404,64 @@ function checkFairness(board: HexTileData[]): boolean {
         }
     }
 
-    // 2. Production fairness: No corner (3-hex intersection) exceeds pip threshold
+    // 2. Low number balance: No single terrain type has 3+ low-probability numbers (2,3,11,12)
+    // This prevents resource shortages like all low numbers on forests
+    const LOW_NUMBERS = [2, 3, 11, 12];
+    const lowNumbersByTerrain: Record<string, number> = {};
+    for (const tile of board) {
+        if (tile.numberToken && LOW_NUMBERS.includes(tile.numberToken)) {
+            const terrain = tile.terrain;
+            lowNumbersByTerrain[terrain] = (lowNumbersByTerrain[terrain] || 0) + 1;
+            if (lowNumbersByTerrain[terrain] >= 3) {
+                return false;
+            }
+        }
+    }
+
+    // 3. Red number (6/8) spatial separation: minimum 2 hexes apart
+    // This prevents clustering of high-probability numbers
+    const redTiles = board.filter(t => t.numberToken === 6 || t.numberToken === 8);
+    for (let i = 0; i < redTiles.length; i++) {
+        for (let j = i + 1; j < redTiles.length; j++) {
+            if (hexDistance(redTiles[i], redTiles[j]) < 2) {
+                return false;
+            }
+        }
+    }
+
+    // 4. Red number terrain diversity: 6s and 8s should be on different terrain types
+    // Ideally no two 6s or two 8s on the same terrain
+    const sixes = board.filter(t => t.numberToken === 6);
+    const eights = board.filter(t => t.numberToken === 8);
+    if (sixes.length === 2 && sixes[0].terrain === sixes[1].terrain) {
+        return false;
+    }
+    if (eights.length === 2 && eights[0].terrain === eights[1].terrain) {
+        return false;
+    }
+
+    // 5. Port proximity: Don't put 6/8 within 1 hex of a matching resource port
+    // This prevents overpowered port locations (e.g., 8 on forest near wood port)
+    for (const tile of redTiles) {
+        if (tile.terrain === 'desert') continue;
+        const tileResource = TERRAIN_TO_RESOURCE[tile.terrain as Exclude<TerrainType, 'desert'>];
+
+        // Check if this hex is within 1 hex of a matching resource port
+        for (const portInfo of PORT_HEX_RESOURCES) {
+            if (portInfo.resource !== tileResource) continue;
+
+            // Calculate distance from tile to port hex
+            const portHex = { hex: { q: portInfo.q, r: portInfo.r } } as HexTileData;
+            const distance = hexDistance(tile, portHex);
+
+            if (distance <= 1) {
+                // 6/8 too close to matching resource port
+                return false;
+            }
+        }
+    }
+
+    // 6. Production fairness: No corner (3-hex intersection) exceeds pip threshold
     // Note: 6/8 adjacency is already handled by enforceAdjacencyRules
     const PIP_THRESHOLD = 11;
     for (const tile of board) {

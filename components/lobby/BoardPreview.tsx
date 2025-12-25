@@ -61,24 +61,32 @@ export function BoardPreview({ board }: BoardPreviewProps) {
             maxY = Math.max(maxY, p.y);
         }
 
-        // Generous padding for tile geometry (and voxel depth), plus some breathing room.
-        const padding = HEX_SIZE * 3;
-        const x = minX - padding;
-        const y = minY - padding;
-        const width = (maxX - minX) + padding * 2;
-        const height = (maxY - minY) + padding * 2;
+        // Padding for tile geometry (and voxel depth), plus some breathing room.
+        // Use minimal top padding to position board near top of view
+        const sidePadding = HEX_SIZE * 3;
+        const topPadding = HEX_SIZE * 0.5; // Minimal top padding (~30px)
+        const bottomPadding = HEX_SIZE * 3;
+
+        const x = minX - sidePadding;
+        const y = minY - topPadding;
+        const width = (maxX - minX) + sidePadding * 2;
+        const height = (maxY - minY) + topPadding + bottomPadding;
 
         return `${x} ${y} ${width} ${height}`;
     }, [board, ports]);
 
     return (
-        <div className="w-full h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative">
+        <div className="w-full h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative cursor-grab active:cursor-grabbing">
             <TransformWrapper
                 initialScale={1}
                 minScale={0.5}
                 maxScale={4}
-                centerOnInit={true}
+                centerOnInit={false}
+                initialPositionX={0}
+                initialPositionY={30}
                 wheel={{ step: 0.1 }}
+                panning={{ disabled: false, velocityDisabled: true }}
+                limitToBounds={false}
                 alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
             >
                 {({ zoomIn, zoomOut, resetTransform }) => (
@@ -100,13 +108,13 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                 width="100%"
                                 height="100%"
                                 viewBox={viewBox}
-                                preserveAspectRatio="xMidYMid meet"
+                                preserveAspectRatio="xMidYMin meet"
                                 className="overflow-visible"
                             >
                                 <g transform="translate(0,0)">
                                     {board.map((tile) => (
                                         <TileComponent
-                                            key={tile.id}
+                                            key={`${tile.id}-${tile.terrain}-${tile.numberToken}`}
                                             hex={tile.hex}
                                             terrain={tile.terrain}
                                             numberToken={tile.numberToken}

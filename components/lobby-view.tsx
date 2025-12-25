@@ -94,6 +94,7 @@ export function LobbyView({
     const syncedGameMode = lobbyState?.gameMode ?? 'base';
     const pendingRequests = lobbyState?.pendingRequests ?? [];
     const timerConfig = lobbyState?.timerConfig ?? DEFAULT_TIMER_CONFIG;
+    const skipFirstBarbarianAttack = lobbyState?.skipFirstBarbarianAttack ?? false;
 
     useEffect(() => {
         setGameMode(syncedGameMode);
@@ -354,6 +355,35 @@ export function LobbyView({
                             </p>
                         )}
                     </div>
+
+                    {/* Skip First Barbarian Attack Toggle (C&K only) */}
+                    {gameMode === 'cities_and_knights' && (
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Skip First Barbarian Attack
+                            </label>
+                            <button
+                                onClick={async () => {
+                                    if (isHost) {
+                                        const { toggleLobbySkipFirstBarbarianAttack } = await import('@/app/actions');
+                                        await toggleLobbySkipFirstBarbarianAttack(roomId, currentPlayerId, !skipFirstBarbarianAttack);
+                                    }
+                                }}
+                                disabled={!isHost}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                    skipFirstBarbarianAttack ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-700'
+                                }`}
+                                role="switch"
+                                aria-checked={skipFirstBarbarianAttack}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        skipFirstBarbarianAttack ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+                    )}
 
                     {/* Timer Configuration */}
                     <div className="pt-4 border-t border-slate-200 dark:border-slate-800">

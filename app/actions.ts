@@ -539,6 +539,12 @@ export async function toggleLobbyFairMode(roomId: string, hostId: string, fairMo
     return result;
 }
 
+export async function toggleLobbySkipFirstBarbarianAttack(roomId: string, hostId: string, skipFirstBarbarianAttack: boolean) {
+    const result = await LobbyService.toggleSkipFirstBarbarianAttack(roomId, hostId, skipFirstBarbarianAttack);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
 export async function setLobbyStandardBoard(roomId: string, hostId: string) {
     const result = await LobbyService.setStandardBoard(roomId, hostId);
     revalidatePath(`/room/${roomId}`);

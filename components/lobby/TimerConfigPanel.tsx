@@ -14,12 +14,6 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
   const [selectedPreset, setSelectedPreset] = useState<number>(-1);
   const [customTime, setCustomTime] = useState(config.turnTimeLimit);
   const [timeBank, setTimeBank] = useState(config.timeBank);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-
-  // Local state for advanced settings
-  const [extensionIncrement, setExtensionIncrement] = useState(config.extensionIncrement);
-  const [maxExtensions, setMaxExtensions] = useState(config.maxExtensionsPerTurn);
-  const [maxExtraSeconds, setMaxExtraSeconds] = useState(config.maxExtraSecondsPerTurn);
 
   // Debounce timer for slider changes
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -29,13 +23,6 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
     const preset = TIMER_PRESETS.find(p => p.value === config.turnTimeLimit);
     setSelectedPreset(preset ? preset.value : -1);
   }, [config.turnTimeLimit]);
-
-  // Sync advanced settings from server config
-  useEffect(() => {
-    setExtensionIncrement(config.extensionIncrement);
-    setMaxExtensions(config.maxExtensionsPerTurn);
-    setMaxExtraSeconds(config.maxExtraSecondsPerTurn);
-  }, [config.extensionIncrement, config.maxExtensionsPerTurn, config.maxExtraSecondsPerTurn]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -83,21 +70,6 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
     debouncedOnChange({ ...config, timeBank: clampedValue }); // Debounced for slider
   };
 
-  const handleExtensionIncrementChange = (value: number) => {
-    setExtensionIncrement(value); // Immediate UI update
-    debouncedOnChange({ ...config, extensionIncrement: value }); // Debounced for slider
-  };
-
-  const handleMaxExtensionsChange = (value: number) => {
-    setMaxExtensions(value); // Immediate UI update
-    debouncedOnChange({ ...config, maxExtensionsPerTurn: value }); // Debounced for slider
-  };
-
-  const handleMaxExtraSecondsChange = (value: number) => {
-    setMaxExtraSeconds(value); // Immediate UI update
-    debouncedOnChange({ ...config, maxExtraSecondsPerTurn: value }); // Debounced for slider
-  };
-
   const formatTime = (seconds: number): string => {
     if (seconds >= 60) {
       const minutes = Math.floor(seconds / 60);
@@ -112,7 +84,7 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Turn Timer
           </label>
           <div className={`px-2 py-1 rounded text-xs font-medium ${
@@ -145,7 +117,7 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
     <div className="space-y-3">
       {/* Enable/Disable Toggle */}
       <div className="flex items-center justify-between">
-        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
           Turn Timer
         </label>
         <button
@@ -254,64 +226,6 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
               Extra time each player can borrow during the game
             </p>
           </div>
-
-          {/* Advanced Settings Toggle */}
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="w-full text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium flex items-center justify-center gap-1"
-          >
-            {showAdvanced ? '▼' : '▶'} Advanced Settings
-          </button>
-
-          {/* Advanced Settings */}
-          {showAdvanced && (
-            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700 animate-fadeIn">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Extension Increment: {extensionIncrement}s
-                </label>
-                <input
-                  type="range"
-                  min="30"
-                  max="120"
-                  step="30"
-                  value={extensionIncrement}
-                  onChange={(e) => handleExtensionIncrementChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Max Extensions per Turn: {maxExtensions}
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  step="1"
-                  value={maxExtensions}
-                  onChange={(e) => handleMaxExtensionsChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
-                  Max Extra Time per Turn: {formatTime(maxExtraSeconds)}
-                </label>
-                <input
-                  type="range"
-                  min="60"
-                  max="300"
-                  step="30"
-                  value={maxExtraSeconds}
-                  onChange={(e) => handleMaxExtraSecondsChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
-                />
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

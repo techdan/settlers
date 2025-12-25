@@ -104,10 +104,24 @@ function processBarbarianAdvance(gameState: GameState): void {
 
     // Check if barbarian attacks (position 7)
     if (gameState.barbarianPosition >= 7) {
-        // Trigger barbarian attack immediately
-        const { resolveBarbbarianAttack } = require('@/core/engine/barbarian/barbarian-manager');
-        resolveBarbbarianAttack(gameState);
-        gameState.hasBarbariansAttacked = true;
+        // Check if first attack should be skipped
+        const shouldSkipFirstAttack = gameState.skipFirstBarbarianAttack && !gameState.hasBarbariansAttacked;
+
+        if (shouldSkipFirstAttack) {
+            // Skip the first barbarian attack
+            gameState.logs.push({
+                id: `${Date.now()}-${Math.random()}`,
+                timestamp: Date.now(),
+                message: `First barbarian attack skipped (fairness rule)`
+            });
+            gameState.barbarianPosition = 0;
+            gameState.hasBarbariansAttacked = true;
+        } else {
+            // Trigger barbarian attack immediately
+            const { resolveBarbbarianAttack } = require('@/core/engine/barbarian/barbarian-manager');
+            resolveBarbbarianAttack(gameState);
+            gameState.hasBarbariansAttacked = true;
+        }
     }
 }
 

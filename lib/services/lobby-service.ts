@@ -378,6 +378,31 @@ export class LobbyService {
     }
 
     /**
+     * Toggle skip first barbarian attack setting
+     */
+    static async toggleSkipFirstBarbarianAttack(roomId: string, hostId: string, skipFirstBarbarianAttack: boolean): Promise<LobbyState> {
+        // Optimization: Try to use existing state if valid
+        let state = await this.getLobbyState(roomId);
+
+        if (state && state.hostId === hostId) {
+            state.skipFirstBarbarianAttack = skipFirstBarbarianAttack;
+            await this.updateLobbyState(roomId, state);
+            return state;
+        }
+
+        const fullState = await this.getOrInitLobbyState(roomId, hostId);
+
+        if (fullState.hostId !== hostId) {
+            throw new Error('Only host can toggle skip first barbarian attack');
+        }
+
+        fullState.skipFirstBarbarianAttack = skipFirstBarbarianAttack;
+        await this.updateLobbyState(roomId, fullState);
+
+        return fullState;
+    }
+
+    /**
      * Kick a player from the lobby (host only)
      */
     static async kickPlayer(roomId: string, hostId: string, playerIdToKick: string): Promise<LobbyState> {

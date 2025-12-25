@@ -153,8 +153,9 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
     // 6. Find desert hex for robber
     const desertHexId = getDesertHexId(hexes);
 
-    // 6.1. Get timer configuration from lobby
+    // 6.1. Get timer configuration and fairness rules from lobby
     const timerConfig = lobbyState?.timerConfig;
+    const skipFirstBarbarianAttack = lobbyState?.skipFirstBarbarianAttack;
 
     // 7. Create Game State
     const gameState: GameState = {
@@ -187,6 +188,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
         gameMode,
         barbarianPosition: gameMode === 'cities_and_knights' ? 0 : undefined,
         hasBarbariansAttacked: gameMode === 'cities_and_knights' ? false : undefined,
+        skipFirstBarbarianAttack: gameMode === 'cities_and_knights' ? skipFirstBarbarianAttack : undefined,
         metropolises: gameMode === 'cities_and_knights' ? {
             science: { type: 'science', owner: null, vertexId: null },
             trade: { type: 'trade', owner: null, vertexId: null },

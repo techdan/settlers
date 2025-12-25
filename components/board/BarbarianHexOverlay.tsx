@@ -8,6 +8,8 @@ interface BarbarianHexOverlayProps {
     barbarianPosition: number;      // 0-7 (attacks at 7)
     totalKnightStrength: number;    // Sum of all players' active knights
     totalCityCount: number;         // Sum of all players' cities
+    skipFirstBarbarianAttack?: boolean; // Skip first attack (fairness rule)
+    hasBarbariansAttacked?: boolean;    // Has first attack occurred
 }
 
 /**
@@ -99,10 +101,13 @@ export const BarbarianHexOverlay: React.FC<BarbarianHexOverlayProps> = ({
     barbarianPosition,
     totalKnightStrength,
     totalCityCount,
+    skipFirstBarbarianAttack,
+    hasBarbariansAttacked,
 }) => {
     const attackThreshold = CK_CONSTANTS.BARBARIAN_ATTACK_POSITION;
     const isDefeatImminent = totalKnightStrength < totalCityCount;
     const isAttacking = barbarianPosition >= attackThreshold;
+    const isFirstAttackSkipped = skipFirstBarbarianAttack && !hasBarbariansAttacked && isAttacking;
 
     const tooltipContent = `
 Barbarian Track
@@ -182,7 +187,9 @@ ${isDefeatImminent
                     })}
                 </div>
                 <div className="text-[9px] text-center text-slate-500 pt-0.5">
-                    {isAttacking
+                    {isFirstAttackSkipped
+                        ? '🛡️ SKIPPED'
+                        : isAttacking
                         ? '⚔️ ATTACK!'
                         : `${barbarianPosition} / ${attackThreshold}`
                     }
