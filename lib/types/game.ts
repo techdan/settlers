@@ -222,6 +222,19 @@ export interface GameState {
         }[];
         timestamp: number;
     };
+    lastTrade?: {
+        initiatorId: string;
+        acceptorId: string;
+        initiatorGave: {
+            resources: Record<ResourceType, number>;
+            commodities?: Record<CommodityType, number>;
+        };
+        initiatorReceived: {
+            resources: Record<ResourceType, number>;
+            commodities?: Record<CommodityType, number>;
+        };
+        timestamp: number;
+    };
     lastVPCardGain?: VictoryPointCardGain;
     discardContext?: DiscardContext;
 

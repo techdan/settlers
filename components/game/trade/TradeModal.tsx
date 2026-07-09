@@ -164,6 +164,8 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                 setOfferGet(createEmptyOffer());
                 setOfferGiveCommodities(createEmptyCommodityOffer());
                 setOfferGetCommodities(createEmptyCommodityOffer());
+                // Close the trade modal after successfully offering a trade
+                onClose();
             } catch (e) {
                 console.error("Failed to offer trade", e);
             }

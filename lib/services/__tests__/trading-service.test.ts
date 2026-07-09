@@ -127,6 +127,39 @@ describe('Trading Service', () => {
                 )
             ).rejects.toThrow('Not enough paper to offer');
         });
+
+        it('throws if trying to give away resources for nothing (official Catan rules)', async () => {
+            await expect(
+                offerTrade(
+                    'room-1',
+                    'p1',
+                    { wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                    { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Getting nothing
+                )
+            ).rejects.toThrow('Both players must exchange at least one resource or commodity');
+        });
+
+        it('throws if trying to receive resources for nothing (official Catan rules)', async () => {
+            await expect(
+                offerTrade(
+                    'room-1',
+                    'p1',
+                    { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, // Giving nothing
+                    { brick: 1, wood: 0, sheep: 0, wheat: 0, ore: 0 },
+                )
+            ).rejects.toThrow('Both players must exchange at least one resource or commodity');
+        });
+
+        it('throws if both giving and getting are zero', async () => {
+            await expect(
+                offerTrade(
+                    'room-1',
+                    'p1',
+                    { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                    { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+                )
+            ).rejects.toThrow('Both players must exchange at least one resource or commodity');
+        });
     });
 
     describe('acceptTrade', () => {
@@ -156,6 +189,17 @@ describe('Trading Service', () => {
             expect(result.players[1].resources.wood).toBe(1);
 
             expect(result.tradeOffer).toBeNull();
+        });
+
+        it('sets lastTrade property for UI notifications', async () => {
+            const result = await acceptTrade('room-1', 'p2');
+
+            expect(result.lastTrade).toBeDefined();
+            expect(result.lastTrade?.initiatorId).toBe('p1');
+            expect(result.lastTrade?.acceptorId).toBe('p2');
+            expect(result.lastTrade?.initiatorGave.resources).toEqual({ wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 });
+            expect(result.lastTrade?.initiatorReceived.resources).toEqual({ ore: 1, wood: 0, brick: 0, sheep: 0, wheat: 0 });
+            expect(result.lastTrade?.timestamp).toBeDefined();
         });
 
         it('executes trade with commodities between players', async () => {

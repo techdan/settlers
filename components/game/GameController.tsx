@@ -20,6 +20,7 @@ import { DiceDisplay } from './ui/DiceDisplay';
 import { DiscardModal } from './modals/DiscardModal';
 import { TradeModal } from './trade/TradeModal';
 import { TradeOfferDisplay } from './trade/TradeOfferDisplay';
+import { TradeModals } from './trade/TradeModals';
 import { BoardSelectionPrompt } from './overlays/BoardSelectionPrompt';
 import { buildCity, buildCityWall, endTurn, loseCityToBarbarian, moveRobber, rollDice } from '@/app/actions';
 import { AqueductModal } from './progress/AqueductModal';
@@ -67,6 +68,7 @@ import {
     useResolveStuckBarbarian,
     useSubscribedGameState,
     useTheftNotificationEffect,
+    useTradeCompletionEffect,
     useProgressDiscardEnforcement,
     useTurnSubmissionReset,
     useVPCardModalEffect,
@@ -108,6 +110,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     } = useRobberInteractions({ roomId, playerId });
     const [showTheftNotification, setShowTheftNotification] = useState(false);
     const lastTheftSeenRef = useRef<number>(0);
+    const [showTradeCompletion, setShowTradeCompletion] = useState(false);
+    const lastTradeSeenRef = useRef<number>(0);
 
     // Consolidated selection state management
     const selectionManager = useSelectionManager();
@@ -252,6 +256,10 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         setShowTheftNotification(false);
     };
 
+    const handleDismissTradeCompletion = () => {
+        setShowTradeCompletion(false);
+    };
+
     const handleRobberMoveStarted = () => {
         setShowRobberMovePrompt(false);
     };
@@ -308,6 +316,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
 
     // Show theft notification when the robber steals from or for the current player
     useTheftNotificationEffect(baseGameState, playerId, lastTheftSeenRef, setShowTheftNotification);
+    useTradeCompletionEffect(baseGameState, playerId, lastTradeSeenRef, setShowTradeCompletion);
 
     useProgressDiscardEnforcement(
         baseGameState,
@@ -635,6 +644,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             <BarbarianCityPrompt gameState={gameState} playerId={playerId} />
 
             <TradeOfferDisplay gameState={gameState} playerId={playerId} tradeController={tradeController} />
+
+            <TradeModals
+                gameState={gameState}
+                playerId={playerId}
+                tradeController={tradeController}
+                showTradeCompletion={showTradeCompletion}
+                onDismissTradeCompletion={handleDismissTradeCompletion}
+            />
 
             <KnightDisplacementOverlay
                 gameState={gameState}

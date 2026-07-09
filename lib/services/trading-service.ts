@@ -201,6 +201,19 @@ export async function offerTrade(
         }
     }
 
+    // Validate trade is not empty or one-sided (official Catan rules)
+    const givingResourcesTotal = Object.values(give).reduce((sum, val) => sum + val, 0);
+    const givingCommoditiesTotal = giveCommodities ? Object.values(giveCommodities).reduce((sum, val) => sum + val, 0) : 0;
+    const gettingResourcesTotal = Object.values(get).reduce((sum, val) => sum + val, 0);
+    const gettingCommoditiesTotal = getCommodities ? Object.values(getCommodities).reduce((sum, val) => sum + val, 0) : 0;
+
+    const totalGiving = givingResourcesTotal + givingCommoditiesTotal;
+    const totalGetting = gettingResourcesTotal + gettingCommoditiesTotal;
+
+    if (totalGiving === 0 || totalGetting === 0) {
+        throw new Error('Both players must exchange at least one resource or commodity. Giving away resources for free is not allowed.');
+    }
+
     // Create trade offer
     gameState.tradeOffer = {
         id: `${Date.now()}-${Math.random()}`,
@@ -239,12 +252,11 @@ export async function offerTrade(
     const giveText = giveItems.length ? giveItems.join(', ') : 'nothing';
     const getText = getItems.length ? getItems.join(', ') : 'nothing';
 
-    // Add log
+    // Add public log entry (no playerId = visible to all players)
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player.name} offered a trade: give ${giveText} for ${getText}`,
-        playerId
+        message: `${player.name} offered a trade: give ${giveText} for ${getText}`
     });
 
     // Save to database
@@ -361,15 +373,29 @@ export async function acceptTrade(
     const offeredGive = giveItems.length ? giveItems.join(', ') : 'nothing';
     const offeredGet = getItems.length ? getItems.join(', ') : 'nothing';
 
+    // Store trade completion data for UI notifications
+    gameState.lastTrade = {
+        initiatorId: gameState.tradeOffer.initiator,
+        acceptorId: playerId,
+        initiatorGave: {
+            resources: gameState.tradeOffer.give,
+            commodities: gameState.tradeOffer.giveCommodities
+        },
+        initiatorReceived: {
+            resources: gameState.tradeOffer.get,
+            commodities: gameState.tradeOffer.getCommodities
+        },
+        timestamp: Date.now()
+    };
+
     // Clear trade offer
     gameState.tradeOffer = null;
 
-    // Add log
+    // Add public log entry (no playerId = visible to all players)
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${acceptor.name} accepted ${initiator.name}'s trade: ${acceptor.name} gives ${offeredGet} and receives ${offeredGive}`,
-        playerId
+        message: `Trade completed: ${initiator.name} traded ${offeredGive} to ${acceptor.name} for ${offeredGet}`
     });
 
     // Save to database
@@ -460,12 +486,11 @@ export async function cancelTrade(
     // Get player
     const player = gameState.players.find(p => p.id === playerId);
 
-    // Add log
+    // Add public log entry (no playerId = visible to all players)
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
-        message: `${player?.name} cancelled the trade`,
-        playerId
+        message: `${player?.name} cancelled the trade offer`
     });
 
     // Save to database

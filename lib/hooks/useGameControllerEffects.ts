@@ -90,6 +90,30 @@ export function useTheftNotificationEffect(
   }, [baseGameState?.lastTheft, lastTheftSeenRef, playerId, setShowTheftNotification]);
 }
 
+export function useTradeCompletionEffect(
+  baseGameState: GameState | null,
+  playerId: string,
+  lastTradeSeenRef: React.MutableRefObject<number>,
+  setShowTradeCompletion: (show: boolean) => void
+) {
+  useEffect(() => {
+    const trade = baseGameState?.lastTrade;
+    if (!trade) return;
+    if (!trade.timestamp) return;
+    if (trade.timestamp <= lastTradeSeenRef.current) return;
+
+    const isInitiator = trade.initiatorId === playerId;
+    const isAcceptor = trade.acceptorId === playerId;
+    if (!isInitiator && !isAcceptor) return;
+
+    const isRecent = Date.now() - trade.timestamp < 8000;
+    if (!isRecent) return;
+
+    lastTradeSeenRef.current = trade.timestamp;
+    setShowTradeCompletion(true);
+  }, [baseGameState?.lastTrade, lastTradeSeenRef, playerId, setShowTradeCompletion]);
+}
+
 export function useProgressDiscardEnforcement(
   baseGameState: GameState | null,
   playerId: string,
