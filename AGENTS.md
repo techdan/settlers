@@ -57,7 +57,7 @@ Before taking any action (either tool calls *or* responses to the user), you mus
 - Do not add to git without my permission
 - Clean up temporary or backup files after they are no longer necessary. Double check for cleanup after finishing any task
 - Be verbose as you carry out tasks. Provide output describing your understanding of the current task and how you are approaching it.
-- Always use `bd` (beads) commands for task tracking and progress management. NEVER use TodoWrite or other task tracking tools. Use `bd create`, `bd update`, `bd close` etc. See [AGENTS.md](AGENTS.md) for full workflow.
+- Track multi-session work in the plan docs under `docs/` (see "Task Tracking" below): mark items complete as they land and record newly discovered work there. Use the built-in session task tools for in-session progress. Do NOT use bd/beads (retired 2026-07-09) or external trackers.
 - Do not stop executing  until the task is complete. When the task is complete, provide a detailed update and explanation at the end.
 - Anything in the system that is clickable (buttons, actions, etc) should have a pointer mouse pointer to indicate it's clickable.
 - Do not create summary documents for fixes unless explicitly asked. Instead provide detailed summary report as agent output
@@ -434,128 +434,14 @@ See `docs/phase4-refactoring-summary.md` for complete details.
   - `TileType = ResourceType | 'desert'`
 - **Files affected**: ~20 files, 115 occurrences
 
-## Issue Tracking with bd (beads)
+## Task Tracking
 
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+Beads (bd) was **retired as the tracker of record on 2026-07-09** (git hooks removed, `.beads/` untracked and gitignored). Do not use `bd` commands.
 
-### Why bd?
-
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
-
-### Quick Start
-
-**Check for ready work:**
-```bash
-bd ready --json
-```
-
-**Create new issues:**
-```bash
-bd create "Issue title" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" -p 1 --deps discovered-from:bd-123 --json
-```
-
-**Claim and update:**
-```bash
-bd update bd-42 --status in_progress --json
-bd update bd-42 --priority 1 --json
-```
-
-**Complete work:**
-```bash
-bd close bd-42 --reason "Completed" --json
-```
-
-### Issue Types
-
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
-
-### Priorities
-
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
-
-### Workflow for AI Agents
-
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task**: `bd update <id> --status in_progress`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-
-### Bug Fix Tracking
-
-**IMPORTANT**: All bug fixes should be tracked under the Bug Fix Tracker epic (toodle-136).
-
-When the user asks you to:
-- "Add a task" for a bug fix
-- "Log a task" for a bug fix
-- Report any bug or issue
-
-Always:
-1. Create the bug with priority 1 and type `bug`
-2. Link it to the Bug Fix Tracker epic using `--deps blocks:toodle-136`
-3. Use `--json` flag for programmatic output
-
-**Example:**
-```bash
-bd create "Fix null pointer in task list" -t bug -p 1 --deps blocks:toodle-136 --json
-```
-
-This ensures all bugs are:
-- Priority 1 (high visibility)
-- Tracked under one epic for monitoring
-- Easy to find and triage
-
-### Auto-Sync
-
-bd automatically syncs with git:
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
-
-### MCP Server (Recommended)
-
-If using Claude or MCP-compatible clients, install the beads MCP server:
-
-```bash
-pip install beads-mcp
-```
-
-Add to MCP config (e.g., `~/.config/claude/config.json`):
-```json
-{
-  "beads": {
-    "command": "beads-mcp",
-    "args": []
-  }
-}
-```
-
-Then use `mcp__beads__*` functions instead of CLI commands.
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-
-For more details, see README.md and QUICKSTART.md.
+- Work items live in plan documents under `docs/` — currently `docs/codebase-improvement-plan.md` (refactor/cleanup backlog) and `docs/graphics-overhaul-plan.md` (graphics overhaul execution plan).
+- Each item carries concrete file paths and acceptance criteria. When an item lands, mark it done in the plan doc with the commit hash.
+- Newly discovered work: add it to the relevant plan doc in the same format (paths + acceptance criteria), in the section where it belongs.
+- Use the built-in session task tools for in-session progress; the plan docs are the cross-session record.
 
 ## Git Rules (from gist.github.com/steipete/d3b9db3fa8eb1d1a692b7656217d8655)
 
