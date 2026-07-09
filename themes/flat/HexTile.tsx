@@ -4,7 +4,8 @@ import { ResourceType, TerrainType } from '@/core/rules/board-constants';
 import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
 import { Merchant } from './Merchant';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { RESOURCE_ICON_ID, DESERT_ICON_ID } from '@/components/board/board-icon-defs';
+import { TERRAIN_COLORS, HEX_TILE_STROKE } from '@/lib/constants/board-palette';
 
 interface HexTileProps {
     hex: Hex;
@@ -20,16 +21,6 @@ interface HexTileProps {
     selectionVariant?: 'glow' | 'cursor';
     selectionState?: 'primary' | 'secondary' | null;
 }
-
-// Hex tile background colors from icons.md (resource icon backgrounds)
-const TERRAIN_COLORS: Record<TerrainType, string> = {
-    forest: '#06740E',  // Forest green (wood)
-    hill: '#ca7728',    // Hills orange-brown (brick)
-    pasture: '#84b83f', // Pasture green (sheep)
-    field: '#f9e26f',   // Fields yellow (wheat)
-    mountain: '#666d63', // Mountain grey (ore)
-    desert: '#e4c27c',  // Desert tan
-};
 
 // Map terrain to resource icons
 const TERRAIN_RESOURCE: Record<TerrainType, ResourceType | null> = {
@@ -58,7 +49,8 @@ export const HexTile: React.FC<HexTileProps> = ({
     const { x, y } = hexToPixel(hex, size);
     const shouldGlow = !!isSelectable && selectionVariant === 'glow';
     const iconSize = Math.max(24, Math.round(size * 0.6));
-    const iconTranslate = `translate(${-iconSize / 2}, ${-size * 0.8})`;
+    const iconX = -iconSize / 2;
+    const iconY = -size * 0.8;
     const tokenRadius = Math.max(12, Math.round(size * 0.28));
 
     // Calculate points for pointy-topped hex
@@ -78,53 +70,37 @@ export const HexTile: React.FC<HexTileProps> = ({
             onClick={isSelectable ? onClick : undefined}
             className={isSelectable ? "cursor-pointer" : ""}
         >
-            <style>
-                {`
-                    @keyframes flash {
-                        0% { filter: brightness(1); }
-                        50% { filter: brightness(1.5); }
-                        100% { filter: brightness(1); }
-                    }
-                    .animate-flash {
-                        animation: flash 1s ease-in-out 3;
-                    }
-                    @keyframes pulse-valid {
-                        0% { stroke-width: 4; stroke: #4ade80; }
-                        50% { stroke-width: 8; stroke: #22c55e; }
-                        100% { stroke-width: 4; stroke: #4ade80; }
-                    }
-                    .animate-pulse-valid {
-                        animation: pulse-valid 2s infinite;
-                    }
-                `}
-            </style>
             <polygon
                 points={pointsStr}
                 fill={TERRAIN_COLORS[terrain]}
-                stroke={shouldGlow ? "#4ade80" : "#e5e7eb"}
+                stroke={shouldGlow ? HEX_TILE_STROKE.selectable : HEX_TILE_STROKE.default}
                 strokeWidth={shouldGlow ? "6" : "4"}
                 className={`transition-all ${isSelectable ? 'hover:brightness-110' : ''} ${isRolled ? 'animate-flash' : ''} ${shouldGlow ? 'animate-pulse-valid' : ''}`}
             />
 
             {/* Resource Icon */}
             {resourceType && (
-                <g transform={iconTranslate}>
-                    <foreignObject width={iconSize} height={iconSize} style={{ opacity: 0.6 }}>
-                        <div style={{ width: `${iconSize}px`, height: `${iconSize}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <GameIcon type={resourceType} size={iconSize} />
-                        </div>
-                    </foreignObject>
-                </g>
+                <use
+                    href={`#${RESOURCE_ICON_ID[resourceType]}`}
+                    x={iconX}
+                    y={iconY}
+                    width={iconSize}
+                    height={iconSize}
+                    opacity={0.6}
+                    className="pointer-events-none"
+                />
             )}
             {/* Desert icon */}
             {terrain === 'desert' && (
-                <g transform={iconTranslate}>
-                    <foreignObject width={iconSize} height={iconSize} style={{ opacity: 0.6 }}>
-                        <div style={{ width: `${iconSize}px`, height: `${iconSize}px`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <img src="/icons/cactus-colored.svg" alt="Desert" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} />
-                        </div>
-                    </foreignObject>
-                </g>
+                <use
+                    href={`#${DESERT_ICON_ID}`}
+                    x={iconX}
+                    y={iconY}
+                    width={iconSize}
+                    height={iconSize}
+                    opacity={0.6}
+                    className="pointer-events-none"
+                />
             )}
 
             {numberToken && (

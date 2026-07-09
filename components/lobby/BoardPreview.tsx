@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { HexTileData } from '@/core/engine/board/board-generator';
 import { HexTile } from '@/themes/flat/HexTile';
-import { VoxelHexTile } from '@/themes/voxel/HexTile';
 import { FlatPort } from '@/themes/flat/Port';
-import { VoxelPort } from '@/themes/voxel/Port';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { BoardControls } from '@/components/board/BoardControls';
+import { BoardIconDefs } from '@/components/board/board-icon-defs';
 import { generatePorts } from '@/core/engine/board/port-generator';
 import { hexToPixel } from '@/lib/hex';
 
@@ -16,8 +15,6 @@ interface BoardPreviewProps {
 }
 
 export function BoardPreview({ board }: BoardPreviewProps) {
-    const [is3D, setIs3D] = useState(false);
-
     if (!board || board.length === 0) {
         return (
             <div className="flex items-center justify-center h-64 bg-slate-100 dark:bg-slate-800 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700">
@@ -27,8 +24,6 @@ export function BoardPreview({ board }: BoardPreviewProps) {
     }
 
     const HEX_SIZE = 60;
-    const TileComponent = is3D ? VoxelHexTile : HexTile;
-    const PortComponent = is3D ? VoxelPort : FlatPort;
 
     const ports = useMemo(() => generatePorts(HEX_SIZE), [HEX_SIZE]);
 
@@ -61,7 +56,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
             maxY = Math.max(maxY, p.y);
         }
 
-        // Padding for tile geometry (and voxel depth), plus some breathing room.
+        // Padding for tile geometry, plus some breathing room.
         // Use minimal top padding to position board near top of view
         const sidePadding = HEX_SIZE * 3;
         const topPadding = HEX_SIZE * 0.5; // Minimal top padding (~30px)
@@ -94,8 +89,6 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                         <BoardControls
                             onZoomIn={() => zoomIn(0.1)}
                             onZoomOut={() => zoomOut(0.1)}
-                            is3D={is3D}
-                            onToggle3D={() => setIs3D(!is3D)}
                         />
 
                         <TransformComponent
@@ -111,9 +104,10 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                 preserveAspectRatio="xMidYMin meet"
                                 className="overflow-visible"
                             >
+                                <BoardIconDefs />
                                 <g transform="translate(0,0)">
                                     {board.map((tile) => (
-                                        <TileComponent
+                                        <HexTile
                                             key={`${tile.id}-${tile.terrain}-${tile.numberToken}`}
                                             hex={tile.hex}
                                             terrain={tile.terrain}
@@ -125,7 +119,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                     ))}
 
                                     {ports.map((port) => (
-                                        <PortComponent key={port.id} port={port} />
+                                        <FlatPort key={port.id} port={port} />
                                     ))}
                                 </g>
                             </svg>

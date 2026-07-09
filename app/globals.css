@@ -436,4 +436,25 @@
   .btn-interactive:active {
     transform: scale(0.95);
   }
+
+  /* Board tile animations (moved out of per-tile <style> blocks - see HexTile.tsx) */
+  @keyframes flash {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.5); }
+    100% { filter: brightness(1); }
+  }
+
+  .animate-flash {
+    animation: flash 1s ease-in-out 3;
+  }
+
+  @keyframes pulse-valid {
+    0% { stroke-width: 4; stroke: #4ade80; }
+    50% { stroke-width: 8; stroke: #22c55e; }
+    100% { stroke-width: 4; stroke: #4ade80; }
+  }
+
+  .animate-pulse-valid {
+    animation: pulse-valid 2s infinite;
+  }
 }

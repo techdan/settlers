@@ -1,4 +1,5 @@
 import React from 'react';
+import { BOARD_UI_COLORS, NUMBER_TOKEN_HIGHLIGHT } from '@/lib/constants/board-palette';
 
 interface NumberTokenProps {
     number: number;
@@ -9,7 +10,7 @@ interface NumberTokenProps {
 export const NumberToken: React.FC<NumberTokenProps> = ({ number, highlight, radius = 25 }) => {
     const isRed = number === 6 || number === 8;
     const dots = getDots(number);
-    const highlightColor = highlight === 'secondary' ? '#22d3ee' : '#22c55e';
+    const highlightColor = highlight === 'secondary' ? NUMBER_TOKEN_HIGHLIGHT.secondary : NUMBER_TOKEN_HIGHLIGHT.primary;
     const highlightRadius = radius * 1.32;
     const fontSize = Math.max(10, Math.round(radius * 0.8));
     const textYOffset = Math.round(radius * 0.2);
@@ -28,14 +29,14 @@ export const NumberToken: React.FC<NumberTokenProps> = ({ number, highlight, rad
                     opacity="0.9"
                 />
             )}
-            <circle r={radius} fill="#F5F5DC" stroke="#333" strokeWidth="1" />
-            <text y={textYOffset} textAnchor="middle" fill={isRed ? '#D00' : '#000'} fontSize={fontSize} fontWeight="bold">
+            <circle r={radius} fill={BOARD_UI_COLORS.tokenFace} stroke={BOARD_UI_COLORS.outline} strokeWidth="1" />
+            <text y={textYOffset} textAnchor="middle" fill={isRed ? BOARD_UI_COLORS.textRed : BOARD_UI_COLORS.textDark} fontSize={fontSize} fontWeight="bold">
                 {number}
             </text>
             <g transform={`translate(0, ${dotsYOffset})`}>
                 {/* Render dots */}
                 {Array.from({ length: dots }).map((_, i) => (
-                    <circle key={i} cx={(i - (dots - 1) / 2) * dotSpacing} r={dotRadius} fill={isRed ? '#D00' : '#000'} />
+                    <circle key={i} cx={(i - (dots - 1) / 2) * dotSpacing} r={dotRadius} fill={isRed ? BOARD_UI_COLORS.textRed : BOARD_UI_COLORS.textDark} />
                 ))}
             </g>
         </g>

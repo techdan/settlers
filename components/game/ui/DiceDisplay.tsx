@@ -3,6 +3,7 @@ import { GameState } from '@/lib/types';
 import { EventDieFace } from '@/core/rules/commodity-constants';
 import { Tooltip } from '@/components/ui/tooltip';
 import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
+import { DICE_COLORS, EVENT_DIE_ICON_COLORS } from '@/lib/constants/board-palette';
 
 interface DiceDisplayProps {
     diceRoll: GameState['diceRoll'];
@@ -10,10 +11,10 @@ interface DiceDisplayProps {
 }
 
 const EVENT_DIE_COLORS: Record<EventDieFace, { bg: string; iconColor: string; label: string }> = {
-    ship: { bg: 'bg-white', iconColor: '#0f172a', label: 'Barbarian Ship' },
-    science: { bg: 'bg-white', iconColor: '#6bb97f', label: 'Science' },
-    trade: { bg: 'bg-white', iconColor: '#c6daa4', label: 'Trade' },
-    politics: { bg: 'bg-white', iconColor: '#d7dfd1', label: 'Politics' }
+    ship: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.ship, label: 'Barbarian Ship' },
+    science: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.science, label: 'Science' },
+    trade: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.trade, label: 'Trade' },
+    politics: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.politics, label: 'Politics' }
 };
 
 const EVENT_DIE_TEXT: Record<EventDieFace, { title: string; description: string }> = {
@@ -127,15 +128,15 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                     value={diceRoll.d1}
                     label="Red Die"
                     // Bright red die background, bright yellow pips (inverse of yellow die)
-                    backgroundColor="#dc2626"
-                    pipColor="#fbbf24"
+                    backgroundColor={DICE_COLORS.redDie}
+                    pipColor={DICE_COLORS.yellowDie}
                 />
                 <RegularDie
                     value={diceRoll.d2}
                     label="Yellow Die"
                     // Yellow die background, bright red pips
-                    backgroundColor="#fbbf24"
-                    pipColor="#dc2626"
+                    backgroundColor={DICE_COLORS.yellowDie}
+                    pipColor={DICE_COLORS.redDie}
                 />
             </div>
 
@@ -159,7 +160,7 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                             >
                                 <ColoredSvgIcon
                                     src={EVENT_DIE_SVGS[eventDieRoll.face]}
-                                    backgroundColor="#ffffff"
+                                    backgroundColor={DICE_COLORS.eventDieFace}
                                     color={EVENT_DIE_COLORS[eventDieRoll.face].iconColor}
                                     size={48}
                                     alt={EVENT_DIE_COLORS[eventDieRoll.face].label}

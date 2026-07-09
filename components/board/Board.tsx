@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useThemeStore } from '@/lib/theme-store';
 import { BoardCanvas } from './BoardCanvas';
 import { useBoardValidation } from '@/lib/hooks/useBoardValidation';
 import { useBoardActions } from '@/lib/hooks/useBoardActions';
@@ -26,7 +25,6 @@ export const Board: React.FC<BoardProps> = ({
   selectionState,
   callbacks
 }) => {
-  const { theme, toggleTheme } = useThemeStore();
   const HEX_SIZE = 90;
 
   // Pending placement state for confirmation modal
@@ -197,7 +195,6 @@ export const Board: React.FC<BoardProps> = ({
     <BoardCanvas
       gameState={gameState}
       playerId={playerId}
-      theme={theme}
       hexSize={HEX_SIZE}
       selectionState={selectionState}
       validation={validation}
@@ -211,7 +208,6 @@ export const Board: React.FC<BoardProps> = ({
       onConfirmPlacement={actions.handleConfirmPlacement}
       onCancelPlacement={actions.handleCancelPlacement}
       onCancelBuild={callbacks.onCancelBuild}
-      onToggleTheme={toggleTheme}
     />
   );
 };

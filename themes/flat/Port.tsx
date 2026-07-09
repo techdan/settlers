@@ -2,7 +2,8 @@ import React from 'react';
 import { Port, PortType } from '@/types/board';
 import { HelpCircle } from 'lucide-react';
 import { ResourceType } from '@/core/rules/board-constants';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { RESOURCE_ICON_ID } from '@/components/board/board-icon-defs';
+import { PORT_COLORS, BOARD_UI_COLORS } from '@/lib/constants/board-palette';
 
 interface PortProps {
     port: Port;
@@ -16,16 +17,6 @@ const PORT_RESOURCE: Record<PortType, ResourceType | null> = {
     wheat: 'wheat',
     ore: 'ore',
     generic: null,
-};
-
-// Background colors for the icon circle (using resource icon backgrounds from icons.md)
-const PORT_COLORS: Record<PortType, string> = {
-    wood: '#06740E',    // Forest green
-    brick: '#ca7728',   // Hills orange-brown
-    sheep: '#84b83f',   // Pasture green
-    wheat: '#f9e26f',   // Fields yellow
-    ore: '#666d63',     // Mountain grey
-    generic: '#FFFFFF', // White for generic
 };
 
 export const FlatPort: React.FC<PortProps> = ({ port }) => {
@@ -53,14 +44,14 @@ export const FlatPort: React.FC<PortProps> = ({ port }) => {
     return (
         <g transform={`translate(${posX}, ${posY})`}>
             {/* Connection Lines to Vertices */}
-            <line x1="0" y1="0" x2={v1Local.x} y2={v1Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
-            <line x1="0" y1="0" x2={v2Local.x} y2={v2Local.y} stroke="#333" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="0" y1="0" x2={v1Local.x} y2={v1Local.y} stroke={BOARD_UI_COLORS.outline} strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="0" y1="0" x2={v2Local.x} y2={v2Local.y} stroke={BOARD_UI_COLORS.outline} strokeWidth="2" strokeDasharray="4 2" />
 
             {/* Background Circle */}
-            <circle cx="0" cy="0" r="25" fill="#F5F5DC" stroke="#333" strokeWidth="2" />
+            <circle cx="0" cy="0" r="25" fill={BOARD_UI_COLORS.tokenFace} stroke={BOARD_UI_COLORS.outline} strokeWidth="2" />
 
             {/* Icon Circle Background */}
-            <circle cx="0" cy="-6" r="13" fill={color} stroke="#333" strokeWidth="1" />
+            <circle cx="0" cy="-6" r="13" fill={color} stroke={BOARD_UI_COLORS.outline} strokeWidth="1" />
 
             {/* Circular clip path for icon */}
             <defs>
@@ -72,20 +63,23 @@ export const FlatPort: React.FC<PortProps> = ({ port }) => {
             {/* Resource Icon or Generic Icon */}
             {resourceType ? (
                 <g clipPath={`url(#port-clip-${posX}-${posY})`}>
-                    <foreignObject x="-13" y="-19" width="26" height="26">
-                        <div style={{ width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <GameIcon type={resourceType} size={24} />
-                        </div>
-                    </foreignObject>
+                    <use
+                        href={`#${RESOURCE_ICON_ID[resourceType]}`}
+                        x="-12"
+                        y="-18"
+                        width="24"
+                        height="24"
+                        className="pointer-events-none"
+                    />
                 </g>
             ) : (
                 <g transform="translate(-8, -14)">
-                    <HelpCircle size={16} color="#000" />
+                    <HelpCircle size={16} color={BOARD_UI_COLORS.textDark} />
                 </g>
             )}
 
             {/* Ratio Text */}
-            <text x="0" y="16" fontSize="10" fontWeight="bold" textAnchor="middle" fill="#333">
+            <text x="0" y="16" fontSize="10" fontWeight="bold" textAnchor="middle" fill={BOARD_UI_COLORS.outline}>
                 {port.type === 'generic' ? '3:1' : '2:1'}
             </text>
         </g>

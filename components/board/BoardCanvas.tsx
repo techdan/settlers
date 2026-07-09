@@ -2,10 +2,8 @@
 
 import React, { useMemo, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { HexTile as FlatHexTile } from '@/themes/flat/HexTile';
-import { VoxelHexTile } from '@/themes/voxel/HexTile';
+import { HexTile } from '@/themes/flat/HexTile';
 import { FlatPort } from '@/themes/flat/Port';
-import { VoxelPort } from '@/themes/voxel/Port';
 import { Tooltip } from '@/components/ui/tooltip';
 import { generatePorts, getPortForVertex } from '@/core/engine/board/port-generator';
 import { GameState } from '@/lib/types';
@@ -14,6 +12,7 @@ import { BoardSelectionState } from '@/lib/types/board-selection-state';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { BoardControls } from './BoardControls';
+import { BoardIconDefs } from './board-icon-defs';
 import { createHex, hexCornerToPixel } from '@/lib/hex';
 
 /**
@@ -32,7 +31,6 @@ import { createHex, hexCornerToPixel } from '@/lib/hex';
 interface BoardCanvasProps {
   gameState: GameState;
   playerId: string;
-  theme: 'flat' | 'voxel';
   hexSize: number;
   selectionState: BoardSelectionState;
   validation: {
@@ -50,13 +48,11 @@ interface BoardCanvasProps {
   onConfirmPlacement: () => void;
   onCancelPlacement: () => void;
   onCancelBuild: () => void;
-  onToggleTheme: () => void;
 }
 
 export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   gameState,
   playerId,
-  theme,
   hexSize,
   selectionState,
   validation,
@@ -69,8 +65,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   onHexClick,
   onConfirmPlacement,
   onCancelPlacement,
-  onCancelBuild,
-  onToggleTheme
+  onCancelBuild
 }) => {
   const [zoomLevel, setZoomLevel] = useState(0.8);
 
@@ -80,7 +75,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   // Get tiles from game state
   const tiles = gameState.board.hexes;
 
-  // Sort tiles for Voxel rendering (Painter's Algorithm: Top -> Bottom)
+  // Stable top-to-bottom render order for the hex grid
   const sortedTiles = useMemo(
     () =>
       [...tiles].sort((a, b) => {
@@ -89,11 +84,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       }),
     [tiles]
   );
-
-  // Select tile and port components based on theme
-  const TileComponent = theme === 'flat' ? FlatHexTile : VoxelHexTile;
-  const PortComponent = theme === 'flat' ? FlatPort : VoxelPort;
-
 
   // Extract selection state for rendering
   const {
@@ -122,8 +112,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             <BoardControls
               onZoomIn={() => zoomIn(0.1)}
               onZoomOut={() => zoomOut(0.1)}
-              is3D={theme === 'voxel'}
-              onToggle3D={onToggleTheme}
             />
 
             <TransformComponent
@@ -140,6 +128,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                   height="100%"
                   viewBox="-500 -500 1000 1000"
                 >
+                  <BoardIconDefs />
+
                   {/* Hex Grid */}
                   {sortedTiles.map(tile => {
                     const isRolled = gameState.diceRoll && tile.numberToken === gameState.diceRoll.total;
@@ -168,7 +158,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                       : null;
 
                     return (
-                      <TileComponent
+                      <HexTile
                         key={tile.id}
                         hex={tile.hex}
                         terrain={tile.terrain}
@@ -188,7 +178,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
                   {/* Ports */}
                   {ports.map((port, i) => (
-                    <PortComponent key={i} port={port} />
+                    <FlatPort key={i} port={port} />
                   ))}
 
                   {/* Edges (Roads) */}
@@ -207,7 +197,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         onClick={onEdgeClick}
                         isValid={validation.validEdges.has(edge.id)}
                         isSelected={isDiplomatSelected}
-                        theme={theme}
                         isPendingPlacement={isPending}
                         onConfirmPlacement={onConfirmPlacement}
                         onCancelPlacement={onCancelPlacement}
@@ -277,7 +266,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         color={ownerColor}
                         onClick={onVertexClick}
                         isValid={validation.validVertices.has(vertex.id)}
-                        theme={theme}
                         isMoving={isMoving}
                         onCancelMove={onCancelBuild}
                         currentPlayerId={playerId}
