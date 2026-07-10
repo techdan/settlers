@@ -144,6 +144,14 @@ export function shade(hexColor: string, f: number): string {
 /** Round to 2 decimals — all emitted SVG coordinates go through this (§2.3, hydration). */
 export const r2 = (n: number): number => Math.round(n * 100) / 100;
 
+/** Blend two #rrggbb colors: t=0 → a, t=1 → b. Used for category-tinted card windows. */
+export function mix(a: string, b: string, t: number): string {
+    const A = parseInt(a.slice(1), 16);
+    const B = parseInt(b.slice(1), 16);
+    const ch = (sh: number) => Math.round(((A >> sh) & 255) * (1 - t) + ((B >> sh) & 255) * t);
+    return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
+}
+
 /** Points string for a pointy-topped hexagon of radius `size` centered at (0,0). */
 export function hexPointsStr(size: number): string {
     const pts: string[] = [];
