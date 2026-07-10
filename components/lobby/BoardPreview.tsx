@@ -2,11 +2,9 @@
 
 import React, { useMemo } from 'react';
 import { HexTileData } from '@/core/engine/board/board-generator';
-import { HexTile } from '@/themes/flat/HexTile';
-import { FlatPort } from '@/themes/flat/Port';
+import { HexTile, Port } from '@/themes/tabletop';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { BoardControls } from '@/components/board/BoardControls';
-import { BoardIconDefs } from '@/components/board/board-icon-defs';
 import { generatePorts } from '@/core/engine/board/port-generator';
 import { hexToPixel } from '@/lib/hex';
 
@@ -104,7 +102,6 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                 preserveAspectRatio="xMidYMin meet"
                                 className="overflow-visible"
                             >
-                                <BoardIconDefs />
                                 <g transform="translate(0,0)">
                                     {board.map((tile) => (
                                         <HexTile
@@ -119,7 +116,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                     ))}
 
                                     {ports.map((port) => (
-                                        <FlatPort key={port.id} port={port} />
+                                        <Port key={port.id} port={port} />
                                     ))}
                                 </g>
                             </svg>
