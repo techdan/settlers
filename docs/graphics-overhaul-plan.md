@@ -134,6 +134,8 @@ Prereq for everything. Execute `docs/codebase-improvement-plan.md` §4.1 (sprite
 
 ### Phase 2 — Pieces (F art + D wiring)
 
+> ✅ **Done 2026-07-10** (lead-authored, user approved via piece-gallery artifact): `themes/tabletop/pieces.tsx` — roads (beveled planks), settlements/cities (lit roofs, watchtowers), metropolis (brass tier+spire), crenellated wall ramparts, knights (helm-silhouette + pip rank coding, brass ring when active, desaturation when inactive); wired into `VertexRenderer`/`EdgeRenderer` with hitboxes untouched; `BoardCanvas` no longer mounts sprite defs. Facets use CSS `brightness()` (player colors are CSS vars). **Tail delegated:** lobby `BoardPreview` → tabletop, delete `themes/flat/` + `board-icon-defs.tsx`.
+
 Replace `VertexRenderer`'s ~150 lines of inline path data and `EdgeRenderer`'s rect-roads with `themes/tabletop/pieces.tsx` sprites. Knight levels must be distinguishable at 24px by **silhouette** (helm shape), not only by detail; inactive = desaturated + flag lowered, not opacity 0.4 (current approach reads as a rendering bug). City walls render as a rampart ring under the city, not a rect outline. Delete `themes/flat/` at the end.
 
 ### Phase 3 — Cards & tray (F design/art + D integration)

@@ -3,6 +3,7 @@ import { Edge } from '@/lib/types';
 import { createHex, hexEdgeToPixel } from '@/lib/hex';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
+import { Road } from '@/themes/tabletop';
 
 interface EdgeRendererProps {
     edge: Edge;
@@ -31,7 +32,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
 
             {/* Visual */}
             {edge.structure === 'road' && (
-                <rect x={-4} y={-size * 0.3} width={8} height={size * 0.6} fill={ownerColor || 'gray'} stroke="var(--color-highlight-ink)" strokeWidth={1} />
+                <Road color={ownerColor || 'gray'} length={size * 0.6} />
             )}
             {edge.structure === 'road' && isSelected && (
                 <rect

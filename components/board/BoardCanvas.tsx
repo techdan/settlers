@@ -11,7 +11,6 @@ import { BoardSelectionState } from '@/lib/types/board-selection-state';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { BoardControls } from './BoardControls';
-import { BoardIconDefs } from './board-icon-defs';
 
 /**
  * BoardCanvas - Pure rendering component for the game board
@@ -126,7 +125,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                   height="100%"
                   viewBox={BOARD_VIEWBOX}
                 >
-                  <BoardIconDefs />
                   <SeaFrame />
 
                   {/* Hex Grid */}

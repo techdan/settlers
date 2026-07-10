@@ -4,9 +4,7 @@ import { createHex, hexCornerToPixel } from '@/lib/hex';
 import { Knight } from '@/lib/types/player';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
-import { PIECE_ICON_ID, KNIGHT_ICON_ID, PIECE_GRADIENT_ID, PIECE_GRADIENT_FALLBACK_ID } from '@/components/board/board-icon-defs';
-
-const PIECE_SHADOW_STYLE: React.CSSProperties = { filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' };
+import { Settlement, City, Metropolis, CityWall, KnightPiece } from '@/themes/tabletop';
 
 interface VertexRendererProps {
     vertex: Vertex;
@@ -31,9 +29,7 @@ interface VertexRendererProps {
 export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick, isSelectedForAction, highlightVariant = 'default', isPendingPlacement, onConfirmPlacement, onCancelPlacement }) => {
     const pixel = hexCornerToPixel(createHex(vertex.q, vertex.r), vertex.d, size);
     const playerColorFill = color ? PLAYER_COLOR_VAR_MAP[(color.toLowerCase?.() as PlayerColor) || (color as PlayerColor)] || color : undefined;
-    // Settlement/city/metropolis background gradient: one stable gradient per canonical
-    // player color (see PIECE_GRADIENT_ID), falling back to gray for unowned/unknown colors.
-    const pieceFillUrl = `url(#${(playerColorFill && PIECE_GRADIENT_ID[playerColorFill]) || PIECE_GRADIENT_FALLBACK_ID})`;
+    const pieceColor = playerColorFill || 'gray';
 
     if (!vertex.structure && !knight && !isValid) return null;
 
@@ -69,30 +65,22 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
             {/* Hitbox - Reduced size for tighter click area */}
             <circle r={size * 0.2} fill="transparent" />
 
-            {/* Visual - Building (piece art lives in board-icon-defs.tsx; fill is the owner's gradient) */}
-            {vertex.structure === 'settlement' && (
-                <use href={`#${PIECE_ICON_ID.settlement}`} x={-12} y={-12} width={24} height={24} fill={pieceFillUrl} className="pointer-events-none" style={PIECE_SHADOW_STYLE} />
-            )}
+            {/* Visual - Building (tabletop piece art; player-color parametric) */}
+            {vertex.structure === 'settlement' && <Settlement color={pieceColor} />}
             {vertex.structure === 'city' && (
                 <>
-                    {vertex.hasCityWall && (
-                        <rect x={-18} y={-18} width={36} height={36} rx={4} fill="none" strokeWidth={4}
-                            stroke="var(--color-structure-wall-highlight)" style={{ filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.5))` }} />
-                    )}
-                    <use href={`#${PIECE_ICON_ID.city}`} x={-14} y={-14} width={28} height={28} fill={pieceFillUrl} className="pointer-events-none" style={PIECE_SHADOW_STYLE} />
+                    {vertex.hasCityWall && <CityWall color={pieceColor} />}
+                    <City color={pieceColor} />
                 </>
             )}
             {vertex.structure === 'metropolis' && (
                 <>
-                    {vertex.hasCityWall && (
-                        <rect x={-22} y={-22} width={44} height={44} rx={6} fill="none" strokeWidth={4}
-                            stroke="var(--color-structure-wall-highlight)" style={{ filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.5))` }} />
-                    )}
-                    <use href={`#${PIECE_ICON_ID.metropolis}`} x={-16} y={-16} width={32} height={32} fill={pieceFillUrl} className="pointer-events-none" style={PIECE_SHADOW_STYLE} />
+                    {vertex.hasCityWall && <CityWall color={pieceColor} width={33} />}
+                    <Metropolis color={pieceColor} />
                 </>
             )}
 
-            {/* Visual - Knight (level-specific glyph lives in board-icon-defs.tsx; one <use> covers all 3 levels) */}
+            {/* Visual - Knight (tabletop shield piece; level via helm silhouette + pips) */}
             {knight && knightStyle && (
                 <g>
                     {/* Tooltip - transparent rect that can receive hover events */}
@@ -100,18 +88,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                         <title>{knight.level === 'basic' ? 'Basic' : knight.level === 'strong' ? 'Strong' : 'Mighty'} Knight (Strength {knightStyle.levelIndicator}) - {knight.active ? 'Active' : 'Inactive'}</title>
                     </rect>
 
-                    {/* fill-opacity dims background + glyph together for inactive knights (see board-icon-defs.tsx) */}
-                    <use
-                        href={`#${KNIGHT_ICON_ID[knight.level]}`}
-                        x={-12}
-                        y={-12}
-                        width={24}
-                        height={24}
-                        fill={playerColorFill || 'gray'}
-                        fillOpacity={knight.active ? 1 : 0.5}
-                        className="pointer-events-none"
-                        style={{ filter: `drop-shadow(0 2px 4px rgba(0,0,0,0.5)) ${knight.active ? 'drop-shadow(0 0 6px rgba(255, 215, 0, 0.8))' : ''}` }}
-                    />
+                    <KnightPiece color={pieceColor} level={knight.level} active={knight.active} />
 
                     {/* Cancel Move Button */}
                     {isMoving && (

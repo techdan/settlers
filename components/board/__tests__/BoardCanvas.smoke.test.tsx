@@ -35,8 +35,6 @@ const HEX_SIZE = 90;
 
 const PLAYER_COLOR = '#ff0000';
 const PLAYER_COLOR_VAR = 'var(--color-player-1)';
-// '#ff0000' -> 'var(--color-player-1)' -> this shared piece gradient (see board-icon-defs.tsx PIECE_GRADIENT_ID)
-const PLAYER_PIECE_FILL = 'url(#piece-fill-p1)';
 
 function buildFixture() {
     const hexes = generateStandardBoard();
@@ -174,25 +172,17 @@ describe('BoardCanvas smoke tests (flat theme)', () => {
         expect(values).toEqual(expected);
     });
 
-    it('resolves tile/piece/knight icons through a single sprite <defs> block', () => {
+    it('renders pure inline SVG: no foreignObject, no dangling <use> references', () => {
         const fixture = buildFixture();
         const { container } = renderBoard(fixture);
         const svg = container.querySelector('#board-svg')!;
 
-        // Exactly one <defs> block should back the whole board (mounting it more
-        // than once duplicates symbol ids and breaks <use> resolution in some browsers).
-        const allSymbols = Array.from(svg.querySelectorAll('defs > symbol'));
-        const symbolIds = new Set(allSymbols.map(s => s.id));
-        expect(symbolIds.size).toBe(allSymbols.length); // no duplicate ids
-        // 6 resource/desert tile icons + 3 pieces (settlement/city/metropolis) + 3 knight levels
-        expect(symbolIds.size).toBe(12);
-
-        // Every <use> reference (tile icons, pieces, knights) must resolve to a symbol id
-        // that actually exists, and there must be no foreignObject/HTML embed under the board svg.
+        // The tabletop theme draws everything inline; if a <use> ever appears,
+        // it must resolve to a symbol that exists inside this svg.
+        const symbolIds = new Set(Array.from(svg.querySelectorAll('symbol')).map(s => s.id));
         const useHrefs = Array.from(svg.querySelectorAll('use'))
             .map(u => u.getAttribute('href'))
             .filter((href): href is string => !!href && href.startsWith('#'));
-        expect(useHrefs.length).toBeGreaterThan(0);
         for (const href of useHrefs) {
             expect(symbolIds.has(href.slice(1))).toBe(true);
         }
@@ -215,12 +205,9 @@ describe('BoardCanvas smoke tests (flat theme)', () => {
         const { container } = renderBoard(fixture);
         const group = findVertexGroup(container, fixture.settlementVertex);
         expect(group).not.toBeNull();
-        const use = group!.querySelector('use[href="#piece-settlement"]');
-        expect(use).not.toBeNull();
-        expect(use!.getAttribute('fill')).toBe(PLAYER_PIECE_FILL);
-        // The gradient the <use> points at must actually resolve to the player's color.
-        const gradient = container.querySelector('#piece-fill-p1 stop');
-        expect(gradient?.getAttribute('stop-color')).toBe(PLAYER_COLOR_VAR);
+        const piece = group!.querySelector('[data-piece="settlement"]');
+        expect(piece).not.toBeNull();
+        expect(piece!.querySelector(`path[fill="${PLAYER_COLOR_VAR}"]`)).not.toBeNull();
     });
 
     it('renders a city (with wall) at its vertex with the owner color', () => {
@@ -228,9 +215,11 @@ describe('BoardCanvas smoke tests (flat theme)', () => {
         const { container } = renderBoard(fixture);
         const group = findVertexGroup(container, fixture.cityVertex);
         expect(group).not.toBeNull();
-        const use = group!.querySelector('use[href="#piece-city"]');
-        expect(use).not.toBeNull();
-        expect(use!.getAttribute('fill')).toBe(PLAYER_PIECE_FILL);
+        const piece = group!.querySelector('[data-piece="city"]');
+        expect(piece).not.toBeNull();
+        expect(piece!.querySelector(`path[fill="${PLAYER_COLOR_VAR}"]`)).not.toBeNull();
+        // fixture city has a wall — the rampart renders beneath it
+        expect(group!.querySelector('[data-piece="city-wall"]')).not.toBeNull();
     });
 
     it('renders a road at its edge with the owner color', () => {
