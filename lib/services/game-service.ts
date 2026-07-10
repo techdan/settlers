@@ -547,7 +547,7 @@ export async function claimAqueductResource(
     resource: ResourceType
 ): Promise<GameState> {
     // Get game state
-    let gameState = await getGameStateByRoomId(roomId);
+    const gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
     // Validate player eligibility

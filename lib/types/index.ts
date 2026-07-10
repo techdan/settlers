@@ -7,7 +7,7 @@
 export type { PlayerColor, PlayerState, DevCardType } from './player';
 
 // Board types
-export type { Vertex, Edge, BoardState } from './board';
+export type { Vertex, Edge, BoardState, Port, PortType } from './board';
 
 // Game types
 export type {

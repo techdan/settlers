@@ -1,5 +1,5 @@
 import type { TerrainType } from '@/core/rules/board-constants';
-import type { PortType } from '@/types/board';
+import type { PortType } from '@/lib/types/board';
 import type { EventDieFace } from '@/core/rules/commodity-constants';
 
 /**

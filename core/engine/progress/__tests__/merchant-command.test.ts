@@ -5,8 +5,7 @@ vi.mock(
   '@/core/engine/progress/utilities/BoardScanning',
   () => ({
     hasAdjacentBuilding: vi.fn(() => true),
-  }),
-  { virtual: true }
+  })
 );
 
 import { MerchantCommand } from '../commands/MerchantCommand';

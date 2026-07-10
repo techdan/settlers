@@ -1,6 +1,6 @@
 import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { resolveBarbbarianAttack } from '@/core/engine/barbarian/barbarian-manager';
+import { loseCityToBarbarians, resolveBarbbarianAttack } from '@/core/engine/barbarian/barbarian-manager';
 import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
@@ -121,7 +121,6 @@ export async function loseCityToBarbarianAction(
     }
 
     // 4. Handle city loss
-    const { loseCityToBarbarians } = require('@/core/engine/barbarian/barbarian-manager');
     loseCityToBarbarians(gameState, playerId, vertexId);
 
     // If all victims have chosen and Aqueduct is pending, surface the selection now

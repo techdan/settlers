@@ -80,8 +80,6 @@ describe('Verify ALL ports are correctly mapped', () => {
             const v1 = getCanonicalVertexId(edge.q, edge.r, corner1);
             const v2 = getCanonicalVertexId(edge.q, edge.r, corner2);
 
-            console.log(`${config.type.toUpperCase().padEnd(8)} port: ${v1}, ${v2}`);
-
             // Check for duplicates
             if (portVertexMap.has(v1)) {
                 throw new Error(`Duplicate vertex ${v1}: was ${portVertexMap.get(v1)}, now ${config.type}`);

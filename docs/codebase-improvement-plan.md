@@ -25,7 +25,7 @@
 - **Action:** Delete the file. `docs/ui/BARBARIAN_HEX_TILES_DESIGN.md` references it as a starting point for an on-board version — that doc stays; the component is trivially recreatable and its tooltip copy can be lifted from git history.
 - **Accept:** Build passes, no import errors.
 
-### 1.2 Unify the two board-type modules
+### 1.2 Unify the two board-type modules — ✅ Done 2026-07-10 (Codex-executed, lead-verified: root `types/board.ts` merged into `lib/types/board.ts`, all importers updated incl. `board-palette.ts`, root file deleted)
 - **Files:** root `types/board.ts` vs `lib/types/board.ts`
 - **Evidence:** `core/engine/board/port-generator.ts`, `themes/flat/Port.tsx`, `themes/voxel/Port.tsx` import `Port`/`PortType` from `@/types/board`; everything else uses `@/lib/types` (which barrels `lib/types/board.ts`). Two sources of truth for board shapes.
 - **Action:** Move whatever is unique in root `types/board.ts` into `lib/types/board.ts`, update the three importers to `@/lib/types`, delete the root `types/` directory (verify nothing else imports from it first: `grep -rn "@/types/"`).
@@ -140,6 +140,8 @@
 ---
 
 ## 5. Consistency & Small Fixes (Priority: LOW)
+
+> ✅ **5.1, 5.6, 5.12 done 2026-07-10** (Codex-executed, lead-verified + two follow-on type errors fixed by lead; `tsc --noEmit` now fully clean project-wide). Lint: `prefer-const` ×4 and the `require()` in `ck-game-service.ts` also fixed.
 
 | # | Item | Files | Action |
 |---|------|-------|--------|

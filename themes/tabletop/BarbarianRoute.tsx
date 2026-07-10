@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Port as PortData } from '@/types/board';
+import { Port as PortData } from '@/lib/types/board';
 import { CK_CONSTANTS } from '@/core/rules/commodity-constants';
 import { ShieldGlyph, TowerGlyph, CrossedSwords } from './glyphs';
 import { TT, shade, r2 } from './palette';

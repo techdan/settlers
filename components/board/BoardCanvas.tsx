@@ -228,8 +228,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                       : gameState.players.find(p => p.id === vertex.owner)?.color;
 
                     // Calculate selection/highlight states
-                    const isEngineerCancel = false;
-                    const isMedicineCancel = false;
                     const isSmithCancel = !!(smithSelection?.selectableKnightIds && validation.validVertices.has(vertex.id));
                     const isEngineerSelected = !!(
                       citySelection?.type === 'engineer' && citySelection?.selectedCityId === vertex.id
@@ -282,8 +280,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         isMoving={isMoving}
                         onCancelMove={onCancelBuild}
                         currentPlayerId={playerId}
-                        showCancelIcon={isEngineerCancel || isMedicineCancel || isSmithCancel}
-                        cancelIconTitle={isMedicineCancel ? 'Cancel Medicine' : 'Cancel Smithing'}
+                        showCancelIcon={isSmithCancel}
+                        cancelIconTitle="Cancel Smithing"
                         isSelectedForAction={
                           isEngineerSelected ||
                           isMedicineSelected ||

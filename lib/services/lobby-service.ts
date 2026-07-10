@@ -332,7 +332,7 @@ export class LobbyService {
      */
     static async setGameMode(roomId: string, hostId: string, gameMode: 'base' | 'cities_and_knights'): Promise<LobbyState> {
         // Optimization: Try to use existing state if valid to avoid expensive DB syncs and player fetching
-        let state = await this.getLobbyState(roomId);
+        const state = await this.getLobbyState(roomId);
 
         if (state && state.hostId === hostId) {
             state.gameMode = gameMode;
@@ -357,7 +357,7 @@ export class LobbyService {
      */
     static async setTimerConfig(roomId: string, hostId: string, timerConfig: import('@/lib/types/timer').TimerConfig): Promise<LobbyState> {
         // Optimization: Try to use existing state if valid
-        let state = await this.getLobbyState(roomId);
+        const state = await this.getLobbyState(roomId);
 
         if (state && state.hostId === hostId) {
             state.timerConfig = timerConfig;
@@ -382,7 +382,7 @@ export class LobbyService {
      */
     static async toggleSkipFirstBarbarianAttack(roomId: string, hostId: string, skipFirstBarbarianAttack: boolean): Promise<LobbyState> {
         // Optimization: Try to use existing state if valid
-        let state = await this.getLobbyState(roomId);
+        const state = await this.getLobbyState(roomId);
 
         if (state && state.hostId === hostId) {
             state.skipFirstBarbarianAttack = skipFirstBarbarianAttack;

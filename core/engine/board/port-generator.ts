@@ -1,4 +1,4 @@
-import { Port, PortType } from '@/types/board';
+import { Port, PortType } from '@/lib/types/board';
 import { hexToPixel, createHex, getEdgeEndpoints } from '@/lib/hex';
 
 // Re-export PortType for backward compatibility with legacy imports

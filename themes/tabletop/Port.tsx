@@ -1,5 +1,5 @@
 import React from 'react';
-import { Port as PortData, PortType } from '@/types/board';
+import { Port as PortData, PortType } from '@/lib/types/board';
 import { ResourceType } from '@/core/rules/board-constants';
 import { ResourceGlyph } from './glyphs';
 import { TT, TT_SERIF, shade, r2 } from './palette';

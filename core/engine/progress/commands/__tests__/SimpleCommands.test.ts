@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { GameState } from '@/lib/types';
 import { EngineerCommand } from '../EngineerCommand';
 import { SmithCommand } from '../SmithCommand';
 import { RoadBuildingCommand } from '../RoadBuildingCommand';
@@ -36,7 +37,7 @@ describe('Simple Science Commands', () => {
             cmd.execute(gameState, 'p1');
 
             expect(gameState.activeEffects).toBeDefined();
-            expect(gameState.activeEffects[0]).toMatchObject({
+            expect(gameState.activeEffects![0]).toMatchObject({
                 type: 'road_building_progress',
                 playerId: 'p1',
                 placedEdges: []
@@ -54,7 +55,7 @@ describe('Simple Science Commands', () => {
         it('upgrades valid knights', () => {
             const cmd = new SmithCommand();
             const player = gameState.players[0];
-            player.knights = [{ id: 'k1', level: 'basic' }];
+            player.knights = [{ id: 'k1', level: 'basic', vertexId: 'v1', playerId: 'p1', active: false }];
 
             vi.mocked(KnightUpgradeUtils.isKnightPromotable).mockReturnValue(true);
 
