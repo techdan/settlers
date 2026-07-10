@@ -115,6 +115,13 @@ export const TT = {
         bad: '#e2a09a',
         neutral: '#cfd9d2',
     },
+
+    /** C&K progress-card categories (deck backs, card banners, HUD accents) */
+    category: {
+        science: '#2e6b3e',
+        trade: '#b98a2c',
+        politics: '#34557e',
+    },
 } as const;
 
 /** Serif stack for game-world text (tokens, card names) per §2.2 */

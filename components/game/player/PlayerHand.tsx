@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PlayerState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
-import { ResourceIcon, CommodityIcon } from '@/components/ui/icons/GameIcon';
-import type { CommodityType as IconCommodityType } from '@/components/ui/icons/GameIcon';
+import { CardStack, ResourceCardFace, CommodityCardFace } from '@/themes/tabletop';
 
 interface PlayerHandProps {
     player: PlayerState;
@@ -77,23 +76,26 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
             <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
             <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
 
-            {/* Resources and Commodities in one row */}
-            <div className={`relative z-10 flex items-center ${!hasCommodities ? 'w-full justify-evenly' : 'gap-3'}`}>
+            {/* Resources and Commodities as card stacks in one row */}
+            <div className={`relative z-10 flex items-start ${!hasCommodities ? 'w-full justify-evenly' : 'gap-2.5'}`}>
                 {/* Resources */}
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
-                    <div key={res} className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>
-                        <ResourceIcon type={res as ResourceType} size={44} />
-                        <div className="font-mono font-bold text-white text-sm tabular-nums">{player.resources[res] || 0}</div>
+                    <div key={res} className={`px-1.5 py-1.5 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>
+                        <CardStack count={player.resources[res] || 0} width={46}>
+                            <ResourceCardFace type={res} width={46} />
+                        </CardStack>
                     </div>
                 ))}
 
                 {/* Commodities (if in C&K mode) */}
                 {hasCommodities && (
                     <>
+                        <div className="self-stretch w-px bg-white/15 mx-0.5" />
                         {(['paper', 'cloth', 'coin'] as CommodityType[]).map(commodity => (
-                            <div key={commodity} className={`flex flex-col items-center gap-1 px-2 py-1 rounded transition-all duration-300 ${getHighlightClass('commodity', commodity)}`}>
-                                <CommodityIcon type={commodity as IconCommodityType} size={44} />
-                                <div className="font-mono font-bold text-white text-sm tabular-nums">{player.commodities![commodity] || 0}</div>
+                            <div key={commodity} className={`px-1.5 py-1.5 rounded transition-all duration-300 ${getHighlightClass('commodity', commodity)}`}>
+                                <CardStack count={player.commodities![commodity] || 0} width={46}>
+                                    <CommodityCardFace type={commodity} width={46} />
+                                </CardStack>
                             </div>
                         ))}
                     </>

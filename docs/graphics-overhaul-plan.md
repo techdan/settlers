@@ -140,6 +140,8 @@ Replace `VertexRenderer`'s ~150 lines of inline path data and `EdgeRenderer`'s r
 
 ### Phase 3 — Cards & tray (F design/art + D integration)
 
+> 🔶 **In progress 2026-07-10.** Batch 1 done: `themes/tabletop/cards.tsx` (5 resource faces, 3 commodity faces, 3 progress deck backs, `CardStack` fanned-quantity primitive) wired into `PlayerHand` and `ProgressDecksPanel`. Remaining: progress-card icons (~25, lead), dev-card faces, `ProgressCardHand` as real cards, unified bottom tray (lead design → delegated integration). Phase 2 tail (flat theme retirement) completed by delegated agent, lead-verified.
+
 Card frame system per pitch (cream stock, brass double rule, art window, serif name plate, category color for progress cards). Hand becomes rendered cards in the unified bottom tray (design from the pitch's "Proposed" layout): resources + commodities as mini-cards with counts, progress cards fanned, build buttons docked, dice + roll/end-turn at the tray's right end. The three separately-positioned bottom clusters and the `scale-75 xl:scale-85 2xl:scale-100` hacks in `GameLayoutPanels.tsx` are deleted.
 
 ### Phase 4 — HUD re-zoning + warm chrome (F design + D sweep)

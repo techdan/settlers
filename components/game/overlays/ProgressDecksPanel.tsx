@@ -1,7 +1,7 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { CardStack, ProgressDeckBack } from '@/themes/tabletop';
 
 interface ProgressDecksPanelProps {
     gameState: GameState;
@@ -23,57 +23,23 @@ export const ProgressDecksPanel: React.FC<ProgressDecksPanelProps> = ({ gameStat
     const tradeCount = progressDecks.trade?.length ?? 0;
     const politicsCount = progressDecks.politics?.length ?? 0;
 
-    // Deck info with colors
-    const decks: Array<{
-        category: ProgressCardCategory;
-        count: number;
-        label: string;
-        color: string;
-        bgColor: string;
-        icon: React.ReactNode;
-    }> = [
-        {
-            category: 'science',
-            count: scienceCount,
-            label: 'Science',
-            color: 'text-green-400',
-            bgColor: 'bg-green-900/50',
-            icon: <GameIcon type="science" size={26} />,
-        },
-        {
-            category: 'trade',
-            count: tradeCount,
-            label: 'Trade',
-            color: 'text-yellow-400',
-            bgColor: 'bg-yellow-900/50',
-            icon: <GameIcon type="trade" size={26} />,
-        },
-        {
-            category: 'politics',
-            count: politicsCount,
-            label: 'Politics',
-            color: 'text-blue-400',
-            bgColor: 'bg-blue-900/50',
-            icon: <GameIcon type="politics" size={26} />,
-        },
+    const decks: Array<{ category: ProgressCardCategory; count: number }> = [
+        { category: 'science', count: scienceCount },
+        { category: 'trade', count: tradeCount },
+        { category: 'politics', count: politicsCount },
     ];
 
     return (
         <div className="bg-slate-800/90 p-3 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Progress Card Decks
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5">
+                Progress Decks
             </h3>
 
-            <div className="flex gap-2">
-                {decks.map((deck) => (
-                    <div
-                        key={deck.category}
-                        className={`flex-1 ${deck.bgColor} p-2 rounded flex flex-col items-center justify-center`}
-                    >
-                        <div className="text-lg mb-0.5">{deck.icon}</div>
-                        <div className="text-[10px] text-slate-300 mb-1">{deck.label}</div>
-                        <div className={`text-xl font-bold ${deck.color}`}>{deck.count}</div>
-                    </div>
+            <div className="flex gap-3 px-1 pb-1">
+                {decks.map(deck => (
+                    <CardStack key={deck.category} count={deck.count} width={44}>
+                        <ProgressDeckBack category={deck.category} width={44} />
+                    </CardStack>
                 ))}
             </div>
         </div>
