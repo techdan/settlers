@@ -7,8 +7,8 @@ export function useGameSubscription(roomId: string, initialGameState: GameState 
     const [gameState, setGameState] = useState<GameState | null>(initialGameState);
 
     useEffect(() => {
+        if (!roomId) return;
         const supabase = getSupabaseClient();
-        if (!roomId || !supabase) return;
 
         // Fetch the latest state when subscription connects to avoid race conditions
         const fetchLatestState = async () => {
@@ -22,6 +22,14 @@ export function useGameSubscription(roomId: string, initialGameState: GameState 
                 console.error('[useGameSubscription] Failed to fetch latest state:', e);
             }
         };
+
+        // Polling fallback when Realtime is unavailable (e.g. local-Postgres dev
+        // without Supabase). Same pattern as the lobby's polling fallback.
+        if (!supabase) {
+            fetchLatestState();
+            const interval = setInterval(fetchLatestState, 2000);
+            return () => clearInterval(interval);
+        }
 
         const channel = supabase
             .channel(`game:${roomId}`)
