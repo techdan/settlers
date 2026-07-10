@@ -124,6 +124,8 @@ Prereq for everything. Execute `docs/codebase-improvement-plan.md` §4.1 (sprite
 
 ### Phase 1 — The island (F art + D wiring, the big visual drop)
 
+> ✅ **Done 2026-07-09** (lead-authored, user visual pass passed): `themes/tabletop/` tiles ×6, tokens, ports, robber, merchant, sea frame + expanded viewBox, barbarian route per §5 (ship kept upright — tangent rotation reads as capsized on this steep route); wired into `BoardCanvas`; `BarbarianTrack`/`BarbarianHexOverlay` deleted; smoke tests adapted (`g[data-terrain]`) + 2 route tests. `themes/flat/` survives for pieces until Phase 2 (lobby `BoardPreview` still flat — swap when pieces land).
+
 1. Expand board viewBox (currently `-500 -500 1000 1000`) to fit the sea frame + route (est. `-580 -560 1160 1120`; tune with the route in place).
 2. Sea frame: water fill behind/around the island in `sea`, wave strokes, cream coastline seam per §2.1. Tiles get the cardboard-seam treatment (cream underlay + darkened-base inner stroke — the pitch vignette technique).
 3. Terrain tiles ×6 per §2, replacing `themes/flat/HexTile.tsx` content; number token, ports, robber, merchant.

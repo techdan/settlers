@@ -19,7 +19,7 @@
 
 ## 1. Dead Code & Duplication (Priority: HIGH, Low risk)
 
-### 1.1 Delete unused `BarbarianHexOverlay`
+### 1.1 Delete unused `BarbarianHexOverlay` — ✅ Done 2026-07-09 (deleted with `BarbarianTrack` when the on-board barbarian route landed; see graphics plan Phase 1)
 - **File:** `components/board/BarbarianHexOverlay.tsx` (201 lines)
 - **Evidence:** Zero imports anywhere in `components/`, `app/`, `lib/`. Only referenced in docs. The live barbarian UI is `components/game/overlays/BarbarianTrack.tsx`.
 - **Action:** Delete the file. `docs/ui/BARBARIAN_HEX_TILES_DESIGN.md` references it as a starting point for an on-board version — that doc stays; the component is trivially recreatable and its tooltip copy can be lifted from git history.

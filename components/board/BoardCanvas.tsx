@@ -2,10 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { HexTile } from '@/themes/flat/HexTile';
-import { FlatPort } from '@/themes/flat/Port';
-import { Tooltip } from '@/components/ui/tooltip';
-import { generatePorts, getPortForVertex } from '@/core/engine/board/port-generator';
+import { HexTile, Port, SeaFrame, BarbarianRoute, BOARD_VIEWBOX, TT } from '@/themes/tabletop';
+import { generatePorts } from '@/core/engine/board/port-generator';
+import { getBarbarianForces } from '@/core/rules/barbarian-strength';
 import { GameState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
 import { BoardSelectionState } from '@/lib/types/board-selection-state';
@@ -13,7 +12,6 @@ import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { BoardControls } from './BoardControls';
 import { BoardIconDefs } from './board-icon-defs';
-import { createHex, hexCornerToPixel } from '@/lib/hex';
 
 /**
  * BoardCanvas - Pure rendering component for the game board
@@ -96,7 +94,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   } = selectionState;
 
   return (
-    <div className="relative w-full h-full bg-slate-900 overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: TT.sea }}>
       <TransformWrapper
         initialScale={1}
         minScale={0.5}
@@ -126,9 +124,10 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                   className="overflow-visible"
                   width="100%"
                   height="100%"
-                  viewBox="-500 -500 1000 1000"
+                  viewBox={BOARD_VIEWBOX}
                 >
                   <BoardIconDefs />
+                  <SeaFrame />
 
                   {/* Hex Grid */}
                   {sortedTiles.map(tile => {
@@ -178,8 +177,24 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
                   {/* Ports */}
                   {ports.map((port, i) => (
-                    <FlatPort key={i} port={port} />
+                    <Port key={i} port={port} />
                   ))}
+
+                  {/* Barbarian sea route (C&K) — replaces the HUD BarbarianTrack panel */}
+                  {gameState.gameMode === 'cities_and_knights' && (() => {
+                    const forces = getBarbarianForces(gameState);
+                    return (
+                      <BarbarianRoute
+                        barbarianPosition={gameState.barbarianPosition ?? 0}
+                        totalKnightStrength={forces.knights}
+                        totalCityCount={forces.cities}
+                        skipFirstBarbarianAttack={gameState.skipFirstBarbarianAttack}
+                        hasBarbariansAttacked={gameState.hasBarbariansAttacked}
+                        isUnderAttack={gameState.phase === 'barbarian_city_selection'}
+                        ports={ports}
+                      />
+                    );
+                  })()}
 
                   {/* Edges (Roads) */}
                   {renderEdges.map(edge => {

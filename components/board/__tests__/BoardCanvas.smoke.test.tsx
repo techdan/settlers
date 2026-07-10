@@ -146,16 +146,20 @@ describe('BoardCanvas smoke tests (flat theme)', () => {
         const fixture = buildFixture();
         const { container } = renderBoard(fixture);
         const svg = container.querySelector('#board-svg')!;
-        const tilePolygons = svg.querySelectorAll('polygon');
-        expect(tilePolygons.length).toBe(fixture.hexes.length);
-        expect(tilePolygons.length).toBe(19);
+        // Tiles are counted by their root group's data-terrain marker, not by raw
+        // polygon count — illustrated tiles are composed of many polygons.
+        const tiles = svg.querySelectorAll('g[data-terrain]');
+        expect(tiles.length).toBe(fixture.hexes.length);
+        expect(tiles.length).toBe(19);
     });
 
     it('renders the correct number-token values', () => {
         const fixture = buildFixture();
         const { container } = renderBoard(fixture);
         const svg = container.querySelector('#board-svg')!;
-        const texts = Array.from(svg.querySelectorAll('text'));
+        // Scope to tile groups: the barbarian route's strength chips also render
+        // bare digits, and they are not number tokens.
+        const texts = Array.from(svg.querySelectorAll('g[data-terrain] text'));
         const tokenTexts = texts.filter(t => /^\d+$/.test(t.textContent ?? ''));
 
         // 18 numbered hexes (19 tiles - 1 desert)
@@ -270,5 +274,23 @@ describe('BoardCanvas smoke tests (flat theme)', () => {
 
         const invalidGroup = findEdgeGroup(container, fixture.invalidEmptyEdge);
         expect(invalidGroup).toBeNull();
+    });
+
+    it('renders the barbarian sea route with the ship in Cities & Knights mode', () => {
+        const fixture = buildFixture();
+        fixture.gameState.barbarianPosition = 3;
+        const { container } = renderBoard(fixture);
+        const route = container.querySelector('[data-testid="barbarian-route"]');
+        expect(route).not.toBeNull();
+        expect(route!.querySelector('[data-testid="barbarian-ship"]')).not.toBeNull();
+        // Full text summary survives as the route tooltip
+        expect(route!.querySelector('title')?.textContent).toContain('Position: 3 / 7');
+    });
+
+    it('does not render the barbarian route in base mode', () => {
+        const fixture = buildFixture();
+        fixture.gameState.gameMode = 'base';
+        const { container } = renderBoard(fixture);
+        expect(container.querySelector('[data-testid="barbarian-route"]')).toBeNull();
     });
 });

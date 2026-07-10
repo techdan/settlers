@@ -46,7 +46,6 @@ import { ProgressCardType } from '@/lib/types/player';
 import { ProgressPromptProvider, useProgressPrompt } from '@/lib/hooks/useProgressPrompt';
 import { TreasonEffect } from '@/lib/types/game';
 import { WeddingGiftModal } from './progress/WeddingGiftModal';
-import { BarbarianTrack } from './overlays/BarbarianTrack';
 import { RobberVictimSelectionModal } from './overlays/RobberVictimSelectionModal';
 import { RobberTheftNotification } from './overlays/RobberTheftNotification';
 import { GameOverModal } from './modals/GameOverModal';
