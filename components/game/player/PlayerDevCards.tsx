@@ -7,19 +7,12 @@ import { playDevCard } from '@/app/actions';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
 import { DevCardModal } from '@/components/game/modals/DevCardModal';
+import { CardStack, DevCardFace } from '@/themes/tabletop';
 
 interface PlayerDevCardsProps {
     gameState: GameState;
     playerId: string;
 }
-
-const DEV_CARD_LABELS: Record<DevCardType, string> = {
-    knight: 'Knight (Soldier)',
-    victory_point: 'Victory Point',
-    road_building: 'Road Building',
-    year_of_plenty: 'Year of Plenty',
-    monopoly: 'Monopoly',
-};
 
 const DEV_CARD_TOOLTIP_TEXT: Record<DevCardType, { title: string; description: string }> = {
     road_building: {
@@ -47,14 +40,6 @@ const DEV_CARD_TOOLTIP_TEXT: Record<DevCardType, { title: string; description: s
         description:
             'Counts as 1 victory point toward the 10 needed to win. Reveal to claim your victory!',
     },
-};
-
-const DEV_CARD_ICONS: Record<DevCardType, string> = {
-    knight: '⚔️',
-    victory_point: '🏆',
-    road_building: '🛤️',
-    year_of_plenty: '🌾',
-    monopoly: '💰',
 };
 
 const devCardTooltipContent = (type: DevCardType, canPlay: boolean, timerLocked: boolean, notPlayerTurn: boolean) => {
@@ -94,14 +79,14 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
         setModalCard(type);
     };
 
-    // Collect all cards into a single list with their types
-    const allCards: DevCardType[] = [];
-    (Object.keys(player.devCards) as DevCardType[]).forEach(type => {
-        const count = player.devCards[type];
-        for (let i = 0; i < count; i++) {
-            allCards.push(type);
-        }
-    });
+    // Cards render as stacks grouped by type (one stack per type, count badge)
+    const heldTypes = (Object.keys(player.devCards) as DevCardType[]).filter(
+        type => player.devCards[type] > 0
+    );
+    const newCounts = (player.devCardsBoughtThisTurn ?? []).reduce<Partial<Record<DevCardType, number>>>(
+        (acc, type) => ({ ...acc, [type]: (acc[type] ?? 0) + 1 }),
+        {}
+    );
 
     const notPlayerTurn = gameState.currentTurn !== playerId;
     const wrongPhase = gameState.phase !== 'main_phase' && gameState.phase !== 'waiting_for_roll';
@@ -114,38 +99,36 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
 
                 <h3 className="relative z-10 text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
 
-                <div className="relative z-10 space-y-1 flex-1 overflow-y-auto max-h-[300px]">
-                    {allCards.length > 0 ? (
-                        allCards.map((type, index) => {
-                            const canPlay = type === 'victory_point' || !player.hasPlayedDevCard;
-                            const isDisabled = isPending || timerStatus.isLocked || notPlayerTurn || wrongPhase || !canPlay;
+                <div className="relative z-10 flex-1 overflow-y-auto max-h-[300px]">
+                    {heldTypes.length > 0 ? (
+                        <div className="flex flex-wrap gap-3 pt-1">
+                            {heldTypes.map(type => {
+                                const canPlay = type === 'victory_point' || !player.hasPlayedDevCard;
+                                const isDisabled = isPending || timerStatus.isLocked || notPlayerTurn || wrongPhase || !canPlay;
 
-                            return (
-                                <Tooltip
-                                    key={`${type}-${index}`}
-                                    className="w-full"
-                                    placement="left"
-                                    content={devCardTooltipContent(type, canPlay, timerStatus.isLocked, notPlayerTurn)}
-                                >
-                                    <button
-                                        onClick={() => handleCardClick(type)}
-                                        disabled={isDisabled}
-                                        className={`relative group w-full text-left px-4 py-3 transition-colors rounded border border-slate-600 bg-slate-700/50 ${
-                                            isDisabled
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : 'hover:bg-slate-600/50 cursor-pointer'
-                                        }`}
+                                return (
+                                    <Tooltip
+                                        key={type}
+                                        placement="left"
+                                        content={devCardTooltipContent(type, canPlay, timerStatus.isLocked, notPlayerTurn)}
                                     >
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{DEV_CARD_ICONS[type]}</span>
-                                            <span className="font-semibold text-white group-hover:text-blue-300 transition-colors text-sm">
-                                                {DEV_CARD_LABELS[type]}
-                                            </span>
-                                        </div>
-                                    </button>
-                                </Tooltip>
-                            );
-                        })
+                                        <button
+                                            onClick={() => handleCardClick(type)}
+                                            disabled={isDisabled}
+                                            className={`p-1 transition-transform ${
+                                                isDisabled
+                                                    ? 'opacity-50 cursor-not-allowed'
+                                                    : 'cursor-pointer hover:-translate-y-0.5'
+                                            }`}
+                                        >
+                                            <CardStack count={player.devCards[type]} width={52}>
+                                                <DevCardFace type={type} width={52} />
+                                            </CardStack>
+                                        </button>
+                                    </Tooltip>
+                                );
+                            })}
+                        </div>
                     ) : (
                         <div className="text-slate-500 text-xs italic py-2">No cards</div>
                     )}
@@ -153,11 +136,10 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                     {player.devCardsBoughtThisTurn && player.devCardsBoughtThisTurn.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-slate-700">
                             <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">New (Wait 1 Turn)</h4>
-                            <div className="space-y-1">
-                                {player.devCardsBoughtThisTurn.map((type, i) => (
+                            <div className="flex flex-wrap gap-3">
+                                {(Object.keys(newCounts) as DevCardType[]).map(type => (
                                     <Tooltip
-                                        key={`new-${type}-${i}`}
-                                        className="w-full"
+                                        key={`new-${type}`}
                                         placement="left"
                                         content={
                                             <div className="space-y-1">
@@ -167,11 +149,10 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                                             </div>
                                         }
                                     >
-                                        <div className="relative w-full px-4 py-3 rounded border border-slate-700 bg-slate-800/50 text-slate-400">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg opacity-50">{DEV_CARD_ICONS[type]}</span>
-                                                <span className="text-sm">{DEV_CARD_LABELS[type]}</span>
-                                            </div>
+                                        <div className="p-1 opacity-60">
+                                            <CardStack count={newCounts[type] ?? 0} width={52}>
+                                                <DevCardFace type={type} width={52} />
+                                            </CardStack>
                                         </div>
                                     </Tooltip>
                                 ))}

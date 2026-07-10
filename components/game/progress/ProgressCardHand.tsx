@@ -4,13 +4,11 @@ import { PlayerState, GameState } from '@/lib/types';
 import { ProgressCardType } from '@/lib/types/player';
 import { ProgressCardModal } from './ProgressCardModal';
 import { CommercialHarborInitiatorDialog } from './CommercialHarborInitiatorDialog';
-import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
-import { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
-import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import { ProgressHandView, ProgressHandCard } from '@/components/game/player/ProgressHandView';
 
 interface ProgressCardHandProps {
     player: PlayerState;
@@ -37,27 +35,6 @@ interface ProgressCardHandProps {
         handler: (...args: TArgs) => TResult
     ) => (...args: TArgs) => TResult;
 }
-
-// Build card info from the official definitions
-const PROGRESS_CARD_INFO: Record<ProgressCardType, { name: string; description: string; category: ProgressCardCategory }> =
-    Object.fromEntries(
-        Object.entries(PROGRESS_CARD_DEFINITIONS).map(([type, meta]) => [
-            type,
-            { name: meta.name, description: meta.description, category: meta.category }
-        ])
-    ) as Record<ProgressCardType, { name: string; description: string; category: ProgressCardCategory }>;
-
-const CATEGORY_COLORS = {
-    science: 'bg-green-600',
-    trade: 'bg-yellow-600',
-    politics: 'bg-blue-600'
-};
-
-const CATEGORY_ICONS = {
-    science: '🟢',
-    trade: '🟡',
-    politics: '🔵'
-};
 
 const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
 
@@ -253,41 +230,32 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     const canAffordMedicine =
         (player.resources.ore ?? 0) >= MEDICINE_COST.ore &&
         (player.resources.wheat ?? 0) >= MEDICINE_COST.wheat;
-    const isEmpty = cardCount === 0;
 
-    return (
-        <>
-            <div className="relative rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto w-80 overflow-hidden">
-                <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
-                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
+    // Route a click through the same decorator + play-routing path as before.
+    // decorateCardHandler must receive the render-loop notion of "has follow-up"
+    // (which includes treason) so its selection tracking is unchanged.
+    const handleCardClick = (cardType: ProgressCardType) => {
+        const hasFollowup =
+            requiresParameters(cardType) ||
+            BOARD_SELECTION_CARDS.includes(cardType) ||
+            ROAD_PLACEMENT_CARDS.includes(cardType) ||
+            cardType === 'engineer' ||
+            cardType === 'smith' ||
+            cardType === 'medicine' ||
+            cardType === 'treason' ||
+            cardType === 'crane';
+        const run = decorateCardHandler
+            ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
+            : () => handlePlayCard(cardType);
+        run();
+    };
 
-                {/* Header */}
-                <div className="relative z-10 flex justify-between items-center px-4 py-2 border-b border-slate-700">
-                    <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Progress Cards</h3>
-                    <div className="text-xs text-slate-400">
-                        <span className="text-white font-bold">{cardCount}</span>
-                    </div>
-                </div>
-
-                {isActiveTurn && cardCount > 4 && (
-                    <div className="relative z-10 px-4 py-2 bg-amber-900/50 border-b border-amber-600 text-xs text-amber-100">
-                        <span className="font-semibold">Hand limit is 4 at end of your turn.</span>
-                    </div>
-                )}
-
-                {/* Card List */}
-                <div className="relative z-10 max-h-64 overflow-y-auto">
-                    {isEmpty ? (
-                        <div className="p-4 text-center text-slate-500 text-sm">No progress cards</div>
-                    ) : (
-                        <div className="flex flex-col">
-                            {allCards.map((cardType, index) => {
-                                const info = PROGRESS_CARD_INFO[cardType];
-                                const icon = CATEGORY_ICONS[info.category];
-
-                                const isEngineer = cardType === 'engineer';
-                                const isSmith = cardType === 'smith';
-                                const isMedicine = cardType === 'medicine';
+    // Build the presentational hand: one entry per held card (duplicates preserved),
+    // with playability + follow-up state derived from the exact same gating as before.
+    const handCards: ProgressHandCard[] = allCards.map((cardType) => {
+        const isEngineer = cardType === 'engineer';
+        const isSmith = cardType === 'smith';
+        const isMedicine = cardType === 'medicine';
         const isAlchemist = cardType === 'alchemist';
         const isCommercialHarbor = cardType === 'commercial_harbor';
         const isTreason = cardType === 'treason';
@@ -298,89 +266,83 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
         const wrongPhase = isAlchemist
             ? gameState.phase !== 'waiting_for_roll'
             : gameState.phase !== 'main_phase';
-                                const notPlayerTurn = !isActiveTurn;
-                                const phaseDisabled = notPlayerTurn || wrongPhase;
+        const notPlayerTurn = !isActiveTurn;
+        const phaseDisabled = notPlayerTurn || wrongPhase;
 
-                                const engineerDisabled = isEngineer && !hasEngineerTarget;
-                                const smithDisabled = isSmith && !hasSmithTarget;
-                                const medicineDisabled = isMedicine && (!canAffordMedicine || !hasMedicineTarget);
+        const engineerDisabled = isEngineer && !hasEngineerTarget;
+        const smithDisabled = isSmith && !hasSmithTarget;
+        const medicineDisabled = isMedicine && (!canAffordMedicine || !hasMedicineTarget);
 
-                                // Disable Commercial Harbor if there's already an active session
-                                const commercialHarborDisabled = isCommercialHarbor &&
-                                    gameState.pendingCommercialHarbor !== undefined &&
-                                    gameState.pendingCommercialHarbor.offers.length > 0;
+        // Disable Commercial Harbor if there's already an active session
+        const commercialHarborDisabled = isCommercialHarbor &&
+            gameState.pendingCommercialHarbor !== undefined &&
+            gameState.pendingCommercialHarbor.offers.length > 0;
 
-                                // C&K Rule: Robber-related cards cannot be played before first barbarian attack
-                                const beforeFirstAttack = gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked;
-                                const robberCardDisabled = (isTaxation || isIntrigue || isTreason) && beforeFirstAttack;
-                                const hasFollowup =
-                                    requiresParameters(cardType) ||
-                                    BOARD_SELECTION_CARDS.includes(cardType) ||
-                                    ROAD_PLACEMENT_CARDS.includes(cardType) ||
-                                    isEngineer ||
-                                    isSmith ||
-                                    isMedicine ||
-                                    isTreason ||
-                                    cardType === 'crane';
-                                const isFollowupActive =
-                                    hasFollowup && (
-                                        currentActiveFollowup === cardType ||
-                                        (isEngineer && isEngineerSelecting) ||
-                                        (isSmith && isSmithSelecting) ||
-                                        (isMedicine && isMedicineSelecting)
-                                    );
-                                // Build tooltip: show description + any restrictions
-                                let tooltipParts: string[] = [info.description];
+        // C&K Rule: Robber-related cards cannot be played before first barbarian attack
+        const beforeFirstAttack = gameState.gameMode === 'cities_and_knights' && !gameState.hasBarbariansAttacked;
+        const robberCardDisabled = (isTaxation || isIntrigue || isTreason) && beforeFirstAttack;
 
-                                if (timerStatus.isLocked) {
-                                    tooltipParts.push('\n⏱️ Time expired - cannot play cards');
-                                } else if (notPlayerTurn) {
-                                    tooltipParts.push('\n⚠️ Can only play on your turn');
-                                } else if (wrongPhase) {
-                                    tooltipParts.push(isAlchemist
-                                        ? '\n⚠️ Can only be played before rolling dice'
-                                        : '\n⚠️ Can only be played after rolling dice');
-                                }
+        const disabled =
+            isPending ||
+            timerStatus.isLocked ||
+            phaseDisabled ||
+            engineerDisabled ||
+            smithDisabled ||
+            medicineDisabled ||
+            commercialHarborDisabled ||
+            robberCardDisabled;
 
-                                if (isEngineer && engineerDisabled) {
-                                    tooltipParts.push('\n❌ No cities without walls available');
-                                } else if (isSmith && smithDisabled) {
-                                    tooltipParts.push('\n❌ No knights can be promoted');
-                                } else if (isMedicine && medicineDisabled) {
-                                    tooltipParts.push('\n❌ Need 2 ore + 1 wheat, a city piece, and an upgradeable settlement');
-                                } else if (isCommercialHarbor && commercialHarborDisabled) {
-                                    tooltipParts.push('\n❌ Commercial Harbor already in progress');
-                                } else if (robberCardDisabled) {
-                                    tooltipParts.push('\n❌ Cannot be played before the first barbarian attack');
-                                }
+        // Single short reason, highest priority first (mirrors the old tooltip order)
+        let disabledReason: string | undefined;
+        if (timerStatus.isLocked) {
+            disabledReason = 'Time expired';
+        } else if (notPlayerTurn) {
+            disabledReason = 'You can only play cards on your turn';
+        } else if (wrongPhase) {
+            disabledReason = isAlchemist
+                ? 'Can only be played before rolling dice'
+                : 'Can only be played after rolling dice';
+        } else if (engineerDisabled) {
+            disabledReason = 'No cities without walls available';
+        } else if (smithDisabled) {
+            disabledReason = 'No knights can be promoted';
+        } else if (medicineDisabled) {
+            disabledReason = 'Need 2 ore + 1 wheat, a city piece, and an upgradeable settlement';
+        } else if (commercialHarborDisabled) {
+            disabledReason = 'Commercial Harbor already in progress';
+        } else if (robberCardDisabled) {
+            disabledReason = 'Cannot be played before the first barbarian attack';
+        }
 
-                                const disabledTitle = tooltipParts.join('');
-                                const onCardClick = decorateCardHandler
-                                    ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
-                                    : () => handlePlayCard(cardType);
-                                return (
-                                    <Tooltip key={`${cardType}-${index}`} content={disabledTitle || info.description} placement="left" tooltipClassName="whitespace-pre-line">
-                                        <button
-                                            onClick={onCardClick}
-                                            disabled={isPending || timerStatus.isLocked || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled}
-                                            className={`relative group w-full text-left px-4 py-3 transition-colors border-b border-slate-700/50 last:border-b-0 ${isFollowupActive
-                                                ? 'bg-blue-700/60 text-white ring-2 ring-blue-400'
-                                                : 'hover:bg-slate-700/50'
-                                                } ${timerStatus.isLocked || phaseDisabled || engineerDisabled || smithDisabled || medicineDisabled || commercialHarborDisabled || robberCardDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-lg">{icon}</span>
-                                                <span className="font-semibold text-white group-hover:text-blue-300 transition-colors">
-                                                    {info.name}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    </Tooltip>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
+        const hasFollowup =
+            requiresParameters(cardType) ||
+            BOARD_SELECTION_CARDS.includes(cardType) ||
+            ROAD_PLACEMENT_CARDS.includes(cardType) ||
+            isEngineer ||
+            isSmith ||
+            isMedicine ||
+            isTreason ||
+            cardType === 'crane';
+        const active =
+            hasFollowup && (
+                currentActiveFollowup === cardType ||
+                (isEngineer && isEngineerSelecting) ||
+                (isSmith && isSmithSelecting) ||
+                (isMedicine && isMedicineSelecting)
+            );
+
+        return { type: cardType, disabled, disabledReason, active };
+    });
+
+    return (
+        <>
+            <div className="pointer-events-auto">
+                {isActiveTurn && cardCount > 4 && (
+                    <div className="mb-1.5 rounded-md px-3 py-1.5 bg-amber-900/50 border border-amber-600 text-xs text-amber-100 font-semibold">
+                        Hand limit is 4 at end of your turn.
+                    </div>
+                )}
+                <ProgressHandView cards={handCards} onCardClick={handleCardClick} />
             </div>
 
             {modalCard && typeof window !== 'undefined' && createPortal(
