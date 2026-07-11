@@ -150,12 +150,65 @@ Card frame system per pitch (cream stock, brass double rule, art window, serif n
 
 ### Phase 4 — HUD re-zoning + warm chrome (F design + D sweep)
 
+> ✅ **Done 2026-07-11 — `dc2ead9`.** Unified `GameTray`, tabletop dice, warm HUD tokens, right-rail layout, build/action glyphs, compact player-card polish, and chronological log landed after the user's visual pass. Verification at commit: `npx tsc --noEmit` clean and 191/191 tests. The original sweep deliberately did not cover the modal/dialog/notification layer; the audit below makes that remaining work an explicit gate before Phase 5.
+
 1. Warm dark chrome tokens in `globals.css` (replacing ad-hoc slate classes):
    `--ui-bg #14100c · --ui-panel #211a13/92% · --ui-panel-raised #2a2118 · --ui-border #3d3226 · --ui-text #ede3cf · --ui-muted #a89a83 · --ui-accent #c9973f · --ui-danger #b8433c · --ui-success #5d8a4e`
    (Fable may tune exact values on the live board; semantic timer colors stay green/orange/red.)
 2. Sweep `bg-slate-*`, `border-slate-*`, `text-slate-*` in `components/game/**` to the tokens (see §6 for the dynamic-class trap).
 3. Layout: top-center status banner (phase/turn/timer), right rail (players → collapsible log/chat/stats), tray from Phase 3. Piece-anchored popovers for city/knight management.
 4. Dice restyle (pip + event die per §2), replacing hardcoded `#dc2626`/`#fbbf24` in `DiceDisplay.tsx`.
+
+### Phase 4.5 — Legacy visual retirement across the full game (required before Phase 5)
+
+**Why this phase exists:** the Phase 4 tray/HUD is cohesive, but secondary interactions still fall back to the pre-overhaul visual system. Audit on 2026-07-11 found **486 `slate-*` class occurrences across 48 `components/game` files**, **10 game surfaces importing the old `GameIcon` / `ColoredSvgIcon` / `/icons/` pipeline**, hardcoded resource/commodity emoji maps in five active surfaces, plus Unicode status/action symbols in board prompts and notifications. A live C&K setup pass confirmed the new tray/build glyphs are correct; the hidden modal states need their own systematic pass.
+
+This is a retirement pass, not new art direction. Reuse the existing tabletop palette, cards, pieces, and glyph language. Do not start Phase 5 motion until every acceptance gate below passes and the user completes the interaction-matrix visual pass.
+
+#### 4.5.1 Shared tabletop UI primitives first
+
+- **Files:** `themes/tabletop/glyphs.tsx`, `themes/tabletop/index.ts`, plus a small shared wrapper under `components/game/ui/` if standalone sizing/background treatment is needed.
+- **Action:** extend the existing pure-SVG glyph set with commodity glyphs (paper/cloth/coin), improvement-category glyphs, and neutral status/action glyphs (confirm, cancel, warning, trade, time). Provide one reusable resource/commodity token presentation for lists, costs, selectors, and trade summaries. Do not duplicate new SVG paths inside individual dialogs.
+- **Accept:** every replacement below imports a shared primitive; no new emoji map, `/icons/` path, CSS-mask icon, or one-off resource SVG is introduced.
+
+#### 4.5.2 Resource, commodity, piece, and card replacements
+
+- **Trade surfaces:** `components/game/trade/TradeModal.tsx`, `components/game/trade/TradeOfferDisplay.tsx`, `components/game/overlays/TradeProgressModal.tsx`, `components/game/overlays/TradeCompletedNotification.tsx`.
+- **City/knight surfaces:** `components/game/city/CityManagementDialog.tsx`, `components/game/city/SettlementManagementDialog.tsx`, `components/game/city/KnightManagementDialog.tsx`, `components/game/city/GuildSelectionList.tsx`.
+- **Progress/resource surfaces:** `components/game/progress/AqueductModal.tsx`, `components/game/progress/CommercialHarborModal.tsx`, `components/game/progress/CommercialHarborInitiatorDialog.tsx`, `components/game/progress/ProgressCardModal.tsx`, `components/game/progress/ProgressCardDiscardDialog.tsx`, `components/game/modals/selectors/ResourceSelector.tsx`, `components/game/modals/selectors/CommoditySelector.tsx`, `components/game/modals/selectors/KnightSelector.tsx`.
+- **Other consumers:** `components/game/overlays/RobberTheftNotification.tsx`, `components/game/ui/ExtensionRequestButton.tsx`, and `components/game/player/CommodityHand.tsx` (verify whether still rendered before refactoring; delete only with explicit approval if dead).
+- **Action:** replace old `GameIcon`/`ColoredSvgIcon`, emoji maps, and raw text symbols with the shared tabletop glyphs; use `ResourceCardFace`, `CommodityCardFace`, `ProgressCardFace`, `DevCardFace`, or tabletop piece components when the UI is presenting an actual card/piece rather than a compact cost token.
+- **Accept:** `rg -n "GameIcon|ColoredSvgIcon|/icons/" components/game` returns 0; no visible resource/commodity names are represented by platform emoji.
+
+#### 4.5.3 Modal, dialog, prompt, and notification chrome
+
+- **Files:** all active files under `components/game/modals/`, plus active `*Modal.tsx`, `*Dialog.tsx`, `*Prompt.tsx`, and `*Notification.tsx` under `components/game/{city,progress,trade,overlays,ui}/`.
+- **Action:** introduce/reuse one warm modal shell (backdrop, panel, header, close action, footer actions, focus treatment) based on `--ui-*` tokens. Migrate the active surfaces in interaction-matrix order rather than blind search-and-replace. Preserve semantic danger/success/timer colors, but remove cool slate containers, borders, disabled states, and typography.
+- **Accept:** `rg -n "slate-" components/game` returns 0 except an explicitly documented exception approved during review; every clickable row/button has `cursor-pointer`, while disabled controls use `cursor-not-allowed`; focus-visible treatment remains present.
+
+#### 4.5.4 Board/action symbols and dead legacy infrastructure
+
+- **Board files:** `components/board/VertexRenderer.tsx`, `components/board/EdgeRenderer.tsx` — replace Unicode `✓`/`✕` markers with shared SVG confirm/cancel glyphs without changing hitboxes.
+- **Status files:** `components/game/ui/ConnectionStatus.tsx`, `components/game/ui/TurnTimerBar.tsx`, `components/game/ui/TurnTimerExpiredNotification.tsx`, `components/game/modals/WaitingOverlay.tsx`, and active game-over/robber/trade notifications — remove emoji-as-iconography while keeping human-readable text and ARIA labels.
+- **Dead file:** `components/game/ui/GameStatus.tsx` has zero importers (the live layout uses `CompactGameStatus`); delete it during this phase after a final importer check.
+- **Legacy pipeline:** after all consumers are migrated, re-run a repo-wide import/reference inventory for `components/ui/icons/GameIcon.tsx`, `components/ui/icons/ColoredSvgIcon.tsx`, and `public/icons/*.svg`. Delete only assets/components with zero remaining consumers; do not bulk-delete `public/icons` by directory assumption.
+- **Accept:** no visible emoji or Unicode check/cross glyph remains in board/game UI; `GameStatus.tsx` is gone; legacy icon modules/assets are either removed or have each surviving non-game consumer documented.
+
+#### 4.5.5 Verification matrix
+
+Automated gate for every batch: `npx tsc --noEmit`, `npm run test:run`, lint no worse than baseline, and targeted render tests for any new shared primitive/modal shell. Final static gates are the `rg` commands above plus an emoji scan over `components/board` and `components/game`.
+
+Manual visual pass, in both base and C&K modes where applicable, at desktop and narrow widths:
+
+1. Build tray: every structure, every cost, enabled/disabled/selected states.
+2. Bank trade; domestic trade compose, offer, accept/reject/cancel, progress, and completion.
+3. Discard, robber victim selection, theft success/failure, and board confirm/cancel markers.
+4. Dev-card modal and progress-card flows: Aqueduct, Commercial Harbor (both players), Merchant, Taxation, Treason, Wedding, and progress-card discard.
+5. Settlement, city/improvement/metropolis, and knight management dialogs.
+6. Waiting overlay, board-selection prompts, timer expiry, connection states, and game-over surfaces.
+7. Progress-card drawer/shelf with 1–3 cards, 4–7 cards, active follow-up, disabled reason, and narrow viewport.
+
+Record each row as passed in this plan before Phase 5 begins.
 
 ### Phase 5 — Motion (F, small)
 
