@@ -156,7 +156,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         <div className="flex flex-col h-full">
             {/* Realtime status indicator */}
             {!isRealtimeEnabled && (
-                <div className="px-2 py-1 text-xs text-slate-500 bg-slate-800/50 border-b border-slate-700">
+                <div className="px-2 py-1 text-xs text-[var(--ui-muted)] bg-[var(--ui-panel-solid)]/50 border-b border-[var(--ui-border)]">
                     Realtime off (polling)
                 </div>
             )}
@@ -165,14 +165,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             <div
                 ref={messageListRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto space-y-0.5 text-xs scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent p-2"
+                className="flex-1 overflow-y-auto space-y-0.5 text-xs scrollbar-thin scrollbar-thumb-[#3d3226] scrollbar-track-transparent p-2"
             >
                 {isLoading && (
-                    <div className="text-slate-500 italic px-1">Loading messages...</div>
+                    <div className="text-[var(--ui-muted)] italic px-1">Loading messages...</div>
                 )}
 
                 {!isLoading && messages.length === 0 && (
-                    <div className="text-slate-500 italic px-1">No messages yet. Say hello!</div>
+                    <div className="text-[var(--ui-muted)] italic px-1">No messages yet. Say hello!</div>
                 )}
 
                 {error && (
@@ -204,12 +204,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                                 {/* Message content */}
                                 <div className="flex-1 min-w-0">
                                     {/* Sender name */}
-                                    <span className="font-semibold text-slate-200">
+                                    <span className="font-semibold text-[var(--ui-text)]">
                                         {isSystem ? 'System' : player?.name || 'Unknown'}
                                     </span>
-                                    <span className="text-slate-500 mx-1">·</span>
+                                    <span className="text-[var(--ui-muted)] mx-1">·</span>
                                     {/* Message text - preserve newlines */}
-                                    <span className="text-slate-300 break-words whitespace-pre-wrap">
+                                    <span className="text-[var(--ui-text)] break-words whitespace-pre-wrap">
                                         {msg.message}
                                     </span>
                                 </div>
@@ -239,7 +239,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             )}
 
             {/* Composer */}
-            <div className="border-t border-slate-700 p-2">
+            <div className="border-t border-[var(--ui-border)] p-2">
                 <div className="flex gap-2">
                     <textarea
                         ref={inputRef}
@@ -249,13 +249,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                         placeholder="Message the table..."
                         disabled={isSending}
                         rows={1}
-                        className="flex-1 bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-200 placeholder-slate-500 resize-none focus:outline-none focus:border-amber-500 disabled:opacity-50"
+                        className="flex-1 bg-[var(--ui-panel-solid)] border border-[var(--ui-border)] rounded px-2 py-1.5 text-xs text-[var(--ui-text)] placeholder-[var(--ui-muted)] resize-none focus:outline-none focus:border-[var(--ui-accent)] disabled:opacity-50"
                         style={{ minHeight: '32px', maxHeight: '80px' }}
                     />
                     <button
                         onClick={handleSend}
                         disabled={!inputValue.trim() || isSending}
-                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white text-xs font-semibold rounded cursor-pointer transition-colors"
+                        className="px-3 py-1.5 bg-[var(--ui-accent)] hover:brightness-110 disabled:bg-[var(--ui-panel-raised)] disabled:cursor-not-allowed text-[var(--ui-accent-ink)] text-xs font-semibold rounded cursor-pointer transition-colors"
                     >
                         {isSending ? '...' : 'Send'}
                     </button>

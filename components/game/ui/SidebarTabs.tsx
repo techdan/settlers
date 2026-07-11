@@ -96,13 +96,13 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
     return (
         <div
-            className="flex flex-col bg-slate-900/90 rounded-lg border border-slate-700 shadow-xl backdrop-blur-sm overflow-hidden text-neutral-200 transition-[max-height] duration-300 ease-in-out"
+            className="flex flex-col bg-[var(--ui-panel)] rounded-lg border border-[var(--ui-border)] shadow-xl backdrop-blur-sm overflow-hidden text-[var(--ui-text)] transition-[max-height] duration-300 ease-in-out"
             style={{ maxHeight: isCollapsed ? tabBarHeight : '30rem' }}
         >
             {/* Tab Buttons (always at top when expanded) */}
             <div
                 ref={tabBarRef}
-                className="flex border-b border-slate-700 transition-transform duration-300 ease-in-out"
+                className="flex border-b border-[var(--ui-border)] transition-transform duration-300 ease-in-out"
             >
                 {tabs.map((tab) => (
                     <button
@@ -112,15 +112,15 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                             flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider
                             transition-colors cursor-pointer relative flex items-center justify-center gap-1.5
                             ${activeTab === tab.id
-                                ? 'bg-slate-700/80 text-white border-b-2 border-amber-500'
-                                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                                ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] border-b-2 border-[var(--ui-accent)]'
+                                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-panel-solid)]/50 hover:text-[var(--ui-text)]'
                             }
                         `}
                     >
                         <span>{tab.label}</span>
                         {/* Unread badge */}
                         {tab.badge !== undefined && tab.badge > 0 && (
-                            <span className="min-w-[18px] h-[18px] px-1 bg-amber-500 text-slate-900 text-[10px] font-bold rounded-full flex items-center justify-center">
+                            <span className="min-w-[18px] h-[18px] px-1 bg-[var(--ui-accent)] text-[var(--ui-accent-ink)] text-[10px] font-bold rounded-full flex items-center justify-center">
                                 {formatBadge(tab.badge)}
                             </span>
                         )}
@@ -164,9 +164,9 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
                     {activeTab === 'stats' && !diceStats && (
                         <div className="h-full flex items-center justify-center p-4">
-                            <div className="text-center text-slate-500">
+                            <div className="text-center text-[var(--ui-muted)]">
                                 <div className="text-sm">No dice stats yet</div>
-                                <div className="text-xs text-slate-600">Roll the dice to see statistics</div>
+                                <div className="text-xs text-[var(--ui-muted)]">Roll the dice to see statistics</div>
                             </div>
                         </div>
                     )}

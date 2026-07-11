@@ -30,8 +30,8 @@ export const ProgressDecksPanel: React.FC<ProgressDecksPanelProps> = ({ gameStat
     ];
 
     return (
-        <div className="bg-slate-800/90 p-3 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5">
+        <div className="bg-[var(--ui-panel)] p-3 rounded-lg shadow-lg text-[var(--ui-text)] border border-[var(--ui-border)] pointer-events-auto">
+            <h3 className="text-xs font-bold text-[var(--ui-muted)] uppercase tracking-wider mb-2.5">
                 Progress Decks
             </h3>
 

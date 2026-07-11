@@ -195,6 +195,21 @@
     --color-barbarian-gradient-end-alt: oklch(from #0f172a l c h);
     --color-barbarian-stroke-dark: oklch(from #7f1d1d l c h);
     --color-barbarian-stroke-muted: oklch(from #475569 l c h);
+
+    /* ===== HUD chrome — warm "harbor night" (graphics overhaul Phase 4) =====
+     * The persistent HUD reads these instead of Tailwind slate-*.
+     * Semantic timer/status colors (green/orange/red bars) stay as-is. */
+    --ui-bg: #14100c;
+    --ui-panel: rgba(33, 26, 19, 0.92);
+    --ui-panel-solid: #211a13;
+    --ui-panel-raised: #2a2118;
+    --ui-border: #3d3226;
+    --ui-text: #ede3cf;
+    --ui-muted: #a89a83;
+    --ui-accent: #c9973f;
+    --ui-accent-ink: #211a13;
+    --ui-danger: #b8433c;
+    --ui-success: #5d8a4e;
   }
 }
 

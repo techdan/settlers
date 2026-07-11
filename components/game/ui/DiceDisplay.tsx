@@ -2,170 +2,62 @@ import React from 'react';
 import { GameState } from '@/lib/types';
 import { EventDieFace } from '@/core/rules/commodity-constants';
 import { Tooltip } from '@/components/ui/tooltip';
-import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
-import { DICE_COLORS, EVENT_DIE_ICON_COLORS } from '@/lib/constants/board-palette';
+import { PipDie, EventDie } from '@/themes/tabletop';
 
 interface DiceDisplayProps {
     diceRoll: GameState['diceRoll'];
     eventDieRoll?: GameState['eventDieRoll'];
 }
 
-const EVENT_DIE_COLORS: Record<EventDieFace, { bg: string; iconColor: string; label: string }> = {
-    ship: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.ship, label: 'Barbarian Ship' },
-    science: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.science, label: 'Science' },
-    trade: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.trade, label: 'Trade' },
-    politics: { bg: 'bg-white', iconColor: EVENT_DIE_ICON_COLORS.politics, label: 'Politics' }
-};
+/** Tabletop die colors (art direction: warm red/gold, cream or ink pips) */
+const RED_DIE = { body: '#b3352c', pip: '#f3e9cf' };
+const YELLOW_DIE = { body: '#d9a72e', pip: '#3a3020' };
 
 const EVENT_DIE_TEXT: Record<EventDieFace, { title: string; description: string }> = {
     ship: { title: 'Barbarian Advance', description: 'Barbarian moves forward one space' },
     science: { title: 'Science', description: 'Progress cards drawn from Science' },
     trade: { title: 'Trade', description: 'Progress cards drawn from Trade' },
-    politics: { title: 'Politics', description: 'Progress cards drawn from Politics' }
+    politics: { title: 'Politics', description: 'Progress cards drawn from Politics' },
 };
-
-const DICE_FACE_SVGS: Record<number, string> = {
-    1: '/icons/dice-six-faces-one.svg',
-    2: '/icons/dice-six-faces-two.svg',
-    3: '/icons/dice-six-faces-three.svg',
-    4: '/icons/dice-six-faces-four.svg',
-    5: '/icons/dice-six-faces-five.svg',
-    6: '/icons/dice-six-faces-six.svg',
-};
-
-const EVENT_DIE_SVGS: Record<EventDieFace, string> = {
-    ship: '/icons/drakkar.svg',
-    science: '/icons/freemasonry.svg',
-    trade: '/icons/scales.svg',
-    politics: '/icons/shaking-hands.svg',
-};
-
-const DIE_OUTER_STYLE =
-    'inline-flex h-14 w-14 rounded-2xl border-2 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:shadow-xl p-0 cursor-default';
-
-const DIE_INNER_STYLE =
-    'relative flex h-full w-full items-center justify-center overflow-hidden rounded-[14px] shadow-inner';
-
-function DieFrame({
-    outerClassName,
-    innerClassName,
-    innerStyle,
-    rimColor,
-    rimWidthPx = 4,
-    children,
-}: {
-    outerClassName: string;
-    innerClassName?: string;
-    innerStyle?: React.CSSProperties;
-    rimColor?: string;
-    rimWidthPx?: number;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className={`${DIE_OUTER_STYLE} ${outerClassName}`} style={{ padding: 2 }}>
-            <div
-                className={`${DIE_INNER_STYLE} ${innerClassName ?? ''}`}
-                style={innerStyle}
-            >
-                {children}
-                {rimColor && (
-                    <div
-                        className="pointer-events-none absolute inset-0 rounded-[14px]"
-                        style={{ boxShadow: `inset 0 0 0 ${rimWidthPx}px ${rimColor}` }}
-                    />
-                )}
-            </div>
-        </div>
-    );
-}
-
-function RegularDie({
-    value,
-    label,
-    backgroundColor,
-    pipColor,
-}: {
-    value: number;
-    label: string;
-    backgroundColor: string;
-    pipColor: string;
-}) {
-    const src = DICE_FACE_SVGS[value] ?? DICE_FACE_SVGS[1];
-
-    return (
-        <Tooltip content={label} placement="top">
-            <div aria-label={label}>
-                <DieFrame
-                    outerClassName="border-white/30"
-                    innerClassName="bg-transparent"
-                    rimColor={backgroundColor}
-                >
-                    <ColoredSvgIcon
-                        src={src}
-                        // Dice SVGs are structured as: full-bleed background + foreground path with "pip holes".
-                        // To get "die background with pip color showing through", we set:
-                        // - backgroundColor = pip color (fills the full-bleed background)
-                        // - color = die body color (fills the foreground path)
-                        color={backgroundColor}
-                        backgroundColor={pipColor}
-                        size={48}
-                        alt={label}
-                    />
-                </DieFrame>
-            </div>
-        </Tooltip>
-    );
-}
 
 export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll }) => {
     if (!diceRoll) return null;
 
     return (
-        <div className="bg-transparent p-3 rounded-lg text-white flex items-center gap-4 pointer-events-auto">
-            {/* Regular Dice */}
+        <div className="flex items-center gap-3 pointer-events-auto">
+            {/* Production dice */}
             <div className="flex gap-2">
-                <RegularDie
-                    value={diceRoll.d1}
-                    label="Red Die"
-                    // Bright red die background, bright yellow pips (inverse of yellow die)
-                    backgroundColor={DICE_COLORS.redDie}
-                    pipColor={DICE_COLORS.yellowDie}
-                />
-                <RegularDie
-                    value={diceRoll.d2}
-                    label="Yellow Die"
-                    // Yellow die background, bright red pips
-                    backgroundColor={DICE_COLORS.yellowDie}
-                    pipColor={DICE_COLORS.redDie}
-                />
+                <Tooltip content="Red Die" placement="top">
+                    <div className="transition hover:-translate-y-0.5">
+                        <PipDie value={diceRoll.d1} body={RED_DIE.body} pip={RED_DIE.pip} size={48} title="Red Die" />
+                    </div>
+                </Tooltip>
+                <Tooltip content="Yellow Die" placement="top">
+                    <div className="transition hover:-translate-y-0.5">
+                        <PipDie value={diceRoll.d2} body={YELLOW_DIE.body} pip={YELLOW_DIE.pip} size={48} title="Yellow Die" />
+                    </div>
+                </Tooltip>
             </div>
 
-            {/* Event Die (Cities & Knights) */}
+            {/* Event die (Cities & Knights) */}
             {eventDieRoll && (
                 <>
-                    <div className="w-px h-8 bg-white/20" />
+                    <div className="w-px h-8 bg-[var(--ui-text)]/20" />
                     <Tooltip
                         content={(
                             <div className="flex flex-col text-left">
-                                <span className="font-semibold text-white">{EVENT_DIE_TEXT[eventDieRoll.face].title}</span>
+                                <span className="font-semibold text-slate-100">{EVENT_DIE_TEXT[eventDieRoll.face].title}</span>
                                 <span className="text-slate-200">{EVENT_DIE_TEXT[eventDieRoll.face].description}</span>
                             </div>
                         )}
                         placement="top"
                     >
-                        <div aria-label={`Event die: ${EVENT_DIE_TEXT[eventDieRoll.face].title}`}>
-                            <DieFrame
-                                outerClassName="border-white/20 cursor-pointer"
-                                innerClassName={EVENT_DIE_COLORS[eventDieRoll.face].bg}
-                            >
-                                <ColoredSvgIcon
-                                    src={EVENT_DIE_SVGS[eventDieRoll.face]}
-                                    backgroundColor={DICE_COLORS.eventDieFace}
-                                    color={EVENT_DIE_COLORS[eventDieRoll.face].iconColor}
-                                    size={48}
-                                    alt={EVENT_DIE_COLORS[eventDieRoll.face].label}
-                                />
-                            </DieFrame>
+                        <div className="cursor-pointer transition hover:-translate-y-0.5">
+                            <EventDie
+                                face={eventDieRoll.face}
+                                size={48}
+                                title={EVENT_DIE_TEXT[eventDieRoll.face].title}
+                            />
                         </div>
                     </Tooltip>
                 </>

@@ -93,13 +93,13 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
 
     return (
         <>
-            <div className="relative p-4 rounded-lg shadow-lg text-white border border-slate-700 w-64 pointer-events-auto flex flex-col h-full overflow-hidden">
-                <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
-                <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
+            {/* De-paneled for the unified GameTray: the tray provides the warm
+                chrome, so the w-64 slate panel + player wash are gone. A compact
+                label + the card-stack row remain; the New section keeps its divider. */}
+            <div className="relative pointer-events-auto flex flex-col">
+                <h3 className="text-[10px] font-bold text-[var(--ui-muted)] uppercase tracking-wider mb-1.5">Dev Cards</h3>
 
-                <h3 className="relative z-10 text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Dev Cards</h3>
-
-                <div className="relative z-10 flex-1 overflow-y-auto max-h-[300px]">
+                <div>
                     {heldTypes.length > 0 ? (
                         <div className="flex flex-wrap gap-3 pt-1">
                             {heldTypes.map(type => {
@@ -130,12 +130,12 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                             })}
                         </div>
                     ) : (
-                        <div className="text-slate-500 text-xs italic py-2">No cards</div>
+                        <div className="text-[var(--ui-muted)] text-xs italic py-2">No cards</div>
                     )}
 
                     {player.devCardsBoughtThisTurn && player.devCardsBoughtThisTurn.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-slate-700">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">New (Wait 1 Turn)</h4>
+                        <div className="mt-3 pt-3 border-t border-[var(--ui-border)]">
+                            <h4 className="text-[10px] font-bold text-[var(--ui-muted)] uppercase mb-1.5">New (Wait 1 Turn)</h4>
                             <div className="flex flex-wrap gap-3">
                                 {(Object.keys(newCounts) as DevCardType[]).map(type => (
                                     <Tooltip

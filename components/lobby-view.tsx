@@ -94,11 +94,32 @@ export function LobbyView({
     const syncedGameMode = lobbyState?.gameMode ?? 'base';
     const pendingRequests = lobbyState?.pendingRequests ?? [];
     const timerConfig = lobbyState?.timerConfig ?? DEFAULT_TIMER_CONFIG;
-    const skipFirstBarbarianAttack = lobbyState?.skipFirstBarbarianAttack ?? false;
+    const syncedSkipFirstBarbarianAttack = lobbyState?.skipFirstBarbarianAttack ?? false;
 
     useEffect(() => {
         setGameMode(syncedGameMode);
     }, [syncedGameMode]);
+
+    // Optimistic local state for the skip-first-attack toggle: without realtime,
+    // the lobby polls every 5s, so waiting for the server echo makes the switch
+    // feel broken. Same pattern as gameMode above.
+    const [skipFirstBarbarianAttack, setSkipFirstBarbarianAttack] = useState(false);
+    useEffect(() => {
+        setSkipFirstBarbarianAttack(syncedSkipFirstBarbarianAttack);
+    }, [syncedSkipFirstBarbarianAttack]);
+
+    const handleSkipFirstAttackToggle = async () => {
+        if (!isHost) return;
+        const next = !skipFirstBarbarianAttack;
+        setSkipFirstBarbarianAttack(next);
+        try {
+            const { toggleLobbySkipFirstBarbarianAttack } = await import('@/app/actions');
+            await toggleLobbySkipFirstBarbarianAttack(roomId, currentPlayerId, next);
+        } catch (e) {
+            console.error('Failed to toggle skip-first-attack', e);
+            setSkipFirstBarbarianAttack(!next);
+        }
+    };
 
     const handleGameModeChange = async (mode: 'base' | 'cities_and_knights') => {
         setGameMode(mode); // Optimistic update
@@ -363,14 +384,9 @@ export function LobbyView({
                                 Skip First Barbarian Attack
                             </label>
                             <button
-                                onClick={async () => {
-                                    if (isHost) {
-                                        const { toggleLobbySkipFirstBarbarianAttack } = await import('@/app/actions');
-                                        await toggleLobbySkipFirstBarbarianAttack(roomId, currentPlayerId, !skipFirstBarbarianAttack);
-                                    }
-                                }}
+                                onClick={handleSkipFirstAttackToggle}
                                 disabled={!isHost}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                                     skipFirstBarbarianAttack ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-700'
                                 }`}
                                 role="switch"

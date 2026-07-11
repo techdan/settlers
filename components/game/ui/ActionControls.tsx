@@ -2,25 +2,38 @@ import React, { useTransition } from 'react';
 import { GameState } from '@/lib/types';
 import { endTurn, rollDice, requestTimeExtension } from '@/app/actions';
 import { Tooltip } from '@/components/ui/tooltip';
-import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
 import { ExtensionRequestButton } from './ExtensionRequestButton';
+import { PipDie } from '@/themes/tabletop';
 
-type ActionIconProps = {
-    src: string;
-    color: string;
-    backgroundColor?: string;
-    size?: number;
-    className?: string;
-};
+/* Tabletop action glyphs — drawn, no icon files (art spec: one language everywhere) */
 
-const ActionIcon = ({ src, color, backgroundColor, size = 56, className }: ActionIconProps) => (
-    <ColoredSvgIcon
-        src={src}
-        color={color}
-        backgroundColor={backgroundColor}
-        size={size}
-        className={className}
-    />
+/** Two tilted mini dice on the brass roll button */
+const RollDiceGlyph: React.FC = () => (
+    <span className="relative flex h-full w-full items-center justify-center" aria-hidden="true">
+        <span className="absolute -translate-x-[7px] -translate-y-[3px] -rotate-12">
+            <PipDie value={5} body="#b3352c" pip="#f3e9cf" size={26} />
+        </span>
+        <span className="absolute translate-x-[8px] translate-y-[5px] rotate-6">
+            <PipDie value={2} body="#f3e9cf" pip="#3a3020" size={23} />
+        </span>
+    </span>
+);
+
+/** Exchange arrows for trade */
+const TradeGlyph: React.FC = () => (
+    <svg viewBox="0 0 28 28" width={30} height={30} aria-hidden="true" fill="none"
+        stroke="#3a2c14" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M 5 10 H 21 M 21 10 L 16.5 5.5" />
+        <path d="M 23 18 H 7 M 7 18 L 11.5 22.5" />
+    </svg>
+);
+
+/** Passing pennant for end turn */
+const EndTurnGlyph: React.FC = () => (
+    <svg viewBox="0 0 28 28" width={28} height={28} aria-hidden="true">
+        <line x1={8} y1={4} x2={8} y2={25} stroke="#fff1f2" strokeWidth={2.4} strokeLinecap="round" />
+        <path d="M 10 5 L 23 8.5 L 10 12 Z" fill="#fff1f2" />
+    </svg>
 );
 
 interface ActionControlsProps {
@@ -99,15 +112,9 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
                         onClick={handleRollDice}
                         disabled={isPending || hasOptimisticUpdates}
                         aria-label="Roll Dice"
-                        className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 border-amber-100/70 bg-gradient-to-br from-amber-400 to-yellow-500 text-slate-900 shadow-lg shadow-amber-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer p-0 overflow-hidden shadow-inner"
+                        className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 border-amber-100/70 bg-[var(--ui-accent)] text-[var(--ui-accent-ink)] shadow-lg shadow-amber-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg)] disabled:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer p-0 overflow-hidden shadow-inner"
                     >
-                        <ActionIcon
-                            src="/icons/rolling-dices.svg"
-                            color="var(--color-special-dice)"
-                            backgroundColor="#fef08a"
-                            size={56}
-                            className="h-full w-full rounded-lg"
-                        />
+                        <RollDiceGlyph />
                         <span className="sr-only">
                             {isPending ? 'Rolling...' : hasOptimisticUpdates ? 'Waiting...' : 'Roll Dice'}
                         </span>
@@ -121,15 +128,10 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
                         <Tooltip content="Trade" placement="top" longPressDelayMs={300}>
                             <button
                                 onClick={onOpenTrade}
-                                className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 border-amber-100/70 bg-gradient-to-br from-amber-500 via-amber-500 to-orange-500 text-slate-950 shadow-lg shadow-amber-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer p-0 overflow-hidden shadow-inner"
+                                className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 border-amber-100/70 bg-gradient-to-br from-amber-500 via-amber-500 to-orange-500 text-[var(--ui-accent-ink)] shadow-lg shadow-amber-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg)] cursor-pointer p-0 overflow-hidden shadow-inner"
                                 aria-label="Open trade menu"
                             >
-                                <ActionIcon
-                                    src="/icons/trade.svg"
-                                    color="#1f2937"
-                                    backgroundColor="#fef3c7"
-                                    className="h-full w-full rounded-lg"
-                                />
+                                <TradeGlyph />
                                 <span className="sr-only">Trade</span>
                             </button>
                         </Tooltip>
@@ -155,14 +157,9 @@ export const ActionControls: React.FC<ActionControlsProps> = ({
                                 disabled={isPending || !canEndTurn}
                                 aria-disabled={!canEndTurn}
                                 aria-label="End turn"
-                                className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 border-red-100/70 bg-gradient-to-br from-rose-600 to-red-600 text-white shadow-lg shadow-red-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer p-0 overflow-hidden shadow-inner"
+                                className="pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 border-red-100/70 bg-gradient-to-br from-rose-600 to-red-600 text-white shadow-lg shadow-red-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-rose-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg)] disabled:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer p-0 overflow-hidden shadow-inner"
                             >
-                                <ActionIcon
-                                    src="/icons/player-next.svg"
-                                    color="#fff1f2"
-                                    backgroundColor="#7f1d1d"
-                                    className="h-full w-full rounded-lg"
-                                />
+                                <EndTurnGlyph />
                                 <span className="sr-only">
                                     {isPending ? 'Ending turn...' : 'End Turn'}
                                 </span>

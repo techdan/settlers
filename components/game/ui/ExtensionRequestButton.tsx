@@ -110,10 +110,10 @@ export function ExtensionRequestButton({
           onClick={handleRequest}
           disabled={!canRequest || isRequesting}
           aria-label="Request more time"
-          className={`pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 text-sm font-semibold shadow-lg shadow-sky-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 p-0 overflow-hidden shadow-inner ${
+          className={`pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 text-sm font-semibold shadow-lg shadow-sky-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg)] p-0 overflow-hidden shadow-inner ${
             canRequest
               ? 'border-blue-200/70 bg-gradient-to-br from-sky-500 to-indigo-600 text-white focus-visible:ring-sky-200 cursor-pointer'
-              : 'border-slate-300/70 bg-slate-200 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed'
+              : 'border-[var(--ui-border)] bg-[var(--ui-panel-raised)] text-[var(--ui-muted)] cursor-not-allowed'
           } ${isRequesting ? 'opacity-60' : ''}`}
         >
           <ColoredSvgIcon

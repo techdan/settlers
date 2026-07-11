@@ -1,9 +1,10 @@
 import React, { useTransition } from 'react';
 import { GameState } from '@/lib/types';
+import { ResourceType } from '@/core/rules/board-constants';
 import { buyDevCard } from '@/app/actions';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import { Road, Settlement, City, CityWall, KnightPiece, ResourceGlyph, TT } from '@/themes/tabletop';
 
 interface BuildControlsProps {
     gameState: GameState;
@@ -11,6 +12,54 @@ interface BuildControlsProps {
     buildMode: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null;
     onSetBuildMode: (mode: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall' | null) => void;
 }
+
+/* Tabletop menu icons: the buttons show the actual board pieces in a neutral
+ * warm tone (white when the build mode is selected on blue), and costs use the
+ * same mini resource glyphs as ports and cards. */
+const menuTone = (active: boolean) => (active ? '#f8f6f0' : 'var(--ui-text)');
+
+const CostChip: React.FC<{ type: ResourceType; n: number }> = ({ type, n }) => (
+    <span className="inline-flex items-center gap-0.5">
+        <svg viewBox="-10 -11 20 22" width={13} height={14} aria-hidden="true">
+            <ResourceGlyph type={type} size={17} />
+        </svg>
+        <span>{n}</span>
+    </span>
+);
+
+const RoadMenuIcon: React.FC<{ active: boolean }> = ({ active }) => (
+    <svg viewBox="-7 -13 14 26" width={11} height={20} aria-hidden="true">
+        <Road color={menuTone(active)} length={22} />
+    </svg>
+);
+const SettlementMenuIcon: React.FC<{ active: boolean }> = ({ active }) => (
+    <svg viewBox="-11 -11 22 24" width={19} height={20} aria-hidden="true">
+        <Settlement color={menuTone(active)} />
+    </svg>
+);
+const CityMenuIcon: React.FC<{ active: boolean }> = ({ active }) => (
+    <svg viewBox="-13 -19 26 33" width={17} height={21} aria-hidden="true">
+        <City color={menuTone(active)} />
+    </svg>
+);
+const KnightMenuIcon: React.FC<{ active: boolean }> = ({ active }) => (
+    <svg viewBox="-11 -12 22 26" width={17} height={20} aria-hidden="true">
+        <KnightPiece color={active ? '#f8f6f0' : 'var(--ui-muted)'} level="basic" active={false} />
+    </svg>
+);
+const WallMenuIcon: React.FC<{ active: boolean }> = ({ active }) => (
+    <svg viewBox="-17 -3 34 17" width={24} height={12} aria-hidden="true">
+        <CityWall color={menuTone(active)} />
+    </svg>
+);
+const DevCardMenuIcon: React.FC = () => (
+    <svg viewBox="0 0 14 19" width={14} height={19} aria-hidden="true">
+        <rect x={0.75} y={0.75} width={12.5} height={17.5} rx={2} fill={TT.token.face} stroke={TT.token.ring} strokeWidth={1.2} />
+        <rect x={2.8} y={2.8} width={8.4} height={7} rx={1} fill={TT.token.ringInner} opacity={0.7} />
+        <rect x={2.8} y={11.6} width={8.4} height={1.6} rx={0.8} fill={TT.token.ring} opacity={0.7} />
+        <rect x={2.8} y={14.4} width={5.5} height={1.6} rx={0.8} fill={TT.token.ring} opacity={0.5} />
+    </svg>
+);
 
 export const BuildControls: React.FC<BuildControlsProps> = ({
     gameState,
@@ -67,7 +116,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
     const canInteract = isMyTurn && gameState.phase === 'main_phase' && !timerStatus.isLocked;
 
     return (
-        <div className="flex gap-2 bg-slate-800/80 p-2 rounded-xl backdrop-blur-sm border border-slate-700 pointer-events-auto">
+        <div className="flex gap-2 pointer-events-auto">
             {/* ROAD */}
             <Tooltip
                 content={`Build a Road (1 Brick, 1 Wood)\nConnects settlements and cities.\nRemaining: ${player?.roadsRemaining ?? 0}`}
@@ -80,19 +129,17 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'road'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
-                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <GameIcon type="road" size={18} playerColor={buildMode === 'road' ? 'var(--color-highlight-white)' : 'var(--color-highlight-muted)'} />
+                        <RoadMenuIcon active={buildMode === 'road'} />
                         <span>Road ({player?.roadsRemaining ?? 0})</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                        <GameIcon type="brick" size={14} />
-                        <span>1</span>
-                        <GameIcon type="wood" size={14} />
-                        <span>1</span>
+                    <div className="flex items-center gap-1.5 text-xs font-normal opacity-90 mt-1">
+                        <CostChip type="brick" n={1} />
+                        <CostChip type="wood" n={1} />
                     </div>
                 </button>
             </Tooltip>
@@ -109,19 +156,19 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'settlement'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
-                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <img src="/icons/village.svg" alt="Settlement" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'settlement' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
+                        <SettlementMenuIcon active={buildMode === 'settlement'} />
                         <span>Settlement ({player?.settlementsRemaining ?? 0})</span>
                     </div>
-                    <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
-                        <GameIcon type="brick" size={12} /><span>1</span>
-                        <GameIcon type="wood" size={12} /><span>1</span>
-                        <GameIcon type="sheep" size={12} /><span>1</span>
-                        <GameIcon type="wheat" size={12} /><span>1</span>
+                    <div className="flex items-center gap-1 text-xs font-normal opacity-90 mt-1">
+                        <CostChip type="brick" n={1} />
+                        <CostChip type="wood" n={1} />
+                        <CostChip type="sheep" n={1} />
+                        <CostChip type="wheat" n={1} />
                     </div>
                 </button>
             </Tooltip>
@@ -138,19 +185,17 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordCity && (player?.citiesRemaining ?? 0) > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
-                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                         }`}
                 >
                     <div className="flex items-center gap-1.5">
-                        <GameIcon type="city" size={18} playerColor={buildMode === 'city' ? 'var(--color-highlight-white)' : 'var(--color-highlight-muted)'} />
+                        <CityMenuIcon active={buildMode === 'city'} />
                         <span>City ({player?.citiesRemaining ?? 0})</span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                        <GameIcon type="ore" size={14} />
-                        <span>3</span>
-                        <GameIcon type="wheat" size={14} />
-                        <span>2</span>
+                    <div className="flex items-center gap-1.5 text-xs font-normal opacity-90 mt-1">
+                        <CostChip type="ore" n={3} />
+                        <CostChip type="wheat" n={2} />
                     </div>
                 </button>
             </Tooltip>
@@ -166,18 +211,18 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         onClick={() => canInteract && handleBuyDevCard()}
                         disabled={!canInteract || !canAffordDevCard || deckSize === 0 || isPending}
                         className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
-                            ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
-                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
                     >
                         <div className="flex items-center gap-1.5">
-                            <GameIcon type="paper" size={18} />
+                            <DevCardMenuIcon />
                             <span>Dev Card</span>
                         </div>
-                        <div className="flex items-center gap-0.5 text-xs font-normal opacity-80 mt-1">
-                            <GameIcon type="sheep" size={12} /><span>1</span>
-                            <GameIcon type="wheat" size={12} /><span>1</span>
-                            <GameIcon type="ore" size={12} /><span>1</span>
+                        <div className="flex items-center gap-1 text-xs font-normal opacity-90 mt-1">
+                            <CostChip type="sheep" n={1} />
+                            <CostChip type="wheat" n={1} />
+                            <CostChip type="ore" n={1} />
                         </div>
                     </button>
                 </Tooltip>
@@ -196,19 +241,17 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildKnight
-                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
-                                : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                                : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
                     >
                         <div className="flex items-center gap-1.5">
-                            <img src="/icons/knight-basic.svg" alt="Knight" className="w-[18px] h-[18px]" style={{ filter: buildMode === 'knight' ? 'brightness(0) invert(1)' : 'brightness(0.8)' }} />
+                            <KnightMenuIcon active={buildMode === 'knight'} />
                             <span>Knight ({knightsRemaining})</span>
                         </div>
-                        <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                            <GameIcon type="sheep" size={14} />
-                            <span>1</span>
-                            <GameIcon type="ore" size={14} />
-                            <span>1</span>
+                        <div className="flex items-center gap-1.5 text-xs font-normal opacity-90 mt-1">
+                            <CostChip type="sheep" n={1} />
+                            <CostChip type="ore" n={1} />
                         </div>
                     </button>
                 </Tooltip>
@@ -227,17 +270,16 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildCityWall
-                                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' + (!canInteract ? ' cursor-not-allowed' : '')
-                                : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                                : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
                     >
                         <div className="flex items-center gap-1.5">
-                            <GameIcon type="city-wall" size={18} playerColor={buildMode === 'city_wall' ? 'var(--color-highlight-white)' : 'var(--color-structure-wall-highlight)'} />
+                            <WallMenuIcon active={buildMode === 'city_wall'} />
                             <span>City Wall ({wallsRemaining})</span>
                         </div>
-                        <div className="flex items-center gap-1 text-xs font-normal opacity-80 mt-1">
-                            <GameIcon type="brick" size={14} />
-                            <span>2</span>
+                        <div className="flex items-center gap-1.5 text-xs font-normal opacity-90 mt-1">
+                            <CostChip type="brick" n={2} />
                         </div>
                     </button>
                 </Tooltip>

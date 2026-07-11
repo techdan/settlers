@@ -72,12 +72,12 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
     };
 
     return (
-        <div className={`relative px-6 py-4 rounded-lg shadow-lg text-white border border-slate-700 pointer-events-auto flex items-center gap-2 overflow-hidden ${!hasCommodities ? 'w-full' : ''}`}>
-            <div className="absolute inset-0 opacity-90 bg-slate-800"></div>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundColor: player.color }}></div>
-
+        // De-paneled for the unified GameTray: the tray provides the warm chrome,
+        // so no slate panel / player-color wash here. Theft highlight + the
+        // resource↔commodity divider are preserved.
+        <div className={`relative flex items-center pointer-events-auto ${!hasCommodities ? 'w-full' : ''}`}>
             {/* Resources and Commodities as card stacks in one row */}
-            <div className={`relative z-10 flex items-start ${!hasCommodities ? 'w-full justify-evenly' : 'gap-2.5'}`}>
+            <div className={`relative flex items-start ${!hasCommodities ? 'w-full justify-evenly' : 'gap-2.5'}`}>
                 {/* Resources */}
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
                     <div key={res} className={`px-1.5 py-1.5 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>

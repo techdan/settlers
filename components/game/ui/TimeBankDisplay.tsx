@@ -30,14 +30,14 @@ export function TimeBankDisplay({ gameState, playerId, compact = false }: TimeBa
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-600 dark:text-slate-400">Time Bank:</span>
-        <span className="font-bold tabular-nums text-slate-900 dark:text-slate-100">
+        <span className="text-[var(--ui-muted)]">Time Bank:</span>
+        <span className="font-bold tabular-nums text-[var(--ui-text)]">
           {formatTime(timeBank)}
         </span>
       </div>
       <div className="flex items-center justify-between text-xs">
-        <span className="text-slate-500 dark:text-slate-500">Total Played:</span>
-        <span className="font-medium tabular-nums text-slate-700 dark:text-slate-300">
+        <span className="text-[var(--ui-muted)]">Total Played:</span>
+        <span className="font-medium tabular-nums text-[var(--ui-text)]">
           {formatTime(totalTime)}
         </span>
       </div>

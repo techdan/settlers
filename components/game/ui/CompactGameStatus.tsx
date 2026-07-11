@@ -25,7 +25,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
 
     // Determine what time to display
     let displayTime: string = '';
-    let displayColor: string = 'text-slate-400';
+    let displayColor: string = 'text-[var(--ui-muted)]';
 
     if (!isTimerEnabled) {
         displayTime = '';
@@ -37,7 +37,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
         // Timer not active (between turns) - show default turn time or 0:00
         const defaultTime = gameState.timerConfig?.turnTimeLimit || 0;
         displayTime = formatTime(defaultTime);
-        displayColor = 'text-slate-400';
+        displayColor = 'text-[var(--ui-muted)]';
     }
 
     // Calculate progress percentage for the progress bar
@@ -63,17 +63,17 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
     }
 
     return (
-        <div className="bg-slate-900/90 p-3 rounded-lg text-white border border-slate-700 shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
+        <div className="bg-[var(--ui-panel)] p-3 rounded-lg text-[var(--ui-text)] border border-[var(--ui-border)] shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
             {/* Phase Header with Timer */}
             <div>
-                <div className="text-[10px] text-slate-400 uppercase tracking-wider">Phase</div>
+                <div className="text-[10px] text-[var(--ui-muted)] uppercase tracking-wider">Phase</div>
                 <div className="flex items-center justify-between gap-2">
                     <div className="text-base font-bold capitalize text-blue-200">
                         {formatPhase(gameState.phase)}
                     </div>
                     {isTimerEnabled && (
                         <div className="flex flex-col items-end gap-1">
-                            <div className={`text-sm font-bold tabular-nums ${displayColor || 'text-slate-400'}`}>
+                            <div className={`text-sm font-bold tabular-nums ${displayColor || 'text-[var(--ui-muted)]'}`}>
                                 {displayTime}
                             </div>
                         </div>
@@ -81,7 +81,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
                 </div>
                 {/* Progress bar below phase */}
                 {isTimerEnabled && (
-                    <div className="mt-1.5 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="mt-1.5 h-1.5 bg-[var(--ui-panel-raised)] rounded-full overflow-hidden">
                         <div
                             className={`h-full transition-all duration-1000 ease-linear ${progressColorClass}`}
                             style={{ width: `${progressPercentage}%` }}

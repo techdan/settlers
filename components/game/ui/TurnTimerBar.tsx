@@ -32,7 +32,7 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
       {/* Timer Bar */}
       <div className="relative">
         {/* Background bar */}
-        <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded-lg overflow-hidden">
+        <div className="h-10 bg-[var(--ui-panel-raised)] rounded-lg overflow-hidden">
           {/* Progress bar */}
           <div
             className={`h-full transition-all duration-1000 ease-linear ${colorClass}`}
@@ -42,10 +42,10 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
 
         {/* Timer text overlay */}
         <div className="absolute inset-0 flex items-center justify-between px-4">
-          <span className="font-semibold text-sm text-slate-900 dark:text-white drop-shadow-md">
+          <span className="font-semibold text-sm text-[var(--ui-text)] drop-shadow-md">
             {isMyTurn ? 'Your Turn' : `${playerName}'s Turn`}
           </span>
-          <span className="font-bold text-lg tabular-nums text-slate-900 dark:text-white drop-shadow-md">
+          <span className="font-bold text-lg tabular-nums text-[var(--ui-text)] drop-shadow-md">
             {formatTime(timerStatus.timeRemaining)}
           </span>
         </div>

@@ -20,7 +20,7 @@ export function BoardControls({
             <Tooltip content="Zoom Out" placement="bottom">
                 <button
                     onClick={onZoomOut}
-                    className="bg-slate-800/90 text-white w-9 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 flex items-center justify-center cursor-pointer"
+                    className="bg-[var(--ui-panel-solid)]/90 text-[var(--ui-text)] w-9 h-9 rounded shadow-lg hover:bg-[var(--ui-panel-raised)] transition-colors border border-[var(--ui-border)] flex items-center justify-center cursor-pointer"
                     aria-label="Zoom Out"
                 >
                     <ZoomOut size={18} />
@@ -30,7 +30,7 @@ export function BoardControls({
             <Tooltip content="Zoom In" placement="bottom">
                 <button
                     onClick={onZoomIn}
-                    className="bg-slate-800/90 text-white w-9 h-9 rounded shadow-lg hover:bg-slate-700 transition-colors border border-slate-600 flex items-center justify-center cursor-pointer"
+                    className="bg-[var(--ui-panel-solid)]/90 text-[var(--ui-text)] w-9 h-9 rounded shadow-lg hover:bg-[var(--ui-panel-raised)] transition-colors border border-[var(--ui-border)] flex items-center justify-center cursor-pointer"
                     aria-label="Zoom In"
                 >
                     <ZoomIn size={18} />

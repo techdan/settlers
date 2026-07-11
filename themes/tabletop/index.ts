@@ -12,5 +12,6 @@ export { BarbarianRoute } from './BarbarianRoute';
 export { Road, Settlement, City, Metropolis, CityWall, KnightPiece } from './pieces';
 export { ResourceCardFace, CommodityCardFace, ProgressDeckBack, ProgressCardFace, DevCardFace, CardStack } from './cards';
 export { PROGRESS_ICONS } from './progress-icons';
+export { PipDie, EventDie } from './dice';
 export { ResourceGlyph, ShieldGlyph, TowerGlyph, CrossedSwords } from './glyphs';
 export { TT, TT_SERIF, shade, r2, hexPointsStr } from './palette';
