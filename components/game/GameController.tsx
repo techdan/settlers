@@ -106,8 +106,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         handleRobberVictimCancel,
         resetRobberSelection,
     } = useRobberInteractions({ roomId, playerId, onGameStateUpdated: setBaseGameState });
-    const [theftNotification, setTheftNotification] = useState<NonNullable<GameState['lastTheft']> | null>(null);
-    const lastTheftSeenRef = useRef<number>(0);
+    const [theftNotifications, setTheftNotifications] = useState<NonNullable<GameState['lastTheft']>[]>([]);
+    const seenTheftIdsRef = useRef<Set<string>>(new Set());
     const [showTradeCompletion, setShowTradeCompletion] = useState(false);
     const lastTradeSeenRef = useRef<number>(0);
 
@@ -208,6 +208,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         progressDiscardContext,
         setShowProgressCardDiscard,
         setProgressDiscardContext,
+        onGameStateUpdated: setBaseGameState,
     });
 
     // Knight controller
@@ -251,7 +252,20 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     });
 
     const handleDismissTheftNotification = () => {
-        setTheftNotification(null);
+        setTheftNotifications(current => {
+            const dismissed = current[0];
+            if (dismissed) {
+                const dismissedKey = dismissed.id ?? [
+                    dismissed.timestamp,
+                    dismissed.thiefId,
+                    dismissed.victimId ?? '',
+                    dismissed.source ?? '',
+                    dismissed.victims?.map(victim => victim.victimId).join(',') ?? '',
+                ].join(':');
+                seenTheftIdsRef.current.add(dismissedKey);
+            }
+            return current.slice(1);
+        });
     };
 
     const handleDismissTradeCompletion = () => {
@@ -313,7 +327,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     useVPCardModalEffect(baseGameState, playerId, lastVPCardSeenRef, setVpCardModalType);
 
     // Show theft notification when the robber steals from or for the current player
-    useTheftNotificationEffect(baseGameState, playerId, lastTheftSeenRef, setTheftNotification);
+    useTheftNotificationEffect(baseGameState, playerId, seenTheftIdsRef, setTheftNotifications);
     useTradeCompletionEffect(baseGameState, playerId, lastTradeSeenRef, setShowTradeCompletion);
 
     useProgressDiscardEnforcement(
@@ -544,7 +558,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 potentialVictims={robberPotentialVictims}
                 onSelectVictim={handleRobberVictimSelected}
                 onCancelVictim={handleRobberVictimCancel}
-                theftNotification={theftNotification}
+                theftNotification={theftNotifications[0] ?? null}
                 onDismissTheft={handleDismissTheftNotification}
             />
 

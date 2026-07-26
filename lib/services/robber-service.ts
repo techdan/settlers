@@ -6,6 +6,7 @@ import { stealRandomResource, getTotalResources } from '@/core/engine/resources/
 import { getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 import { setPhase } from './timer-service';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Robber Service
@@ -82,14 +83,13 @@ export async function moveRobber(
                 stealLog = ` and stole a card from ${victim.name}`;
 
                 // Record theft for UI highlighting
-                gameState.lastTheft = {
+                recordTheftEvent(gameState, {
                     source: 'robber',
                     victimId: victim.id,
                     thiefId: thief.id,
                     items: [{ type: 'resource', value: stolenResource, count: 1 }],
                     victims: [{ victimId: victim.id, items: [{ type: 'resource', value: stolenResource, count: 1 }] }],
-                    timestamp: Date.now()
-                };
+                });
             } else {
                 stealLog = ` but ${victim.name} had no cards to steal`;
             }

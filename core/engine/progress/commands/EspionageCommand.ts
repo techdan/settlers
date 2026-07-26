@@ -2,6 +2,8 @@ import { GameState } from '@/lib/types/game';
 import { ProgressCardType } from '@/lib/types/player';
 import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
+import { getCardMetadata } from '@/core/engine/progress/progress-card-definitions';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Espionage Card Command
@@ -48,8 +50,18 @@ export class EspionageCommand implements ProgressCardCommand {
     player.progressCards.push(stolenCard);
 
     // Get card metadata for logging
-    const { getCardMetadata } = require('@/core/engine/progress/progress-card-definitions');
     const cardMeta = getCardMetadata(stolenCard);
+
+    recordTheftEvent(state, {
+      source: 'espionage',
+      victimId: opponent.id,
+      thiefId: playerId,
+      items: [{ type: 'progress_card', value: stolenCard, count: 1 }],
+      victims: [{
+        victimId: opponent.id,
+        items: [{ type: 'progress_card', value: stolenCard, count: 1 }],
+      }],
+    });
 
     addLog(state, `stole ${cardMeta.name} from ${opponent.name}`, playerId);
 

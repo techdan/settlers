@@ -10,14 +10,19 @@ import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-hel
  * (Saboteur's opponent table) stay blocking. These assertions pin that split so
  * a future modal refactor can't silently drop a card back behind the scrim.
  */
-function renderCard(cardType: Parameters<typeof ProgressCardModal>[0]['cardType']) {
+function renderCard(
+    cardType: Parameters<typeof ProgressCardModal>[0]['cardType'],
+    gameOverrides: Parameters<typeof createTestGameState>[0] = {}
+) {
     const player = createTestPlayer({ id: 'p1', name: 'Pa', victoryPoints: 3 });
     const opponent = createTestPlayer({ id: 'p2', name: 'Wu', victoryPoints: 5 });
     const gameState = createTestGameState({
         players: [player, opponent],
         currentTurn: 'p1',
         phase: 'waiting_for_roll',
+        ...gameOverrides,
     });
+    Object.assign(gameState, gameOverrides);
     const onPlay = vi.fn();
 
     return {
@@ -60,12 +65,31 @@ describe('ProgressCardModal surfaces', () => {
         expect(dialog.parentElement!.className).toMatch(/backdrop-blur/);
     });
 
-    it('picks Alchemy dice with pip buttons and previews the production roll', async () => {
+    it('requires the event die reveal before showing Alchemy production dice', async () => {
         const user = userEvent.setup();
-        renderCard('alchemist');
+        const { onPlay } = renderCard('alchemist');
+
+        expect(screen.queryAllByRole('radio')).toHaveLength(0);
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Roll Event Die' }));
+
+        expect(onPlay).toHaveBeenCalledWith('alchemist', { revealEventDie: true });
+    });
+
+    it('shows the locked event result before Alchemy dice and removes cancel', async () => {
+        const user = userEvent.setup();
+        renderCard('alchemist', {
+            pendingAlchemy: { playerId: 'p1', eventDieFace: 'science', revealedAt: 123 },
+            eventDieRoll: { face: 'science', timestamp: 123 },
+        });
 
         // Six faces per die, two dice.
         expect(screen.getAllByRole('radio')).toHaveLength(12);
+        expect(screen.getByText('science')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Resolve Alchemy' })).toBeDisabled();
         expect(screen.queryByText(/Production roll/)).not.toBeInTheDocument();
 
         await user.click(screen.getByRole('radio', { name: 'Red Die 3' }));
@@ -74,6 +98,7 @@ describe('ProgressCardModal surfaces', () => {
         expect(screen.getByRole('radio', { name: 'Red Die 3' })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByText('7')).toBeInTheDocument();
         expect(screen.getByText(/moves the robber/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Resolve Alchemy' })).toBeEnabled();
     });
 });
 

@@ -9,6 +9,7 @@ import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
 import { isValidMainPhaseRoad } from '@/core/validation/building-validator';
 import { setPhase } from '@/lib/services/timer-service';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Development Card Service
@@ -196,15 +197,15 @@ export async function playDevCard(
 
             // Record theft for UI notifications
             if (monopolyVictims.length > 0) {
-                gameState.lastTheft = {
+                recordTheftEvent(gameState, {
+                    source: 'monopoly',
                     thiefId: playerId,
                     items: [{ type: 'resource', value: targetRes, count: stolenCount }],
                     victims: monopolyVictims.map(v => ({
                         victimId: v.victimId,
                         items: [{ type: 'resource', value: targetRes, count: v.amount }]
                     })),
-                    timestamp: Date.now()
-                };
+                });
             }
             break;
     }

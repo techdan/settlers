@@ -3,6 +3,8 @@ import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
+import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Guild Dues Card Command
@@ -65,8 +67,6 @@ export class GuildDuesCommand implements ProgressCardCommand {
     }
 
     // Validate opponent has all requested cards
-    const { addResources, removeResources } = require('@/core/engine/resources/resource-manager');
-
     for (const [key, count] of Object.entries(requestedCounts)) {
       const [type, rawValue] = key.split(':');
       if (type === 'resource') {
@@ -99,20 +99,18 @@ export class GuildDuesCommand implements ProgressCardCommand {
     const takenCount = requested.length;
     const stolenItems = Object.entries(requestedCounts).map(([key, count]) => {
       const [type, value] = key.split(':');
-      return {
-        type: type as 'resource' | 'commodity',
-        value: value as ResourceType | CommodityType,
-        count,
-      };
+      return type === 'resource'
+        ? { type: 'resource' as const, value: value as ResourceType, count }
+        : { type: 'commodity' as const, value: value as CommodityType, count };
     });
 
-    state.lastTheft = {
+    recordTheftEvent(state, {
+      source: 'guild_dues',
       victimId: opponent.id,
       thiefId: playerId,
       items: stolenItems,
       victims: [{ victimId: opponent.id, items: stolenItems }],
-      timestamp: Date.now(),
-    };
+    });
 
     addLog(
       state,

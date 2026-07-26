@@ -163,7 +163,19 @@ export function getAllPendingObligations(gameState: GameState): Obligation[] {
     });
   }
 
-  // 10. Progress card over limit (player must play or discard)
+  // 10. Alchemy event die has been revealed; production dice must now be chosen.
+  if (gameState.pendingAlchemy) {
+    const player = gameState.players.find(p => p.id === gameState.pendingAlchemy?.playerId);
+    obligations.push({
+      type: 'alchemy_dice_selection',
+      playerId: gameState.pendingAlchemy.playerId,
+      description: `${player?.name || 'Player'} must choose the Alchemy production dice`,
+      isBlocking: true,
+      isDependency: false,
+    });
+  }
+
+  // 11. Progress card over limit (player must play or discard)
   gameState.players.forEach(player => {
     if (player.progressCards && player.progressCards.length > 4) {
       obligations.push({

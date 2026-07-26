@@ -15,10 +15,57 @@ import { ResourceType } from '@/core/rules/board-constants';
 import { randomUUID } from 'crypto';
 import { isRoadBuildingEffect, isTreasonEffect, type RoadBuildingEffect } from '@/lib/types/effects';
 import { setPhase } from '@/lib/services/timer-service';
+import { rollEventDie } from '@/core/engine/dice/event-die-manager';
 
 type ProgressCardOptions = Record<string, unknown>;
 
 const KNIGHT_PIECES_PER_LEVEL = 2;
+
+export async function revealAlchemyEventDie(roomId: string, playerId: string): Promise<GameState> {
+    const gameState = await getGameStateByRoomId(roomId);
+    if (!gameState) {
+        throw new Error('Game not found');
+    }
+
+    if (gameState.gameMode !== 'cities_and_knights') {
+        throw new Error('Alchemy is only available in Cities & Knights mode');
+    }
+
+    if (gameState.currentTurn !== playerId) {
+        throw new Error('Not your turn');
+    }
+
+    if (gameState.phase !== 'waiting_for_roll') {
+        throw new Error('Alchemy can only be played before rolling dice');
+    }
+
+    // Treat retries from the same committed interaction as idempotent. This is
+    // especially important for a network retry: the event die must never reroll.
+    if (gameState.pendingAlchemy) {
+        if (gameState.pendingAlchemy.playerId !== playerId) {
+            throw new Error('Another Alchemy roll is already in progress');
+        }
+        return gameState;
+    }
+
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) {
+        throw new Error('Player not found');
+    }
+    if (!player.progressCards?.includes('alchemist')) {
+        throw new Error('Player does not have this card');
+    }
+
+    const eventDieFace = rollEventDie();
+    const revealedAt = Date.now();
+    gameState.pendingAlchemy = { playerId, eventDieFace, revealedAt };
+    // Reveal the locked result immediately. Its effects and statistics are
+    // resolved only after the red production die has been selected.
+    gameState.eventDieRoll = { face: eventDieFace, timestamp: revealedAt };
+
+    await updateGameState(gameState);
+    return gameState;
+}
 
 function hasKnightPieceAvailable(player: { knights?: Knight[] }, level: Knight['level']): boolean {
     const count = (player.knights || []).filter(k => k.level === level).length;
@@ -367,6 +414,10 @@ export async function playProgressCardAction(
     cardType: ProgressCardType,
     options?: ProgressCardOptions
 ): Promise<GameState> {
+    if (cardType === 'alchemist' && options?.revealEventDie === true) {
+        return revealAlchemyEventDie(roomId, playerId);
+    }
+
     const gameState = await getGameStateByRoomId(roomId);
     if (!gameState) {
         throw new Error('Game not found');
@@ -381,9 +432,16 @@ export async function playProgressCardAction(
     }
 
     const isAlchemy = cardType === 'alchemist';
+    if (gameState.pendingAlchemy && !isAlchemy) {
+        throw new Error('Choose the Alchemy production dice before playing another progress card');
+    }
+
     if (isAlchemy) {
         if (gameState.phase !== 'waiting_for_roll') {
             throw new Error('Alchemy can only be played before rolling dice');
+        }
+        if (!gameState.pendingAlchemy || gameState.pendingAlchemy.playerId !== playerId) {
+            throw new Error('Reveal the Alchemy event die before choosing the production dice');
         }
     } else if (gameState.phase !== 'main_phase') {
         throw new Error('Progress cards can only be played after rolling dice (except Alchemy)');
@@ -416,6 +474,13 @@ export async function discardProgressCardsAction(
 
     if (!player.progressCards) {
         throw new Error('Player has no progress cards');
+    }
+
+    if (
+        gameState.pendingAlchemy?.playerId === playerId &&
+        cardsToDiscard.includes('alchemist')
+    ) {
+        throw new Error('Cannot discard Alchemy after the event die has been revealed');
     }
 
     for (const card of cardsToDiscard) {

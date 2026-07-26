@@ -91,6 +91,12 @@ export interface EventDieRoll {
     timestamp: number;
 }
 
+export interface PendingAlchemyState {
+    playerId: string;
+    eventDieFace: EventDieFace;
+    revealedAt: number;
+}
+
 export interface VictoryPointCardGain {
     playerId: string;
     cardType: ProgressCardType;
@@ -137,11 +143,9 @@ export interface TreasonEffect {
     };
 }
 
-export type WeddingGiftItem = {
-    type: 'resource' | 'commodity';
-    value: ResourceType | CommodityType;
-    count: number;
-};
+export type WeddingGiftItem =
+    | { type: 'resource'; value: ResourceType; count: number }
+    | { type: 'commodity'; value: CommodityType; count: number };
 
 export type WeddingSelection = {
     type: 'resource' | 'commodity';
@@ -158,6 +162,34 @@ export interface WeddingGiftRequest {
 export interface WeddingState {
     initiatorId: string;
     requests: WeddingGiftRequest[];
+}
+
+export type TheftSource =
+    | 'robber'
+    | 'wedding'
+    | 'taxation'
+    | 'guild_dues'
+    | 'resource_monopoly'
+    | 'trade_monopoly'
+    | 'monopoly'
+    | 'espionage';
+
+export type TheftItem =
+    | { type: 'resource'; value: ResourceType; count: number }
+    | { type: 'commodity'; value: CommodityType; count: number }
+    | { type: 'progress_card'; value: ProgressCardType; count: number };
+
+export interface TheftEvent {
+    id?: string;
+    source?: TheftSource;
+    victimId?: string;
+    thiefId: string;
+    items?: TheftItem[];
+    victims?: {
+        victimId: string;
+        items: TheftItem[];
+    }[];
+    timestamp: number;
 }
 
 export type DiscardContext =
@@ -197,6 +229,7 @@ export interface GameState {
     metropolises?: Partial<Record<MetropolisType, MetropolisState>>; // 3 metropolises (science, trade, politics) indexed by type
     progressDecks?: ProgressDeck; // Three decks of progress cards
     eventDieRoll?: EventDieRoll; // Last event die roll result
+    pendingAlchemy?: PendingAlchemyState; // Event die is locked; player must choose the production dice
     merchantHexId?: string | null; // Hex where merchant is placed (provides 2:1 trade)
     activeMerchant?: string | null; // Player ID who has active Merchant progress card (grants 1 VP)
     activeEffects?: ActiveEffect[]; // Active progress card effects (e.g., Alchemist, Crane, Medicine)
@@ -212,17 +245,8 @@ export interface GameState {
     pendingRobberAfterBarbarian?: boolean; // True if a 7 was rolled during barbarian attack and robber handling is deferred
     pendingCommercialHarbor?: CommercialHarborState; // Pending Commercial Harbor trades awaiting responses
     pendingWedding?: WeddingState; // Pending Wedding gifts awaiting opponent selections
-    lastTheft?: {
-        source?: 'robber' | 'wedding' | 'taxation' | 'guild_dues';
-        victimId?: string;
-        thiefId: string;
-        items?: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
-        victims?: {
-            victimId: string;
-            items: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
-        }[];
-        timestamp: number;
-    };
+    lastTheft?: TheftEvent; // Backward-compatible pointer to the newest theft event
+    theftEvents?: TheftEvent[]; // Capped recent history used to reliably queue client notifications
     lastTrade?: {
         initiatorId: string;
         acceptorId: string;

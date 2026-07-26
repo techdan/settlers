@@ -150,8 +150,9 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
       {/* Right rail: game status with the collapsible log/chat/stats directly
           beneath it. Height is laid out at 1/scale and then scaled back down,
           so the rendered rail ends exactly where the tray begins and can never
-          slide underneath it. The status panel absorbs the squeeze (it scrolls
-          internally); the log keeps its size. */}
+          slide underneath it. The activity panel yields space before the
+          player panel; only genuinely short viewports let the player panel
+          shrink and scroll internally. */}
       <div
         data-hud="rail"
         className="absolute top-4 right-4 hidden w-80 min-h-0 flex-col gap-3 overflow-x-visible pointer-events-auto xl:flex"
@@ -161,10 +162,11 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
           transformOrigin: 'top right',
         }}
       >
-        {/* min-h-[9rem] is the floor: a shrinkable flex item with overflow
-            hidden will otherwise collapse to zero and silently swallow the
-            player cards, leaving only the phase header. */}
-        <div className="flex min-h-[9rem] shrink overflow-hidden">
+        {/* Keep every player visible without an internal scroller in normal
+            desktop layouts. Below the HUD's minimum-density height there is no
+            longer enough reliable vertical room, so this slot may shrink (with
+            a floor) and CompactGameStatus becomes the fallback scroller. */}
+        <div className="flex min-h-[9rem] shrink-0 overflow-visible [@media(max-height:620px)]:shrink [@media(max-height:620px)]:overflow-hidden">
           <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={handleOpenPlayerCityManagement} />
         </div>
         <div className="flex min-h-0 shrink flex-col">

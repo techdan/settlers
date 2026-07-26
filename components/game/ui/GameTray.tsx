@@ -94,7 +94,9 @@ export const GameTray: React.FC<GameTrayProps> = ({
 
   // Slot D only exists when there is something to show (dice rolled, or it's the
   // active player's un-submitted turn) — otherwise its leading divider dangles.
-  const showDice = !!gameState.diceRoll;
+  const visibleEventDieRoll =
+    gameState.diceRoll || gameState.pendingAlchemy ? gameState.eventDieRoll : undefined;
+  const showDice = !!gameState.diceRoll || !!visibleEventDieRoll;
   const showActions = isActiveTurn && !turnSubmitted;
   const showActionSlot = showDice || showActions;
 
@@ -160,7 +162,7 @@ export const GameTray: React.FC<GameTrayProps> = ({
   if (showActionSlot) {
     slots.push(
       <div key="actions" data-tray-slot="actions" className={`flex items-end gap-3 ${gated}`}>
-        <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
+        <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={visibleEventDieRoll} />
         <ActionControls
           gameState={gameState}
           playerId={playerId}

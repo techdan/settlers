@@ -9,7 +9,7 @@ import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/Gui
 import { Tooltip } from '@/components/ui/tooltip';
 import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
-import { PipDie } from '@/themes/tabletop';
+import { EventDie, PipDie } from '@/themes/tabletop';
 
 /**
  * Cards whose decision is about the board or your visible hand, so the dialog
@@ -146,6 +146,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const [guildSelections, setGuildSelections] = useState<SelectionMap>({});
     const [espionageCommitted, setEspionageCommitted] = useState<boolean>(false);
     const [guildDuesCommitted, setGuildDuesCommitted] = useState<boolean>(false);
+    const [isRevealingAlchemy, setIsRevealingAlchemy] = useState(false);
 
     if (!isOpen || !cardType) return null;
 
@@ -153,6 +154,10 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     const resources: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
     const commodities: CommodityType[] = ['paper', 'cloth', 'coin'];
     const alchemyLocked = cardType === 'alchemist' && gameState.phase !== 'waiting_for_roll';
+    const pendingAlchemy =
+        cardType === 'alchemist' && gameState.pendingAlchemy?.playerId === currentPlayer.id
+            ? gameState.pendingAlchemy
+            : null;
     const irrigationStats = cardType === 'irrigation' ? calculateIrrigationGain(gameState, currentPlayer.id) : null;
     const miningStats = cardType === 'mining' ? calculateMiningGain(gameState, currentPlayer.id) : null;
 
@@ -269,6 +274,19 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         }
     };
 
+    const handleRevealAlchemy = async () => {
+        if (isRevealingAlchemy) return;
+        setError('');
+        setIsRevealingAlchemy(true);
+        try {
+            await onPlay('alchemist', { revealEventDie: true });
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed to reveal the event die');
+        } finally {
+            setIsRevealingAlchemy(false);
+        }
+    };
+
     const resetState = () => {
         setChosenDice1(0);
         setChosenDice2(0);
@@ -325,8 +343,24 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'alchemist': {
                 const bothChosen = chosenDice1 > 0 && chosenDice2 > 0;
                 const total = chosenDice1 + chosenDice2;
+                if (!pendingAlchemy) {
+                    return (
+                        <div className="space-y-3 text-sm text-[var(--ui-text)]">
+                            <p>Roll the event die first. After its result is revealed, Alchemy is committed and you must choose both production dice.</p>
+                            <p className="text-xs text-[var(--ui-muted)]">You can cancel now, before revealing the event die.</p>
+                        </div>
+                    );
+                }
                 return (
                     <div className="space-y-3">
+                        <div className="flex items-center gap-3 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2">
+                            <EventDie face={pendingAlchemy.eventDieFace} size={48} title="Alchemy event die result" />
+                            <div>
+                                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--ui-muted)]">Event die</div>
+                                <div className="font-semibold capitalize text-[var(--ui-text)]">{pendingAlchemy.eventDieFace}</div>
+                                <div className="text-xs text-amber-200">Result locked — choose both production dice.</div>
+                            </div>
+                        </div>
                         <DiePicker label="Red Die" colors={RED_DIE} value={chosenDice1} onChange={setChosenDice1} />
                         <DiePicker label="Yellow Die" colors={YELLOW_DIE} value={chosenDice2} onChange={setChosenDice2} />
                         {bothChosen && (
@@ -709,7 +743,9 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             : 0;
     const guildReady = !isGuildDues || (guildDuesCommitted && opponentId && guildRequiredPicks > 0 && guildSelectedCount === guildRequiredPicks);
     const espionageReady = !isEspionage || (espionageCommitted && opponentId && stolenCard !== '');
-    const disablePlay = alchemyLocked || !guildReady || !espionageReady || !merchantFleetReady || higherVPBlocked;
+    const alchemyDiceReady =
+        cardType !== 'alchemist' || (!!pendingAlchemy && chosenDice1 > 0 && chosenDice2 > 0);
+    const disablePlay = alchemyLocked || !alchemyDiceReady || !guildReady || !espionageReady || !merchantFleetReady || higherVPBlocked;
 
     const playTooltip =
         !guildReady && isGuildDues
@@ -750,7 +786,9 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
     };
 
     const actionLabel =
-        cardType === 'guild_dues'
+        cardType === 'alchemist'
+            ? pendingAlchemy ? 'Resolve Alchemy' : 'Roll Event Die'
+            : cardType === 'guild_dues'
             ? 'Take Cards'
             : cardType === 'espionage'
                 ? 'Steal Card'
@@ -764,8 +802,18 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
     const footer = (
         <>
-            <TabletopButton onClick={onClose} disabled={espionageCommitted || guildDuesCommitted}>Cancel</TabletopButton>
-            {showSelectButton ? (
+            {!pendingAlchemy && !isRevealingAlchemy && (
+                <TabletopButton onClick={onClose} disabled={espionageCommitted || guildDuesCommitted}>Cancel</TabletopButton>
+            )}
+            {cardType === 'alchemist' && !pendingAlchemy ? (
+                <TabletopButton
+                    variant="primary"
+                    onClick={handleRevealAlchemy}
+                    disabled={alchemyLocked || isRevealingAlchemy}
+                >
+                    {isRevealingAlchemy ? 'Rolling…' : actionLabel}
+                </TabletopButton>
+            ) : showSelectButton ? (
                 <TabletopButton variant="primary" onClick={handleSelectOpponent} disabled={!canCommit}>Select</TabletopButton>
             ) : playTooltip ? (
                 <Tooltip content={playTooltip} placement="top" tooltipClassName="whitespace-pre-line">
@@ -785,7 +833,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             description={cardMeta.description}
             surface={boardVisible ? 'board-visible' : 'blocking'}
             width={boardVisible ? 'sm' : 'md'}
-            onClose={!espionageCommitted && !guildDuesCommitted ? onClose : undefined}
+            onClose={!pendingAlchemy && !isRevealingAlchemy && !espionageCommitted && !guildDuesCommitted ? onClose : undefined}
             footer={footer}
         >
                     {renderCardForm()}

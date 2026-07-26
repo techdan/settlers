@@ -5,6 +5,7 @@ import { ResourceType } from '@/core/rules/board-constants';
 import { getVertexIdsForHex } from '@/core/engine/progress/utilities/BoardScanning';
 import { addResources } from '@/core/engine/resources/resource-manager';
 import { stealRandomResource } from '@/core/engine/progress/utilities/ResourceTransfer';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Taxation Card Command
@@ -63,7 +64,8 @@ export class TaxationCommand implements ProgressCardCommand {
 
     // Update theft tracking
     if (theftVictims.length > 0) {
-      state.lastTheft = {
+      recordTheftEvent(state, {
+        source: 'taxation',
         victimId: theftVictims.length === 1 ? theftVictims[0].victimId : undefined,
         thiefId: playerId,
         items: theftVictims.map((theft) => ({
@@ -75,8 +77,7 @@ export class TaxationCommand implements ProgressCardCommand {
           victimId: theft.victimId,
           items: [{ type: 'resource', value: theft.resource, count: 1 }],
         })),
-        timestamp: Date.now(),
-      };
+      });
 
       const victimNames = theftVictims
         .map((theft) => {

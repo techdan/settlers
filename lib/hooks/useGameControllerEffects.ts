@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { GameState } from '@/lib/types';
+import { GameState, TheftEvent } from '@/lib/types';
 import { resolveBarbarianAttack } from '@/app/actions';
 import { synchronizeTimerClock } from '@/lib/services/timer-clock';
 
@@ -70,25 +70,60 @@ export function useVPCardModalEffect(
 export function useTheftNotificationEffect(
   baseGameState: GameState | null,
   playerId: string,
-  lastTheftSeenRef: React.MutableRefObject<number>,
-  setTheftNotification: (theft: NonNullable<GameState['lastTheft']>) => void
+  seenTheftIdsRef: React.MutableRefObject<Set<string>>,
+  setTheftNotifications: React.Dispatch<React.SetStateAction<TheftEvent[]>>
 ) {
   useEffect(() => {
-    const theft = baseGameState?.lastTheft;
-    if (!theft) return;
-    if (!theft.timestamp) return;
-    if (theft.timestamp <= lastTheftSeenRef.current) return;
+    if (!baseGameState) return;
 
-    const isThief = theft.thiefId === playerId;
-    const isVictim = theft.victimId === playerId || theft.victims?.some(v => v.victimId === playerId);
-    if (!isThief && !isVictim) return;
+    const eventKey = (theft: TheftEvent) =>
+      theft.id ?? [
+        theft.timestamp,
+        theft.thiefId,
+        theft.victimId ?? '',
+        theft.source ?? '',
+        theft.victims?.map(victim => victim.victimId).join(',') ?? '',
+      ].join(':');
 
-    const isRecent = Date.now() - theft.timestamp < 8000;
-    if (!isRecent) return;
+    const candidates = [...(baseGameState.theftEvents ?? [])];
+    const latest = baseGameState.lastTheft;
+    if (latest && !candidates.some(theft => eventKey(theft) === eventKey(latest))) {
+      candidates.push(latest);
+    }
 
-    lastTheftSeenRef.current = theft.timestamp;
-    setTheftNotification(theft);
-  }, [baseGameState?.lastTheft, lastTheftSeenRef, playerId, setTheftNotification]);
+    const now = Date.now();
+    const notifications: TheftEvent[] = [];
+    for (const theft of candidates.sort((a, b) => a.timestamp - b.timestamp)) {
+      if (!theft.timestamp) continue;
+
+      const key = eventKey(theft);
+      if (seenTheftIdsRef.current.has(key)) continue;
+
+      const isThief = theft.thiefId === playerId;
+      const isVictim =
+        theft.victimId === playerId ||
+        theft.victims?.some(victim => victim.victimId === playerId);
+      const isRecent = now - theft.timestamp < 15000;
+      if ((isThief || isVictim) && isRecent) {
+        notifications.push(theft);
+      } else {
+        seenTheftIdsRef.current.add(key);
+      }
+    }
+
+    if (notifications.length > 0) {
+      setTheftNotifications(current => {
+        const queuedKeys = new Set(current.map(eventKey));
+        const newNotifications = notifications.filter(theft => !queuedKeys.has(eventKey(theft)));
+        return newNotifications.length > 0 ? [...current, ...newNotifications] : current;
+      });
+    }
+  }, [
+    baseGameState,
+    playerId,
+    seenTheftIdsRef,
+    setTheftNotifications,
+  ]);
 }
 
 export function useTradeCompletionEffect(

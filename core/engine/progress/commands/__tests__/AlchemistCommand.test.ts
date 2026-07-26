@@ -51,6 +51,7 @@ describe('AlchemistCommand', () => {
             gameMode: 'cities_and_knights',
             phase: 'waiting_for_roll'
         });
+        gameState.pendingAlchemy = { playerId: 'p1', eventDieFace: 'ship', revealedAt: 123 };
         command = new AlchemistCommand();
     });
 
@@ -66,6 +67,7 @@ describe('AlchemistCommand', () => {
 
         expect(gameState.diceRoll).toEqual({ d1: 3, d2: 4, total: 7 });
         expect(EventDieManager.processEventDieRoll).toHaveBeenCalled();
+        expect(gameState.pendingAlchemy).toBeUndefined();
         expect(gameState.phase).toBe('main_phase'); // 7 with no barbarian move -> main phase (if no robber placement logic mocked)
 
         // Wait, on 7, it handles robber.
@@ -98,5 +100,12 @@ describe('AlchemistCommand', () => {
     it('throws if not waiting_for_roll', () => {
         gameState.phase = 'main_phase';
         expect(() => command.execute(gameState, 'p1', { chosenDice1: 1, chosenDice2: 1 })).toThrow('Alchemy can only be played before rolling dice');
+    });
+
+    it('throws if the event die has not been revealed', () => {
+        gameState.pendingAlchemy = undefined;
+        expect(() => command.execute(gameState, 'p1', { chosenDice1: 1, chosenDice2: 1 })).toThrow(
+            'Alchemy event die must be revealed before choosing dice'
+        );
     });
 });

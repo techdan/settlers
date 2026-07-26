@@ -176,12 +176,17 @@ describe('GameLayoutPanels low-resolution layout', () => {
         expect(container.textContent).toContain('Pb');
     });
 
-    it('lets the player list scroll rather than pushing the log off-screen', () => {
+    it('keeps the player panel intrinsic unless viewport height is genuinely constrained', () => {
         const { container } = renderPanels();
 
         const rail = container.querySelector('[data-hud="rail"]') as HTMLElement;
-        const scroller = rail.querySelector('.overflow-y-auto');
-        expect(scroller).not.toBeNull();
-        expect(scroller!.className).toContain('min-h-0');
+        const statusSlot = rail.firstElementChild as HTMLElement;
+        const playerList = statusSlot.querySelector('.overflow-y-visible') as HTMLElement;
+
+        expect(statusSlot.className).toContain('shrink-0');
+        expect(statusSlot.className).toContain('max-height:620px');
+        expect(playerList).not.toBeNull();
+        expect(playerList.className).toContain('max-height:620px');
+        expect(playerList.className).toContain('overflow-y-auto');
     });
 });

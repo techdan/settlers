@@ -3,7 +3,6 @@ import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
 import { getCardMetadata } from '../progress-card-definitions';
 import {
-  rollEventDie,
   processEventDieRoll,
   getCategoryFromColor,
   getEligiblePlayersForCardDraw,
@@ -45,6 +44,11 @@ export class AlchemistCommand implements ProgressCardCommand {
       throw new Error('Alchemy can only be played before rolling dice');
     }
 
+    const pendingAlchemy = state.pendingAlchemy;
+    if (!pendingAlchemy || pendingAlchemy.playerId !== playerId) {
+      throw new Error('Alchemy event die must be revealed before choosing dice');
+    }
+
     const d1 = chosenDice1;
     const d2 = chosenDice2;
     const total = d1 + d2;
@@ -58,9 +62,9 @@ export class AlchemistCommand implements ProgressCardCommand {
 
     // Import dice and resource utilities (static imports at top)
 
-    // Roll and process event die (C&K expansion only)
+    // Resolve the event die result that was revealed and locked before selection.
     if (state.gameMode === 'cities_and_knights') {
-      const eventDieResult = rollEventDie();
+      const eventDieResult = pendingAlchemy.eventDieFace;
       processEventDieRoll(state, eventDieResult, d1);
 
       if (eventDieResult !== 'ship') {
@@ -71,6 +75,7 @@ export class AlchemistCommand implements ProgressCardCommand {
         });
       }
     }
+    state.pendingAlchemy = undefined;
 
     // Handle robber (7)
     state.discardContext = undefined;

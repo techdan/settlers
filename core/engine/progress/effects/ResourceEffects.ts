@@ -1,4 +1,4 @@
-import { GameState } from '@/lib/types/game';
+import { GameState, TheftEvent } from '@/lib/types/game';
 import {
   AddResourcePerHexEffect,
   AddResourcePerBuildingEffect,
@@ -20,6 +20,7 @@ import {
   getPlayerCities,
 } from '../utilities/BoardScanning';
 import { addLog, getOpponents } from '../utilities/StateManagement';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Effect executors for resource and commodity-related card effects
@@ -128,6 +129,7 @@ export function executeStealFromOpponents(
 
   let totalStolen = 0;
   const perPlayerAmounts: string[] = [];
+  const victims: NonNullable<TheftEvent['victims']> = [];
 
   if (effect.cardType === 'resource') {
     // Resource Monopoly: Take up to 2 of chosen resource from each player
@@ -145,10 +147,20 @@ export function executeStealFromOpponents(
       if (amountToSteal > 0) {
         stealResource(state, opponent.id, playerId, resource, amountToSteal);
         totalStolen += amountToSteal;
+        victims.push({
+          victimId: opponent.id,
+          items: [{ type: 'resource', value: resource, count: amountToSteal }],
+        });
       }
     }
 
     if (totalStolen > 0) {
+      recordTheftEvent(state, {
+        source: 'resource_monopoly',
+        thiefId: playerId,
+        items: [{ type: 'resource', value: resource, count: totalStolen }],
+        victims,
+      });
       addLog(state, `stole ${totalStolen} ${resource} from opponents (${perPlayerAmounts.join(', ')})`, playerId);
     } else {
       addLog(state, `played Resource Monopoly for ${resource} but no one had any`, playerId);
@@ -171,10 +183,20 @@ export function executeStealFromOpponents(
       if (amountToSteal > 0) {
         stealCommodity(state, opponent.id, playerId, commodity, amountToSteal);
         totalStolen += amountToSteal;
+        victims.push({
+          victimId: opponent.id,
+          items: [{ type: 'commodity', value: commodity, count: amountToSteal }],
+        });
       }
     }
 
     if (totalStolen > 0) {
+      recordTheftEvent(state, {
+        source: 'trade_monopoly',
+        thiefId: playerId,
+        items: [{ type: 'commodity', value: commodity, count: totalStolen }],
+        victims,
+      });
       addLog(state, `stole ${totalStolen} ${commodity} from opponents (${perPlayerAmounts.join(', ')})`, playerId);
     } else {
       addLog(state, `played Trade Monopoly for ${commodity} but no one had any`, playerId);

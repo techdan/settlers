@@ -63,8 +63,8 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
     }
 
     return (
-        // w-full/min-h-0 let this panel be squeezed by the right rail on short
-        // viewports; the phase header stays pinned and the player list scrolls.
+        // w-full/min-h-0 let this panel be squeezed by the right rail on truly
+        // short viewports; the phase header stays pinned in that fallback.
         <div className="w-full min-h-0 bg-[var(--ui-panel)] p-3 rounded-lg text-[var(--ui-text)] border border-[var(--ui-border)] shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
             {/* Phase Header with Timer */}
             <div className="flex-shrink-0">
@@ -93,12 +93,11 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
             </div>
 
             {/* Player Cards */}
-            {/* Scrollable but with the scrollbar chrome hidden: --hud-scale
-                should keep the list fitting on its own, so a visible bar would
-                be permanent furniture for an edge case (6 players on a very
-                short viewport). Scrolling still works if it ever overflows, so
-                no player card can become unreachable. */}
-            <div className="flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* The list keeps its intrinsic height in ordinary layouts. The
+                tablet drawer scrolls as a whole; only a desktop viewport below
+                the HUD's minimum-density height gets an internal fallback
+                scroller so no player card can become unreachable. */}
+            <div className="flex min-h-0 flex-col gap-1.5 overflow-y-visible [@media(min-width:1280px)_and_(max-height:620px)]:overflow-y-auto [@media(min-width:1280px)_and_(max-height:620px)]:overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {gameState.players.map(player => (
                     <CompactPlayerCard
                         key={player.id}

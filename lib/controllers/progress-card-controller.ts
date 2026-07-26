@@ -42,6 +42,7 @@ export interface ProgressCardControllerDeps {
   progressDiscardContext: 'own_turn' | 'other_turn';
   setShowProgressCardDiscard: (show: boolean) => void;
   setProgressDiscardContext: (context: 'own_turn' | 'other_turn') => void;
+  onGameStateUpdated: (state: GameState) => void;
 }
 
 export interface ProgressCardController {
@@ -126,6 +127,7 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
     progressDiscardContext,
     setShowProgressCardDiscard,
     setProgressDiscardContext,
+    onGameStateUpdated,
   } = deps;
 
   /**
@@ -136,7 +138,8 @@ export function createProgressCardController(deps: ProgressCardControllerDeps): 
       if (cardType === 'road_building_progress') {
         roadBuildingPrompt.begin();
       }
-      await playProgressCard(roomId, playerId, cardType, options || {});
+      const updatedGameState = await playProgressCard(roomId, playerId, cardType, options || {});
+      onGameStateUpdated(updatedGameState);
     } catch (e: any) {
       if (cardType === 'road_building_progress') {
         roadBuildingPrompt.clear();

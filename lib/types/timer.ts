@@ -87,6 +87,7 @@ export type ObligationType =
   | 'barbarian_city_selection'
   | 'knight_displacement'
   | 'defender_card_draw'
+  | 'alchemy_dice_selection'
   | 'progress_card_over_limit';
 
 /**

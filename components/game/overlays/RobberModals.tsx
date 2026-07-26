@@ -50,9 +50,11 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
         }
 
         const thief = gameState.players.find(p => p.id === theft.thiefId);
-        const victim =
-          gameState.players.find(p => p.id === theft.victimId) ||
-          gameState.players.find(p => theft.victims?.some(v => v.victimId === p.id));
+        const victimIds = theft.victims?.map(victim => victim.victimId) ??
+          (theft.victimId ? [theft.victimId] : []);
+        const victimNames = victimIds
+          .map(victimId => gameState.players.find(player => player.id === victimId)?.name)
+          .filter((name): name is string => !!name);
 
         return (
           <RobberTheftNotification
@@ -61,7 +63,7 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
             stolenItems={stolenItems || undefined}
             wasVictim={!isThief}
             thiefName={thief?.name}
-            victimName={victim?.name}
+            victimNames={victimNames}
             source={theft.source}
             onDismiss={onDismissTheft}
           />

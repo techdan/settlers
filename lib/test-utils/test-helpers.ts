@@ -193,6 +193,7 @@ export function createTestGameState(overrides: Partial<GameState> = {}): GameSta
         pendingCommercialHarbor: overrides.pendingCommercialHarbor,
         pendingWedding: overrides.pendingWedding,
         lastTheft: overrides.lastTheft,
+        theftEvents: overrides.theftEvents,
         lastVPCardGain: overrides.lastVPCardGain,
         discardContext: overrides.discardContext,
     };

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PlayerState } from '@/lib/types';
+import { PlayerState, TheftEvent } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { CardStack, ResourceCardFace, CommodityCardFace } from '@/themes/tabletop';
@@ -7,17 +7,7 @@ import { CardStack, ResourceCardFace, CommodityCardFace } from '@/themes/tableto
 interface PlayerHandProps {
     player: PlayerState;
     roomId: string;
-    lastTheft?: {
-        source?: 'robber' | 'wedding' | 'taxation' | 'guild_dues';
-        victimId?: string;
-        thiefId: string;
-        items?: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
-        victims?: {
-            victimId: string;
-            items: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
-        }[];
-        timestamp: number;
-    };
+    lastTheft?: TheftEvent;
 }
 
 export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastTheft }) => {

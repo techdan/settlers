@@ -2,6 +2,7 @@ import { GameState, WeddingSelection, WeddingGiftItem } from '@/lib/types/game';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
+import { recordTheftEvent } from '@/core/engine/theft-events';
 
 /**
  * Wedding Helper Functions
@@ -73,32 +74,28 @@ export function respondToWedding(
             const resource = rawValue as ResourceType;
             removeResources(giver, { [resource]: count });
             addResources(initiator, { [resource]: count });
+            givenItems.push({ type: 'resource', value: resource, count });
         } else {
             if (!giver.commodities) giver.commodities = { paper: 0, cloth: 0, coin: 0 };
             if (!initiator.commodities) initiator.commodities = { paper: 0, cloth: 0, coin: 0 };
-            giver.commodities[rawValue as CommodityType] -= count;
-            initiator.commodities[rawValue as CommodityType] += count;
+            const commodity = rawValue as CommodityType;
+            giver.commodities[commodity] -= count;
+            initiator.commodities[commodity] += count;
+            givenItems.push({ type: 'commodity', value: commodity, count });
         }
-
-        givenItems.push({
-            type: type as 'resource' | 'commodity',
-            value: rawValue as ResourceType | CommodityType,
-            count
-        });
     }
 
     request.status = 'completed';
     request.given = givenItems;
 
     const totalGiven = selections.length;
-    gameState.lastTheft = {
+    recordTheftEvent(gameState, {
         source: 'wedding',
         victimId: giver.id,
         thiefId: initiator.id,
         items: givenItems,
         victims: [{ victimId: giver.id, items: givenItems }],
-        timestamp: Date.now()
-    };
+    });
 
     gameState.logs.push({
         id: `${Date.now()}-${Math.random()}`,

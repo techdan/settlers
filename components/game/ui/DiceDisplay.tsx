@@ -21,12 +21,12 @@ const EVENT_DIE_TEXT: Record<EventDieFace, { title: string; description: string 
 };
 
 export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll }) => {
-    if (!diceRoll) return null;
+    if (!diceRoll && !eventDieRoll) return null;
 
     return (
         <div className="flex items-center gap-3 pointer-events-auto">
             {/* Production dice */}
-            <div className="flex gap-2">
+            {diceRoll && <div className="flex gap-2">
                 <Tooltip content="Red Die" placement="top">
                     <div className="transition hover:-translate-y-0.5">
                         <PipDie value={diceRoll.d1} body={RED_DIE.body} pip={RED_DIE.pip} size={48} title="Red Die" />
@@ -37,12 +37,12 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                         <PipDie value={diceRoll.d2} body={YELLOW_DIE.body} pip={YELLOW_DIE.pip} size={48} title="Yellow Die" />
                     </div>
                 </Tooltip>
-            </div>
+            </div>}
 
             {/* Event die (Cities & Knights) */}
             {eventDieRoll && (
                 <>
-                    <div className="w-px h-8 bg-[var(--ui-text)]/20" />
+                    {diceRoll && <div className="w-px h-8 bg-[var(--ui-text)]/20" />}
                     <Tooltip
                         content={(
                             <div className="flex flex-col text-left">

@@ -120,7 +120,9 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     // banner and leave its Play button live. Derived rather than cleared in an
     // effect so there is no render cascade — and so the panel comes back with
     // your selections intact if you buy time from your bank.
-    const openPanelCard = timerStatus.isLocked ? null : modalCard;
+    const committedAlchemy =
+        gameState.pendingAlchemy?.playerId === player.id ? 'alchemist' as const : null;
+    const openPanelCard = timerStatus.isLocked ? null : (committedAlchemy ?? modalCard);
     const currentActiveFollowup = openPanelCard ?? manualFollowupCard ?? null;
 
     // Keep the tray in sync with the open card panel (see onOpenPanelChange).
