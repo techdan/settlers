@@ -1,7 +1,9 @@
 # Codebase Improvement Plan — Review, Refactor & Cleanup
 
-**Date:** 2026-07-09
+**Date:** 2026-07-09 (status re-verified against the code 2026-07-26)
 **Status:** Ready for execution
+
+> **Status markers below were audited on 2026-07-26.** Every `✅ Done (uncommitted, working tree)` note in §1.5, §4.1–4.4, and §6 referred to the Phase 4.5 pile that is now committed (`3e8876f`) and pushed — treat those as simply **Done**. Items verified still open are listed in "Suggested Execution Order" at the bottom.
 **Audience:** This document is written for an AI agent (or developer) to execute. Each item lists concrete file paths, what to do, and acceptance criteria. Items are independent unless noted.
 
 ---
@@ -9,8 +11,8 @@
 ## Ground Rules for the Executing Agent
 
 1. **Respect the layered architecture** described in `AGENTS.md` (Actions → Services → Core → Repositories → DB). Never move logic "up" a layer.
-2. **Run the test suite before and after every task**: `npm run test:run`. Baseline as of this review: **25 files / 179 tests, all passing** (~37s).
-3. **Run lint after edits**: `npm run lint`. Baseline: **194 errors** — mostly `@typescript-eslint/no-explicit-any` (see §2.1), plus: `prefer-const` ×4 (`game-service.ts:550`, `lobby-service.ts:335/360/385` — auto-fixable), a forbidden `require()` in `ck-game-service.ts:124`, and `react-hooks/set-state-in-effect` violations (e.g. `useTimerState`/`useTurnActions` area). Getting lint to zero is itself a worthwhile tracked task; the auto-fixables can be done immediately with `npx eslint --fix` on those files.
+2. **Run the test suite before and after every task**: `npm run test:run`. Original baseline: 25 files / 179 tests. **Current baseline (2026-07-26): 33 files / 203 tests, all passing** (~33s).
+3. **Run lint after edits**: `npm run lint`. Original baseline: 194 errors. **Current baseline (2026-07-26): 328 problems — 192 errors + 136 warnings.** Errors are flat and still mostly `@typescript-eslint/no-explicit-any` (see §2.1), but a large `react-hooks/set-state-in-effect` warning class has appeared since (concentrated in `GameController.tsx` and the hooks it delegates to). The `prefer-const` ×4 and the `require()` in `ck-game-service.ts` are fixed. Note §2.1 and the hook-warning class largely share the same files.
 4. **Do not mix tasks in one commit.** One task = one atomic commit, listing only the files touched (see Git Rules in `AGENTS.md`).
 5. ~~Uncommitted in-progress trade work~~ **Resolved 2026-07-09:** the trade UX work was evaluated (functional — full suite green, `tsc --noEmit` clean, reject/accept/cancel flows wired end-to-end) and committed as `7cbbe13`. All ⚠️TRADE-flagged tasks below are now **unblocked**. Its remaining polish items are tracked as §5.9–§5.11.
 6. The graphics overhaul (tile/card/piece art) is a **separate initiative** with its own design doc — do not redesign visuals here. Section 4 below only removes technical debt that would block that overhaul.
@@ -31,14 +33,16 @@
 - **Action:** Move whatever is unique in root `types/board.ts` into `lib/types/board.ts`, update the three importers to `@/lib/types`, delete the root `types/` directory (verify nothing else imports from it first: `grep -rn "@/types/"`).
 - **Accept:** `tsc --noEmit` clean, tests pass.
 
-### 1.3 Remove unused imports in `GameController.tsx` ⚠️TRADE
+### 1.3 Remove unused imports in `GameController.tsx` — **open, unblocked**
 - **File:** `components/game/GameController.tsx` (711 lines)
 - **Evidence:** It imports `PlayerHand`, `GameLog`, `PlayerDevCards`, `CompactGameStatus`, `SidebarTabs`, `BuildControls`, `ActionControls`, `DiceDisplay`, `ProgressCardHand`, `DebugPanel`, `BarbarianTrack` — all of which are now rendered by `GameLayoutPanels.tsx`. Many of these are likely dead imports left from the layout extraction. ESLint / `tsc` with `noUnusedLocals` will confirm the exact set.
-- **Action:** Remove imports not referenced in the JSX/logic of this file. Do this *after* the in-flight trade changes are committed.
+- **Action:** Remove imports not referenced in the JSX/logic of this file. (The ⚠️TRADE block is gone — trade work landed in `7cbbe13`.)
+- **Verified 2026-07-26 (still open, 710 lines):** all ten flagged imports are still present — `PlayerHand`, `GameLog`, `PlayerDevCards`, `CompactGameStatus`, `SidebarTabs`, `BuildControls`, `ActionControls`, `DiceDisplay`, `ProgressCardHand`, `DebugPanel`. ESLint additionally reports three dead locals to remove in the same pass: `treasonEffectLevel` (:238), `selectedMerchantHex` (:346), `activeProgressCard` (:385).
 - **Accept:** Lint clean; file renders the game identically.
 
-### 1.4 `.beads` hygiene
-- **Evidence:** Git status shows `.beads/beads.base.jsonl`, `.beads/beads.left.jsonl` (+ meta) deleted but not committed, while `.beads/issues.jsonl` still exists. The bd auto-sync state is inconsistent.
+### 1.4 `.beads` hygiene — ✅ Obsolete 2026-07-26
+- **Resolution:** Beads was retired as the tracking system on 2026-07-09 (see `CLAUDE.md`: work items live in the `docs/` plan documents; do not run `bd`). No decision is needed. A stale `.beads/` directory is still on disk and can be deleted whenever convenient — it has no consumers.
+- **Original evidence:** Git status shows `.beads/beads.base.jsonl`, `.beads/beads.left.jsonl` (+ meta) deleted but not committed, while `.beads/issues.jsonl` still exists. The bd auto-sync state is inconsistent.
 - **Action:** Ask the user whether beads is still the tracking system of record (AGENTS.md says yes). Either commit the deletions or restore the files — do not silently resolve.
 
 ### 1.5 Duplicated `@keyframes` injected per hex tile
@@ -53,15 +57,16 @@
 ## 2. Type Safety (Priority: HIGH, Medium risk)
 
 ### 2.1 Eliminate `any` from component/controller seams
-- **Evidence:** ~100 occurrences of `: any` / `as any` across 40+ files. Worst offenders:
+- **Evidence (recounted 2026-07-26: now **126** occurrences, up from ~100 — this is regressing, not holding):** Worst offenders, all unchanged since the original count:
   - `lib/controllers/progress-card-controller.ts` — 18
-  - `lib/hooks/useGameControllerEffects.ts` — 10 ⚠️TRADE
+  - `lib/hooks/useGameControllerEffects.ts` — 10 (⚠️TRADE block cleared)
   - `components/game/ui/GameLayoutPanels.tsx` — 6 (`currentPlayer: any`, `selectionManager: any`, handler bundles typed loosely)
   - `components/board/BoardCanvas.tsx` — 3 (`vertices: any[]`, `renderEdges: any[]`, `pendingPlacement: any | null`)
 - **Action:** Introduce/reuse proper types: `PlayerState` for `currentPlayer`; a `SelectionManager` return type exported from `lib/hooks/useSelectionManager.ts` (use `ReturnType<typeof useSelectionManager>` as a stopgap); `Vertex[]` / render-edge type for BoardCanvas; a `PendingPlacement` union (`{ type: 'road' | 'settlement' | 'city' | 'knight' | 'city_wall'; id: string }`). Work file-by-file; do not do a big-bang sweep.
 - **Accept:** `tsc --noEmit` clean; occurrence count reduced to < 30 with remaining ones justified by a comment.
 
-### 2.2 Phase 5: `ResourceType` vs `TileType` split
+### 2.2 Phase 5: `ResourceType` vs `TileType` split — ✅ Done (verified 2026-07-26)
+- **Verification:** `core/rules/board-constants.ts:7` now declares `ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore'` (no `desert`); `core/engine/board/board-generator.ts:36` declares `TileType = ResourceType | 'desert'`; `TerrainType` remains the separate six-value terrain union. A repo-wide scan for `desert: 0` in resource records returns **zero** hits. This landed incrementally rather than as the single isolated refactor the plan anticipated, so it was never marked done — recording it now. Remaining nicety (not blocking): the `satisfies Record<TerrainType, …>` exhaustiveness checks the acceptance criteria asked for were not added.
 - **Evidence:** Documented known issue in `AGENTS.md` ("Known Issues"): `ResourceType` includes `desert`, so player resource records carry an unused `desert: 0`. ~20 files / 115 occurrences.
 - **Action:** Execute the documented plan: `ResourceType = 'wood' | 'brick' | 'sheep' | 'wheat' | 'ore'`; `TileType = ResourceType | 'desert'` (note `core/rules/board-constants.ts` already has `TerrainType` — reconcile the three names into two: resource vs terrain). This is the largest mechanical refactor in this plan; do it last, alone, with tests green before and after.
 - **Accept:** No `desert` key in any resource `Record`; all tests pass; type-level exhaustiveness checks (`satisfies Record<TerrainType, …>`) added where terrain maps exist.
@@ -79,8 +84,8 @@
 - **Action:** Extract per-card client orchestration into a declarative map (card type → `{ start, onBoardSelect, onConfirm }`) rather than long switch/if chains; reuse the `CARDS_REQUIRING_PARAMETERS` / `BOARD_SELECTION_CARDS` groupings currently duplicated in `ProgressCardHand.tsx` (they belong in `core/engine/progress/config/card-definitions.ts` as flags, defined once).
 - **Accept:** Card behavior unchanged (manual smoke test of merchant, inventor, smith, engineer, medicine, treason flows); the card-group constants exist in exactly one module.
 
-### 3.3 `GameController.tsx` (711 lines) ⚠️TRADE
-- **Action:** After trade work lands: continue the extraction pattern already started (`useGameControllerEffects.ts`) — move the remaining modal-visibility state clusters (VP modal, theft notification, trade completion, robber prompts) into dedicated hooks so the component is mostly composition.
+### 3.3 `GameController.tsx` (710 lines as of 2026-07-26) — **open, unblocked**
+- **Action:** (⚠️TRADE block cleared — trade work landed in `7cbbe13`.) Continue the extraction pattern already started (`useGameControllerEffects.ts`) — move the remaining modal-visibility state clusters (VP modal, theft notification, trade completion, robber prompts) into dedicated hooks so the component is mostly composition.
 - **Accept:** < 400 lines; render tree unchanged.
 
 ### 3.4 `GameLayoutPanels` prop explosion
@@ -132,7 +137,8 @@
 - **Accept:** `grep -rn "voxel"` in source → 0 hits; no theme string comparisons anywhere; flat theme renders pixel-identical to today.
 - ✅ **Voxel retirement done (uncommitted, working tree)**, per Phase 0.1's exact work order — see that doc's checklist for detail. **Not done:** the `boardTheme` object formalization (piece rendering still lives directly in `VertexRenderer`/`EdgeRenderer` via sprite `<use>`, not routed through a theme object) — wasn't in the delegated step list for this pass. `grep -rn "voxel" components lib themes app core --include="*.ts*"` → 0 hits except a pre-existing orphaned `components/board/VertexRenderer.tsx.backup` (tracked, last touched in an old unrelated commit, not part of the TS build) — flagged for lead review/deletion rather than removed unilaterally.
 
-### 4.5 Emoji as game iconography
+### 4.5 Emoji as game iconography — ✅ Done in graphics Phase 4.5 (`3e8876f`)
+- **Resolution:** superseded by the far broader Phase 4.5 legacy visual retirement, which replaced every emoji/Unicode glyph across `components/game` and `components/board` with `themes/tabletop` SVG glyphs (not `GameIcon`/lucide as originally proposed — `GameIcon` was itself deleted in the same pass). Static emoji scans return 0 hits.
 - **Evidence:** `BarbarianTrack.tsx` (⚔️ 🛡️ ✓ ✗), `ProgressCardHand.tsx` (`CATEGORY_ICONS` 🟢🟡🔵), confirm/cancel buttons in `VertexRenderer`/`EdgeRenderer` (✓ ✕ as `<text>`). Emoji render differently per OS and clash with the SVG icon system (`docs/ui/ICON_SYSTEM.md`).
 - **Action:** Replace with `GameIcon`/lucide icons or sprite symbols. Keep this cosmetic pass separate from the art overhaul.
 - **Accept:** No emoji literals in `components/` (chat content excluded).
@@ -146,8 +152,8 @@
 | # | Item | Files | Action |
 |---|------|-------|--------|
 | 5.1 | `isEngineerCancel`/`isMedicineCancel` are hardcoded `false` | `components/board/BoardCanvas.tsx` (lines ~229–230) | Dead logic — delete the constants and simplify `showCancelIcon` wiring |
-| 5.2 | `activeFollowupCard={… ? null : null}` always null | `components/game/ui/GameLayoutPanels.tsx` (line ~171) | Either wire the real value or remove the prop |
-| 5.3 | `MEDICINE_COST` defined in two places | `GameController.tsx`, `ProgressCardHand.tsx` | Move to `core/rules/commodity-constants.ts` (costs are rules) |
+| 5.2 | `activeFollowupCard` hardcoded to null | **Moved 2026-07-26:** now `components/game/ui/GameTray.tsx:146` (`activeFollowupCard={null}`), not `GameLayoutPanels` | Still open. Either wire the real value or remove the prop. Note this is closer to a functional gap than cleanup — the follow-up-card highlight can never light up while it's pinned to null |
+| 5.3 | `MEDICINE_COST` defined in **three** places | `GameController.tsx:118`, `ProgressCardHand.tsx:46`, and `core/engine/progress/commands/MedicineCommand.ts:13` | Move to `core/rules/commodity-constants.ts` (costs are rules) and have all three read it — the engine copy is the one that actually enforces the cost, so the two UI copies are the drift risk |
 | 5.4 | Port clip-path IDs built from float coordinates | `themes/flat/Port.tsx` | Use port index for the id instead of coordinates |
 | 5.5 | Pointer-cursor audit (house rule: everything clickable shows pointer) | all interactive components | Sweep for `onClick` without `cursor-pointer`; known gaps: log entries, some modal option rows |
 | 5.6 | `console.log` noise in tests (port mapping test prints table) | `core/engine/board/__tests__/verify-all-ports.test.ts` | Remove/gate behind env flag |
@@ -157,7 +163,7 @@
 | 5.10 | Trade follow-up: all-players-rejected offer stays open | `lib/services/trading-service.ts` `rejectTrade` | ✅ **Done 2026-07-26:** `rejectTrade` clears `tradeOffer` and pushes a public "All players rejected X's trade offer." log once every non-initiator has rejected. The pre-existing test asserting the offer stays open encoded the old behavior and was replaced by two tests (still-open with a remaining responder, auto-cancel when all have rejected). |
 | 5.11 | Trade follow-up: new modals off-style | `TradeProgressModal.tsx`, `TradeCompletedNotification.tsx` | ✅ **Done in Phase 4.5, committed 2026-07-26 as `3e8876f`:** both use the warm shared modal shell, tabletop trade/resource/commodity/status glyphs, and `--ui-*` tokens; legacy emoji and slate chrome removed. |
 | 5.12 | Pre-existing type errors in test files (masked by incremental cache + vitest's non-typechecking transform) | `core/engine/progress/__tests__/merchant-command.test.ts:9` (Expected 1-2 args, got 3), `core/engine/progress/commands/__tests__/SimpleCommands.test.ts:23` (missing `GameState` import) | Fix both; then add `tsc --noEmit` as a script/CI step so type errors in test files can't hide again (delete stale `tsconfig.tsbuildinfo` when verifying) |
-| 5.13 | Dead board renderers (found during Phase 0) | `components/board/KnightRenderer.tsx`, `themes/flat/Knight.tsx` | Zero importers apart from each other; delete both. (`VertexRenderer.tsx.backup` already removed 2026-07-09.) `themes/flat/Merchant.tsx`'s remaining `foreignObject` and `EdgeRenderer.tsx`/`Knight.tsx` hex literals die naturally with Phase 1/2 of the overhaul — no separate action |
+| 5.13 | Dead board renderers (found during Phase 0) | `components/board/KnightRenderer.tsx`, `themes/flat/Knight.tsx` | ✅ **Done (verified 2026-07-26: both files are gone).** Original note: zero importers apart from each other; delete both. (`VertexRenderer.tsx.backup` already removed 2026-07-09.) `themes/flat/Merchant.tsx`'s remaining `foreignObject` and `EdgeRenderer.tsx`/`Knight.tsx` hex literals die naturally with Phase 1/2 of the overhaul — no separate action |
 | 5.14 | Server action failures are unreadable in production | `app/actions.ts` (all exports), consumers in `lib/controllers/*` | Actions rethrow service `Error`s, and Next redacts thrown messages in production builds — so every inline error UI (§5.9, `DebugPanel`, `ExtensionRequestButton`) shows the generic redaction blurb to real users while reading correctly in dev. Return a typed `{ ok: true, state } \| { ok: false, message }` from the action layer so validation messages survive the server/client boundary; migrate consumers and drop the try/catch-on-message pattern |
 
 ---
@@ -177,10 +183,15 @@
 
 ## Suggested Execution Order
 
-1. **1.1, 1.2, 1.5, 5.1–5.6** — zero-risk cleanups (can batch review, separate commits)
-2. **6.2 board smoke tests** — safety net before touching renderers
-3. **4.1 → 4.2 → 4.3 → 4.4** — rendering debt, in that order (sprite first, palette second, pieces third, theme interface last)
-4. **2.1** type-safety pass, then **3.4, 3.5**
-5. **3.1, 3.2** progress-card splits
-6. **1.3, 3.3** (unblocked — trade work landed in `7cbbe13`)
-7. **2.2** ResourceType/TileType split — last, isolated
+**Original order (mostly consumed):** 1.1, 1.2, 1.5, 5.1/5.6/5.12 → 6.2 smoke tests → 4.1–4.4 rendering debt → 2.2 type split. All done.
+
+**Remaining work, re-ordered 2026-07-26 after verifying each item against the code:**
+
+1. **1.3** — dead imports + three dead locals in `GameController.tsx`. Unblocked, mechanical, ~10 minutes.
+2. **2.1 (scoped) + 3.4 together** — type `GameLayoutPanels` (6 `any`) and `BoardCanvas` (3 `any`) while collapsing the 24-prop surface. These two items touch the same seam, and it is the seam the graphics work keeps returning to. Do not attempt the full 126-occurrence sweep in one pass.
+3. **5.2, 5.3, 5.4, 5.7, 5.8** — small consistency fixes. 5.2 first: it is the only one with user-visible behavior attached.
+4. **3.5** — thin out the four fat actions in `app/actions.ts`; pairs naturally with **5.14** (typed action results), since both rewrite the same call signatures.
+5. **3.1, 3.2** — the progress-card splits. Highest risk in the plan: 1,574 lines across two files with **no controller test coverage**. Needs §6 item 1 as a safety net first, plus a manual smoke plan for merchant/inventor/smith/engineer/medicine/treason.
+6. **6 items 1 and 3** — hook unit tests (`useBoardValidation`, `useSelectionManager`) and `GameLayoutPanels` snapshots.
+7. **4.4 (remainder)** — the `boardTheme` object; piece rendering still lives in `VertexRenderer`/`EdgeRenderer`.
+8. **Lint debt** — 192 errors + 136 warnings. The `react-hooks/set-state-in-effect` warning class overlaps §2.1's files; fold it in rather than treating it as a separate campaign.
