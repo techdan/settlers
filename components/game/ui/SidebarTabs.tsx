@@ -96,7 +96,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
 
     return (
         <div
-            className="flex flex-col bg-[var(--ui-panel)] rounded-lg border border-[var(--ui-border)] shadow-xl backdrop-blur-sm overflow-hidden text-[var(--ui-text)] transition-[max-height] duration-300 ease-in-out"
+            className="flex min-h-0 flex-col bg-[var(--ui-panel)] rounded-lg border border-[var(--ui-border)] shadow-xl backdrop-blur-sm overflow-hidden text-[var(--ui-text)] transition-[max-height] duration-300 ease-in-out"
             style={{ maxHeight: isCollapsed ? tabBarHeight : '30rem' }}
         >
             {/* Tab Buttons (always at top when expanded) */}
@@ -133,7 +133,10 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
             <div
                 className={`overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out flex flex-col relative ${isCollapsed ? 'max-h-0 opacity-0 pointer-events-none' : 'max-h-[30rem] opacity-100'}`}
             >
-                <div className={`h-[45vh] ${isCollapsed ? '' : 'min-h-[16rem]'} max-h-[30rem] flex flex-col`}>
+                {/* 9rem floor (was 16rem): on a short viewport the rail needs
+                    the log to give way once the status panel has hit its own
+                    floor, or the rail overflows back under the tray. */}
+                <div className={`h-[45vh] ${isCollapsed ? '' : 'min-h-[9rem]'} max-h-[30rem] flex flex-col`}>
                     {activeTab === 'log' && (
                         <div className="h-full overflow-hidden p-2">
                             <GameLog logs={logs} players={players} />
