@@ -143,7 +143,6 @@ export const GameTray: React.FC<GameTrayProps> = ({
             isEngineerSelecting={engineerSelectionActive}
             isSmithSelecting={selectionManager.selectingKnightsForSmith}
             isMedicineSelecting={selectionManager.selectingCityForMedicine}
-            activeFollowupCard={null}
             onCancelFollowupCard={handleCancelFollowupCard}
             onOpenPanelChange={setOpenCardPanel}
             decorateCardHandler={decorateCardHandler}

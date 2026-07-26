@@ -82,6 +82,38 @@ describe('ProgressCardModal surfaces', () => {
  * These pin the confirm-only cards, which carry no options and would be the
  * ones a too-greedy default would swallow.
  */
+/**
+ * The full routing table. ProgressCardHand opens this dialog for exactly these
+ * eleven cards (CARDS_REQUIRING_PARAMETERS + CONFIRMATION_MODAL_CARDS); every
+ * one is pinned to the surface it should get, so adding a card to — or dropping
+ * one from — BOARD_VISIBLE_CARDS fails here rather than in a playtest.
+ */
+describe('every card that opens the dialog gets the right surface', () => {
+    it.each([
+        // Board-visible: the decision needs the hexes or your hand.
+        ['alchemist', 'Alchemy', 'board-visible'],
+        ['resource_monopoly', 'Resource Monopoly', 'board-visible'],
+        ['trade_monopoly', 'Trade Monopoly', 'board-visible'],
+        ['merchant_fleet', 'Merchant Fleet', 'board-visible'],
+        ['irrigation', 'Irrigation', 'board-visible'],
+        ['mining', 'Mining', 'board-visible'],
+        // Blocking: the dialog prints everything the decision needs.
+        ['saboteur', 'Sabotage', 'blocking'],
+        ['wedding', 'Wedding', 'blocking'],
+        ['encouragement', 'Encouragement', 'blocking'],
+        ['espionage', 'Espionage', 'blocking'],
+        ['guild_dues', 'Guild Dues', 'blocking'],
+    ] as const)('renders %s (%s) as %s', (cardType, cardName, expectedSurface) => {
+        renderCard(cardType);
+
+        const dialog = screen.getByRole('dialog', { name: cardName });
+        const isBoardVisible = expectedSurface === 'board-visible';
+
+        expect(dialog).toHaveAttribute('aria-modal', String(!isBoardVisible));
+        expect(/backdrop-blur/.test(dialog.parentElement!.className)).toBe(!isBoardVisible);
+    });
+});
+
 describe('confirm-only cards still play', () => {
     it.each([
         ['encouragement', 'Activate'],
