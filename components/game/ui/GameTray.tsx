@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { BuildControls } from '../city/BuildControls';
 import { PlayerHand } from '../player/PlayerHand';
@@ -84,7 +84,13 @@ export const GameTray: React.FC<GameTrayProps> = ({
   turnSubmitted,
   hasOptimisticUpdates,
 }) => {
-  const gated = promptBlocksUI ? 'opacity-60 pointer-events-none' : 'pointer-events-auto';
+  // A progress-card panel is open. Board-visible panels (Alchemy, the
+  // monopolies) intentionally have no scrim, so nothing else stops a Roll or
+  // End Turn click from discarding the choice — gate them here instead. The
+  // card slot stays live so clicking the card again still cancels.
+  const [openCardPanel, setOpenCardPanel] = useState<ProgressCardType | null>(null);
+
+  const gated = promptBlocksUI || openCardPanel ? 'opacity-60 pointer-events-none' : 'pointer-events-auto';
 
   // Slot D only exists when there is something to show (dice rolled, or it's the
   // active player's un-submitted turn) — otherwise its leading divider dangles.
@@ -96,7 +102,7 @@ export const GameTray: React.FC<GameTrayProps> = ({
 
   // (a) Build controls
   slots.push(
-    <div key="build" className={gated}>
+    <div key="build" data-tray-slot="build" className={gated}>
       <BuildControls
         gameState={gameState}
         playerId={playerId}
@@ -139,6 +145,7 @@ export const GameTray: React.FC<GameTrayProps> = ({
             isMedicineSelecting={selectionManager.selectingCityForMedicine}
             activeFollowupCard={null}
             onCancelFollowupCard={handleCancelFollowupCard}
+            onOpenPanelChange={setOpenCardPanel}
             decorateCardHandler={decorateCardHandler}
           />
         </div>
@@ -153,7 +160,7 @@ export const GameTray: React.FC<GameTrayProps> = ({
   // (d) Dice + turn actions
   if (showActionSlot) {
     slots.push(
-      <div key="actions" className={`flex items-end gap-3 ${gated}`}>
+      <div key="actions" data-tray-slot="actions" className={`flex items-end gap-3 ${gated}`}>
         <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={gameState.eventDieRoll} />
         <ActionControls
           gameState={gameState}

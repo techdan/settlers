@@ -9,6 +9,26 @@ import { TimerStatus, ExtensionRequestResult } from '@/lib/types/timer';
  */
 
 /**
+ * Format seconds as MM:SS or HH:MM:SS.
+ *
+ * Shared with the HUD (re-exported from lib/hooks/useTimerState) so the game
+ * log reports extensions in the same clock format the player just read off
+ * their time bank.
+ */
+export function formatTime(seconds: number): string {
+  if (seconds < 0) return '0:00';
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${minutes}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
  * Centralized phase transition helper.
  * Automatically starts the timer when entering main_phase.
  *
@@ -245,6 +265,14 @@ export function requestExtension(
 
   const newTimeLimit = config.turnTimeLimit + newTotalBorrowed;
 
+  // Borrowing time is a public act that changes the pace of the game, so it
+  // belongs in the log alongside rolls and builds. Built as a new array rather
+  // than pushed, because this function must not mutate the state it was given.
+  const playerName = gameState.players.find(p => p.id === playerId)?.name;
+  const logMessage = playerName
+    ? `${playerName} extended their turn by ${formatTime(actualExtension)} from the time bank (${formatTime(bank)} -> ${formatTime(newBankBalance)}).`
+    : `A player extended their turn by ${formatTime(actualExtension)} from the time bank.`;
+
   const newState: GameState = {
     ...gameState,
     turnStartTime: adjustedStartTime,
@@ -257,6 +285,15 @@ export function requestExtension(
       ...gameState.playerTimeBanks,
       [playerId]: newBankBalance,
     },
+    logs: [
+      ...(gameState.logs ?? []),
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        message: logMessage,
+        playerId,
+      },
+    ],
     // Clear the locked state when extension is granted
     timerLocked: false,
   };

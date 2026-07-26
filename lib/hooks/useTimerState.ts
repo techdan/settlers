@@ -40,20 +40,13 @@ export function useTimerState(gameState: GameState): TimerStatus {
 }
 
 /**
- * Format seconds as MM:SS or HH:MM:SS
+ * Format seconds as MM:SS or HH:MM:SS.
+ *
+ * Lives in timer-service so the service can write the same clock format into
+ * the game log that the HUD shows; re-exported here because every existing
+ * caller imports it from this module.
  */
-export function formatTime(seconds: number): string {
-  if (seconds < 0) return '0:00';
-
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
-  return `${minutes}:${String(secs).padStart(2, '0')}`;
-}
+export { formatTime } from '@/lib/services/timer-service';
 
 /**
  * Get color class based on time remaining (for progress bars with backgrounds)

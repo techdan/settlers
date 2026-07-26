@@ -7,8 +7,63 @@ import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-
 import { getCanonicalVertexId } from '@/lib/hex';
 import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/GuildSelectionList';
 import { Tooltip } from '@/components/ui/tooltip';
-import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { PipDie } from '@/themes/tabletop';
+
+/**
+ * Cards whose decision is about the board or your visible hand, so the dialog
+ * floats above the board instead of blurring it out:
+ *
+ * - alchemist      — you pick both dice; you need the number tokens.
+ * - resource/trade monopoly — you judge what opponents hold from their production.
+ * - merchant_fleet — you pick the 2:1 type against your own hand in the tray.
+ * - irrigation / mining — lets you verify which hexes the printed total counted.
+ *
+ * Everything else (saboteur, wedding, espionage, guild_dues, encouragement)
+ * prints its own opponent/card table, so blocking is correct there.
+ */
+const BOARD_VISIBLE_CARDS: ProgressCardType[] = [
+    'alchemist',
+    'resource_monopoly',
+    'trade_monopoly',
+    'merchant_fleet',
+    'irrigation',
+    'mining',
+];
+
+// Same tabletop die colors as DiceDisplay so the picker matches the real roll.
+const RED_DIE = { body: '#b3352c', pip: '#f3e9cf' };
+const YELLOW_DIE = { body: '#d9a72e', pip: '#3a3020' };
+
+const DIE_FACES = [1, 2, 3, 4, 5, 6];
+
+/** One row of six clickable dice faces — faster and smaller than a <select>. */
+const DiePicker: React.FC<{
+    label: string;
+    colors: { body: string; pip: string };
+    value: number;
+    onChange: (value: number) => void;
+}> = ({ label, colors, value, onChange }) => (
+    <div>
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--ui-muted)]">{label}</div>
+        <div className="flex gap-1.5" role="radiogroup" aria-label={label}>
+            {DIE_FACES.map(face => (
+                <button
+                    key={face}
+                    type="button"
+                    role="radio"
+                    aria-checked={value === face}
+                    aria-label={`${label} ${face}`}
+                    onClick={() => onChange(face)}
+                    className={`rounded-lg border p-1 transition ${tabletopOptionClass(value === face)}`}
+                >
+                    <PipDie value={face} body={colors.body} pip={colors.pip} size={32} title={`${face}`} />
+                </button>
+            ))}
+        </div>
+    </div>
+);
 
 function calculateIrrigationGain(gameState: GameState, playerId: string) {
     let fieldCount = 0;
@@ -143,15 +198,10 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = { tradeItem: merchantFleetChoice };
                 break;
 
-            case 'smith':
-                setError('Select knights directly on the board to use Smithing.');
-                return;
-
-            case 'intrigue':
-                setError('Select an opponent knight on the board to displace with Intrigue.');
-                return;
-
+            // Confirm-only cards: the dialog is a summary, there is nothing to pick.
             case 'saboteur':
+            case 'wedding':
+            case 'encouragement':
                 break;
 
             case 'espionage':
@@ -201,11 +251,12 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 options = {};
                 break;
 
-            // For board-selection cards, show message
-            case 'inventor':
-            case 'merchant':
-            case 'diplomat':
-                setError('This card requires board interaction. Close this dialog and click on the board to select the target.');
+            default:
+                // ProgressCardHand only opens this dialog for the cards above
+                // (CARDS_REQUIRING_PARAMETERS + CONFIRMATION_MODAL_CARDS);
+                // board-selection cards go straight to the board. Reaching here
+                // means a routing bug, so refuse rather than play with no options.
+                setError('This card is played on the board, not from this dialog.');
                 return;
         }
 
@@ -232,7 +283,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         setGuildDuesCommitted(false);
     };
 
-    const getOwnKnights = () => currentPlayer.knights || [];
     const getOpponents = () => gameState.players.filter(p => p.id !== currentPlayer.id);
     const getOpponentCards = (oppId: string) => {
         const opponent = gameState.players.find(p => p.id === oppId);
@@ -255,14 +305,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         });
         return entries;
     };
-    const getAvailableCount = (oppId: string, type: 'resource' | 'commodity', value: ResourceType | CommodityType) => {
-        const opponent = gameState.players.find(p => p.id === oppId);
-        if (!opponent) return 0;
-        if (type === 'resource') {
-            return opponent.resources?.[value as ResourceType] ?? 0;
-        }
-        return opponent.commodities?.[value as CommodityType] ?? 0;
-    };
     const getOpponentHandSize = (oppId: string) =>
         getOpponentHandCounts(oppId).reduce((sum, item) => sum + item.available, 0);
     const getOpponentResourceCount = (oppId: string) => {
@@ -280,33 +322,24 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
     const renderCardForm = () => {
         switch (cardType) {
-            case 'alchemist':
+            case 'alchemist': {
+                const bothChosen = chosenDice1 > 0 && chosenDice2 > 0;
+                const total = chosenDice1 + chosenDice2;
                 return (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium block mb-1">Red Die (1-6):</label>
-                            <select
-                                value={chosenDice1}
-                                onChange={(e) => setChosenDice1(Number(e.target.value))}
-                                className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
-                            >
-                                <option value="0">Select value</option>
-                                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium block mb-1">Yellow Die (1-6):</label>
-                            <select
-                                value={chosenDice2}
-                                onChange={(e) => setChosenDice2(Number(e.target.value))}
-                                className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
-                            >
-                                <option value="0">Select value</option>
-                                {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
-                            </select>
-                        </div>
+                    <div className="space-y-3">
+                        <DiePicker label="Red Die" colors={RED_DIE} value={chosenDice1} onChange={setChosenDice1} />
+                        <DiePicker label="Yellow Die" colors={YELLOW_DIE} value={chosenDice2} onChange={setChosenDice2} />
+                        {bothChosen && (
+                            <div className="rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-sm">
+                                Production roll: <span className="font-semibold text-emerald-300">{total}</span>
+                                {total === 7 && (
+                                    <span className="ml-2 text-amber-200">— a 7 moves the robber instead of producing.</span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 );
+            }
 
 
             case 'resource_monopoly':
@@ -744,10 +777,14 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
         </>
     );
 
+    const boardVisible = BOARD_VISIBLE_CARDS.includes(cardType);
+
     return (
         <TabletopModal
             title={cardMeta.name}
             description={cardMeta.description}
+            surface={boardVisible ? 'board-visible' : 'blocking'}
+            width={boardVisible ? 'sm' : 'md'}
             onClose={!espionageCommitted && !guildDuesCommitted ? onClose : undefined}
             footer={footer}
         >

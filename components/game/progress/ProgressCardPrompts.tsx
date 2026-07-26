@@ -264,6 +264,9 @@ export const ProgressCardPrompts: React.FC<ProgressCardPromptsProps> = ({
             title="Inventor"
             onClose={onCancelSelection}
             width="sm"
+            // The two hexes being swapped are highlighted on the board behind
+            // this dialog — blurring them out would hide what you're confirming.
+            surface="board-visible"
             footer={(
               <>
                 <TabletopButton onClick={onCancelSelection}>Cancel</TabletopButton>

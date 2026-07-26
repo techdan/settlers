@@ -29,6 +29,13 @@ interface ProgressCardHandProps {
     isMedicineSelecting?: boolean;
     activeFollowupCard?: ProgressCardType | null;
     onCancelFollowupCard?: () => void;
+    /**
+     * Reports which card's panel is open (null when none). Board-visible panels
+     * (Alchemy et al.) no longer have a scrim to block the tray, so the tray
+     * needs this to gate Roll/End Turn — otherwise a stray Roll click during
+     * `waiting_for_roll` would burn the Alchemy card.
+     */
+    onOpenPanelChange?: (cardType: ProgressCardType | null) => void;
     decorateCardHandler?: <TArgs extends any[], TResult>(
         cardType: ProgressCardType,
         hasFollowupStep: boolean,
@@ -75,6 +82,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     isMedicineSelecting,
     activeFollowupCard,
     onCancelFollowupCard,
+    onOpenPanelChange,
     decorateCardHandler
 }) => {
     const [isPending, startTransition] = useTransition();
@@ -85,7 +93,21 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     // Check timer status
     const timerStatus = useTimerState(gameState);
 
-    // Only show in C&K mode
+    // Clear local follow-up highlight when the server-driven active card clears
+    useEffect(() => {
+        if (!activeFollowupCard) {
+            setManualFollowupCard(null);
+        }
+    }, [activeFollowupCard]);
+
+    // Keep the tray in sync with the open card panel (see onOpenPanelChange).
+    useEffect(() => {
+        onOpenPanelChange?.(modalCard);
+    }, [modalCard, onOpenPanelChange]);
+
+    // Only show in C&K mode. This guard must stay BELOW every hook — it used to
+    // sit above them, which meant a player gaining progressCards mid-session
+    // would change the hook count between renders and throw.
     if (!player.progressCards) {
         return null;
     }
@@ -194,13 +216,6 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             });
         }
     };
-
-    // Clear local follow-up highlight when the server-driven active card clears
-    useEffect(() => {
-        if (!activeFollowupCard) {
-            setManualFollowupCard(null);
-        }
-    }, [activeFollowupCard]);
 
     // Collect all cards into a single list
     const allCards: ProgressCardType[] = [];
