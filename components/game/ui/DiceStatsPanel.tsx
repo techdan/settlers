@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import { DiceStats, DICE_TOTALS, EventDieStats, EVENT_DIE_FACES, GameState } from '@/lib/types';
 import { EventDieFace } from '@/core/rules/commodity-constants';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -21,7 +21,7 @@ const EVENT_FACE_LABELS: Record<EventDieFace, { label: string; color: string }> 
 };
 
 export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStats, gameState, onClose }) => {
-    const [tick, setTick] = useState(0);
+    const [, forceRender] = useReducer(count => count + 1, 0);
     const totalRolls = DICE_TOTALS.reduce((sum, total) => sum + (stats[total] || 0), 0);
     const isCitiesAndKnights = gameState?.gameMode === 'cities_and_knights';
     const shouldShowEventStats = isCitiesAndKnights && !!eventStats;
@@ -34,14 +34,14 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
         }
 
         const interval = setInterval(() => {
-            setTick(prev => prev + 1);
+            forceRender();
         }, 1000);
 
         return () => clearInterval(interval);
     }, [gameState?.turnStartTime, gameState?.timerConfig?.enabled]);
 
     // Calculate total gameplay time (including current turn in progress)
-    const totalGameplayTime = React.useMemo(() => {
+    const totalGameplayTime = (() => {
         if (!gameState?.playerTotalTime) {
             return 0;
         }
@@ -60,7 +60,7 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
         }
 
         return total;
-    }, [gameState, tick]); // Re-calculate when gameState changes or tick updates
+    })();
 
     return (
         <div className="pointer-events-auto w-72 max-w-full overflow-hidden rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] p-3 text-[var(--ui-text)] shadow-xl backdrop-blur-sm">

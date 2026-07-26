@@ -22,6 +22,7 @@ import { isValidKnightPlacement } from '@/core/validation/knight-validator';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { getTotalResources } from '@/core/engine/resources/resource-manager';
 import { getCanonicalVertexId } from '@/lib/hex';
+import { PendingBoardPlacement } from '@/lib/types/board-selection-state';
 
 /**
  * useBoardActions hook
@@ -50,8 +51,8 @@ export function useBoardActions(
     validHexes: Set<string>;
   },
   knightsMap: Map<string, Knight>,
-  pendingPlacement: any | null,
-  setPendingPlacement: (placement: any | null) => void
+  pendingPlacement: PendingBoardPlacement | null,
+  setPendingPlacement: (placement: PendingBoardPlacement | null) => void
 ) {
   const [isPending, startTransition] = useTransition();
   const [isPlacingBonusRoad, setIsPlacingBonusRoad] = useState(false);
@@ -363,38 +364,11 @@ export function useBoardActions(
 
     // Robber placement
     if (gameState.phase === 'robber_placement') {
-      onRobberMoveStarted?.();
-
-      // Find potential victims on this hex
-      const [q, r] = hexId.split(',').map(Number);
-      const potentialVictims = new Set<string>();
-
-      for (let d = 0; d < 6; d++) {
-        const vId = getCanonicalVertexId(q, r, d);
-        const vertex = gameState.board.vertices[vId];
-        if (vertex && vertex.owner && vertex.owner !== playerId) {
-          // Check if they have resources
-          const victim = gameState.players.find(p => p.id === vertex.owner);
-          if (victim && getTotalResources(victim) > 0) {
-            potentialVictims.add(vertex.owner);
-          }
-        }
-      }
-
-      const victimsArray = Array.from(potentialVictims);
-
-      // If multiple victims, show selection modal
-      if (victimsArray.length > 1 && onRobberVictimRequest) {
-        onRobberVictimRequest(hexId, victimsArray);
-      } else {
-        // Single or no victim - proceed directly
-        const victimId = victimsArray.length === 1 ? victimsArray[0] : undefined;
-        startTransition(async () => {
-          try {
-            await moveRobber(gameState.roomId, playerId, hexId, victimId);
-          } catch (e) {
-            console.error('Failed to move robber', e);
-          }
+      if (validation.validHexes.has(hexId)) {
+        setPendingPlacement({
+          type: 'robber',
+          id: hexId,
+          phase: 'robber'
         });
       }
     }
@@ -402,6 +376,11 @@ export function useBoardActions(
 
   // Handle placement cancellation
   const handleCancelPlacement = () => {
+    if (pendingPlacement?.type === 'robber') {
+      setPendingPlacement(null);
+      return;
+    }
+
     setPendingPlacement(null);
     // Cancel the entire build process when user clicks red X
     onCancelBuild();
@@ -413,7 +392,40 @@ export function useBoardActions(
 
     const { type, id, phase } = pendingPlacement;
 
-    if (type === 'settlement') {
+    if (type === 'robber') {
+      onRobberMoveStarted?.();
+
+      const [q, r] = id.split(',').map(Number);
+      const potentialVictims = new Set<string>();
+
+      for (let d = 0; d < 6; d++) {
+        const vertexId = getCanonicalVertexId(q, r, d);
+        const vertex = gameState.board.vertices[vertexId];
+        if (vertex?.owner && vertex.owner !== playerId) {
+          const victim = gameState.players.find(player => player.id === vertex.owner);
+          if (victim && getTotalResources(victim) > 0) {
+            potentialVictims.add(vertex.owner);
+          }
+        }
+      }
+
+      const victims = Array.from(potentialVictims);
+      if (victims.length > 1 && onRobberVictimRequest) {
+        onRobberVictimRequest(id, victims);
+        return;
+      }
+
+      const victimId = victims.length === 1 ? victims[0] : undefined;
+      startTransition(async () => {
+        try {
+          const updatedGameState = await moveRobber(gameState.roomId, playerId, id, victimId);
+          callbacks.onGameStateUpdated?.(updatedGameState);
+          setPendingPlacement(null);
+        } catch (e) {
+          console.error('Failed to move robber', e);
+        }
+      });
+    } else if (type === 'settlement') {
       if (phase === 'setup') {
         startTransition(async () => {
           try {

@@ -7,10 +7,18 @@ import { generatePorts } from '@/core/engine/board/port-generator';
 import { getBarbarianForces } from '@/core/rules/barbarian-strength';
 import { GameState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
-import { BoardSelectionState } from '@/lib/types/board-selection-state';
+import { BoardSelectionState, PendingBoardPlacement } from '@/lib/types/board-selection-state';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { BoardControls } from './BoardControls';
+
+const BOARD_PAN_MARGIN_PX = 100;
+const BOARD_PANNING_OPTIONS = { velocityDisabled: true } as const;
+const BOARD_ALIGNMENT_OPTIONS = {
+  disabled: true,
+  sizeX: BOARD_PAN_MARGIN_PX,
+  sizeY: BOARD_PAN_MARGIN_PX,
+} as const;
 
 /**
  * BoardCanvas - Pure rendering component for the game board
@@ -38,7 +46,8 @@ interface BoardCanvasProps {
   vertices: any[];
   renderEdges: any[];
   knightsMap: Map<string, Knight>;
-  pendingPlacement: any | null;
+  pendingPlacement: PendingBoardPlacement | null;
+  displayedRobberHexId: string | null;
   onVertexClick: (vertexId: string) => void;
   onEdgeClick: (edgeId: string) => void;
   onHexClick: (hexId: string) => void;
@@ -57,6 +66,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   renderEdges,
   knightsMap,
   pendingPlacement,
+  displayedRobberHexId,
   onVertexClick,
   onEdgeClick,
   onHexClick,
@@ -102,7 +112,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         minScale={0.5}
         maxScale={1.3}
         centerOnInit
-        limitToBounds={false}
+        limitToBounds
+        panning={BOARD_PANNING_OPTIONS}
+        alignmentAnimation={BOARD_ALIGNMENT_OPTIONS}
         onTransformed={ref => {
           setZoomLevel(ref.state.scale);
         }}
@@ -163,7 +175,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         hex={tile.hex}
                         terrain={tile.terrain}
                         numberToken={tile.numberToken}
-                        hasRobber={gameState.robberHexId === tile.id}
+                        hasRobber={displayedRobberHexId === tile.id}
                         hasMerchant={gameState.merchantHexId === tile.id}
                         merchantColor={merchantOwner?.color}
                         size={hexSize}
@@ -172,6 +184,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         isSelectable={validation.validHexes.has(tile.id)}
                         selectionVariant={selectionVariant}
                         selectionState={selectionState}
+                        isPendingRobberPlacement={
+                          pendingPlacement?.type === 'robber' && pendingPlacement.id === tile.id
+                        }
+                        onConfirmPlacement={onConfirmPlacement}
+                        onCancelPlacement={onCancelPlacement}
                       />
                     );
                   })}

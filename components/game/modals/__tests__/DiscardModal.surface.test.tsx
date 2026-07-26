@@ -27,4 +27,23 @@ describe('DiscardModal surface', () => {
         expect(backdrop.className).not.toMatch(/backdrop-blur/);
         expect(backdrop.className).toMatch(/pointer-events-auto/);
     });
+
+    it('counts commodities and offers them for a robber discard', () => {
+        const player = createTestPlayer({
+            resources: { wood: 3, brick: 2, sheep: 0, wheat: 0, ore: 0 },
+            commodities: { paper: 2, cloth: 1, coin: 1 },
+        });
+        const gameState = createTestGameState({
+            players: [player],
+            phase: 'discarding',
+            discardContext: { type: 'robber' },
+        });
+
+        render(<DiscardModal gameState={gameState} playerId={player.id} />);
+
+        expect(screen.getByRole('dialog', { name: 'Robber Attack!' })).toBeInTheDocument();
+        expect(screen.getByText(/You have 9 cards/)).toBeInTheDocument();
+        expect(screen.getByText('paper')).toBeInTheDocument();
+        expect(screen.queryByRole('dialog', { name: 'Waiting for Discards' })).not.toBeInTheDocument();
+    });
 });

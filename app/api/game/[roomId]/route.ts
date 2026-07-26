@@ -52,7 +52,12 @@ export async function GET(
 
     // State changed or no cache, return full state
     const state = JSON.parse(game.state);
-    return NextResponse.json(state, {
+    return NextResponse.json({
+        ...state,
+        // Refresh the clock sample on page load even when the game has not
+        // received a state update recently.
+        timerServerTime: Date.now(),
+    }, {
         headers: {
             'ETag': etag,
             'Cache-Control': 'no-cache', // Require validation on subsequent requests

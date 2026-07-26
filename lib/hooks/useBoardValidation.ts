@@ -8,6 +8,7 @@ import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 import { getOpenRoadIds } from '@/core/validation/diplomat-validator';
 import { getAdjacentEdgesForVertex } from '@/lib/hex';
+import { PendingBoardPlacement } from '@/lib/types/board-selection-state';
 
 /**
  * useBoardValidation hook
@@ -31,7 +32,7 @@ export function useBoardValidation(
   vertices: any[],
   edges: any[],
   tiles: any[],
-  pendingPlacement: any | null
+  pendingPlacement: PendingBoardPlacement | null
 ) {
   // Extract selection state properties
   const {
@@ -353,6 +354,7 @@ export function useBoardValidation(
   // Calculate valid hexes for highlighting
   const validHexes = useMemo(() => {
     const valid = new Set<string>();
+    if (pendingPlacement) return valid;
     if (gameState.currentTurn !== playerId) return valid;
 
     // Robber placement
@@ -411,7 +413,7 @@ export function useBoardValidation(
     });
 
     return valid;
-  }, [gameState, playerId, hexCardSelection, tiles]);
+  }, [gameState, playerId, hexCardSelection, tiles, pendingPlacement]);
 
   return {
     validVertices,

@@ -145,8 +145,8 @@ export async function playDevCard(roomId: string, playerId: string, cardType: De
     return devCardService.playDevCard(roomId, playerId, cardType, options);
 }
 
-export async function discardCards(roomId: string, playerId: string, resources: Record<ResourceType, number>) {
-    return robberService.discardCards(roomId, playerId, resources);
+export async function discardCards(roomId: string, playerId: string, resources: Record<ResourceType, number>, commodities?: Record<CommodityType, number>) {
+    return robberService.discardCards(roomId, playerId, resources, commodities);
 }
 
 import { getPortForVertex } from '@/core/engine/board/port-generator';

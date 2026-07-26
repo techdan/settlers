@@ -485,9 +485,10 @@ export async function cancelTrade(
     const gameState = await getGameStateByRoomId(roomId);
     if (!gameState) throw new Error('Game not found');
 
-    // Validate trade offer exists
+    // Cancellation is idempotent because clients can briefly render an offer
+    // from a stale realtime snapshot after another action has already retired it.
     if (!gameState.tradeOffer) {
-        throw new Error('No active trade offer');
+        return gameState;
     }
 
     // Only initiator or current turn player can cancel

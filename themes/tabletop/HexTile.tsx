@@ -5,6 +5,7 @@ import { NumberToken } from './NumberToken';
 import { Robber } from './Robber';
 import { Merchant } from './Merchant';
 import { TT, shade, r2, hexPointsStr } from './palette';
+import { StatusGlyph } from './glyphs';
 
 /**
  * Tabletop hex tile — each terrain is a small illustrated scene on warm tile
@@ -30,6 +31,9 @@ interface HexTileProps {
     isSelectable?: boolean;
     selectionVariant?: 'glow' | 'cursor';
     selectionState?: 'primary' | 'secondary' | null;
+    isPendingRobberPlacement?: boolean;
+    onConfirmPlacement?: () => void;
+    onCancelPlacement?: () => void;
 }
 
 const BASE: Record<TerrainType, string> = {
@@ -224,6 +228,9 @@ export const HexTile: React.FC<HexTileProps> = ({
     isSelectable,
     selectionVariant = 'glow',
     selectionState = null,
+    isPendingRobberPlacement = false,
+    onConfirmPlacement,
+    onCancelPlacement,
 }) => {
     const { x, y } = hexToPixel(hex, size);
     const base = BASE[terrain];
@@ -236,6 +243,7 @@ export const HexTile: React.FC<HexTileProps> = ({
         <g
             transform={`translate(${r2(x)}, ${r2(y)})`}
             data-terrain={terrain}
+            data-hex-id={`${hex.q},${hex.r}`}
             onClick={isSelectable ? onClick : undefined}
             className={isSelectable ? 'cursor-pointer' : ''}
         >
@@ -297,6 +305,53 @@ export const HexTile: React.FC<HexTileProps> = ({
                 <g transform={hasRobber ? 'translate(12, 0)' : undefined}>
                     <Merchant color={merchantColor} />
                 </g>
+            )}
+
+            {isPendingRobberPlacement && (
+                <>
+                    <g
+                        transform="translate(24, -24)"
+                        className="cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Confirm robber placement"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onConfirmPlacement?.();
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                onConfirmPlacement?.();
+                            }
+                        }}
+                    >
+                        <circle r={10} fill="var(--color-highlight-success)" stroke="var(--color-highlight-white)" strokeWidth={2} />
+                        <g transform="scale(0.78)" className="pointer-events-none"><StatusGlyph type="confirm" /></g>
+                        <title>Confirm Placement</title>
+                    </g>
+                    <g
+                        transform="translate(-24, -24)"
+                        className="cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Cancel robber placement"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onCancelPlacement?.();
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                onCancelPlacement?.();
+                            }
+                        }}
+                    >
+                        <circle r={10} fill="var(--color-highlight-danger)" stroke="var(--color-highlight-white)" strokeWidth={2} />
+                        <g transform="scale(0.78)" className="pointer-events-none"><StatusGlyph type="cancel" /></g>
+                        <title>Cancel Placement</title>
+                    </g>
+                </>
             )}
         </g>
     );

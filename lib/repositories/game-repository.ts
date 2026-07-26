@@ -53,9 +53,14 @@ export function parseGameState(game: { state: string }): GameState {
  * @returns Updated game record
  */
 export async function updateGameState(gameState: GameState) {
+    const stateWithServerTime: GameState = {
+        ...gameState,
+        timerServerTime: Date.now(),
+    };
+    delete stateWithServerTime.timerClockOffsetMs;
     const updated = await db.update(games)
         .set({
-            state: JSON.stringify(gameState),
+            state: JSON.stringify(stateWithServerTime),
             updatedAt: new Date()
         })
         .where(eq(games.id, gameState.id))
@@ -72,11 +77,16 @@ export async function updateGameState(gameState: GameState) {
  * @returns Created game record
  */
 export async function createGame(roomId: string, gameState: GameState) {
+    const stateWithServerTime: GameState = {
+        ...gameState,
+        timerServerTime: Date.now(),
+    };
+    delete stateWithServerTime.timerClockOffsetMs;
     const created = await db.insert(games)
         .values({
             id: gameState.id,
             roomId,
-            state: JSON.stringify(gameState),
+            state: JSON.stringify(stateWithServerTime),
             createdAt: new Date(),
             updatedAt: new Date()
         })

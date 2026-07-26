@@ -242,6 +242,8 @@ export interface GameState {
     // Turn timer state (added for turn timer feature)
     timerConfig?: TimerConfig;                              // Timer configuration (copied from lobby)
     turnStartTime?: number;                                 // Unix timestamp (ms) when turn began
+    timerServerTime?: number;                               // Server clock sample (ms), refreshed with authoritative state
+    timerClockOffsetMs?: number;                            // Client-only offset from local clock to timerServerTime
     turnTimeLimit?: number;                                 // Effective limit for current turn (base + extensions)
     timerLocked?: boolean;                                  // Is turn in locked state (timeout reached)?
     playerTimeBanks?: Record<string, number>;               // Remaining bank per player (seconds)

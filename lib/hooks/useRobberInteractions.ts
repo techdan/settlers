@@ -1,12 +1,18 @@
 import { useCallback, useState } from 'react';
 import { moveRobber } from '@/app/actions';
+import { GameState } from '@/lib/types';
 
 interface UseRobberInteractionsParams {
   roomId: string;
   playerId: string;
+  onGameStateUpdated: (gameState: GameState) => void;
 }
 
-export function useRobberInteractions({ roomId, playerId }: UseRobberInteractionsParams) {
+export function useRobberInteractions({
+  roomId,
+  playerId,
+  onGameStateUpdated,
+}: UseRobberInteractionsParams) {
   const [robberVictimSelectionOpen, setRobberVictimSelectionOpen] = useState(false);
   const [robberHexId, setRobberHexId] = useState<string | null>(null);
   const [robberPotentialVictims, setRobberPotentialVictims] = useState<string[]>([]);
@@ -22,7 +28,8 @@ export function useRobberInteractions({ roomId, playerId }: UseRobberInteraction
       if (!robberHexId) return;
 
       try {
-        await moveRobber(roomId, playerId, robberHexId, victimId ?? undefined);
+        const updatedGameState = await moveRobber(roomId, playerId, robberHexId, victimId ?? undefined);
+        onGameStateUpdated(updatedGameState);
         setRobberVictimSelectionOpen(false);
         setRobberHexId(null);
         setRobberPotentialVictims([]);
@@ -30,7 +37,7 @@ export function useRobberInteractions({ roomId, playerId }: UseRobberInteraction
         console.error('Failed to move robber with victim', e);
       }
     },
-    [playerId, robberHexId, roomId]
+    [onGameStateUpdated, playerId, robberHexId, roomId]
   );
 
   const handleRobberVictimCancel = useCallback(() => {

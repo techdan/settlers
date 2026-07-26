@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { GameState } from '@/lib/types';
 import { resolveBarbarianAttack } from '@/app/actions';
+import { synchronizeTimerClock } from '@/lib/services/timer-clock';
 
 export function useInitialGameState(roomId: string, setBaseGameState: (state: GameState) => void) {
   useEffect(() => {
@@ -9,7 +10,7 @@ export function useInitialGameState(roomId: string, setBaseGameState: (state: Ga
         const res = await fetch(`/api/game/${roomId}`);
         if (res.ok) {
           const data = await res.json();
-          setBaseGameState(data);
+          setBaseGameState(synchronizeTimerClock(data));
         }
       } catch (e) {
         console.error('Failed to fetch initial game state', e);
@@ -70,7 +71,7 @@ export function useTheftNotificationEffect(
   baseGameState: GameState | null,
   playerId: string,
   lastTheftSeenRef: React.MutableRefObject<number>,
-  setShowTheftNotification: (show: boolean) => void
+  setTheftNotification: (theft: NonNullable<GameState['lastTheft']>) => void
 ) {
   useEffect(() => {
     const theft = baseGameState?.lastTheft;
@@ -86,8 +87,8 @@ export function useTheftNotificationEffect(
     if (!isRecent) return;
 
     lastTheftSeenRef.current = theft.timestamp;
-    setShowTheftNotification(true);
-  }, [baseGameState?.lastTheft, lastTheftSeenRef, playerId, setShowTheftNotification]);
+    setTheftNotification(theft);
+  }, [baseGameState?.lastTheft, lastTheftSeenRef, playerId, setTheftNotification]);
 }
 
 export function useTradeCompletionEffect(

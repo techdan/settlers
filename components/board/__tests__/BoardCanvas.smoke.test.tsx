@@ -6,7 +6,7 @@ import { generateStandardBoard } from '@/core/engine/board/board-generator';
 import { generatePorts } from '@/core/engine/board/port-generator';
 import { createHex, hexCornerToPixel, hexEdgeToPixel } from '@/lib/hex';
 import type { Knight } from '@/lib/types/player';
-import type { BoardSelectionState } from '@/lib/types/board-selection-state';
+import type { BoardSelectionState, PendingBoardPlacement } from '@/lib/types/board-selection-state';
 
 /**
  * Board smoke tests (single-theme board).
@@ -104,7 +104,7 @@ function buildFixture() {
 
 type Fixture = ReturnType<typeof buildFixture>;
 
-function renderBoard(fixture: Fixture) {
+function renderBoard(fixture: Fixture, pendingPlacement: PendingBoardPlacement | null = null) {
     return render(
         <BoardCanvas
             gameState={fixture.gameState}
@@ -115,7 +115,10 @@ function renderBoard(fixture: Fixture) {
             vertices={Object.values(fixture.gameState.board.vertices)}
             renderEdges={Object.values(fixture.gameState.board.edges)}
             knightsMap={fixture.knightsMap}
-            pendingPlacement={null}
+            pendingPlacement={pendingPlacement}
+            displayedRobberHexId={
+                pendingPlacement?.type === 'robber' ? pendingPlacement.id : fixture.gameState.robberHexId
+            }
             onVertexClick={() => { }}
             onEdgeClick={() => { }}
             onHexClick={() => { }}
@@ -140,6 +143,22 @@ function findEdgeGroup(container: HTMLElement, edge: { q: number; r: number; d: 
 }
 
 describe('BoardCanvas smoke tests (flat theme)', () => {
+    it('renders robber confirmation controls on the preview hex', () => {
+        const fixture = buildFixture();
+        const targetHexId = fixture.hexes.find(hex => hex.id !== fixture.gameState.robberHexId)!.id;
+        const { container, getByRole } = renderBoard(fixture, {
+            type: 'robber',
+            id: targetHexId,
+            phase: 'robber',
+        });
+
+        const targetHex = container.querySelector(`[data-hex-id="${targetHexId}"]`);
+        expect(targetHex).not.toBeNull();
+        expect(targetHex!.querySelector('title')?.textContent).toBe('Robber');
+        expect(getByRole('button', { name: 'Confirm robber placement' })).toBeTruthy();
+        expect(getByRole('button', { name: 'Cancel robber placement' })).toBeTruthy();
+    });
+
     it('renders every hex tile on the board', () => {
         const fixture = buildFixture();
         const { container } = renderBoard(fixture);

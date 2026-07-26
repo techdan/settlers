@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { BoardCanvas } from './BoardCanvas';
 import { useBoardValidation } from '@/lib/hooks/useBoardValidation';
 import { useBoardActions } from '@/lib/hooks/useBoardActions';
-import { BoardProps } from '@/lib/types/board-selection-state';
+import { BoardProps, PendingBoardPlacement } from '@/lib/types/board-selection-state';
 import { Knight } from '@/lib/types/player';
 
 /**
@@ -28,11 +28,7 @@ export const Board: React.FC<BoardProps> = ({
   const HEX_SIZE = 90;
 
   // Pending placement state for confirmation modal
-  const [pendingPlacement, setPendingPlacement] = useState<{
-    type: 'settlement' | 'road' | 'city' | 'knight' | 'city_wall';
-    id: string;
-    phase: 'setup' | 'main';
-  } | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<PendingBoardPlacement | null>(null);
 
 
   // Clear pending placement when build mode changes (e.g., when toggling build buttons)
@@ -43,6 +39,13 @@ export const Board: React.FC<BoardProps> = ({
     // We only want to clear when buildMode changes, not when pendingPlacement changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectionState.buildMode]);
+
+  // The authoritative phase update completes a confirmed robber move.
+  useEffect(() => {
+    if (gameState.phase !== 'robber_placement') {
+      setPendingPlacement(current => current?.type === 'robber' ? null : current);
+    }
+  }, [gameState.phase]);
 
   // Base vertices from game state
   const baseVertices = Object.values(gameState.board.vertices);
@@ -166,6 +169,8 @@ export const Board: React.FC<BoardProps> = ({
 
   // Get hex tiles
   const tiles = gameState.board.hexes;
+  const displayedRobberHexId =
+    pendingPlacement?.type === 'robber' ? pendingPlacement.id : gameState.robberHexId;
 
   // Use validation hook
   const validation = useBoardValidation(
@@ -202,6 +207,7 @@ export const Board: React.FC<BoardProps> = ({
       renderEdges={renderEdges}
       knightsMap={knightsMap}
       pendingPlacement={pendingPlacement}
+      displayedRobberHexId={displayedRobberHexId}
       onVertexClick={actions.handleVertexClick}
       onEdgeClick={actions.handleEdgeClick}
       onHexClick={actions.handleHexClick}

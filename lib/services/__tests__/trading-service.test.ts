@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { tradeWithBank, offerTrade, acceptTrade, rejectTrade } from '../trading-service';
+import { tradeWithBank, offerTrade, acceptTrade, rejectTrade, cancelTrade } from '../trading-service';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
 import { GameState } from '@/lib/types';
 import * as PortGenerator from '@/core/engine/board/port-generator';
-import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
 
 // Mock Repositories
 vi.mock('@/lib/repositories/game-repository', () => ({
@@ -306,6 +306,17 @@ describe('Trading Service', () => {
         it('throws error if initiator tries to reject', async () => {
             await expect(rejectTrade('room-1', 'p1'))
                 .rejects.toThrow('Trade initiator should cancel instead of rejecting');
+        });
+    });
+
+    describe('cancelTrade', () => {
+        it('is a no-op when a stale client cancels an already-retired offer', async () => {
+            mockGameState.tradeOffer = null;
+
+            const result = await cancelTrade('room-1', 'p1');
+
+            expect(result).toBe(mockGameState);
+            expect(updateGameState).not.toHaveBeenCalled();
         });
     });
 });

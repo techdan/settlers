@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import { GameState } from '@/lib/types';
+import { synchronizeTimerClock } from '@/lib/services/timer-clock';
 
 export function useGameSubscription(roomId: string, initialGameState: GameState | null) {
     // Only use initial state on mount, then Realtime takes over
@@ -16,7 +17,9 @@ export function useGameSubscription(roomId: string, initialGameState: GameState 
                 const res = await fetch(`/api/game/${roomId}`);
                 if (res.ok) {
                     const data = await res.json();
-                    setGameState(data);
+                    setGameState(previousState =>
+                        synchronizeTimerClock(data, previousState)
+                    );
                 }
             } catch (e) {
                 console.error('[useGameSubscription] Failed to fetch latest state:', e);
@@ -45,7 +48,9 @@ export function useGameSubscription(roomId: string, initialGameState: GameState 
                     if (payload.new && payload.new.state) {
                         try {
                             const newState = JSON.parse(payload.new.state);
-                            setGameState(newState);
+                            setGameState(previousState =>
+                                synchronizeTimerClock(newState, previousState)
+                            );
                         } catch (e) {
                             console.error('[useGameSubscription] Failed to parse game state update:', e);
                         }

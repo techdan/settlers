@@ -11,6 +11,18 @@ export type BuildMode = 'road' | 'settlement' | 'city' | 'knight' | 'city_wall';
  */
 export type MetropolisType = 'science' | 'trade' | 'politics';
 
+export type PendingBoardPlacement =
+  | {
+      type: 'settlement' | 'road' | 'city' | 'knight' | 'city_wall';
+      id: string;
+      phase: 'setup' | 'main';
+    }
+  | {
+      type: 'robber';
+      id: string;
+      phase: 'robber';
+    };
+
 /**
  * BoardSelectionState consolidates all selection-related state for board interactions
  * This reduces Board component props from 40+ to just 4 props
@@ -85,6 +97,7 @@ export interface BoardCallbacks {
   onBarbarianCitySelect?: (vertexId: string) => void;
   onRobberVictimRequest?: (hexId: string, potentialVictims: string[]) => void;
   onRobberMoveStarted?: () => void;
+  onGameStateUpdated?: (gameState: GameState) => void;
   onCancelBuild: () => void;
 }
 

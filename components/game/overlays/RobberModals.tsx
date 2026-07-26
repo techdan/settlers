@@ -10,7 +10,7 @@ interface RobberModalsProps {
   potentialVictims: string[];
   onSelectVictim: (victimId: string | null) => void;
   onCancelVictim: () => void;
-  showTheftNotification: boolean;
+  theftNotification: NonNullable<GameState['lastTheft']> | null;
   onDismissTheft: () => void;
 }
 
@@ -21,7 +21,7 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
   potentialVictims,
   onSelectVictim,
   onCancelVictim,
-  showTheftNotification,
+  theftNotification,
   onDismissTheft,
 }) => {
   return (
@@ -34,8 +34,8 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
         onCancel={onCancelVictim}
       />
 
-      {showTheftNotification && gameState.lastTheft && (() => {
-        const theft = gameState.lastTheft;
+      {theftNotification && (() => {
+        const theft = theftNotification;
         const isThief = theft.thiefId === playerId;
 
         let stolenItems = null;
@@ -43,7 +43,10 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
           stolenItems = theft.items || null;
         } else {
           const victimData = theft.victims?.find(v => v.victimId === playerId);
-          stolenItems = victimData?.items || null;
+          stolenItems =
+            victimData?.items ||
+            (theft.victimId === playerId ? theft.items : null) ||
+            null;
         }
 
         const thief = gameState.players.find(p => p.id === theft.thiefId);
@@ -53,7 +56,7 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
 
         return (
           <RobberTheftNotification
-            isOpen={showTheftNotification}
+            isOpen
             stolenItem={stolenItems?.[0] || null}
             stolenItems={stolenItems || undefined}
             wasVictim={!isThief}

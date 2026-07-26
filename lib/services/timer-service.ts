@@ -155,7 +155,10 @@ export function checkTimeout(gameState: GameState): boolean {
  * Get the current timer status (for UI display).
  * This is a pure function that calculates status from server timestamps.
  */
-export function getTimerStatus(gameState: GameState): TimerStatus {
+export function getTimerStatus(
+  gameState: GameState,
+  now: number = Date.now() - (gameState.timerClockOffsetMs ?? 0)
+): TimerStatus {
   if (!gameState.timerConfig?.enabled || !gameState.turnStartTime) {
     return {
       isActive: false,
@@ -168,7 +171,6 @@ export function getTimerStatus(gameState: GameState): TimerStatus {
     };
   }
 
-  const now = Date.now();
   const elapsedMs = now - gameState.turnStartTime;
   const elapsedSeconds = Math.floor(elapsedMs / 1000);
 

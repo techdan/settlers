@@ -1,9 +1,10 @@
 import React, { useState, useTransition } from 'react';
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
+import { CommodityType } from '@/core/rules/commodity-constants';
 import { discardCards } from '@/app/actions';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
-import { TabletopResourceIcon } from '@/themes/tabletop/glyphs';
+import { TabletopCommodityIcon, TabletopResourceIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton, TabletopModal } from '../ui/TabletopModal';
 
 interface DiscardModalProps {
@@ -12,55 +13,79 @@ interface DiscardModalProps {
 }
 
 const RESOURCE_ORDER: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
-const INITIAL_SELECTION: Record<ResourceType, number> = { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 };
+const COMMODITY_ORDER: CommodityType[] = ['paper', 'cloth', 'coin'];
+const CARD_ORDER = [...RESOURCE_ORDER, ...COMMODITY_ORDER] as const;
+type DiscardableCard = typeof CARD_ORDER[number];
+const INITIAL_SELECTION: Record<DiscardableCard, number> = {
+    wood: 0,
+    brick: 0,
+    sheep: 0,
+    wheat: 0,
+    ore: 0,
+    paper: 0,
+    cloth: 0,
+    coin: 0,
+};
 
-function selectionsEqual(a: Record<ResourceType, number>, b: Record<ResourceType, number>): boolean {
-    return RESOURCE_ORDER.every(res => a[res] === b[res]);
+function isCommodity(card: DiscardableCard): card is CommodityType {
+    return COMMODITY_ORDER.includes(card as CommodityType);
 }
 
-function normalizeResources(resources?: Record<ResourceType, number>): Record<ResourceType, number> {
-    return RESOURCE_ORDER.reduce((acc, res) => {
-        const value = resources?.[res];
-        acc[res] = Number.isFinite(value) ? Math.max(0, value as number) : 0;
+function selectionsEqual(a: Record<DiscardableCard, number>, b: Record<DiscardableCard, number>): boolean {
+    return CARD_ORDER.every(card => a[card] === b[card]);
+}
+
+function normalizeCards(
+    resources?: Record<ResourceType, number>,
+    commodities?: Record<CommodityType, number>
+): Record<DiscardableCard, number> {
+    return CARD_ORDER.reduce((acc, card) => {
+        const value = isCommodity(card) ? commodities?.[card] : resources?.[card];
+        acc[card] = Number.isFinite(value) ? Math.max(0, value as number) : 0;
         return acc;
     }, { ...INITIAL_SELECTION });
 }
 
 export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
-    const [selected, setSelected] = useState<Record<ResourceType, number>>(INITIAL_SELECTION);
+    const [selected, setSelected] = useState<Record<DiscardableCard, number>>(INITIAL_SELECTION);
     const [isPending, startTransition] = useTransition();
     const discardContext = gameState.discardContext;
     const isSabotage = discardContext?.type === 'sabotage';
     const isTarget = isSabotage ? discardContext.targetIds?.includes(playerId) : true;
 
-    const safeResources = React.useMemo(
-        () => normalizeResources(player?.resources),
-        [
-            player?.resources?.wood,
-            player?.resources?.brick,
-            player?.resources?.sheep,
-            player?.resources?.wheat,
-            player?.resources?.ore,
-            player?.id
-        ]
+    const safeCards = React.useMemo(
+        () => normalizeCards(player?.resources, player?.commodities),
+        [player]
     );
 
     const totalResources = React.useMemo(
-        () => RESOURCE_ORDER.reduce((sum, res) => sum + safeResources[res], 0),
-        [safeResources]
+        () => RESOURCE_ORDER.reduce((sum, resource) => sum + safeCards[resource], 0),
+        [safeCards]
+    );
+    const totalCards = React.useMemo(
+        () => CARD_ORDER.reduce((sum, card) => sum + safeCards[card], 0),
+        [safeCards]
     );
     const discardThreshold = React.useMemo(
         () => (player ? getRobberDiscardThreshold(gameState, playerId) : 7),
-        [gameState, player?.id, playerId]
+        [gameState, player, playerId]
     );
     const requiredDiscard = React.useMemo(() => {
         if (!player) return 0;
         if (!isTarget) return 0;
         if (isSabotage) return Math.max(0, Math.floor(totalResources / 2));
-        if (totalResources <= discardThreshold) return 0;
-        return Math.max(0, Math.floor(totalResources / 2));
-    }, [discardThreshold, isSabotage, isTarget, player, totalResources]);
+        if (totalCards <= discardThreshold) return 0;
+        return Math.max(0, Math.floor(totalCards / 2));
+    }, [discardThreshold, isSabotage, isTarget, player, totalCards, totalResources]);
+
+    const availableCards = React.useMemo(
+        () => CARD_ORDER.reduce((acc, card) => {
+            acc[card] = isSabotage && isCommodity(card) ? 0 : safeCards[card];
+            return acc;
+        }, { ...INITIAL_SELECTION }),
+        [isSabotage, safeCards]
+    );
 
     // Reset/clamp selection whenever discard phase changes or resources update to avoid stale/negative counts.
     React.useEffect(() => {
@@ -79,27 +104,27 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
             let changed = false;
 
             // Clamp to available resources
-            RESOURCE_ORDER.forEach(res => {
-                const max = safeResources[res];
-                if (next[res] > max) {
-                    next[res] = max;
+            CARD_ORDER.forEach(card => {
+                const max = availableCards[card];
+                if (next[card] > max) {
+                    next[card] = max;
                     changed = true;
                 }
-                if (next[res] < 0) {
-                    next[res] = 0;
+                if (next[card] < 0) {
+                    next[card] = 0;
                     changed = true;
                 }
             });
 
             // Prevent selecting more than required discard after clamping
-            const totalSelected = RESOURCE_ORDER.reduce((sum, res) => sum + next[res], 0);
+            const totalSelected = CARD_ORDER.reduce((sum, card) => sum + next[card], 0);
             if (requiredDiscard > 0 && totalSelected > requiredDiscard) {
                 let excess = totalSelected - requiredDiscard;
-                for (const res of RESOURCE_ORDER) {
+                for (const card of CARD_ORDER) {
                     if (excess === 0) break;
-                    const reducible = Math.min(next[res], excess);
+                    const reducible = Math.min(next[card], excess);
                     if (reducible > 0) {
-                        next[res] -= reducible;
+                        next[card] -= reducible;
                         excess -= reducible;
                         changed = true;
                     }
@@ -110,13 +135,8 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         });
     }, [
         gameState.phase,
-        player?.id,
-        player?.discardedThisTurn,
-        safeResources.wood,
-        safeResources.brick,
-        safeResources.sheep,
-        safeResources.wheat,
-        safeResources.ore,
+        player,
+        availableCards,
         requiredDiscard
     ]);
 
@@ -131,18 +151,18 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         );
     }
 
-    const currentSelected = RESOURCE_ORDER.reduce((sum, res) => sum + selected[res], 0);
+    const currentSelected = CARD_ORDER.reduce((sum, card) => sum + selected[card], 0);
 
-    const handleIncrement = (res: ResourceType) => {
-        const max = safeResources[res];
-        if (selected[res] < max && currentSelected < requiredDiscard) {
-            setSelected(prev => ({ ...prev, [res]: prev[res] + 1 }));
+    const handleIncrement = (card: DiscardableCard) => {
+        const max = availableCards[card];
+        if (selected[card] < max && currentSelected < requiredDiscard) {
+            setSelected(prev => ({ ...prev, [card]: prev[card] + 1 }));
         }
     };
 
-    const handleDecrement = (res: ResourceType) => {
-        if (selected[res] > 0) {
-            setSelected(prev => ({ ...prev, [res]: prev[res] - 1 }));
+    const handleDecrement = (card: DiscardableCard) => {
+        if (selected[card] > 0) {
+            setSelected(prev => ({ ...prev, [card]: prev[card] - 1 }));
         }
     };
 
@@ -151,7 +171,13 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
 
         startTransition(async () => {
             try {
-                await discardCards(gameState.roomId, playerId, selected);
+                const resources = Object.fromEntries(
+                    RESOURCE_ORDER.map(resource => [resource, selected[resource]])
+                ) as Record<ResourceType, number>;
+                const commodities = Object.fromEntries(
+                    COMMODITY_ORDER.map(commodity => [commodity, selected[commodity]])
+                ) as Record<CommodityType, number>;
+                await discardCards(gameState.roomId, playerId, resources, commodities);
             } catch (e) {
                 console.error("Failed to discard", e);
             }
@@ -177,34 +203,36 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
             )}
         >
                 <p className="mb-6 text-center text-[var(--ui-muted)]">
-                    You have {totalResources} cards. You must discard <span className="font-bold text-white">{requiredDiscard}</span> cards.
+                    You have {isSabotage ? totalResources : totalCards} cards. You must discard <span className="font-bold text-white">{requiredDiscard}</span> cards.
                 </p>
 
                 <div className="grid grid-cols-3 gap-4 mb-6">
-                    {(RESOURCE_ORDER as ResourceType[]).map(res => {
-                        const max = safeResources[res];
+                    {CARD_ORDER.map(card => {
+                        const max = availableCards[card];
                         if (max === 0) return null;
 
                         return (
-                            <div key={res} className="flex flex-col items-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
-                                <TabletopResourceIcon type={res} size={30} label={res} />
-                                <div className="mb-2 text-sm font-semibold capitalize text-[var(--ui-text)]">{res}</div>
+                            <div key={card} className="flex flex-col items-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
+                                {isCommodity(card)
+                                    ? <TabletopCommodityIcon type={card} size={30} label={card} />
+                                    : <TabletopResourceIcon type={card} size={30} label={card} />}
+                                <div className="mb-2 text-sm font-semibold capitalize text-[var(--ui-text)]">{card}</div>
 
                                 <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => handleDecrement(res)}
-                                        disabled={selected[res] === 0}
+                                        onClick={() => handleDecrement(card)}
+                                        disabled={selected[card] === 0}
                                         className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] font-bold text-[var(--ui-text)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
                                     >-</button>
-                                    <span className="font-bold w-4 text-center text-white">{selected[res]}</span>
+                                    <span className="font-bold w-4 text-center text-white">{selected[card]}</span>
                                     <button
-                                        onClick={() => handleIncrement(res)}
-                                        disabled={selected[res] === max || currentSelected >= requiredDiscard}
+                                        onClick={() => handleIncrement(card)}
+                                        disabled={selected[card] === max || currentSelected >= requiredDiscard}
                                         className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] font-bold text-[var(--ui-text)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
                                     >+</button>
                                 </div>
-                                <div className={`mt-1 text-xs font-semibold ${selected[res] > 0 ? 'text-red-300' : 'text-[var(--ui-muted)]'}`}>
-                                    Have: {max - selected[res]}
+                                <div className={`mt-1 text-xs font-semibold ${selected[card] > 0 ? 'text-red-300' : 'text-[var(--ui-muted)]'}`}>
+                                    Have: {max - selected[card]}
                                 </div>
                             </div>
                         );

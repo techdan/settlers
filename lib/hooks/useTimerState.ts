@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useReducer } from 'react';
 import { GameState } from '@/lib/types/game';
 import { TimerStatus } from '@/lib/types/timer';
 import { getTimerStatus } from '@/lib/services/timer-service';
@@ -8,15 +8,7 @@ import { getTimerStatus } from '@/lib/services/timer-service';
  * Recalculates every second to provide real-time countdown.
  */
 export function useTimerState(gameState: GameState): TimerStatus {
-  const [tick, setTick] = useState(0);
-
-  // Force a re-render when critical gameState values change
-  useEffect(() => {
-    setTick(prev => prev + 1);
-  }, [
-    gameState.currentTurnExtensions?.totalBorrowed,
-    gameState.timerLocked
-  ]);
+  const [, forceRender] = useReducer(count => count + 1, 0);
 
   // Recalculate every second
   useEffect(() => {
@@ -25,7 +17,7 @@ export function useTimerState(gameState: GameState): TimerStatus {
     }
 
     const interval = setInterval(() => {
-      setTick(prev => prev + 1);
+      forceRender();
     }, 1000);
 
     return () => clearInterval(interval);
@@ -35,7 +27,7 @@ export function useTimerState(gameState: GameState): TimerStatus {
   ]);
 
   // Calculate current timer status
-  // Note: This recalculates on every render when tick changes OR when gameState changes
+  // Recalculates whenever the interval or an authoritative state update renders.
   return getTimerStatus(gameState);
 }
 

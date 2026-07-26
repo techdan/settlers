@@ -1,8 +1,9 @@
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
+import { CommodityType } from '@/core/rules/commodity-constants';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { getCanonicalVertexId } from '@/lib/hex';
 import { stealRandomResource, getTotalResources } from '@/core/engine/resources/resource-manager';
+import { getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 import { setPhase } from './timer-service';
 
@@ -23,9 +24,10 @@ function getRequiredDiscardCount(gameState: GameState, playerId: string): number
         return Math.floor(totalResources / 2);
     }
 
+    const totalCards = totalResources + getTotalCommodities(player);
     const discardThreshold = getRobberDiscardThreshold(gameState, playerId);
-    if (totalResources <= discardThreshold) return 0;
-    return Math.floor(totalResources / 2);
+    if (totalCards <= discardThreshold) return 0;
+    return Math.floor(totalCards / 2);
 }
 
 /**
@@ -81,6 +83,7 @@ export async function moveRobber(
 
                 // Record theft for UI highlighting
                 gameState.lastTheft = {
+                    source: 'robber',
                     victimId: victim.id,
                     thiefId: thief.id,
                     items: [{ type: 'resource', value: stolenResource, count: 1 }],
@@ -124,7 +127,8 @@ export async function moveRobber(
 export async function discardCards(
     roomId: string,
     playerId: string,
-    resources: Record<ResourceType, number>
+    resources: Record<ResourceType, number>,
+    commodities: Record<CommodityType, number> = { paper: 0, cloth: 0, coin: 0 }
 ): Promise<GameState> {
     // Get game state
     let gameState = await getGameStateByRoomId(roomId);
@@ -146,8 +150,15 @@ export async function discardCards(
         throw new Error('No need to discard');
     }
 
-    const currentTotal = getTotalResources(player);
-    const discardCount = Object.values(resources).reduce((a, b) => a + b, 0);
+    const resourceEntries = Object.entries(resources) as [ResourceType, number][];
+    const commodityEntries = Object.entries(commodities) as [CommodityType, number][];
+    const selectedEntries = [...resourceEntries, ...commodityEntries];
+
+    if (selectedEntries.some(([, amount]) => !Number.isInteger(amount) || amount < 0)) {
+        throw new Error('Discard counts must be non-negative whole numbers');
+    }
+
+    const discardCount = selectedEntries.reduce((total, [, amount]) => total + amount, 0);
 
     if (discardCount !== requiredDiscard) {
         throw new Error(`Must discard exactly ${requiredDiscard} cards`);
@@ -160,13 +171,21 @@ export async function discardCards(
         }
         player.resources[res as ResourceType] -= amount;
     }
+    for (const [commodity, amount] of commodityEntries) {
+        if ((player.commodities?.[commodity] || 0) < amount) {
+            throw new Error(`Not enough ${commodity} to discard`);
+        }
+        if (player.commodities) {
+            player.commodities[commodity] -= amount;
+        }
+    }
 
     player.discardedThisTurn = true;
 
     // Build detailed discard message
-    const discardedItems = Object.entries(resources)
-        .filter(([_, amount]) => amount > 0)
-        .map(([res, amount]) => `${amount} ${res}`)
+    const discardedItems = selectedEntries
+        .filter(([, amount]) => amount > 0)
+        .map(([card, amount]) => `${amount} ${card}`)
         .join(', ');
 
     // Add log

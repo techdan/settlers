@@ -77,7 +77,7 @@ export class AlchemistCommand implements ProgressCardCommand {
     if (total === 7) {
       const playersToDiscard = state.players.filter((p) => {
         const threshold = getRobberDiscardThreshold(state, p.id);
-        return getTotalResources(p) > threshold;
+        return (getTotalResources(p) + getTotalCommodities(p)) > threshold;
       });
 
       if (playersToDiscard.length > 0) {

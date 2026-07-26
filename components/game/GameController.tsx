@@ -105,8 +105,8 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
         handleRobberVictimSelected,
         handleRobberVictimCancel,
         resetRobberSelection,
-    } = useRobberInteractions({ roomId, playerId });
-    const [showTheftNotification, setShowTheftNotification] = useState(false);
+    } = useRobberInteractions({ roomId, playerId, onGameStateUpdated: setBaseGameState });
+    const [theftNotification, setTheftNotification] = useState<NonNullable<GameState['lastTheft']> | null>(null);
     const lastTheftSeenRef = useRef<number>(0);
     const [showTradeCompletion, setShowTradeCompletion] = useState(false);
     const lastTradeSeenRef = useRef<number>(0);
@@ -251,7 +251,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     });
 
     const handleDismissTheftNotification = () => {
-        setShowTheftNotification(false);
+        setTheftNotification(null);
     };
 
     const handleDismissTradeCompletion = () => {
@@ -313,7 +313,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     useVPCardModalEffect(baseGameState, playerId, lastVPCardSeenRef, setVpCardModalType);
 
     // Show theft notification when the robber steals from or for the current player
-    useTheftNotificationEffect(baseGameState, playerId, lastTheftSeenRef, setShowTheftNotification);
+    useTheftNotificationEffect(baseGameState, playerId, lastTheftSeenRef, setTheftNotification);
     useTradeCompletionEffect(baseGameState, playerId, lastTradeSeenRef, setShowTradeCompletion);
 
     useProgressDiscardEnforcement(
@@ -486,6 +486,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onLoseCityToBarbarians={handleLoseCityToBarbarians}
                 onRobberVictimRequest={handleRobberVictimRequest}
                 onRobberMoveStarted={handleRobberMoveStarted}
+                onGameStateUpdated={setBaseGameState}
                 progressCardController={progressCardController}
                 improvementController={improvementController}
                 knightController={knightController}
@@ -543,7 +544,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 potentialVictims={robberPotentialVictims}
                 onSelectVictim={handleRobberVictimSelected}
                 onCancelVictim={handleRobberVictimCancel}
-                showTheftNotification={showTheftNotification}
+                theftNotification={theftNotification}
                 onDismissTheft={handleDismissTheftNotification}
             />
 

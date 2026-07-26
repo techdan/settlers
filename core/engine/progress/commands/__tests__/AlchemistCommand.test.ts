@@ -36,6 +36,7 @@ vi.mock('@/core/engine/progress/progress-card-manager', () => ({
 
 import * as EventDieManager from '@/core/engine/dice/event-die-manager';
 import * as ResourceManager from '@/core/engine/resources/resource-manager';
+import * as CommodityManager from '@/core/engine/resources/commodity-manager';
 
 describe('AlchemistCommand', () => {
     let gameState: GameState;
@@ -55,6 +56,8 @@ describe('AlchemistCommand', () => {
 
     it('executes alchemist with chosen dice', () => {
         vi.mocked(EventDieManager.rollEventDie).mockReturnValue('ship');
+        vi.mocked(ResourceManager.getTotalResources).mockReturnValue(0);
+        vi.mocked(CommodityManager.getTotalCommodities).mockReturnValue(0);
         vi.mocked(ResourceManager.distributeResources).mockReturnValue({});
 
         const options = { chosenDice1: 3, chosenDice2: 4 }; // Total 7
@@ -71,6 +74,17 @@ describe('AlchemistCommand', () => {
         // gameState defaults hasBarbariansAttacked = false.
 
         expect(gameState.logs.find(l => l.message.includes('played Alchemy'))).toBeDefined();
+    });
+
+    it('counts commodities when Alchemy produces a seven', () => {
+        vi.mocked(EventDieManager.rollEventDie).mockReturnValue('ship');
+        vi.mocked(ResourceManager.getTotalResources).mockReturnValue(5);
+        vi.mocked(CommodityManager.getTotalCommodities).mockReturnValue(4);
+
+        command.execute(gameState, 'p1', { chosenDice1: 3, chosenDice2: 4 });
+
+        expect(gameState.phase).toBe('discarding');
+        expect(gameState.discardContext).toEqual({ type: 'robber' });
     });
 
     it('throws if options missing', () => {
