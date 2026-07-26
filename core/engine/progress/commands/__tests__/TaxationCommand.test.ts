@@ -7,12 +7,9 @@ import { getVertexIdsForHex } from '@/core/engine/progress/utilities/BoardScanni
  * Taxation is gated behind the first barbarian attack, so it never got manual
  * QA during the Phase 4.5 pass.
  *
- * COVERAGE LIMIT: `TaxationCommand.execute` calls `require('@/...')` at runtime
- * (lines 38/50/51). Next's bundler resolves that alias; Node's require, which is
- * what vitest hands the module, does not — and could not load a `.ts` file even
- * if it did. So every assertion past the validation guards is unreachable from a
- * test today. The skipped block below is the coverage we want; it should pass
- * unchanged once those three `require()` calls become ESM imports.
+ * The theft assertions below were unreachable until the command's runtime
+ * `require('@/...')` calls became ESM imports — Node's require, which is what
+ * vitest hands the module, cannot resolve the `@/` alias.
  */
 
 const HEX_ID = '0,0';
@@ -86,8 +83,7 @@ describe('TaxationCommand validation', () => {
     });
 });
 
-// Unskip once TaxationCommand's require() calls become ESM imports.
-describe.skip('TaxationCommand theft behavior (blocked by runtime require)', () => {
+describe('TaxationCommand theft behavior', () => {
     it('moves the robber and steals from each opponent built on the hex', () => {
         const state = setup({ occupants: [['p2', true]], victimOre: 3 });
 

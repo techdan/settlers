@@ -2,6 +2,9 @@ import { GameState } from '@/lib/types/game';
 import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
 import { ResourceType } from '@/core/rules/board-constants';
+import { getVertexIdsForHex } from '@/core/engine/progress/utilities/BoardScanning';
+import { addResources } from '@/core/engine/resources/resource-manager';
+import { stealRandomResource } from '@/core/engine/progress/utilities/ResourceTransfer';
 
 /**
  * Taxation Card Command
@@ -35,7 +38,6 @@ export class TaxationCommand implements ProgressCardCommand {
     state.robberHexId = hexId;
 
     // Find all opponents with settlements/cities on this hex
-    const { getVertexIdsForHex } = require('@/core/engine/progress/utilities/BoardScanning');
     const adjacentVertices = getVertexIdsForHex(hexId);
     const opponentsOnHex = new Set<string>();
 
@@ -47,9 +49,6 @@ export class TaxationCommand implements ProgressCardCommand {
     }
 
     // Steal 1 random resource from each opponent
-    const { addResources } = require('@/core/engine/resources/resource-manager');
-    const { stealRandomResource } = require('@/core/engine/progress/utilities/ResourceTransfer');
-
     const theftVictims: { victimId: string; resource: ResourceType }[] = [];
     for (const opponentId of opponentsOnHex) {
       const opponent = state.players.find((p) => p.id === opponentId);
