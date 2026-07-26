@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameState } from '@/lib/types';
 import { DebugPanel } from './DebugPanel';
 import { GameTray } from './GameTray';
@@ -49,6 +49,13 @@ interface GameLayoutPanelsProps {
   hasOptimisticUpdates: boolean;
 }
 
+/** Viewport height at/above which the desktop HUD renders at full size. */
+const HUD_FULL_HEIGHT = 920;
+/** Viewport height at/below which the HUD is pinned to its smallest density. */
+const HUD_MIN_HEIGHT = 620;
+/** Floor for the density dial — below this the HUD stops being readable. */
+const HUD_MIN_SCALE = 0.72;
+
 export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
   gameState,
   playerId,
@@ -72,6 +79,50 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
   hasOptimisticUpdates,
 }) => {
   const [tabletPanel, setTabletPanel] = useState<'status' | 'activity' | 'decks' | 'debug' | null>(null);
+
+  // The bottom tray and the right rail are both absolutely positioned, so
+  // neither reserves space for the other — on short viewports the rail used to
+  // run underneath the tray and lose the log to it (tray wins on z-index).
+  // Measure the tray's *rendered* height (getBoundingClientRect reflects the
+  // --hud-scale transform below; offsetHeight would not) and publish it as
+  // --tray-h so the rail can bound itself against it.
+  const trayRef = useRef<HTMLDivElement>(null);
+  const [trayHeight, setTrayHeight] = useState(0);
+
+  // --hud-scale is the HUD's density dial. Every desktop cluster is built from
+  // hardcoded pixel sizes (46px card faces, 12-30px glyphs, fixed type), so a
+  // short viewport cannot shrink them on its own; scaling each cluster as a
+  // whole keeps type, icons, padding and borders in proportion. Ramps linearly
+  // from full size at >=920px of viewport height down to 0.72 at <=620px — a
+  // 1366x768 laptop leaves roughly 660px and lands near 0.76. Only desktop
+  // (xl+) is scaled; below that the tablet drawer HUD already handles density.
+  const [hud, setHud] = useState({ scale: 1, isDesktop: true });
+
+  useEffect(() => {
+    const update = () => {
+      const isDesktop = window.innerWidth >= 1280;
+      const ramp = HUD_MIN_SCALE + ((window.innerHeight - HUD_MIN_HEIGHT) * (1 - HUD_MIN_SCALE)) / (HUD_FULL_HEIGHT - HUD_MIN_HEIGHT);
+      const scale = isDesktop ? Math.min(1, Math.max(HUD_MIN_SCALE, Number(ramp.toFixed(3)))) : 1;
+      setHud(current => (current.scale === scale && current.isDesktop === isDesktop ? current : { scale, isDesktop }));
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  useEffect(() => {
+    const tray = trayRef.current;
+    if (!tray) return;
+    const measure = () => setTrayHeight(tray.getBoundingClientRect().height);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(tray);
+    return () => observer.disconnect();
+    // Re-measure on scale changes too: a transform does not resize the layout
+    // box, so ResizeObserver alone would never see the tray get shorter.
+  }, [hud.scale]);
+
   const activePlayerName = gameState.players.find(player => player.id === gameState.currentTurn)?.name ?? 'Waiting';
   const phaseLabel = gameState.phase.replaceAll('_', ' ');
 
@@ -87,21 +138,46 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
     }`;
 
   return (
-    <div className="absolute inset-0 pointer-events-none p-4 max-xl:p-0">
+    <div
+      className="absolute inset-0 pointer-events-none p-4 max-xl:p-0"
+      style={{ '--hud-scale': hud.scale, '--tray-h': `${trayHeight}px` } as React.CSSProperties}
+    >
       {/* Timer expired notification at top center */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-lg pointer-events-auto px-4">
         <TurnTimerExpiredNotification gameState={gameState} currentPlayerId={playerId} />
       </div>
 
-      {/* Right rail: game status with the collapsible log/chat/stats directly beneath it */}
-      <div className="absolute top-4 right-4 hidden w-80 flex-col gap-3 overflow-x-visible pointer-events-auto xl:flex">
-        <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={handleOpenPlayerCityManagement} />
-        <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
+      {/* Right rail: game status with the collapsible log/chat/stats directly
+          beneath it. Height is laid out at 1/scale and then scaled back down,
+          so the rendered rail ends exactly where the tray begins and can never
+          slide underneath it. The status panel absorbs the squeeze (it scrolls
+          internally); the log keeps its size. */}
+      <div
+        data-hud="rail"
+        className="absolute top-4 right-4 hidden w-80 min-h-0 flex-col gap-3 overflow-x-visible pointer-events-auto xl:flex"
+        style={{
+          height: 'calc((100% - 1.75rem - var(--tray-h, 0px)) / var(--hud-scale, 1))',
+          transform: 'scale(var(--hud-scale, 1))',
+          transformOrigin: 'top right',
+        }}
+      >
+        {/* min-h-[9rem] is the floor: a shrinkable flex item with overflow
+            hidden will otherwise collapse to zero and silently swallow the
+            player cards, leaving only the phase header. */}
+        <div className="flex min-h-[9rem] shrink overflow-hidden">
+          <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={handleOpenPlayerCityManagement} />
+        </div>
+        <div className="flex min-h-0 shrink flex-col">
+          <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
+        </div>
       </div>
 
       {/* Barbarian status lives on the board itself now (BarbarianRoute in BoardCanvas) */}
       {isCitiesAndKnights && (
-        <div className="absolute left-4 z-20 hidden flex-col gap-3 pointer-events-auto xl:flex" style={{ top: '4.25rem' }}>
+        <div
+          className="absolute left-4 z-20 hidden flex-col gap-3 pointer-events-auto xl:flex"
+          style={{ top: '4.25rem', transform: 'scale(var(--hud-scale, 1))', transformOrigin: 'top left' }}
+        >
           <ProgressDecksPanel gameState={gameState} />
         </div>
       )}
@@ -152,7 +228,26 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
 
       {/* Unified bottom tray (Phase 4). No overflow clipping in this chain so the
           progress-card shelf can escape upward; z-index sits above board layers. */}
-      <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-full max-w-[min(96vw,1400px)] -translate-x-1/2 flex-col items-center gap-2 px-2 pointer-events-none max-xl:max-w-none max-xl:px-[max(0.5rem,env(safe-area-inset-left))]">
+      <div
+        ref={trayRef}
+        data-hud="tray"
+        className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-full max-w-[min(96vw,1400px)] flex-col items-center gap-2 px-2 pointer-events-none max-xl:max-w-none max-xl:px-[max(0.5rem,env(safe-area-inset-left))]"
+        style={{
+          transform: 'translateX(-50%) scale(var(--hud-scale, 1))',
+          transformOrigin: 'bottom center',
+          // A transform shrinks painting, not layout — flex-wrap inside the
+          // tray is still decided at the unscaled width, so a laptop-width tray
+          // would wrap to two rows and stay tall. Lay it out 1/scale wider so
+          // it keeps one row, then let the scale bring it back inside the
+          // viewport. Desktop only; the tablet HUD has its own rules.
+          ...(hud.isDesktop && hud.scale < 1
+            ? {
+              width: `calc(100% / ${hud.scale})`,
+              maxWidth: `calc(min(96vw, 1400px) / ${hud.scale})`,
+            }
+            : {}),
+        }}
+      >
         {/* Debug panel (dev-only) stacks directly above the tray rather than
             floating at a fixed offset, so it can never overlap a tall tray. */}
         {isDebugMode && currentPlayer && (

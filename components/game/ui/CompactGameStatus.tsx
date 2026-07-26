@@ -63,9 +63,11 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
     }
 
     return (
-        <div className="bg-[var(--ui-panel)] p-3 rounded-lg text-[var(--ui-text)] border border-[var(--ui-border)] shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
+        // w-full/min-h-0 let this panel be squeezed by the right rail on short
+        // viewports; the phase header stays pinned and the player list scrolls.
+        <div className="w-full min-h-0 bg-[var(--ui-panel)] p-3 rounded-lg text-[var(--ui-text)] border border-[var(--ui-border)] shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
             {/* Phase Header with Timer */}
-            <div>
+            <div className="flex-shrink-0">
                 <div className="text-[10px] text-[var(--ui-muted)] uppercase tracking-wider">Phase</div>
                 <div className="flex items-center justify-between gap-2">
                     <div className="text-base font-bold capitalize text-blue-200">
@@ -91,7 +93,12 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
             </div>
 
             {/* Player Cards */}
-            <div className="flex flex-col gap-1.5">
+            {/* Scrollable but with the scrollbar chrome hidden: --hud-scale
+                should keep the list fitting on its own, so a visible bar would
+                be permanent furniture for an edge case (6 players on a very
+                short viewport). Scrolling still works if it ever overflows, so
+                no player card can become unreachable. */}
+            <div className="flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {gameState.players.map(player => (
                     <CompactPlayerCard
                         key={player.id}
