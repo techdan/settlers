@@ -450,6 +450,21 @@ export async function rejectTrade(
         playerId: initiator.id
     });
 
+    // Once every possible responder has rejected, the offer can never be
+    // accepted — retire it instead of leaving a dead offer on screen until the
+    // initiator notices and cancels manually.
+    const responders = gameState.players.filter(p => p.id !== offer.initiator);
+    const allRejected = responders.every(p => offer.rejectedBy?.includes(p.id));
+
+    if (allRejected) {
+        gameState.tradeOffer = null;
+        gameState.logs.push({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            message: `All players rejected ${initiator.name}'s trade offer.`
+        });
+    }
+
     await updateGameState(gameState);
 
     return gameState;

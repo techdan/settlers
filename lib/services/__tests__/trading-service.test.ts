@@ -263,13 +263,27 @@ describe('Trading Service', () => {
             expect(result.tradeOffer?.status).toBe('open');
         });
 
-        it('allows multiple players to reject the same trade', async () => {
+        it('keeps the offer open while another player can still accept', async () => {
+            mockGameState.players.push(createTestPlayer({ id: 'p4', name: 'Player 4' }));
+
             await rejectTrade('room-1', 'p2');
             const result = await rejectTrade('room-1', 'p3');
 
-            expect(result.tradeOffer).toBeDefined();
+            expect(result.tradeOffer).not.toBeNull();
             expect(result.tradeOffer?.rejectedBy).toEqual(['p2', 'p3']);
             expect(result.tradeOffer?.status).toBe('open');
+        });
+
+        it('auto-cancels the offer once every responder has rejected', async () => {
+            await rejectTrade('room-1', 'p2');
+            const result = await rejectTrade('room-1', 'p3');
+
+            expect(result.tradeOffer).toBeNull();
+
+            const cancelLog = result.logs.at(-1);
+            expect(cancelLog?.message).toBe("All players rejected Player 1's trade offer.");
+            // Public notice — no playerId scope, so every client sees it.
+            expect(cancelLog?.playerId).toBeUndefined();
         });
 
         it('does not duplicate rejections from same player', async () => {

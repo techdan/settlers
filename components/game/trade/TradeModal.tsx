@@ -59,6 +59,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const player = gameState.players.find(p => p.id === playerId);
     const [isPending, startTransition] = useTransition();
     const [mode, setMode] = useState<'bank' | 'domestic'>('bank');
+    const [error, setError] = useState<string | null>(null);
     const [tradeConfirmation, setTradeConfirmation] = useState<{
         gave: TradeItem;
         gaveAmount: number;
@@ -146,6 +147,7 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
         const currentRatio = ratio; // Capture the current ratio before async operation
         const currentGiveRes = giveRes;
         const currentGetRes = getRes;
+        setError(null);
         startTransition(async () => {
             try {
                 await tradeController.handleBankTrade(currentGiveRes, currentGetRes);
@@ -157,12 +159,14 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                 });
             } catch (e) {
                 console.error("Failed to trade", e);
+                setError(e instanceof Error ? e.message : 'Trade failed');
             }
         });
     };
 
     // Domestic Logic
     const handleOfferTrade = () => {
+        setError(null);
         startTransition(async () => {
             try {
                 await tradeController.handleOfferTrade(offerGive, offerGet, offerGiveCommodities, offerGetCommodities);
@@ -173,7 +177,10 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                 // Close the trade modal after successfully offering a trade
                 onClose();
             } catch (e) {
+                // Keep the modal open so the composed offer survives and the
+                // player can correct it — closing would discard their work.
                 console.error("Failed to offer trade", e);
+                setError(e instanceof Error ? e.message : 'Could not offer that trade');
             }
         });
     };
@@ -217,11 +224,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                 <div className="mb-6 flex justify-center">
                     <div className="flex gap-2" role="group" aria-label="Trade mode">
                         <button
-                            onClick={() => setMode('bank')}
+                            onClick={() => { setMode('bank'); setError(null); }}
                             className={`min-h-11 cursor-pointer rounded-full border px-4 py-1 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] ${mode === 'bank' ? 'border-[var(--ui-accent)] bg-[var(--ui-accent)] text-[var(--ui-accent-ink)]' : 'border-[var(--ui-border)] bg-[var(--ui-panel-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-text)]'}`}
                         >Bank</button>
                         <button
-                            onClick={() => setMode('domestic')}
+                            onClick={() => { setMode('domestic'); setError(null); }}
                             className={`min-h-11 cursor-pointer rounded-full border px-4 py-1 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] ${mode === 'domestic' ? 'border-[var(--ui-accent)] bg-[var(--ui-accent)] text-[var(--ui-accent-ink)]' : 'border-[var(--ui-border)] bg-[var(--ui-panel-raised)] text-[var(--ui-muted)] hover:text-[var(--ui-text)]'}`}
                         >Players</button>
                     </div>
@@ -439,6 +446,16 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
                             {isPending ? 'Offering...' : 'Offer Trade'}
                         </TabletopButton>
                     </>
+                )}
+
+                {error && (
+                    <div
+                        role="alert"
+                        className="mt-3 flex items-start gap-2 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2"
+                    >
+                        <TabletopStatusIcon type="cancel" size={16} className="mt-0.5 shrink-0" />
+                        <span className="text-sm text-[var(--ui-text)]">{error}</span>
+                    </div>
                 )}
 
                 {/* Trade Confirmation Overlay */}
