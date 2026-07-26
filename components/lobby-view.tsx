@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { setLobbyPlayerColor, setLobbyGameMode, startGame, setLobbyTimerConfig, kickPlayerFromLobby } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ui/ConnectionStatus';
@@ -19,6 +20,14 @@ import { TimerConfigPanel } from './lobby/TimerConfigPanel';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
 import { DEFAULT_TIMER_CONFIG } from '@/lib/types/timer';
+import { formatTime } from '@/lib/services/timer-service';
+
+/**
+ * Viewport height below which the settings panel starts collapsed. The panel's
+ * tallest state (C&K + timer enabled + custom slider) runs past 500px, which
+ * leaves nothing for the player list on a 720p/768p screen.
+ */
+const SHORT_VIEWPORT_HEIGHT = 800;
 
 type Player = {
     id: string;
@@ -75,6 +84,7 @@ export function LobbyView({
     const [colorError, setColorError] = useState<string | null>(null);
     const [isColorPending, startColorTransition] = useTransition();
     const [kickConfirmation, setKickConfirmation] = useState<{ playerId: string; playerName: string } | null>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(true);
     const router = useRouter();
     const connectionStatus = useConnectionStatus();
     const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
@@ -99,6 +109,15 @@ export function LobbyView({
     useEffect(() => {
         setGameMode(syncedGameMode);
     }, [syncedGameMode]);
+
+    // Start the settings panel collapsed on short viewports so the player list
+    // stays readable. Mount-only on purpose: once someone toggles it we stop
+    // second-guessing them on resize.
+    useEffect(() => {
+        if (window.innerHeight < SHORT_VIEWPORT_HEIGHT) {
+            setIsSettingsOpen(false);
+        }
+    }, []);
 
     // Optimistic local state for the skip-first-attack toggle: without realtime,
     // the lobby polls every 5s, so waiting for the server echo makes the switch
@@ -213,6 +232,14 @@ export function LobbyView({
 
     const colorOptions = PLAYER_COLOR_OPTIONS;
 
+    // Shown under the header when collapsed so the settings are still legible
+    // at a glance without expanding the panel.
+    const settingsSummary = [
+        gameMode === 'base' ? 'Base Game' : 'Cities & Knights',
+        timerConfig.enabled ? `Timer ${formatTime(timerConfig.turnTimeLimit)}` : 'No timer',
+        ...(gameMode === 'cities_and_knights' && skipFirstBarbarianAttack ? ['Skip 1st attack'] : []),
+    ].join(' · ');
+
     const handleColorChange = (playerId: string, color: PlayerColor) => {
         setColorError(null);
         startColorTransition(async () => {
@@ -258,7 +285,7 @@ export function LobbyView({
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 min-h-0 overflow-y-auto p-6">
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4 flex items-center justify-between">
                         <span>Players</span>
                         <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-xs">{players.length}/4</span>
@@ -350,78 +377,115 @@ export function LobbyView({
                     </ul>
                 </div>
 
-                <div className="p-6 border-t bg-slate-50 dark:bg-slate-950 space-y-4">
-                    {/* Game Mode Selection - Visible to all, editable by host */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                            Game Mode {isHost ? '(Host)' : '(Selected by Host)'}
-                        </label>
-                        {isHost ? (
-                            <select
-                                value={gameMode}
-                                onChange={(e) => handleGameModeChange(e.target.value as 'base' | 'cities_and_knights')}
-                                className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                            >
-                                <option value="base">Base Game (10 VP)</option>
-                                <option value="cities_and_knights">Cities & Knights (13 VP)</option>
-                            </select>
-                        ) : (
-                            <div className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-medium cursor-not-allowed opacity-90">
-                                {gameMode === 'base' ? 'Base Game (10 VP)' : 'Cities & Knights (13 VP)'}
+                <div className="flex-shrink-0 border-t bg-slate-50 dark:bg-slate-950">
+                    {/* Collapsible header - keeps the tall settings block from
+                        squeezing the player list on short screens */}
+                    <button
+                        type="button"
+                        onClick={() => setIsSettingsOpen(open => !open)}
+                        aria-expanded={isSettingsOpen}
+                        aria-controls="lobby-game-settings"
+                        className="w-full flex items-center justify-between gap-3 px-6 py-3 text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                    >
+                        <span className="min-w-0">
+                            <span className="block text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                                Game Settings
+                            </span>
+                            {!isSettingsOpen && (
+                                <span className="block text-xs text-slate-500 dark:text-slate-400 truncate">
+                                    {settingsSummary}
+                                </span>
+                            )}
+                        </span>
+                        <ChevronDown
+                            className={`w-4 h-4 flex-shrink-0 text-slate-500 transition-transform duration-200 ${isSettingsOpen ? 'rotate-180' : ''}`}
+                            aria-hidden="true"
+                        />
+                    </button>
+
+                    {/* Expanded content is capped so it can never crowd out the
+                        player list, even on a host's tall settings panel */}
+                    <div
+                        id="lobby-game-settings"
+                        hidden={!isSettingsOpen}
+                        className="max-h-[40vh] overflow-y-auto px-6 pb-4 space-y-4"
+                    >
+                        {/* Game Mode Selection - Visible to all, editable by host */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                Game Mode {isHost ? '(Host)' : '(Selected by Host)'}
+                            </label>
+                            {isHost ? (
+                                <select
+                                    value={gameMode}
+                                    onChange={(e) => handleGameModeChange(e.target.value as 'base' | 'cities_and_knights')}
+                                    className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                >
+                                    <option value="base">Base Game (10 VP)</option>
+                                    <option value="cities_and_knights">Cities & Knights (13 VP)</option>
+                                </select>
+                            ) : (
+                                <div className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 font-medium cursor-not-allowed opacity-90">
+                                    {gameMode === 'base' ? 'Base Game (10 VP)' : 'Cities & Knights (13 VP)'}
+                                </div>
+                            )}
+                            {gameMode === 'cities_and_knights' && (
+                                <p className="text-xs text-slate-600 dark:text-slate-400 animate-fadeIn">
+                                    Adds commodities, city improvements, knights, barbarian attacks, progress cards, and metropolises.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Skip First Barbarian Attack Toggle (C&K only) */}
+                        {gameMode === 'cities_and_knights' && (
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    Skip First Barbarian Attack
+                                </label>
+                                <button
+                                    onClick={handleSkipFirstAttackToggle}
+                                    disabled={!isHost}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                        skipFirstBarbarianAttack ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-700'
+                                    }`}
+                                    role="switch"
+                                    aria-checked={skipFirstBarbarianAttack}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                            skipFirstBarbarianAttack ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
                             </div>
                         )}
-                        {gameMode === 'cities_and_knights' && (
-                            <p className="text-xs text-slate-600 dark:text-slate-400 animate-fadeIn">
-                                Adds commodities, city improvements, knights, barbarian attacks, progress cards, and metropolises.
-                            </p>
+
+                        {/* Timer Configuration */}
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                            <TimerConfigPanel
+                                config={timerConfig}
+                                isHost={isHost}
+                                onChange={handleTimerConfigChange}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Primary action stays outside the collapsible region so it
+                        is never hidden behind the toggle */}
+                    <div className="px-6 pb-6 pt-3 border-t border-slate-200 dark:border-slate-800">
+                        {isHost ? (
+                            <button
+                                onClick={() => startGame(roomId, gameMode)}
+                                className="w-full bg-green-600 text-white px-6 py-4 rounded-xl text-lg font-bold shadow-lg hover:shadow-green-500/20 btn-interactive"
+                            >
+                                Start Game
+                            </button>
+                        ) : (
+                            <div className="text-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 animate-pulse">
+                                Waiting for host to start {gameMode === 'base' ? 'Base Game' : 'Cities & Knights'}...
+                            </div>
                         )}
                     </div>
-
-                    {/* Skip First Barbarian Attack Toggle (C&K only) */}
-                    {gameMode === 'cities_and_knights' && (
-                        <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                Skip First Barbarian Attack
-                            </label>
-                            <button
-                                onClick={handleSkipFirstAttackToggle}
-                                disabled={!isHost}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                                    skipFirstBarbarianAttack ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-700'
-                                }`}
-                                role="switch"
-                                aria-checked={skipFirstBarbarianAttack}
-                            >
-                                <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                        skipFirstBarbarianAttack ? 'translate-x-6' : 'translate-x-1'
-                                    }`}
-                                />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Timer Configuration */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <TimerConfigPanel
-                            config={timerConfig}
-                            isHost={isHost}
-                            onChange={handleTimerConfigChange}
-                        />
-                    </div>
-
-                    {isHost ? (
-                        <button
-                            onClick={() => startGame(roomId, gameMode)}
-                            className="w-full bg-green-600 text-white px-6 py-4 rounded-xl text-lg font-bold shadow-lg hover:shadow-green-500/20 btn-interactive"
-                        >
-                            Start Game
-                        </button>
-                    ) : (
-                        <div className="text-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 animate-pulse">
-                            Waiting for host to start {gameMode === 'base' ? 'Base Game' : 'Cities & Knights'}...
-                        </div>
-                    )}
                 </div>
             </div>
 
