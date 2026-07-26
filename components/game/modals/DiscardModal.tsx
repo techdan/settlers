@@ -75,7 +75,7 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         }
 
         setSelected(prev => {
-            let next = { ...prev };
+            const next = { ...prev };
             let changed = false;
 
             // Clamp to available resources
@@ -164,6 +164,7 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
         <TabletopModal
             title={heading}
             width="lg"
+            backdropBlur={false}
             footer={(
                 <TabletopButton
                     variant="danger"

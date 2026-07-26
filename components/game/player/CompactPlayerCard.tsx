@@ -168,7 +168,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
             className={`
                 flex flex-col gap-1 p-2 rounded-lg transition-all
                 ${isTurn
-                    ? 'bg-[var(--ui-panel-raised)] ring-1 ring-[var(--ui-accent)]/60 shadow-lg'
+                    ? 'bg-[var(--ui-panel-raised)] ring-1 ring-inset ring-[var(--ui-accent)]/60 shadow-lg'
                     : 'bg-[var(--ui-panel-solid)]/60'
                 }
             `}

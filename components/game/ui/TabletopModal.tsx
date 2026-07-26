@@ -32,6 +32,7 @@ interface TabletopModalProps {
     onClose?: () => void;
     width?: ModalWidth;
     surface?: ModalSurface;
+    backdropBlur?: boolean;
     className?: string;
     bodyClassName?: string;
     closeLabel?: string;
@@ -45,6 +46,7 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
     onClose,
     width = 'md',
     surface = 'blocking',
+    backdropBlur = true,
     className = '',
     bodyClassName = '',
     closeLabel = 'Close',
@@ -57,7 +59,7 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
     // the tablet HUD (top-0, xl:hidden) on narrow viewports.
     const wrapperClass = isBoardVisible
         ? 'fixed inset-x-0 top-4 z-[60] flex justify-center pointer-events-none px-[max(1rem,env(safe-area-inset-left))] max-xl:top-24'
-        : 'fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm pointer-events-auto px-[max(1rem,env(safe-area-inset-left))] py-[max(1rem,env(safe-area-inset-top))]';
+        : `fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 pointer-events-auto px-[max(1rem,env(safe-area-inset-left))] py-[max(1rem,env(safe-area-inset-top))] ${backdropBlur ? 'backdrop-blur-sm' : ''}`;
 
     // Board-visible panels stay short so they cover as few hexes as possible.
     const panelClass = isBoardVisible
