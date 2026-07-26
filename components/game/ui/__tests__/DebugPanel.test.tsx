@@ -29,11 +29,22 @@ describe('DebugPanel', () => {
         mocks.debugGiveResource.mockResolvedValue(undefined);
     });
 
+    it('starts collapsed and expands on toggle', async () => {
+        const user = userEvent.setup();
+        render(<DebugPanel player={createTestPlayer({ id: 'player-qa' })} roomId="ROOM" />);
+
+        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: /debug/i }));
+
+        expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    });
+
     it('grants the selected resource and reports success', async () => {
         const user = userEvent.setup();
         const player = createTestPlayer({ id: 'player-qa' });
 
-        render(<DebugPanel player={player} roomId="ROOM" />);
+        render(<DebugPanel player={player} roomId="ROOM" defaultOpen />);
 
         const [, itemSelect] = screen.getAllByRole('combobox');
         await user.selectOptions(itemSelect, 'wood');

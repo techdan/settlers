@@ -106,15 +106,6 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         </div>
       )}
 
-      {/* Debug panel (dev-only) sits above the tray. Keeping it above the tray's
-          z-index prevents the tray from intercepting the rightmost Give button
-          at medium desktop widths. */}
-      {isDebugMode && currentPlayer && (
-        <div className="absolute bottom-28 left-3 z-40 hidden max-w-[calc(100vw-1.5rem)] pointer-events-auto xl:block">
-          <DebugPanel player={currentPlayer} roomId={gameState.roomId} />
-        </div>
-      )}
-
       {/* Tablet HUD: iPad portrait/landscape keeps the board clear and exposes
           desktop side panels through touch-sized, mutually exclusive drawers. */}
       <div className="absolute inset-x-0 top-0 z-50 px-[max(0.5rem,env(safe-area-inset-left))] pt-[max(0.5rem,env(safe-area-inset-top))] pointer-events-auto xl:hidden">
@@ -153,7 +144,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
                 <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
               ) : null}
               {tabletPanel === 'decks' ? <ProgressDecksPanel gameState={gameState} /> : null}
-              {tabletPanel === 'debug' && currentPlayer ? <DebugPanel player={currentPlayer} roomId={gameState.roomId} /> : null}
+              {tabletPanel === 'debug' && currentPlayer ? <DebugPanel player={currentPlayer} roomId={gameState.roomId} defaultOpen /> : null}
             </div>
           ) : null}
         </div>
@@ -161,7 +152,14 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
 
       {/* Unified bottom tray (Phase 4). No overflow clipping in this chain so the
           progress-card shelf can escape upward; z-index sits above board layers. */}
-      <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-full max-w-[min(96vw,1400px)] -translate-x-1/2 justify-center px-2 pointer-events-none max-xl:max-w-none max-xl:px-[max(0.5rem,env(safe-area-inset-left))]">
+      <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-30 flex w-full max-w-[min(96vw,1400px)] -translate-x-1/2 flex-col items-center gap-2 px-2 pointer-events-none max-xl:max-w-none max-xl:px-[max(0.5rem,env(safe-area-inset-left))]">
+        {/* Debug panel (dev-only) stacks directly above the tray rather than
+            floating at a fixed offset, so it can never overlap a tall tray. */}
+        {isDebugMode && currentPlayer && (
+          <div className="hidden max-w-full self-start pointer-events-auto xl:block">
+            <DebugPanel player={currentPlayer} roomId={gameState.roomId} />
+          </div>
+        )}
         <div className="pointer-events-auto max-xl:w-full max-xl:max-h-[40dvh] max-xl:overflow-x-auto max-xl:overflow-y-auto max-xl:overscroll-contain">
           <GameTray
             gameState={gameState}

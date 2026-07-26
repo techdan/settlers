@@ -13,6 +13,8 @@ import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 interface DebugPanelProps {
     player: PlayerState;
     roomId: string;
+    /** Start expanded. Off by default so the panel stays a small chip until needed. */
+    defaultOpen?: boolean;
 }
 
 type ItemCategory = 'resource' | 'commodity' | 'progress_card' | 'dev_card';
@@ -30,8 +32,9 @@ const DEV_CARD_LABELS: Record<DevCardType, string> = {
     monopoly: 'Monopoly',
 };
 
-export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
+export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId, defaultOpen = false }) => {
     const router = useRouter();
+    const [isOpen, setIsOpen] = useState(defaultOpen);
     const [isPending, setIsPending] = useState(false);
     const [category, setCategory] = useState<ItemCategory>('resource');
     const [selectedItem, setSelectedItem] = useState<string>('');
@@ -124,11 +127,19 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
     }, [category]);
 
     return (
-        <div className="pointer-events-auto rounded-lg border-2 border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)] shadow-lg">
-            <div className="flex items-center gap-2 mb-2">
+        <div className="pointer-events-auto rounded-lg border-2 border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-2 text-[var(--ui-text)] shadow-lg">
+            <button
+                type="button"
+                onClick={() => setIsOpen(open => !open)}
+                aria-expanded={isOpen}
+                className={`flex w-full cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] ${isOpen ? 'mb-2' : ''}`}
+            >
                 <TabletopStatusIcon type="warning" size={16} />
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--ui-text)]">Debug</div>
-            </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--ui-text)]">Debug</span>
+                <span aria-hidden className="ml-auto text-[10px] text-[var(--ui-muted)]">{isOpen ? '▾' : '▸'}</span>
+            </button>
+            {isOpen && (
+            <>
             <div className="flex flex-wrap gap-2 items-center">
                 <select
                     value={category}
@@ -174,6 +185,8 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
                     <TabletopStatusIcon type={feedback.type === 'error' ? 'cancel' : 'confirm'} size={14} />
                     <span>{feedback.message}</span>
                 </div>
+            )}
+            </>
             )}
         </div>
     );
