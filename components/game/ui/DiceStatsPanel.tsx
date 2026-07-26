@@ -4,6 +4,7 @@ import { EventDieFace } from '@/core/rules/commodity-constants';
 import { Tooltip } from '@/components/ui/tooltip';
 import { formatTime } from '@/lib/hooks/useTimerState';
 import { getTimerStatus } from '@/lib/services/timer-service';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface DiceStatsPanelProps {
     stats: DiceStats;
@@ -13,10 +14,10 @@ interface DiceStatsPanelProps {
 }
 
 const EVENT_FACE_LABELS: Record<EventDieFace, { label: string; color: string }> = {
-    ship: { label: 'Barbarian', color: 'bg-slate-500' },
-    science: { label: 'Science', color: 'bg-green-500' },
-    trade: { label: 'Trade', color: 'bg-yellow-400' },
-    politics: { label: 'Politics', color: 'bg-blue-500' },
+    ship: { label: 'Barbarian', color: 'bg-[var(--ui-muted)]' },
+    science: { label: 'Science', color: 'bg-[var(--color-improvement-science-alt)]' },
+    trade: { label: 'Trade', color: 'bg-[var(--color-improvement-trade-alt)]' },
+    politics: { label: 'Politics', color: 'bg-[var(--color-improvement-politics-alt)]' },
 };
 
 export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStats, gameState, onClose }) => {
@@ -62,20 +63,20 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
     }, [gameState, tick]); // Re-calculate when gameState changes or tick updates
 
     return (
-        <div className="bg-slate-900/85 text-slate-100 border border-slate-700 rounded-lg shadow-xl p-3 w-72 max-w-full backdrop-blur-sm pointer-events-auto overflow-hidden">
+        <div className="pointer-events-auto w-72 max-w-full overflow-hidden rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] p-3 text-[var(--ui-text)] shadow-xl backdrop-blur-sm">
             <div className="flex items-center justify-between gap-2 min-w-0 max-w-full">
                 <div className="text-sm font-semibold">
-                    Dice Stats <span className="text-xs text-slate-300 font-normal">({totalRolls} roll{totalRolls === 1 ? '' : 's'})</span>
+                    Dice Stats <span className="text-xs font-normal text-[var(--ui-muted)]">({totalRolls} roll{totalRolls === 1 ? '' : 's'})</span>
                 </div>
                 {onClose && (
                     <Tooltip content="Hide dice stats" placement="top">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="text-xs px-2 py-1 bg-slate-800 border border-slate-600 rounded hover:border-amber-300 hover:text-amber-200 transition-colors cursor-pointer"
+                            className="cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-1 text-[var(--ui-muted)] transition-colors hover:border-[var(--ui-accent)] hover:text-[var(--ui-text)]"
                             aria-label="Hide dice stats"
                         >
-                            X
+                            <TabletopStatusIcon type="cancel" size={14} />
                         </button>
                     </Tooltip>
                 )}
@@ -85,15 +86,15 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
                     const count = stats[total] || 0;
                     const percent = totalRolls > 0 ? Math.round((count / totalRolls) * 100) : 0;
                     return (
-                        <div key={total} className="grid grid-cols-5 items-center gap-1 text-xs text-slate-200">
+                        <div key={total} className="grid grid-cols-5 items-center gap-1 text-xs text-[var(--ui-text)]">
                             <div className="text-center font-mono">{total}</div>
-                            <div className="col-span-3 h-2 bg-slate-700 rounded-full overflow-hidden ml-3 mr-2">
+                            <div className="col-span-3 ml-3 mr-2 h-2 overflow-hidden rounded-full bg-[var(--ui-panel-raised)]">
                                 <div
-                                    className="h-full bg-amber-500"
+                                    className="h-full bg-[var(--ui-accent)]"
                                     style={{ width: `${percent}%` }}
                                 />
                             </div>
-                            <div className="text-right text-slate-300">{count}</div>
+                            <div className="text-right text-[var(--ui-muted)]">{count}</div>
                         </div>
                     );
                 })}
@@ -102,7 +103,7 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
             {shouldShowEventStats && (
                 <div className="mt-3">
                     <div className="text-sm font-semibold mb-1">
-                        Event Die <span className="text-xs text-slate-300 font-normal">({totalEventRolls} roll{totalEventRolls === 1 ? '' : 's'})</span>
+                        Event Die <span className="text-xs font-normal text-[var(--ui-muted)]">({totalEventRolls} roll{totalEventRolls === 1 ? '' : 's'})</span>
                     </div>
                     <div className="flex flex-col gap-1">
                         {EVENT_DIE_FACES.map(face => {
@@ -110,15 +111,15 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
                             const percent = totalEventRolls > 0 ? Math.round((count / totalEventRolls) * 100) : 0;
                             const { label, color } = EVENT_FACE_LABELS[face];
                             return (
-                                <div key={face} className="grid grid-cols-5 items-center gap-1 text-xs text-slate-200">
+                                <div key={face} className="grid grid-cols-5 items-center gap-1 text-xs text-[var(--ui-text)]">
                                     <div className="text-left font-semibold">{label}</div>
-                                    <div className="col-span-3 h-2 bg-slate-700 rounded-full overflow-hidden ml-3 mr-2">
+                                    <div className="col-span-3 ml-3 mr-2 h-2 overflow-hidden rounded-full bg-[var(--ui-panel-raised)]">
                                         <div
                                             className={`h-full ${color}`}
                                             style={{ width: `${percent}%` }}
                                         />
                                     </div>
-                                    <div className="text-right text-slate-300">{count}</div>
+                                    <div className="text-right text-[var(--ui-muted)]">{count}</div>
                                 </div>
                             );
                         })}
@@ -128,10 +129,10 @@ export const DiceStatsPanel: React.FC<DiceStatsPanelProps> = ({ stats, eventStat
 
             {/* Total Gameplay Time */}
             {gameState?.timerConfig?.enabled && totalGameplayTime > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-700">
-                    <div className="flex items-center justify-between gap-2 text-xs text-slate-200">
+                <div className="mt-3 border-t border-[var(--ui-border)] pt-3">
+                    <div className="flex items-center justify-between gap-2 text-xs text-[var(--ui-text)]">
                         <div className="font-semibold">Total Time</div>
-                        <div className="text-sm font-bold text-amber-400 tabular-nums">{formatTime(totalGameplayTime)}</div>
+                        <div className="text-sm font-bold tabular-nums text-[var(--ui-accent)]">{formatTime(totalGameplayTime)}</div>
                     </div>
                 </div>
             )}

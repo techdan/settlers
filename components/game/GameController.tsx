@@ -408,7 +408,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const engineerSelectionActive = showEngineeringPrompt || selectionManager.selectingCityForEngineer;
 
     return (
-        <div className="relative h-screen w-screen overflow-x-visible overflow-y-hidden">
+        <div className="relative h-[100dvh] w-screen overflow-hidden">
             {/* Connection Status Indicator */}
             <ConnectionStatusIndicator
                 status={connectionStatus.status}
@@ -443,11 +443,11 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             )}
 
             {selectionManager.selectingKnightsForSmith && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-slate-900/90 border border-blue-500/60 rounded-lg px-4 py-3 shadow-lg pointer-events-auto">
+                <div className="pointer-events-auto absolute left-1/2 top-4 z-40 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-[var(--ui-accent)] bg-[var(--ui-panel)] px-4 py-3 shadow-lg backdrop-blur-sm">
                     <div className="text-sm text-white">
                         <div className="font-semibold">Smithing: promote up to 2 knights</div>
-                        <div className="text-xs text-slate-300">Click your knights on the board to select them.</div>
-                        <div className="text-xs text-slate-200 mt-1">Selected {selectionManager.selectedSmithKnightIds.length}/2</div>
+                        <div className="text-xs text-[var(--ui-muted)]">Click your knights on the board to select them.</div>
+                        <div className="mt-1 text-xs text-[var(--ui-text)]">Selected {selectionManager.selectedSmithKnightIds.length}/2</div>
                     </div>
                     {selectionManager.smithError && (
                         <div className="text-xs text-red-200 bg-red-900/50 border border-red-600 rounded px-3 py-2">
@@ -456,14 +456,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                     )}
                     <div className="flex items-center gap-2">
                         <button
-                            className="px-3 py-2 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+                            className="cursor-pointer rounded-md border border-[var(--ui-border)] px-3 py-2 text-[var(--ui-text)] transition hover:bg-[var(--ui-panel-raised)]"
                             onClick={handleCancelSelection}
                         >
                             Cancel
                         </button>
                         <button
                             className={`px-3 py-2 rounded-md font-semibold shadow transition-colors ${selectionManager.selectedSmithKnightIds.length === 0
-                                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                                ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-muted)] cursor-not-allowed'
                                 : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
                                 }`}
                             disabled={selectionManager.selectedSmithKnightIds.length === 0}

@@ -46,8 +46,8 @@ export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll
                     <Tooltip
                         content={(
                             <div className="flex flex-col text-left">
-                                <span className="font-semibold text-slate-100">{EVENT_DIE_TEXT[eventDieRoll.face].title}</span>
-                                <span className="text-slate-200">{EVENT_DIE_TEXT[eventDieRoll.face].description}</span>
+                                <span className="font-semibold text-[var(--ui-text)]">{EVENT_DIE_TEXT[eventDieRoll.face].title}</span>
+                                <span className="text-[var(--ui-muted)]">{EVENT_DIE_TEXT[eventDieRoll.face].description}</span>
                             </div>
                         )}
                         placement="top"

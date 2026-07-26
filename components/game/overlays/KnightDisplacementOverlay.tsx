@@ -1,6 +1,8 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton } from '@/components/game/ui/TabletopModal';
 
 interface KnightDisplacementOverlayProps {
   gameState: GameState;
@@ -24,7 +26,8 @@ export const KnightDisplacementOverlay: React.FC<KnightDisplacementOverlayProps>
   const hasValidTargets = validTargets.length > 0;
 
   return (
-    <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
+    <div className="pointer-events-auto absolute left-1/2 top-20 z-50 flex -translate-x-1/2 flex-col items-center gap-4 rounded-lg border border-[var(--ui-danger)] bg-[var(--ui-panel)] p-6 text-[var(--ui-text)] shadow-xl backdrop-blur-sm">
+      <TabletopStatusIcon type="warning" size={36} label="Knight displaced warning" />
       <h3 className="text-xl font-bold">Your Knight Was Displaced!</h3>
       <p className="text-center max-w-md">
         {hasValidTargets
@@ -33,12 +36,12 @@ export const KnightDisplacementOverlay: React.FC<KnightDisplacementOverlayProps>
       </p>
       {!hasValidTargets && (
         <div className="flex gap-4">
-          <button
-            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition-colors cursor-pointer"
+          <TabletopButton
+            variant="danger"
             onClick={() => onRemoveDisplacedKnight(displacement.knightId)}
           >
             Remove Knight
-          </button>
+          </TabletopButton>
         </div>
       )}
     </div>

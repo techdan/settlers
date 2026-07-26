@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { GameState, PlayerState } from '@/lib/types';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { calculateMetropolisVP } from '@/core/engine/metropolis/metropolis-manager';
+import { TabletopButton } from '@/components/game/ui/TabletopModal';
 
 type CategoryKey =
     | 'settlements'
@@ -165,7 +166,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
                 <div className="absolute top-12 right-1/4 h-32 w-32 bg-emerald-400/20 blur-3xl" />
             </div>
 
-            <div className="relative w-[92vw] max-w-6xl bg-slate-950/95 border border-amber-300/60 rounded-3xl shadow-[0_0_80px_rgba(251,191,36,0.35)] p-8 text-white pointer-events-auto">
+            <div className="pointer-events-auto relative w-[92vw] max-w-6xl rounded-3xl border border-[var(--ui-accent)] bg-[var(--ui-panel-solid)]/95 p-8 text-[var(--ui-text)] shadow-[0_0_80px_rgba(201,151,63,0.28)]">
                 <div className="absolute -top-10 right-10 h-24 w-24 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 blur-2xl opacity-60" />
 
                 <div className="flex items-start justify-between gap-4 mb-6">
@@ -174,35 +175,36 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
                         <div className="text-3xl sm:text-4xl font-black text-amber-100 drop-shadow">
                             {winner.name} wins!
                         </div>
-                        <div className="text-sm text-slate-200/80 max-w-xl">
+                        <div className="max-w-xl text-sm text-[var(--ui-muted)]">
                             Victory secured with {winner.victoryPoints} VP. Here&apos;s how every player stacked up.
                         </div>
                     </div>
-                    <button
-                        className="relative z-10 px-4 py-3 rounded-lg border border-amber-300/70 text-amber-50 hover:bg-amber-400/20 transition-colors font-semibold cursor-pointer min-h-[44px]"
+                    <TabletopButton
+                        variant="primary"
+                        className="relative z-10 min-h-[44px] px-4 py-3"
                         onClick={onClose}
                     >
                         View Board
-                    </button>
+                    </TabletopButton>
                 </div>
 
-                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-4 shadow-inner">
+                <div className="rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4 shadow-inner">
                     <div className="grid gap-3"
                         style={{ gridTemplateColumns: `1.1fr 0.75fr repeat(${categories.length}, minmax(0, 1fr))` }}
                     >
-                        <div className="text-xs uppercase tracking-wide text-slate-400">Player</div>
-                        <div className="text-xs uppercase tracking-wide text-slate-400">Total VP</div>
+                        <div className="text-xs uppercase tracking-wide text-[var(--ui-muted)]">Player</div>
+                        <div className="text-xs uppercase tracking-wide text-[var(--ui-muted)]">Total VP</div>
                         {categories.map(category => (
-                            <div key={category.key} className="text-xs uppercase tracking-wide text-slate-400 text-center">
+                            <div key={category.key} className="text-center text-xs uppercase tracking-wide text-[var(--ui-muted)]">
                                 <div>{category.label}</div>
-                                {category.hint && <div className="text-[10px] text-slate-500">{category.hint}</div>}
+                                {category.hint && <div className="text-[10px] text-[var(--ui-muted)]">{category.hint}</div>}
                             </div>
                         ))}
 
                         {playersSorted.map(({ player, rank, breakdown }) => (
                             <React.Fragment key={player.id}>
                                 <div className="flex items-center gap-3">
-                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-sm font-bold border border-slate-700">
+                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] text-sm font-bold">
                                         #{rank}
                                     </span>
                                     <div className="flex flex-col">
@@ -210,13 +212,13 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
                                             <span className="inline-block h-3 w-3 rounded-full shadow-sm" style={{ backgroundColor: player.color }} />
                                             <span className="font-semibold text-base">{player.name}</span>
                                         </div>
-                                        <span className="text-[11px] text-slate-400">VP: {player.victoryPoints}</span>
+                                        <span className="text-[11px] text-[var(--ui-muted)]">VP: {player.victoryPoints}</span>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-col gap-1">
                                     <div className="text-lg font-bold">{player.victoryPoints}</div>
-                                    <div className="h-2 rounded-full bg-slate-800 overflow-hidden border border-slate-700/80">
+                                    <div className="h-2 overflow-hidden rounded-full border border-[var(--ui-border)] bg-[var(--ui-panel-solid)]">
                                         <div
                                             className="h-full rounded-full bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500"
                                             style={{ width: `${maxTotal ? (player.victoryPoints / maxTotal) * 100 : 0}%` }}
@@ -230,13 +232,13 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ gameState, winnerI
                                     const fill = maxValue > 0 ? Math.max(6, (value / maxValue) * 100) : 0;
                                     return (
                                         <div key={category.key} className="flex flex-col gap-1">
-                                            <div className="h-12 rounded-xl bg-slate-900/70 border border-slate-800 relative overflow-hidden">
+                                            <div className="relative h-12 overflow-hidden rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel-solid)]/70">
                                                 <div
                                                     className={`absolute inset-y-0 left-0 bg-gradient-to-r ${category.accent}`}
                                                     style={{ width: `${value === 0 ? 0 : fill}%` }}
                                                 />
                                                 <div className="relative z-10 flex items-center justify-center h-full px-2 text-sm font-semibold">
-                                                    <span className={value === 0 ? 'text-slate-500' : 'text-white'}>
+                                                    <span className={value === 0 ? 'text-[var(--ui-muted)]' : 'text-[var(--ui-text)]'}>
                                                         {value} VP
                                                     </span>
                                                 </div>

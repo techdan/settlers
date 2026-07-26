@@ -3,6 +3,8 @@ import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { discardCards } from '@/app/actions';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
+import { TabletopResourceIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal } from '../ui/TabletopModal';
 
 interface DiscardModalProps {
     gameState: GameState;
@@ -123,14 +125,9 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
     if (requiredDiscard === 0 || player.discardedThisTurn) {
         // Show waiting message if others are discarding
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                <div className="bg-slate-800 p-8 rounded-xl border border-slate-600 text-center max-w-md">
-                    <h2 className="text-2xl font-bold text-white mb-4">Waiting for Discards</h2>
-                    <p className="text-slate-300">
-                        Waiting for other players to discard half their cards...
-                    </p>
-                </div>
-            </div>
+            <TabletopModal title="Waiting for Discards">
+                <p className="text-center text-[var(--ui-muted)]">Waiting for other players to discard half their cards...</p>
+            </TabletopModal>
         );
     }
 
@@ -164,10 +161,21 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
     const heading = isSabotage ? 'Sabotage!' : 'Robber Attack!';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="bg-slate-900 p-6 rounded-xl border border-red-500/50 shadow-2xl max-w-lg w-full">
-                <h2 className="text-2xl font-bold text-red-400 mb-2 text-center">{heading}</h2>
-                <p className="text-slate-300 text-center mb-6">
+        <TabletopModal
+            title={heading}
+            width="lg"
+            footer={(
+                <TabletopButton
+                    variant="danger"
+                    onClick={handleConfirm}
+                    disabled={currentSelected !== requiredDiscard || isPending}
+                    className="w-full"
+                >
+                    {isPending ? 'Discarding...' : 'Confirm Discard'}
+                </TabletopButton>
+            )}
+        >
+                <p className="mb-6 text-center text-[var(--ui-muted)]">
                     You have {totalResources} cards. You must discard <span className="font-bold text-white">{requiredDiscard}</span> cards.
                 </p>
 
@@ -177,23 +185,24 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                         if (max === 0) return null;
 
                         return (
-                            <div key={res} className="bg-slate-800 p-3 rounded-lg flex flex-col items-center border border-slate-700">
-                                <div className="text-lg font-semibold text-white mb-2 capitalize">{res}</div>
+                            <div key={res} className="flex flex-col items-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
+                                <TabletopResourceIcon type={res} size={30} label={res} />
+                                <div className="mb-2 text-sm font-semibold capitalize text-[var(--ui-text)]">{res}</div>
 
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={() => handleDecrement(res)}
                                         disabled={selected[res] === 0}
-                                        className="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center font-bold text-white"
+                                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] font-bold text-[var(--ui-text)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
                                     >-</button>
                                     <span className="font-bold w-4 text-center text-white">{selected[res]}</span>
                                     <button
                                         onClick={() => handleIncrement(res)}
                                         disabled={selected[res] === max || currentSelected >= requiredDiscard}
-                                        className="w-8 h-8 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-30 flex items-center justify-center font-bold text-white"
+                                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] font-bold text-[var(--ui-text)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
                                     >+</button>
                                 </div>
-                                <div className={`text-xs mt-1 font-semibold ${selected[res] > 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                <div className={`mt-1 text-xs font-semibold ${selected[res] > 0 ? 'text-red-300' : 'text-[var(--ui-muted)]'}`}>
                                     Have: {max - selected[res]}
                                 </div>
                             </div>
@@ -208,15 +217,7 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                         </span> / {requiredDiscard}
                     </div>
 
-                    <button
-                        onClick={handleConfirm}
-                        disabled={currentSelected !== requiredDiscard || isPending}
-                        className="w-full bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-                    >
-                        {isPending ? 'Discarding...' : 'Confirm Discard'}
-                    </button>
                 </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

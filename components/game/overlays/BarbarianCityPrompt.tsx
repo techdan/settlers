@@ -1,5 +1,6 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface BarbarianCityPromptProps {
   gameState: GameState;
@@ -14,12 +15,13 @@ export const BarbarianCityPrompt: React.FC<BarbarianCityPromptProps> = ({ gameSt
   if (!gameState.pendingBarbarianVictims?.includes(playerId)) return null;
 
   return (
-    <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-900/90 text-white p-6 rounded-lg shadow-xl z-50 flex flex-col items-center gap-4 pointer-events-auto border border-red-500">
+    <div className="pointer-events-auto absolute left-1/2 top-20 z-50 flex -translate-x-1/2 flex-col items-center gap-4 rounded-lg border border-[var(--ui-danger)] bg-[var(--ui-panel)] p-6 text-[var(--ui-text)] shadow-xl backdrop-blur-sm">
+      <TabletopStatusIcon type="warning" size={36} label="Barbarian attack warning" />
       <h3 className="text-xl font-bold">Barbarians Attacked!</h3>
       <p className="text-center">
         The barbarians have sacked your lands!
         <br />
-        <span className="font-bold text-red-300">Click on a city to destroy it.</span>
+        <span className="font-bold text-[var(--ui-danger)]">Click on a city to destroy it.</span>
       </p>
     </div>
   );

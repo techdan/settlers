@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { GameState, PlayerState } from '@/lib/types';
+import { GameState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
-import { CK_CONSTANTS, KNIGHT_ACTIVATION_COST, KNIGHT_UPGRADE_COST } from '@/core/rules/commodity-constants';
+import { CK_CONSTANTS } from '@/core/rules/commodity-constants';
 import { canAffordKnightActivation, canAffordKnightUpgrade, isKnightAdjacentToRobber } from '@/core/validation/knight-validator';
-import { getKnightOwner } from '@/core/validation/knight-validator';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import { KnightPiece, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface KnightManagementDialogProps {
     gameState: GameState;
@@ -106,38 +107,31 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
     const canChaseRobber = knight.active && isAdjacentToRobber && gameState.hasBarbariansAttacked;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-            <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4 border-2 border-slate-600 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                        Knight Management
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-white text-2xl cursor-pointer"
-                    >
-                        ×
-                    </button>
-                </div>
-
+        <TabletopModal title="Knight Management" onClose={onClose}>
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded mb-4">
+                    <div className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]">
                         {error}
                     </div>
                 )}
 
                 <div className="space-y-6">
                     {/* Knight Status */}
-                    <div className="bg-slate-700/50 p-4 rounded border border-slate-600 flex justify-between items-center">
-                        <div>
-                            <div className="font-bold text-white capitalize text-lg">
+                    <div className="flex items-center justify-between rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4">
+                        <div className="flex items-center gap-3">
+                            <svg viewBox="-16 -16 32 32" width="48" height="48" aria-hidden="true">
+                                <KnightPiece color={player.color} level={knight.level} active={knight.active} />
+                            </svg>
+                            <div>
+                            <div className="text-lg font-bold capitalize text-[var(--ui-text)]">
                                 {knight.level} Knight
                             </div>
-                            <div className="text-sm text-slate-400">
+                            <div className="text-sm text-[var(--ui-muted)]">
                                 Strength: {strength}
                             </div>
+                            </div>
                         </div>
-                        <div className={`font-bold ${knight.active ? 'text-green-400' : 'text-slate-400'}`}>
+                        <div className="flex items-center gap-2 font-bold text-[var(--ui-text)]">
+                            <TabletopStatusIcon type={knight.active ? 'active' : 'inactive'} size={18} />
                             {knight.active ? 'Active' : 'Inactive'}
                         </div>
                     </div>
@@ -146,23 +140,18 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                     <div className="grid grid-cols-1 gap-3">
                         {/* Activate */}
                         {!knight.active && (
-                            <button
+                            <TabletopButton
+                                variant="primary"
                                 onClick={handleActivate}
                                 disabled={!canAct || !canAffordActivate}
-                                className={`
-                                    w-full py-3 rounded font-bold flex items-center justify-between px-4 transition-all
-                                    ${canAct && canAffordActivate
-                                        ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                    }
-                                `}
+                                className="flex w-full items-center justify-between py-3"
                             >
                                 <span>Activate</span>
-                                <div className="flex items-center gap-1 bg-black/20 px-2 rounded text-sm">
+                                <div className="flex items-center gap-1 rounded bg-black/15 px-2 text-sm">
                                     <span>1</span>
-                                    <span>🌾</span>
+                                    <TabletopResourceIcon type="wheat" size={20} label="wheat" />
                                 </div>
-                            </button>
+                            </TabletopButton>
                         )}
 
                         {/* Upgrade */}
@@ -172,62 +161,48 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
                                 placement="top"
                                 tooltipClassName="whitespace-pre-line"
                             >
-                                <button
+                                <TabletopButton
+                                    variant="primary"
                                     onClick={handleUpgrade}
                                     disabled={!canAct || !canAffordUpgrade || (knight.level === 'strong' && (player.improvements?.politics || 0) < 3)}
-                                    className={`
-                                        w-full py-3 rounded font-bold flex items-center justify-between px-4 transition-all
-                                        ${canAct && canAffordUpgrade && !(knight.level === 'strong' && (player.improvements?.politics || 0) < 3)
-                                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                            : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                        }
-                                    `}
+                                    className="flex w-full items-center justify-between py-3"
                                 >
-                                    <span>Upgrade {(knight.level === 'strong' && (player.improvements?.politics || 0) < 3) ? "🔒" : ""}</span>
-                                    <div className="flex items-center gap-1 bg-black/20 px-2 rounded text-sm">
-                                        <span>1 🐑 + 1 🪨</span>
+                                    <span>Upgrade {(knight.level === 'strong' && (player.improvements?.politics || 0) < 3) ? '(Fortress required)' : ''}</span>
+                                    <div className="flex items-center gap-1 rounded bg-black/15 px-2 text-sm">
+                                        <span>1</span><TabletopResourceIcon type="sheep" size={20} label="sheep" />
+                                        <span>+</span>
+                                        <span>1</span><TabletopResourceIcon type="ore" size={20} label="ore" />
                                     </div>
-                                </button>
+                                </TabletopButton>
                             </Tooltip>
                         )}
 
                         {/* Move */}
                         {knight.active && (
-                            <button
+                            <TabletopButton
+                                variant="secondary"
                                 onClick={handleMove}
                                 disabled={!canAct}
-                                className={`
-                                    w-full py-3 rounded font-bold flex items-center justify-center transition-all
-                                    ${canAct
-                                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                    }
-                                `}
+                                className="w-full py-3"
                             >
                                 Move Knight
-                            </button>
+                            </TabletopButton>
                         )}
 
                         {/* Chase Away Robber */}
                         {canChaseRobber && (
-                            <button
+                            <TabletopButton
+                                variant="danger"
                                 onClick={handleChaseRobber}
                                 disabled={!canAct}
-                                className={`
-                                    w-full py-3 rounded font-bold flex items-center justify-center transition-all
-                                    ${canAct
-                                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                                        : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                    }
-                                `}
+                                className="w-full py-3"
                             >
                                 Chase Away Robber
-                            </button>
+                            </TabletopButton>
                         )}
 
                     </div>
                 </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

@@ -7,6 +7,8 @@ import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-
 import { getCanonicalVertexId } from '@/lib/hex';
 import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/GuildSelectionList';
 import { Tooltip } from '@/components/ui/tooltip';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 function calculateIrrigationGain(gameState: GameState, playerId: string) {
     let fieldCount = 0;
@@ -286,7 +288,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             <select
                                 value={chosenDice1}
                                 onChange={(e) => setChosenDice1(Number(e.target.value))}
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                                className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                             >
                                 <option value="0">Select value</option>
                                 {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
@@ -297,7 +299,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             <select
                                 value={chosenDice2}
                                 onChange={(e) => setChosenDice2(Number(e.target.value))}
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                                className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                             >
                                 <option value="0">Select value</option>
                                 {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
@@ -314,7 +316,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         <select
                             value={resource}
                             onChange={(e) => setResource(e.target.value as ResourceType)}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                         >
                             <option value="">Select resource</option>
                             {resources.map(r => <option key={r} value={r}>{r}</option>)}
@@ -329,7 +331,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                         <select
                             value={commodity}
                             onChange={(e) => setCommodity(e.target.value as CommodityType)}
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                            className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                         >
                             <option value="">Select commodity</option>
                             {commodities.map(c => <option key={c} value={c}>{c}</option>)}
@@ -345,14 +347,14 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             <select
                                 value={merchantFleetChoice}
                                 onChange={(e) => setMerchantFleetChoice(e.target.value as ResourceType | CommodityType)}
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                                className="w-full cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                             >
                                 <option value="">Select resource or commodity</option>
                                 {resources.map(r => <option key={r} value={r}>{r}</option>)}
                                 {commodities.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             The chosen type will trade with the bank at 2:1 for the rest of your turn, including bank trades and port trades.
                         </p>
                     </div>
@@ -361,7 +363,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'saboteur':
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             All opponents with equal or more victory points must discard half of their <span className="font-semibold text-emerald-300">resource cards</span> (rounded down), just like a 7 roll.
                         </p>
                         <div className="space-y-2">
@@ -373,11 +375,11 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                     return (
                                         <div
                                             key={p.id}
-                                            className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800"
+                                            className="flex items-center justify-between rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2"
                                         >
                                             <div className="flex flex-col">
                                                 <span className="font-semibold text-white">{p.name}</span>
-                                                <span className="text-xs text-slate-300">{p.victoryPoints} VP</span>
+                                                <span className="text-xs text-[var(--ui-muted)]">{p.victoryPoints} VP</span>
                                             </div>
                                             <div className="text-right text-sm">
                                                 {hasMoreVP ? (
@@ -389,7 +391,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                                         <span className="text-amber-200">Ahead of you but has no resources</span>
                                                     )
                                                 ) : (
-                                                    <span className="text-slate-400">Not affected</span>
+                                                    <span className="text-[var(--ui-muted)]">Not affected</span>
                                                 )}
                                             </div>
                                         </div>
@@ -419,7 +421,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                     <select
                                         value={opponentId}
                                         onChange={(e) => setOpponentId(e.target.value)}
-                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+                                        className="w-full rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                                     >
                                         <option value="">Select opponent</option>
                                         {getOpponents().map(p => {
@@ -433,12 +435,12 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                     </select>
                                 </div>
                                 <div className="text-xs text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
-                                    ⚠️ Once you click "Select", you cannot cancel and must steal a progress card from this opponent.
+                                    <TabletopStatusIcon type="warning" size={16} /> Once you click "Select", you cannot cancel and must steal a progress card from this opponent.
                                 </div>
                             </>
                         ) : (
                             <>
-                                <div className="text-sm text-slate-200 mb-2">
+                                <div className="mb-2 text-sm text-[var(--ui-text)]">
                                     Stealing from: <span className="font-semibold text-emerald-300">{gameState.players.find(p => p.id === opponentId)?.name}</span>
                                 </div>
                                 <div>
@@ -460,7 +462,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                                             className={`w-full text-left px-4 py-3 rounded border transition-colors cursor-pointer ${
                                                                 isSelected
                                                                     ? 'bg-blue-600/60 border-blue-400 ring-2 ring-blue-400'
-                                                                    : 'bg-slate-700 border-slate-600 hover:bg-slate-600 hover:border-slate-500'
+                                                                    : 'border-[var(--ui-border)] bg-[var(--ui-panel-raised)] hover:border-[var(--ui-accent)] hover:brightness-110'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-2">
@@ -485,7 +487,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 if (!irrigationStats) return null;
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             You will receive{' '}
                             <span className="font-semibold text-emerald-300">{irrigationStats.wheatGained}</span>{' '}
                             wheat for the{' '}
@@ -504,7 +506,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 if (!miningStats) return null;
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             You will receive{' '}
                             <span className="font-semibold text-emerald-300">{miningStats.oreGained}</span>{' '}
                             ore for the{' '}
@@ -536,7 +538,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                             setGuildSelections({});
                                             setError('');
                                         }}
-                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white cursor-pointer"
+                                        className="w-full cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-[var(--ui-text)]"
                                     >
                                         <option value="">Select opponent</option>
                                         {eligibleGuildOpponents.map(p => (
@@ -550,17 +552,17 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                     )}
                                 </div>
                                 <div className="text-xs text-amber-200 bg-amber-900/30 border border-amber-600 rounded px-3 py-2">
-                                    ⚠️ Once you click "Select", you cannot cancel and must take cards from this opponent's hand.
+                                    <TabletopStatusIcon type="warning" size={16} /> Once you click "Select", you cannot cancel and must take cards from this opponent's hand.
                                 </div>
                             </>
                         ) : (
                             <>
-                                <div className="text-sm text-slate-200 mb-2">
+                                <div className="mb-2 text-sm text-[var(--ui-text)]">
                                     Taking from: <span className="font-semibold text-emerald-300">{gameState.players.find(p => p.id === opponentId)?.name}</span>
                                 </div>
                                 <div className="space-y-3">
                                     {requiredPicks > 0 ? (
-                                        <div className="text-sm text-slate-200">
+                                        <div className="text-sm text-[var(--ui-text)]">
                                             Choose {requiredPicks === 2 ? 'any 2 cards' : 'the only card available'} from {gameState.players.find(p => p.id === opponentId)?.name}'s hand.
                                         </div>
                                     ) : (
@@ -588,7 +590,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                 const higherVPPlayers = otherPlayers.filter(p => (p.victoryPoints ?? 0) > (currentPlayer.victoryPoints ?? 0));
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             Each opponent with more victory points chooses <span className="font-semibold text-emerald-300">two cards</span>{' '}
                             (resources or commodities) to give you. They will make their selection right after you play this card.
                         </p>
@@ -600,11 +602,11 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                 return (
                                     <div
                                         key={p.id}
-                                        className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800"
+                                        className="flex items-center justify-between rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2"
                                     >
                                         <div className="flex flex-col">
                                             <span className="font-semibold text-white">{p.name}</span>
-                                            <span className="text-xs text-slate-300">{p.victoryPoints} VP</span>
+                                            <span className="text-xs text-[var(--ui-muted)]">{p.victoryPoints} VP</span>
                                         </div>
                                         <div className="text-right text-sm">
                                             {hasMoreVP ? (
@@ -616,7 +618,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                                                     <span className="text-amber-200">Ahead of you but has no cards</span>
                                                 )
                                             ) : (
-                                                <span className="text-slate-400">No cards owed</span>
+                                                <span className="text-[var(--ui-muted)]">No cards owed</span>
                                             )}
                                         </div>
                                     </div>
@@ -635,11 +637,11 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
             case 'encouragement':
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             Activate all of your knights for free. This immediately boosts your defense strength
                             against the barbarians and lets those knights move or displace as usual.
                         </p>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             Knights that are already active stay active. No wheat is spent.
                         </p>
                     </div>
@@ -647,7 +649,7 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
 
             default:
                 return (
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-[var(--ui-muted)]">
                         This card does not require any parameters. Click "Play Card" to use it.
                     </p>
                 );
@@ -727,28 +729,28 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             ? 'Select'
                             : 'Play Card';
 
-    return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 pointer-events-auto">
-            <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 max-w-md w-full mx-4 text-white">
-                {/* Header */}
-                <div className="p-6 border-b border-slate-700 flex justify-between items-start">
-                    <div>
-                        <h2 className="text-xl font-bold">{cardMeta.name}</h2>
-                        <p className="text-sm text-slate-300 mt-1">{cardMeta.description}</p>
-                    </div>
-                    {!espionageCommitted && !guildDuesCommitted && (
-                        <button
-                            onClick={onClose}
-                            className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none cursor-pointer"
-                            aria-label="Close"
-                        >
-                            ×
-                        </button>
-                    )}
-                </div>
+    const footer = (
+        <>
+            <TabletopButton onClick={onClose} disabled={espionageCommitted || guildDuesCommitted}>Cancel</TabletopButton>
+            {showSelectButton ? (
+                <TabletopButton variant="primary" onClick={handleSelectOpponent} disabled={!canCommit}>Select</TabletopButton>
+            ) : playTooltip ? (
+                <Tooltip content={playTooltip} placement="top" tooltipClassName="whitespace-pre-line">
+                    <TabletopButton variant="primary" onClick={handlePlay} disabled={disablePlay}>{actionLabel}</TabletopButton>
+                </Tooltip>
+            ) : (
+                <TabletopButton variant="primary" onClick={handlePlay} disabled={disablePlay}>{actionLabel}</TabletopButton>
+            )}
+        </>
+    );
 
-                {/* Body */}
-                <div className="p-6">
+    return (
+        <TabletopModal
+            title={cardMeta.name}
+            description={cardMeta.description}
+            onClose={!espionageCommitted && !guildDuesCommitted ? onClose : undefined}
+            footer={footer}
+        >
                     {renderCardForm()}
 
                     {alchemyLocked && (
@@ -763,58 +765,6 @@ export const ProgressCardModal: React.FC<ProgressCardModalProps> = ({
                             {error}
                         </div>
                     )}
-                </div>
-
-                {/* Footer */}
-                <div className="p-6 border-t border-slate-700 flex gap-3 justify-end">
-                    <button
-                        onClick={onClose}
-                        disabled={espionageCommitted || guildDuesCommitted}
-                        className={`px-4 py-2 rounded transition-colors ${espionageCommitted || guildDuesCommitted
-                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50'
-                                : 'bg-slate-700 hover:bg-slate-600 text-white cursor-pointer'
-                            }`}
-                    >
-                        Cancel
-                    </button>
-                    {showSelectButton ? (
-                        <button
-                            onClick={handleSelectOpponent}
-                            disabled={!canCommit}
-                            className={`px-4 py-2 rounded font-medium transition-colors ${!canCommit
-                                    ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                                }`}
-                        >
-                            Select
-                        </button>
-                    ) : playTooltip ? (
-                        <Tooltip content={playTooltip} placement="top" tooltipClassName="whitespace-pre-line">
-                            <button
-                                onClick={handlePlay}
-                                disabled={disablePlay}
-                                className={`px-4 py-2 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-slate-800 ${disablePlay
-                                        ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                                        : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-                                    }`}
-                            >
-                                {actionLabel}
-                            </button>
-                        </Tooltip>
-                    ) : (
-                        <button
-                            onClick={handlePlay}
-                            disabled={disablePlay}
-                            className={`px-4 py-2 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 focus:ring-offset-slate-800 ${disablePlay
-                                    ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                                    : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-                                }`}
-                        >
-                            {actionLabel}
-                        </button>
-                    )}
-                </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

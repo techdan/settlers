@@ -253,6 +253,20 @@ describe('BoardCanvas smoke tests (flat theme)', () => {
         expect(invalidGroup).toBeNull();
     });
 
+    it('renders an accessible player-colored target for legal knight placement', () => {
+        const fixture = buildFixture();
+        fixture.selectionState.buildMode = 'knight';
+        const { container } = renderBoard(fixture);
+
+        const validGroup = findVertexGroup(container, fixture.validEmptyVertex);
+        const target = validGroup?.querySelector('[data-placement-target="knight"]');
+        expect(target).not.toBeNull();
+        expect(target).toHaveAttribute('aria-label', 'Legal knight placement');
+        expect(target).toHaveAttribute('tabindex', '0');
+        expect(target!.querySelector('[data-piece="knight-basic"]')).not.toBeNull();
+        expect(target!.querySelector(`path[fill="${PLAYER_COLOR_VAR}"]`)).not.toBeNull();
+    });
+
     it('attaches the valid-placement highlight to the correct edge (and nowhere else)', () => {
         const fixture = buildFixture();
         const { container } = renderBoard(fixture);

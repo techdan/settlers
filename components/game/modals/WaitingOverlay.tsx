@@ -1,6 +1,8 @@
 import { GameState } from '@/lib/types/game';
 import { Obligation } from '@/lib/types/timer';
 import { getBlockingObligations } from '@/lib/services/obligation-tracker';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopModal } from '../ui/TabletopModal';
 
 interface WaitingOverlayProps {
   gameState: GameState;
@@ -38,22 +40,14 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
   const isWaitingOnSelf = waitingOnPlayerIds.includes(currentPlayerId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="max-w-md w-full mx-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border-2 border-slate-200 dark:border-slate-700 overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <span className="text-3xl">⏸️</span>
-            Waiting on Players
-          </h2>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-4">
+    <TabletopModal
+      title={<span className="flex items-center gap-2"><TabletopStatusIcon type="time" size={25} /> Waiting on Players</span>}
+    >
+        <div className="space-y-4">
           {isWaitingOnSelf && (
-            <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4">
-              <p className="text-lg font-bold text-red-800 dark:text-red-200 mb-2">
-                🔴 Everyone is waiting on you!
+            <div className="rounded-lg border-2 border-[var(--ui-danger)] bg-red-950/30 p-4">
+              <p className="mb-2 flex items-center gap-2 text-lg font-bold text-red-200">
+                <TabletopStatusIcon type="warning" size={21} /> Everyone is waiting on you!
               </p>
               <p className="text-sm text-red-700 dark:text-red-300">
                 Complete your pending actions before the next turn can begin.
@@ -62,7 +56,7 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
           )}
 
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+            <p className="text-sm font-semibold uppercase tracking-wider text-[var(--ui-muted)]">
               Pending Obligations:
             </p>
 
@@ -77,7 +71,7 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
                   className={`p-4 rounded-lg border-2 ${
                     isCurrentPlayer
                       ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
-                      : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700'
+                      : 'border-[var(--ui-border)] bg-[var(--ui-panel-raised)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
@@ -87,7 +81,7 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
                     >
                       {player?.name.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                    <span className="font-bold text-[var(--ui-text)]">
                       {player?.name || 'Player'}
                       {isCurrentPlayer && ' (You)'}
                     </span>
@@ -100,7 +94,7 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
                         className={`text-sm ${
                           isCurrentPlayer
                             ? 'text-red-700 dark:text-red-300'
-                            : 'text-slate-700 dark:text-slate-300'
+                            : 'text-[var(--ui-muted)]'
                         }`}
                       >
                         • {obligation.description}
@@ -113,13 +107,13 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
           </div>
 
           {/* Explanation */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <p className="text-xs text-blue-800 dark:text-blue-200">
-              ℹ️ The game is paused until all players complete their required actions. This ensures everyone's decisions are properly resolved before continuing.
+          <div className="flex gap-2 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
+            <TabletopStatusIcon type="info" size={19} className="flex-shrink-0" />
+            <p className="text-xs text-[var(--ui-muted)]">
+              The game is paused until all players complete their required actions. This ensures everyone's decisions are properly resolved before continuing.
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </TabletopModal>
   );
 }

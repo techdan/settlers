@@ -2,6 +2,8 @@
 
 import React, { memo } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
+import { TabletopButton } from '@/components/game/ui/TabletopModal';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface BoardSelectionPromptProps {
     title: string;
@@ -26,39 +28,38 @@ const BoardSelectionPromptComponent: React.FC<BoardSelectionPromptProps> = ({
 }) => {
     return (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-auto">
-            <div className="flex items-center gap-3 bg-slate-900/90 border border-slate-700 text-white px-4 py-3 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel)] px-4 py-3 text-[var(--ui-text)] shadow-lg backdrop-blur-sm">
+                <TabletopStatusIcon type="info" size={24} />
                 <div className="text-sm space-y-1">
                     <div className="font-semibold">{title}</div>
-                    <div className="text-xs text-slate-200">{description}</div>
-                    {status && <div className="text-xs text-slate-300">{status}</div>}
+                    <div className="text-xs text-[var(--ui-muted)]">{description}</div>
+                    {status && <div className="text-xs text-[var(--ui-muted)]">{status}</div>}
                     {children}
                 </div>
                 <div className="flex items-center gap-2">
                     {onCancel && (
                         <Tooltip content="Cancel" placement="top">
-                            <button
+                            <TabletopButton
                                 type="button"
-                                className="px-3 py-2 rounded-md border border-red-700 bg-red-700 hover:bg-red-600 text-white font-semibold transition-colors cursor-pointer"
+                                variant="danger"
+                                className="px-3"
                                 onClick={onCancel}
                             >
                                 Cancel
-                            </button>
+                            </TabletopButton>
                         </Tooltip>
                     )}
                     {onFinish && (
                         <Tooltip content={finishLabel} placement="top">
-                            <button
+                            <TabletopButton
                                 type="button"
-                                className={`px-3 py-2 rounded-md font-semibold shadow text-sm transition-colors ${
-                                    finishDisabled
-                                        ? 'bg-emerald-800 text-white/70 cursor-not-allowed'
-                                        : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
-                                }`}
+                                variant="primary"
+                                className="px-3 shadow"
                                 onClick={onFinish}
                                 disabled={finishDisabled}
                             >
                                 {finishLabel}
-                            </button>
+                            </TabletopButton>
                         </Tooltip>
                     )}
                 </div>

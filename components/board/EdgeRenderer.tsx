@@ -4,6 +4,7 @@ import { createHex, hexEdgeToPixel } from '@/lib/hex';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
 import { Road } from '@/themes/tabletop';
+import { StatusGlyph } from '@/themes/tabletop/glyphs';
 
 interface EdgeRendererProps {
     edge: Edge;
@@ -74,7 +75,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                         }}
                     >
                         <circle r={10} fill="var(--color-highlight-success)" stroke="var(--color-highlight-white)" strokeWidth={2} />
-                        <text x="0" y="4" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="14" fontWeight="bold">✓</text>
+                        <g transform="scale(0.78)"><StatusGlyph type="confirm" /></g>
                         <title>Confirm Placement</title>
                     </g>
 
@@ -88,7 +89,7 @@ export const EdgeRenderer: React.FC<EdgeRendererProps> = ({ edge, size, color, o
                         }}
                     >
                         <circle r={10} fill="var(--color-highlight-danger)" stroke="var(--color-highlight-white)" strokeWidth={2} />
-                        <text x="0" y="4" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="14" fontWeight="bold">✕</text>
+                        <g transform="scale(0.78)"><StatusGlyph type="cancel" /></g>
                         <title>Cancel Placement</title>
                     </g>
                 </g>

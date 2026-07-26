@@ -3,7 +3,7 @@
 import React from 'react';
 import { PlayerState, GameState } from '@/lib/types';
 import { Tooltip } from '@/components/ui/tooltip';
-import { CompactImprovementBar } from '@/components/ui/icons/CompactImprovementBar';
+import { CompactImprovementBar } from './CompactImprovementBar';
 import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
@@ -116,8 +116,8 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
     // Tooltips
     const resourceTooltip = isCK
-        ? `Resources: ${resourceCount}\nCommodities: ${commodityCount}\nTotal: ${totalCards}\nSafe limit: ${safeLimit}${isDanger ? '\n⚠️ Over limit - vulnerable to robber!' : ''}`
-        : `Total cards: ${totalCards}\nSafe limit: ${safeLimit}${isDanger ? '\n⚠️ Over limit - vulnerable to robber!' : ''}`;
+        ? `Resources: ${resourceCount}\nCommodities: ${commodityCount}\nTotal: ${totalCards}\nSafe limit: ${safeLimit}${isDanger ? '\nOver limit - vulnerable to robber!' : ''}`
+        : `Total cards: ${totalCards}\nSafe limit: ${safeLimit}${isDanger ? '\nOver limit - vulnerable to robber!' : ''}`;
 
     const roadTooltip = `Road length: ${longestRoad}${hasLongestRoad ? '\n🏆 Longest Road (+2 VP)' : '\nLongest Road requires 5+'}`;
 

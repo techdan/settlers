@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DevCardType, PlayerState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { ProgressCardType } from '@/lib/types/player';
 import { debugGiveResource, debugGiveCommodity, debugGiveProgressCard, debugGiveDevCard } from '@/app/actions';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface DebugPanelProps {
     player: PlayerState;
@@ -29,9 +31,11 @@ const DEV_CARD_LABELS: Record<DevCardType, string> = {
 };
 
 export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
-    const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+    const [isPending, setIsPending] = useState(false);
     const [category, setCategory] = useState<ItemCategory>('resource');
     const [selectedItem, setSelectedItem] = useState<string>('');
+    const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     const hasCommodities = Boolean(player.commodities);
     const hasCitiesAndKnights =
@@ -65,24 +69,32 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
         }
     }, [availableCategories, category]);
 
-    const handleGive = () => {
+    const handleGive = async () => {
         if (!selectedItem) return;
 
-        startTransition(async () => {
-            try {
-                if (category === 'resource') {
-                    await debugGiveResource(roomId, player.id, selectedItem as ResourceType);
-                } else if (category === 'commodity') {
-                    await debugGiveCommodity(roomId, player.id, selectedItem as CommodityType);
-                } else if (category === 'progress_card') {
-                    await debugGiveProgressCard(roomId, player.id, selectedItem as ProgressCardType);
-                } else if (category === 'dev_card') {
-                    await debugGiveDevCard(roomId, player.id, selectedItem as DevCardType);
-                }
-            } catch (e) {
-                console.error('Debug action failed:', e);
+        setIsPending(true);
+        setFeedback(null);
+
+        try {
+            if (category === 'resource') {
+                await debugGiveResource(roomId, player.id, selectedItem as ResourceType);
+            } else if (category === 'commodity') {
+                await debugGiveCommodity(roomId, player.id, selectedItem as CommodityType);
+            } else if (category === 'progress_card') {
+                await debugGiveProgressCard(roomId, player.id, selectedItem as ProgressCardType);
+            } else if (category === 'dev_card') {
+                await debugGiveDevCard(roomId, player.id, selectedItem as DevCardType);
             }
-        });
+
+            setFeedback({ type: 'success', message: `Granted 1 ${selectedItem.replaceAll('_', ' ')}` });
+            router.refresh();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Debug grant failed';
+            console.error('Debug action failed:', error);
+            setFeedback({ type: 'error', message });
+        } finally {
+            setIsPending(false);
+        }
     };
 
     const getItemsForCategory = (): { value: string; label: string }[] => {
@@ -94,14 +106,9 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
             case 'progress_card':
                 return PROGRESS_CARDS.map(card => {
                     const def = PROGRESS_CARD_DEFINITIONS[card];
-                    let icon = '';
-                    if (def.category === 'science') icon = '🟢 ';
-                    else if (def.category === 'trade') icon = '🟡 ';
-                    else if (def.category === 'politics') icon = '🔵 ';
-
                     return {
                         value: card,
-                        label: `${icon}${def.name}`
+                        label: `${def.name} (${def.category})`
                     };
                 });
             case 'dev_card':
@@ -117,15 +124,16 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
     }, [category]);
 
     return (
-        <div className="bg-red-900/90 p-3 rounded-lg shadow-lg text-white border-2 border-red-500 pointer-events-auto">
+        <div className="pointer-events-auto rounded-lg border-2 border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)] shadow-lg">
             <div className="flex items-center gap-2 mb-2">
-                <div className="text-xs font-bold text-red-200 uppercase tracking-wider">🔧 Debug</div>
+                <TabletopStatusIcon type="warning" size={16} />
+                <div className="text-xs font-bold uppercase tracking-wider text-[var(--ui-text)]">Debug</div>
             </div>
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-wrap gap-2 items-center">
                 <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ItemCategory)}
-                    className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:outline-none focus:border-red-400 cursor-pointer"
+                    className="min-h-11 cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-2 py-1 text-sm text-[var(--ui-text)] focus:border-[var(--ui-accent)] focus:outline-none"
                     disabled={isPending}
                 >
                     {availableCategories.map(c => (
@@ -138,10 +146,10 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
                 <select
                     value={selectedItem}
                     onChange={(e) => setSelectedItem(e.target.value)}
-                    className="bg-slate-800 text-white text-sm px-2 py-1 rounded border border-slate-600 focus:outline-none focus:border-red-400 flex-1 min-w-0 cursor-pointer"
+                    className="min-h-11 min-w-0 flex-1 cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-2 py-1 text-sm text-[var(--ui-text)] focus:border-[var(--ui-accent)] focus:outline-none"
                     disabled={isPending}
                 >
-                    <option value="">Select item...</option>
+                    <option value="">Select item…</option>
                     {getItemsForCategory().map(item => (
                         <option key={item.value} value={item.value}>
                             {item.label}
@@ -150,13 +158,23 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId }) => {
                 </select>
 
                 <button
+                    type="button"
                     onClick={handleGive}
                     disabled={isPending || !selectedItem}
-                    className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm px-3 py-1 rounded font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed"
+                    className="min-h-11 cursor-pointer rounded bg-[var(--ui-danger)] px-3 py-1 text-sm font-semibold text-white transition-[filter] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] disabled:cursor-not-allowed disabled:bg-[var(--ui-panel-raised)] disabled:text-[var(--ui-muted)]"
                 >
                     Give
                 </button>
             </div>
+            {feedback && (
+                <div
+                    role={feedback.type === 'error' ? 'alert' : 'status'}
+                    className={`mt-2 flex items-center gap-2 text-xs ${feedback.type === 'error' ? 'text-[var(--ui-danger)]' : 'text-[var(--ui-success)]'}`}
+                >
+                    <TabletopStatusIcon type={feedback.type === 'error' ? 'cancel' : 'confirm'} size={14} />
+                    <span>{feedback.message}</span>
+                </div>
+            )}
         </div>
     );
 };

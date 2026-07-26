@@ -45,8 +45,8 @@ function cardTooltip(card: ProgressHandCard): React.ReactNode {
     const def = PROGRESS_CARD_DEFINITIONS[card.type];
     return (
         <div className="space-y-1 max-w-[16rem]">
-            <div className="font-semibold text-slate-100">{def.name}</div>
-            <div className="text-slate-200">{def.description}</div>
+            <div className="font-semibold text-[var(--ui-text)]">{def.name}</div>
+            <div className="text-[var(--ui-muted)]">{def.description}</div>
             {card.disabled && card.disabledReason && (
                 <div className="text-amber-200">{card.disabledReason}</div>
             )}
@@ -85,7 +85,7 @@ const DrawerTrigger: React.FC<{
 }> = ({ cards, open, onToggle }) => (
     <button
         onClick={onToggle}
-        className="flex items-center gap-2 cursor-pointer rounded-md p-1 hover:brightness-110 transition"
+        className="flex items-center gap-2 cursor-pointer rounded-md p-1 hover:brightness-110 transition-[filter] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
         aria-expanded={open}
         aria-label={`Progress cards: ${cards.length} in hand`}
     >
@@ -140,11 +140,6 @@ export const ProgressHandView: React.FC<ProgressHandViewProps> = ({ cards, onCar
         };
     }, [shelfOpen]);
 
-    // Drawer collapses automatically when the hand shrinks below the threshold
-    useEffect(() => {
-        if (!useDrawer && shelfOpen) setShelfOpen(false);
-    }, [useDrawer, shelfOpen]);
-
     if (cards.length === 0) return null;
 
     const handleClick = (type: ProgressCardType) => {
@@ -156,7 +151,7 @@ export const ProgressHandView: React.FC<ProgressHandViewProps> = ({ cards, onCar
         <div ref={rootRef} className={`relative ${className ?? ''}`}>
             {/* Inline mode: wide viewports with a small hand */}
             {!useDrawer && (
-                <div className="hidden lg:flex items-end gap-2.5 px-1 pt-2">
+                <div className="hidden xl:flex items-end gap-2.5 px-1 pt-2">
                     {cards.map((c, i) => (
                         <FaceButton key={`${c.type}-${i}`} card={c} width={INLINE_WIDTH} onClick={() => handleClick(c.type)} />
                     ))}
@@ -164,7 +159,7 @@ export const ProgressHandView: React.FC<ProgressHandViewProps> = ({ cards, onCar
             )}
 
             {/* Drawer mode: big hands always; small hands on narrow viewports */}
-            <div className={useDrawer ? 'flex items-center gap-2' : 'flex lg:hidden items-center gap-2'}>
+            <div className={useDrawer ? 'flex items-center gap-2' : 'flex xl:hidden items-center gap-2'}>
                 <DrawerTrigger cards={cards} open={shelfOpen} onToggle={() => setShelfOpen(o => !o)} />
                 {/* a pending selection stays visible even with the shelf closed */}
                 {activeCard && !shelfOpen && (
@@ -175,7 +170,7 @@ export const ProgressHandView: React.FC<ProgressHandViewProps> = ({ cards, onCar
             {/* The shelf */}
             {shelfOpen && (
                 <div
-                    className="absolute bottom-full left-0 mb-3 flex items-end gap-3 rounded-xl p-4 shadow-2xl z-40"
+                    className="absolute bottom-full left-0 z-40 mb-3 flex items-end gap-3 rounded-xl p-4 shadow-2xl max-xl:fixed max-xl:bottom-auto max-xl:left-1/2 max-xl:top-1/2 max-xl:max-h-[70dvh] max-xl:max-w-[calc(100vw-1rem)] max-xl:-translate-x-1/2 max-xl:-translate-y-1/2 max-xl:flex-wrap max-xl:justify-center max-xl:overflow-y-auto max-xl:overscroll-contain"
                     style={{ background: '#1a1410', border: '1px solid #3d3226' }}
                     role="dialog"
                     aria-label="Progress cards"

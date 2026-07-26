@@ -3,7 +3,8 @@ import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton } from '@/components/game/ui/TabletopModal';
 
 interface TradeOfferDisplayProps {
     gameState: GameState;
@@ -98,70 +99,71 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
     };
 
     return (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur border border-yellow-500/50 p-4 rounded-xl shadow-2xl z-40 animate-in fade-in slide-in-from-top-4">
-            <div className="text-center text-yellow-400 font-bold mb-2 text-sm uppercase tracking-wider">
+        <div className="absolute top-20 left-1/2 z-40 -translate-x-1/2 animate-in rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] p-4 text-[var(--ui-text)] shadow-2xl backdrop-blur fade-in slide-in-from-top-4">
+            <div className="mb-2 flex items-center justify-center gap-2 text-center text-sm font-bold uppercase tracking-wider text-[var(--ui-accent)]">
+                <TabletopStatusIcon type="trade" size={18} />
                 {isInitiator ? 'Your Active Offer' : `Trade Offer from ${initiatorName}`}
             </div>
 
             <div className="flex items-center gap-4 justify-center mb-4">
                 {/* They Give */}
-                <div className="bg-slate-800 p-2 rounded border border-slate-700">
-                    <div className="text-xs text-slate-400 mb-1 text-center">{isInitiator ? 'You Give' : 'They Give'}</div>
+                <div className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-2">
+                    <div className="mb-1 text-center text-xs text-[var(--ui-muted)]">{isInitiator ? 'You Give' : 'They Give'}</div>
                     <div className="flex gap-2 flex-wrap">
                         {Object.entries(offer.give).map(([res, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={res} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                <div key={res} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
                                     <div className="flex flex-col items-center leading-none">
-                                        <GameIcon type={res as ResourceType} size={28} />
-                                        <span className="text-[10px] text-slate-300">{RESOURCE_LABELS[res as ResourceType]}</span>
+                                        <TabletopResourceIcon type={res as ResourceType} size={28} label={RESOURCE_LABELS[res as ResourceType]} />
+                                        <span className="text-[10px] text-[var(--ui-muted)]">{RESOURCE_LABELS[res as ResourceType]}</span>
                                     </div>
-                                    <span className="font-bold text-white text-sm">{amount}</span>
+                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
                                 </div>
                             );
                         })}
                         {offer.giveCommodities && Object.entries(offer.giveCommodities).map(([comm, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={comm} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                <div key={comm} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
                                     <div className="flex flex-col items-center leading-none">
-                                        <GameIcon type={comm as CommodityType} size={28} />
-                                        <span className="text-[10px] text-slate-300">{COMMODITY_LABELS[comm as CommodityType]}</span>
+                                        <TabletopCommodityIcon type={comm as CommodityType} size={28} label={COMMODITY_LABELS[comm as CommodityType]} />
+                                        <span className="text-[10px] text-[var(--ui-muted)]">{COMMODITY_LABELS[comm as CommodityType]}</span>
                                     </div>
-                                    <span className="font-bold text-white text-sm">{amount}</span>
+                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
                                 </div>
                             );
                         })}
                     </div>
                 </div>
 
-                <div className="text-slate-500 font-bold">➜</div>
+                <div className="font-bold text-[var(--ui-muted)]" aria-hidden="true">→</div>
 
                 {/* They Get */}
-                <div className="bg-slate-800 p-2 rounded border border-slate-700">
-                    <div className="text-xs text-slate-400 mb-1 text-center">{isInitiator ? 'You Get' : 'They Want'}</div>
+                <div className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-2">
+                    <div className="mb-1 text-center text-xs text-[var(--ui-muted)]">{isInitiator ? 'You Get' : 'They Want'}</div>
                     <div className="flex gap-2 flex-wrap">
                         {Object.entries(offer.get).map(([res, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={res} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                <div key={res} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
                                     <div className="flex flex-col items-center leading-none">
-                                        <GameIcon type={res as ResourceType} size={28} />
-                                        <span className="text-[10px] text-slate-300">{RESOURCE_LABELS[res as ResourceType]}</span>
+                                        <TabletopResourceIcon type={res as ResourceType} size={28} label={RESOURCE_LABELS[res as ResourceType]} />
+                                        <span className="text-[10px] text-[var(--ui-muted)]">{RESOURCE_LABELS[res as ResourceType]}</span>
                                     </div>
-                                    <span className="font-bold text-white text-sm">{amount}</span>
+                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
                                 </div>
                             );
                         })}
                         {offer.getCommodities && Object.entries(offer.getCommodities).map(([comm, amount]) => {
                             if (amount === 0) return null;
                             return (
-                                <div key={comm} className="flex items-center gap-2 bg-slate-700 px-2 py-1 rounded">
+                                <div key={comm} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
                                     <div className="flex flex-col items-center leading-none">
-                                        <GameIcon type={comm as CommodityType} size={28} />
-                                        <span className="text-[10px] text-slate-300">{COMMODITY_LABELS[comm as CommodityType]}</span>
+                                        <TabletopCommodityIcon type={comm as CommodityType} size={28} label={COMMODITY_LABELS[comm as CommodityType]} />
+                                        <span className="text-[10px] text-[var(--ui-muted)]">{COMMODITY_LABELS[comm as CommodityType]}</span>
                                     </div>
-                                    <span className="font-bold text-white text-sm">{amount}</span>
+                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
                                 </div>
                             );
                         })}
@@ -171,29 +173,31 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
 
             <div className="flex justify-center gap-3">
                 {isInitiator ? (
-                    <button
+                    <TabletopButton
                         onClick={handleCancel}
                         disabled={isPending}
-                        className="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
+                        variant="danger"
+                        className="px-6"
                     >
                         {isPending ? 'Cancelling...' : 'Cancel Offer'}
-                    </button>
+                    </TabletopButton>
                 ) : (
                     <>
-                        <button
+                        <TabletopButton
                             onClick={handleReject}
                             disabled={isPending}
-                            className="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
+                            className="px-5"
                         >
                             {isPending && pendingAction === 'reject' ? 'Rejecting...' : 'Reject'}
-                        </button>
-                        <button
+                        </TabletopButton>
+                        <TabletopButton
                             onClick={handleAccept}
                             disabled={!canAfford || isPending}
-                            className="bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer disabled:cursor-not-allowed"
+                            variant="primary"
+                            className="px-6"
                         >
                             {isPending && pendingAction === 'accept' ? 'Accepting...' : canAfford ? 'Accept Trade' : 'Cannot Afford'}
-                        </button>
+                        </TabletopButton>
                     </>
                 )}
             </div>

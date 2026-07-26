@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { respondToCommercialHarbor } from '@/app/actions';
+import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
 interface CommercialHarborModalProps {
     gameState: GameState;
@@ -9,17 +11,7 @@ interface CommercialHarborModalProps {
     roomId: string;
 }
 
-const COMMODITY_ICONS: Record<CommodityType, string> = {
-    paper: '📜',
-    cloth: '🧵',
-    coin: '💰'
-};
-
-const COMMODITY_COLORS: Record<CommodityType, string> = {
-    paper: 'bg-green-600 hover:bg-green-500',
-    cloth: 'bg-yellow-600 hover:bg-yellow-500',
-    coin: 'bg-amber-600 hover:bg-amber-500'
-};
+const COMMODITY_TYPES: CommodityType[] = ['paper', 'cloth', 'coin'];
 
 export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
     gameState,
@@ -56,13 +48,10 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
 
     const hasNoCommodities = availableCommodities.length === 0;
 
-    // Auto-select if only one option
-    if (availableCommodities.length === 1 && !selectedCommodity) {
-        setSelectedCommodity(availableCommodities[0]);
-    }
+    const effectiveSelectedCommodity = selectedCommodity ?? (availableCommodities.length === 1 ? availableCommodities[0] : null);
 
     const handleSubmit = async () => {
-        if (!hasNoCommodities && !selectedCommodity) {
+        if (!hasNoCommodities && !effectiveSelectedCommodity) {
             setError('Please select a commodity');
             return;
         }
@@ -71,7 +60,7 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
         setError('');
 
         try {
-            await respondToCommercialHarbor(roomId, playerId, hasNoCommodities ? null : selectedCommodity);
+            await respondToCommercialHarbor(roomId, playerId, hasNoCommodities ? null : effectiveSelectedCommodity);
 
             // Success - modal will close automatically when gameState updates
         } catch (e: any) {
@@ -81,18 +70,20 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 pointer-events-auto">
-            <div className="bg-slate-900 border border-yellow-500/60 rounded-xl shadow-2xl p-6 w-[420px] text-white">
-                {/* Header */}
-                <div className="text-center mb-4">
-                    <div className="text-sm uppercase tracking-wide text-yellow-300 mb-2">
-                        Commercial Harbor Offer
-                    </div>
-                    <div className="text-xl font-bold text-yellow-100">
-                        {initiator.name} is offering {offeredResource}
-                    </div>
-                </div>
-
+        <TabletopModal
+            title={<span className="flex items-center gap-2"><TabletopStatusIcon type="trade" size={22} /> Commercial Harbor Offer</span>}
+            description={<span className="flex items-center gap-1.5">{initiator.name} is offering <TabletopResourceIcon type={offeredResource} size={20} label={offeredResource} /> <span className="capitalize">{offeredResource}</span></span>}
+            footer={(
+                <TabletopButton
+                    variant={hasNoCommodities ? 'secondary' : 'primary'}
+                    onClick={handleSubmit}
+                    disabled={(!hasNoCommodities && !effectiveSelectedCommodity) || isSubmitting}
+                    className="w-full"
+                >
+                    {isSubmitting ? 'Submitting...' : hasNoCommodities ? 'Return Resource' : 'Confirm Trade'}
+                </TabletopButton>
+            )}
+        >
                 {/* Description */}
                 {hasNoCommodities ? (
                     <div className="bg-orange-900/30 border border-orange-500 rounded-lg p-4 mb-4">
@@ -102,8 +93,8 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-slate-200 text-center">
+                    <div className="mb-4 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4">
+                        <p className="text-center text-sm text-[var(--ui-text)]">
                             Give <span className="font-semibold">1 commodity</span> in exchange for{' '}
                             <span className="font-semibold">1 {offeredResource}</span>.
                         </p>
@@ -113,37 +104,32 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
                 {/* Commodity Selection */}
                 {!hasNoCommodities && (
                     <div className="space-y-3 mb-4">
-                        <label className="text-sm font-medium block text-slate-300">
+                        <label className="block text-sm font-medium text-[var(--ui-muted)]">
                             Select a commodity to give:
                         </label>
                         <div className="grid grid-cols-3 gap-3">
-                            {(['paper', 'cloth', 'coin'] as CommodityType[]).map(commodity => {
+                            {COMMODITY_TYPES.map(commodity => {
                                 const available = player.commodities?.[commodity] ?? 0;
                                 const isDisabled = available <= 0;
-                                const isSelected = selectedCommodity === commodity;
+                                const isSelected = effectiveSelectedCommodity === commodity;
 
                                 return (
                                     <button
                                         key={commodity}
                                         onClick={() => !isDisabled && setSelectedCommodity(commodity)}
                                         disabled={isDisabled || isSubmitting}
-                                        className={`relative p-4 rounded-lg border-2 transition-all ${
-                                            isSelected
-                                                ? 'border-yellow-400 bg-yellow-900/30 ring-2 ring-yellow-400/50'
-                                                : isDisabled
-                                                ? 'border-slate-700 bg-slate-800/30 opacity-40 cursor-not-allowed'
-                                                : 'border-slate-600 hover:border-slate-500 cursor-pointer'
-                                        }`}
+                                        aria-pressed={isSelected}
+                                        className={`relative rounded-lg border-2 p-4 transition-all ${tabletopOptionClass(isSelected, isDisabled || isSubmitting)}`}
                                     >
-                                        <div className="text-3xl mb-1">{COMMODITY_ICONS[commodity]}</div>
+                                        <TabletopCommodityIcon type={commodity} size={36} label={commodity} className="mx-auto mb-1" />
                                         <div className="text-xs font-semibold capitalize mb-1">{commodity}</div>
-                                        <div className="text-xs text-slate-400">
+                                        <div className="text-xs text-[var(--ui-muted)]">
                                             {available} available
                                         </div>
                                         {isSelected && (
                                             <div className="absolute top-1 right-1">
-                                                <div className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center">
-                                                    <span className="text-xs text-slate-900">✓</span>
+                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--ui-panel-solid)]">
+                                                    <TabletopStatusIcon type="confirm" size={15} />
                                                 </div>
                                             </div>
                                         )}
@@ -161,21 +147,6 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
                     </div>
                 )}
 
-                {/* Submit Button */}
-                <button
-                    onClick={handleSubmit}
-                    disabled={(!hasNoCommodities && !selectedCommodity) || isSubmitting}
-                    className={`w-full py-3 rounded-lg font-semibold transition-colors ${
-                        (!hasNoCommodities && !selectedCommodity) || isSubmitting
-                            ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                            : hasNoCommodities
-                            ? 'bg-orange-600 hover:bg-orange-500 text-white cursor-pointer'
-                            : 'bg-yellow-600 hover:bg-yellow-500 text-white cursor-pointer'
-                    }`}
-                >
-                    {isSubmitting ? 'Submitting...' : hasNoCommodities ? 'Return Resource' : 'Confirm Trade'}
-                </button>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

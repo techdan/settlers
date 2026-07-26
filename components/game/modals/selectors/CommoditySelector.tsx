@@ -1,5 +1,10 @@
 import React from 'react';
 import { InteractionOption } from '@/core/engine/progress/types/CardInteraction';
+import { CommodityType } from '@/core/rules/commodity-constants';
+import { TabletopCommodityIcon } from '@/themes/tabletop/glyphs';
+import { tabletopOptionClass } from '@/components/game/ui/TabletopModal';
+
+const COMMODITY_TYPES = new Set<string>(['paper', 'cloth', 'coin']);
 
 interface CommoditySelectorProps {
   options: InteractionOption[];
@@ -46,22 +51,16 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
               key={option.id}
               onClick={() => !isDisabled && handleSelect(option.id)}
               disabled={isDisabled}
-              className={`
-                p-4 rounded-lg border-2 transition-all
-                ${
-                  isSelected
-                    ? 'border-yellow-500 bg-yellow-900/30'
-                    : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
-                }
-                ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-              `}
+              className={`rounded-lg border-2 p-4 transition-all ${tabletopOptionClass(isSelected, isDisabled)}`}
               title={isDisabled ? option.disabledReason : undefined}
             >
               <div className="flex flex-col items-center gap-2">
-                {option.icon && <span className="text-3xl">{option.icon}</span>}
+                {COMMODITY_TYPES.has(option.id) ? (
+                  <TabletopCommodityIcon type={option.id as CommodityType} size={36} label={option.label} />
+                ) : null}
                 <span className="text-sm font-medium capitalize">{option.label}</span>
                 {option.description && (
-                  <span className="text-xs text-slate-400">{option.description}</span>
+                  <span className="text-xs text-[var(--ui-muted)]">{option.description}</span>
                 )}
               </div>
             </button>
@@ -70,7 +69,7 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
       </div>
 
       {maxSelections > 1 && (
-        <div className="text-xs text-slate-400 text-center">
+        <div className="text-center text-xs text-[var(--ui-muted)]">
           Selected: {selections.length} / {maxSelections}
         </div>
       )}

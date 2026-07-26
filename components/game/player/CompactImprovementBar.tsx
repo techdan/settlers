@@ -1,4 +1,5 @@
 import React from 'react';
+import { Metropolis } from '@/themes/tabletop/pieces';
 
 const IMPROVEMENT_COLORS = {
     science: {
@@ -29,7 +30,7 @@ export const CompactImprovementBar: React.FC<{
     const color = IMPROVEMENT_COLORS[type];
     const segmentSize = size === 'sm' ? 'w-2 h-2' : 'w-3 h-3';
     const gap = size === 'sm' ? 'gap-0.5' : 'gap-1';
-    const metropolisClass = size === 'sm' ? 'text-[10px]' : 'text-[14px]';
+    const metropolisSize = size === 'sm' ? 12 : 16;
 
     return (
         <div
@@ -41,11 +42,20 @@ export const CompactImprovementBar: React.FC<{
                 const isUnlockLevel = segmentLevel === unlockLevel;
 
                 // If player has metropolis, the icon REPLACES the dot at their current level
-                // Level 4 with metropolis: ●●●🏛️○ (dots 1-3, metropolis at position 4, empty at position 5)
-                // Level 5 with metropolis: ●●●●🏛️ (dots 1-4, metropolis at position 5)
+                // The metropolis piece replaces the dot at the player's current level.
                 if (hasMetropolis && segmentLevel === level) {
                     return (
-                        <span key={i} className={metropolisClass} title="Metropolis">🏛️</span>
+                        <svg
+                            key={i}
+                            viewBox="-13 -19 26 34"
+                            width={metropolisSize}
+                            height={metropolisSize}
+                            aria-label="Metropolis"
+                            role="img"
+                        >
+                            <title>Metropolis</title>
+                            <Metropolis color={color.filled} />
+                        </svg>
                     );
                 }
 

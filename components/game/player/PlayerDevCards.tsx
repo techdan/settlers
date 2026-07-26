@@ -46,17 +46,17 @@ const devCardTooltipContent = (type: DevCardType, canPlay: boolean, timerLocked:
     const parts: string[] = [DEV_CARD_TOOLTIP_TEXT[type].description];
 
     if (timerLocked) {
-        parts.push('\n⏱️ Time expired - cannot play cards');
+        parts.push('\nTime expired - cannot play cards');
     } else if (notPlayerTurn) {
-        parts.push('\n⚠️ Can only play on your turn');
+        parts.push('\nCan only play on your turn');
     } else if (!canPlay) {
-        parts.push('\n⚠️ You can only play one development card per turn');
+        parts.push('\nYou can only play one development card per turn');
     }
 
     return (
         <div className="space-y-1 whitespace-pre-line">
-            <div className="font-semibold text-slate-100">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
-            <div className="text-slate-200">{parts.join('')}</div>
+            <div className="font-semibold text-[var(--ui-text)]">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
+            <div className="text-[var(--ui-muted)]">{parts.join('')}</div>
         </div>
     );
 };
@@ -143,8 +143,8 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                                         placement="left"
                                         content={
                                             <div className="space-y-1">
-                                                <div className="font-semibold text-slate-100">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
-                                                <div className="text-slate-200">{DEV_CARD_TOOLTIP_TEXT[type].description}</div>
+                                                <div className="font-semibold text-[var(--ui-text)]">{DEV_CARD_TOOLTIP_TEXT[type].title}</div>
+                                                <div className="text-[var(--ui-muted)]">{DEV_CARD_TOOLTIP_TEXT[type].description}</div>
                                                 <div className="text-amber-200 mt-1">Cannot be played until next turn.</div>
                                             </div>
                                         }

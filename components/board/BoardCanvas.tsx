@@ -88,9 +88,12 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     vertexCardSelection,
     edgeCardSelection,
     citySelection,
+    buildMode,
     movingKnightId,
     smithSelection
   } = selectionState;
+
+  const currentPlayerColor = gameState.players.find(player => player.id === playerId)?.color;
 
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: TT.sea }}>
@@ -225,7 +228,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     // Use knight owner's color if knight exists, otherwise vertex owner's color
                     const ownerColor = knight
                       ? gameState.players.find(p => p.id === knight.playerId)?.color
-                      : gameState.players.find(p => p.id === vertex.owner)?.color;
+                      : gameState.players.find(p => p.id === vertex.owner)?.color ??
+                        (isValidKnightTarget(validation.validVertices, vertex.id, buildMode) ? currentPlayerColor : undefined);
 
                     // Calculate selection/highlight states
                     const isSmithCancel = !!(smithSelection?.selectableKnightIds && validation.validVertices.has(vertex.id));
@@ -296,6 +300,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         isPendingPlacement={isPending}
                         onConfirmPlacement={onConfirmPlacement}
                         onCancelPlacement={onCancelPlacement}
+                        validTargetType={validation.validVertices.has(vertex.id) ? buildMode ?? undefined : undefined}
                       />
                     );
                   })}
@@ -308,3 +313,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     </div>
   );
 };
+
+function isValidKnightTarget(validVertices: Set<string>, vertexId: string, buildMode: BoardSelectionState['buildMode']) {
+  return buildMode === 'knight' && validVertices.has(vertexId);
+}

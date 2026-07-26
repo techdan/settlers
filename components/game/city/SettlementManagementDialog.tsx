@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { isValidMainPhaseCity } from '@/core/validation/building-validator';
 import { BUILDING_COSTS, canAfford } from '@/core/rules/building-costs';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import { City, TabletopResourceIcon } from '@/themes/tabletop';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface SettlementManagementDialogProps {
     gameState: GameState;
@@ -64,30 +65,16 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
     const ore = player.resources?.ore || 0;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-            <div className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4 border-2 border-slate-600 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                        Settlement Management
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-white text-2xl cursor-pointer"
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
-                </div>
-
+        <TabletopModal title="Settlement Management" onClose={onClose}>
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded mb-4">
+                    <div className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]">
                         {error}
                     </div>
                 )}
 
                 <div className="space-y-6">
                     {/* Upgrade to City */}
-                    <div className="bg-slate-700/50 p-4 rounded border border-slate-600">
+                    <div className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4">
                         <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-4">
                                 <Tooltip
@@ -95,47 +82,39 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
                                     placement="left"
                                     tooltipClassName="whitespace-pre-line"
                                 >
-                                    <div className="flex items-center justify-center w-12 h-12 cursor-default">
-                                        <GameIcon
-                                            type="city"
-                                            size={40}
-                                            playerColor="var(--color-highlight-white)"
-                                            backgroundColor={player.color}
-                                        />
+                                    <div className="flex h-12 w-12 cursor-default items-center justify-center rounded-full bg-[var(--ui-panel-solid)]">
+                                        <svg viewBox="-18 -22 36 38" width="44" height="44" aria-hidden="true">
+                                            <City color={player.color} />
+                                        </svg>
                                     </div>
                                 </Tooltip>
                                 <div>
-                                    <div className="font-bold text-lg text-white">
+                                    <div className="text-lg font-bold text-[var(--ui-text)]">
                                         Upgrade to City
                                     </div>
-                                    <div className="text-sm text-slate-400">
+                                    <div className="text-sm text-[var(--ui-muted)]">
                                         Worth 2 Victory Points
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <button
+                        <TabletopButton
+                            variant="primary"
                             onClick={handleUpgradeToCity}
                             disabled={!canAct || !canUpgrade}
-                            className={`
-                                w-full py-3 rounded font-bold flex items-center justify-between px-4 transition-all mt-3
-                                ${canAct && canUpgrade
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:scale-105 cursor-pointer'
-                                    : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                }
-                            `}
+                            className="mt-3 flex w-full items-center justify-between py-3"
                         >
                             <span>Upgrade to City</span>
-                            <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded text-sm">
-                                <span>2 🌾</span>
+                            <div className="flex items-center gap-2 rounded bg-black/15 px-3 py-1 text-sm">
+                                <span className="flex items-center gap-1"><span>2</span><TabletopResourceIcon type="wheat" size={20} label="wheat" /></span>
                                 <span>+</span>
-                                <span>3 🪨</span>
+                                <span className="flex items-center gap-1"><span>3</span><TabletopResourceIcon type="ore" size={20} label="ore" /></span>
                             </div>
-                        </button>
+                        </TabletopButton>
 
                         {!canUpgrade && (
-                            <div className="text-xs text-slate-400 mt-2 text-center">
+                            <div className="mt-2 text-center text-xs text-[var(--ui-muted)]">
                                 {wheat < 2 || ore < 3
                                     ? `You need ${Math.max(0, 2 - wheat)} more wheat and ${Math.max(0, 3 - ore)} more ore`
                                     : 'Cannot upgrade at this time'}
@@ -143,7 +122,6 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
                         )}
                     </div>
                 </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

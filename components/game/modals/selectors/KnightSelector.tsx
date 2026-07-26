@@ -1,6 +1,8 @@
 import React from 'react';
 import { GameState } from '@/lib/types/game';
 import { PlayerState } from '@/lib/types';
+import { KnightPiece, TabletopStatusIcon } from '@/themes/tabletop';
+import { tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
 interface KnightSelectorProps {
   gameState: GameState;
@@ -36,13 +38,13 @@ export const KnightSelector: React.FC<KnightSelectorProps> = ({
   const getKnightLevelDisplay = (level: string) => {
     switch (level) {
       case 'basic':
-        return { label: 'Basic', strength: 1, color: 'text-slate-300' };
+        return { label: 'Basic', strength: 1 };
       case 'strong':
-        return { label: 'Strong', strength: 2, color: 'text-blue-300' };
+        return { label: 'Strong', strength: 2 };
       case 'mighty':
-        return { label: 'Mighty', strength: 3, color: 'text-purple-300' };
+        return { label: 'Mighty', strength: 3 };
       default:
-        return { label: 'Unknown', strength: 0, color: 'text-slate-500' };
+        return { label: 'Unknown', strength: 0 };
     }
   };
 
@@ -58,7 +60,7 @@ export const KnightSelector: React.FC<KnightSelectorProps> = ({
 
   if (knights.length === 0) {
     return (
-      <div className="text-sm text-slate-400 text-center py-8">
+      <div className="py-8 text-center text-sm text-[var(--ui-muted)]">
         You have no knights to select
       </div>
     );
@@ -77,34 +79,30 @@ export const KnightSelector: React.FC<KnightSelectorProps> = ({
               key={knight.id}
               onClick={() => promotable && handleToggle(knight.id)}
               disabled={!promotable}
-              className={`
-                w-full p-3 rounded-lg border-2 transition-all text-left
-                ${
-                  isSelected
-                    ? 'border-emerald-500 bg-emerald-900/30'
-                    : 'border-slate-600 hover:border-slate-500 bg-slate-700/50'
-                }
-                ${!promotable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-              `}
+              className={`w-full rounded-lg border-2 p-3 text-left transition-all ${tabletopOptionClass(isSelected, !promotable)}`}
             >
               <div className="flex items-center justify-between">
-                <div className="flex-1">
+                <div className="flex flex-1 items-center gap-3">
+                  <svg viewBox="-16 -16 32 32" width="42" height="42" aria-hidden="true">
+                    <KnightPiece color={currentPlayer.color} level={knight.level} active={knight.active} />
+                  </svg>
+                  <div>
                   <div className="flex items-center gap-2">
-                    <span className={`font-medium ${levelInfo.color}`}>
+                    <span className="font-medium text-[var(--ui-text)]">
                       {levelInfo.label} Knight
                     </span>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-[var(--ui-muted)]">
                       (Strength: {levelInfo.strength})
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    {knight.active ? '✓ Active' : '○ Inactive'}
-                    {' • '}
-                    Vertex: {knight.vertexId}
+                  <div className="mt-1 flex items-center gap-1 text-xs text-[var(--ui-muted)]">
+                    <TabletopStatusIcon type={knight.active ? 'active' : 'inactive'} size={15} />
+                    <span>{knight.active ? 'Active' : 'Inactive'} · Vertex: {knight.vertexId}</span>
+                  </div>
                   </div>
                 </div>
                 {!promotable && (
-                  <div className="text-xs text-amber-300">
+                  <div className="text-xs text-[var(--ui-muted)]">
                     Cannot promote
                   </div>
                 )}
@@ -114,10 +112,10 @@ export const KnightSelector: React.FC<KnightSelectorProps> = ({
         })}
       </div>
 
-      <div className="text-xs text-slate-400 text-center">
+      <div className="text-center text-xs text-[var(--ui-muted)]">
         Selected: {selections.length} / {maxSelections}
         {selections.length < minSelections && (
-          <span className="text-amber-300 ml-2">
+          <span className="ml-2 text-[var(--ui-accent)]">
             (Select at least {minSelections})
           </span>
         )}

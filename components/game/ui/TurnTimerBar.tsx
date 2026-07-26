@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types/game';
 import { useTimerState, formatTime, getTimerColorClass, getProgressPercentage } from '@/lib/hooks/useTimerState';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface TurnTimerBarProps {
   gameState: GameState;
@@ -53,9 +54,10 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
 
       {/* Time expired warning */}
       {timerStatus.isExpired && isMyTurn && (
-        <div className="mt-2 px-3 py-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-          <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-            ⏱️ Time is up! Most actions are now disabled. Please complete any required actions and end your turn.
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2">
+          <TabletopStatusIcon type="time" size={20} className="mt-0.5 shrink-0" />
+          <p className="text-sm font-medium text-[var(--ui-text)]">
+            Time is up! Most actions are now disabled. Please complete any required actions and end your turn.
             {(gameState.playerTimeBanks?.[currentPlayerId] ?? 0) > 0 && (
               <> You can request more time from your time bank ({formatTime(gameState.playerTimeBanks?.[currentPlayerId] ?? 0)} remaining).</>
             )}

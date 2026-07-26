@@ -2,19 +2,15 @@ import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { claimAqueductResource } from '@/app/actions';
+import { TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
 interface AqueductModalProps {
     gameState: GameState;
     playerId: string;
 }
 
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: '🌲',
-    brick: '🧱',
-    sheep: '🐑',
-    wheat: '🌾',
-    ore: '🪨'
-};
+const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
 export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerId }) => {
     const [selectedResource, setSelectedResource] = useState<ResourceType | null>(null);
@@ -35,51 +31,31 @@ export const AqueductModal: React.FC<AqueductModalProps> = ({ gameState, playerI
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-center pt-8 pointer-events-none">
-            <div className="bg-slate-900 p-6 rounded-xl border border-green-500 shadow-2xl max-w-md w-full pointer-events-auto h-fit">
-                <h2 className="text-2xl font-bold text-white mb-2 text-center">Aqueduct Triggered! 💧</h2>
-                <p className="text-slate-300 text-center mb-4">
-                    You received no production this turn. Choose 1 resource from the bank.
-                </p>
-
-                <div className="mb-4 text-center text-sm text-slate-400">
-                    Your current resources:
-                </div>
-
-                <div className="grid grid-cols-5 gap-2 mb-6">
-                    {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
+        <TabletopModal
+            title={<span className="flex items-center gap-2"><TabletopStatusIcon type="info" size={22} /> Aqueduct Triggered</span>}
+            description="You received no production this turn. Choose 1 resource from the bank."
+            footer={(
+                <TabletopButton variant="primary" onClick={handleClaim} disabled={!selectedResource || isSubmitting} className="w-full">
+                    {isSubmitting ? 'Claiming...' : 'Claim Resource'}
+                </TabletopButton>
+            )}
+        >
+                <div className="mb-4 text-center text-sm text-[var(--ui-muted)]">Your current resources:</div>
+                <div className="grid grid-cols-5 gap-2">
+                    {RESOURCE_TYPES.map(res => (
                         <button
+                            type="button"
                             key={res}
                             onClick={() => setSelectedResource(res)}
-                            className={`
-                                p-3 rounded-lg flex flex-col items-center gap-1 transition-all cursor-pointer
-                                ${selectedResource === res
-                                    ? 'bg-green-600 ring-2 ring-green-400 scale-105'
-                                    : 'bg-slate-800 hover:bg-slate-700 hover:scale-105'
-                                }
-                            `}
+                            aria-pressed={selectedResource === res}
+                            className={`flex flex-col items-center gap-1 rounded-lg border p-3 transition-all ${tabletopOptionClass(selectedResource === res)}`}
                         >
-                            <span className="text-2xl">{RESOURCE_ICONS[res]}</span>
-                            <span className="text-xs capitalize text-slate-300">{res}</span>
-                            <span className="text-sm font-bold text-white">{playerResources[res]}</span>
+                            <TabletopResourceIcon type={res} size={30} label={res} />
+                            <span className="text-xs capitalize text-[var(--ui-muted)]">{res}</span>
+                            <span className="text-sm font-bold text-[var(--ui-text)]">{playerResources[res]}</span>
                         </button>
                     ))}
                 </div>
-
-                <button
-                    onClick={handleClaim}
-                    disabled={!selectedResource || isSubmitting}
-                    className={`
-                        w-full font-bold py-3 px-6 rounded-lg transition-all
-                        ${!selectedResource || isSubmitting
-                            ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                            : 'bg-green-600 hover:bg-green-500 cursor-pointer hover:scale-105'
-                        }
-                    `}
-                >
-                    {isSubmitting ? 'Claiming...' : 'Claim Resource'}
-                </button>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

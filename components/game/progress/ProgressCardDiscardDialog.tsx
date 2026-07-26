@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { ProgressCardType } from '@/lib/types/player';
 import { getCardMetadata } from '@/core/engine/progress/progress-card-definitions';
 import { Tooltip } from '@/components/ui/tooltip';
+import { ProgressCardFace } from '@/themes/tabletop/cards';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
 interface ProgressCardDiscardDialogProps {
     cards: ProgressCardType[];
@@ -55,13 +58,21 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-slate-800 rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-amber-500">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                    Discard Progress Cards
-                </h2>
-
-                <p className="text-slate-300 mb-4">
+        <TabletopModal
+            title="Discard Progress Cards"
+            description={`You have ${cards.length} progress cards but can only keep ${maxCards}.`}
+            width="lg"
+            onClose={allowDeferral && !isSubmitting ? onClose : undefined}
+            footer={(
+                <>
+                    {allowDeferral ? <TabletopButton onClick={onClose} disabled={isSubmitting}>Keep Playing</TabletopButton> : null}
+                    <TabletopButton variant="danger" onClick={handleSubmit} disabled={selectedCards.length !== cardsToDiscard || isSubmitting}>
+                        {isSubmitting ? 'Discarding...' : `Discard ${selectedCards.length}/${cardsToDiscard}`}
+                    </TabletopButton>
+                </>
+            )}
+        >
+                <p className="mb-4 text-[var(--ui-muted)]">
                     You have {cards.length} progress cards but can only keep {maxCards} at the end of your turn.
                     <br />
                     {isOtherTurn ? (
@@ -88,24 +99,15 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                                 <button
                                     onClick={() => toggleCard(card)}
                                     disabled={isSubmitting}
-                                    className={`
-                                        p-4 rounded-lg border-2 transition-all w-full
-                                        ${isSelected
-                                            ? 'bg-red-600 border-red-400 scale-95'
-                                            : 'bg-slate-700 border-slate-600 hover:border-slate-400'
-                                        }
-                                        ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                                    `}
+                                    aria-pressed={isSelected}
+                                    className={`flex w-full flex-col items-center rounded-lg border-2 p-3 transition-all ${tabletopOptionClass(isSelected, isSubmitting)} ${isSelected ? 'scale-95' : ''}`}
                                 >
-                                    <div className="text-sm font-bold text-white mb-1">
-                                        {metadata.name}
-                                    </div>
-                                    <div className="text-xs text-slate-300">
-                                        {metadata.category}
-                                    </div>
+                                    <ProgressCardFace type={card} width={82} />
+                                    <div className="mt-2 text-sm font-bold text-[var(--ui-text)]">{metadata.name}</div>
+                                    <div className="text-xs capitalize text-[var(--ui-muted)]">{metadata.category}</div>
                                     {isSelected && (
-                                        <div className="text-xs text-red-200 mt-2 font-bold">
-                                            ✓ Selected
+                                        <div className="mt-2 flex items-center gap-1 text-xs font-bold text-[var(--ui-danger)]">
+                                            <TabletopStatusIcon type="confirm" size={14} /> Selected
                                         </div>
                                     )}
                                 </button>
@@ -121,40 +123,9 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                     </div>
                 )}
 
-                <div className="flex gap-3 mt-4">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={selectedCards.length !== cardsToDiscard || isSubmitting}
-                        className={`
-                            flex-1 px-6 py-3 rounded-lg font-bold transition-all
-                            ${selectedCards.length === cardsToDiscard && !isSubmitting
-                                ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-                                : 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                            }
-                        `}
-                    >
-                        {isSubmitting ? 'Discarding...' : `Discard ${selectedCards.length}/${cardsToDiscard}`}
-                    </button>
-
-                    {allowDeferral && (
-                        <button
-                            onClick={onClose}
-                            disabled={isSubmitting}
-                            className="
-                                px-4 py-3 rounded-lg font-bold transition-all
-                                bg-slate-700 text-slate-200 hover:bg-slate-600 cursor-pointer
-                                disabled:opacity-50 disabled:cursor-not-allowed
-                            "
-                        >
-                            Keep Playing
-                        </button>
-                    )}
-                </div>
-
-                <p className="text-xs text-slate-400 mt-4 text-center">
+                <p className="mt-4 text-center text-xs text-[var(--ui-muted)]">
                     Progress card hand limit is 4. If you gain a 5th on someone else's turn, discard immediately. On your turn, discard or play cards before ending.
                 </p>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

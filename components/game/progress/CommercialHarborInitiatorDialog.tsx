@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { playProgressCard, makeCommercialHarborOffers, cancelCommercialHarbor } from '@/app/actions';
+import { TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
 interface CommercialHarborInitiatorDialogProps {
     gameState: GameState;
@@ -10,13 +12,7 @@ interface CommercialHarborInitiatorDialogProps {
     onClose?: () => void;
 }
 
-const RESOURCE_ICONS: Record<ResourceType, string> = {
-    wood: '🌲',
-    brick: '🧱',
-    wheat: '🌾',
-    sheep: '🐑',
-    ore: '⛰️'
-};
+const RESOURCE_TYPES: ResourceType[] = ['wood', 'brick', 'wheat', 'sheep', 'ore'];
 
 export const CommercialHarborInitiatorDialog: React.FC<CommercialHarborInitiatorDialogProps> = ({
     gameState,
@@ -139,28 +135,20 @@ const OfferSelectionDialog: React.FC<{
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 pointer-events-auto">
-            <div className="bg-slate-900 border border-yellow-500/60 rounded-xl shadow-2xl p-6 w-[600px] max-h-[80vh] overflow-y-auto text-white relative">
-                {/* Close Button */}
-                <button
-                    onClick={handleCancel}
-                    disabled={isSubmitting}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    aria-label="Close"
-                >
-                    ×
-                </button>
-
-                {/* Header */}
-                <div className="text-center mb-4">
-                    <div className="text-2xl font-bold text-yellow-100 mb-2">
-                        🏘️ Commercial Harbor
-                    </div>
-                    <div className="text-sm text-slate-300">
-                        Select which resource to offer each player (or select "No Trade")
-                    </div>
-                </div>
-
+        <TabletopModal
+            title={<span className="flex items-center gap-2"><TabletopStatusIcon type="trade" size={22} /> Commercial Harbor</span>}
+            description='Select which resource to offer each player (or select "No Trade").'
+            onClose={isSubmitting ? undefined : handleCancel}
+            width="lg"
+            footer={(
+                <>
+                    <TabletopButton variant="danger" onClick={handleCancel} disabled={isSubmitting}>Cancel</TabletopButton>
+                    <TabletopButton variant="primary" onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? 'Making Offers...' : 'Make Offers'}
+                    </TabletopButton>
+                </>
+            )}
+        >
                 {/* Player List with Dropdowns */}
                 <div className="space-y-2 mb-4">
                     {opponents.map(opponent => {
@@ -168,37 +156,45 @@ const OfferSelectionDialog: React.FC<{
                             (opponent.commodities.paper > 0 || opponent.commodities.cloth > 0 || opponent.commodities.coin > 0);
 
                         return (
-                            <div key={opponent.id} className="bg-slate-800/50 rounded-lg p-3 flex items-center gap-3">
+                            <div key={opponent.id} className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
                                 {/* Player Name */}
-                                <div className="flex-1">
+                                <div className="mb-3 flex items-center justify-between gap-3">
                                     <div className="font-semibold">{opponent.name}</div>
-                                    <div className="text-xs text-slate-400">
-                                        {hasCommodities ? '✓ Has commodities' : '✗ No commodities'}
+                                    <div className="flex items-center gap-1 text-xs text-[var(--ui-muted)]">
+                                        <TabletopStatusIcon type={hasCommodities ? 'confirm' : 'cancel'} size={14} />
+                                        {hasCommodities ? 'Has commodities' : 'No commodities'}
                                     </div>
                                 </div>
-
-                                {/* Resource Dropdown */}
-                                <select
-                                    value={selectedResources[opponent.id] || ''}
-                                    onChange={(e) => handleResourceChange(opponent.id, e.target.value as ResourceType | null || null)}
-                                    disabled={isSubmitting || !hasCommodities}
-                                    className={`px-3 py-2 bg-slate-700 border border-slate-600 rounded text-white text-sm min-w-[180px] ${
-                                        !hasCommodities ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                >
-                                    <option value="">No Trade</option>
-                                    {(['wood', 'brick', 'wheat', 'sheep', 'ore'] as ResourceType[]).map(resource => {
+                                <div className="grid grid-cols-6 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleResourceChange(opponent.id, null)}
+                                        disabled={isSubmitting || !hasCommodities}
+                                        className={`rounded-lg border px-2 py-2 text-xs ${tabletopOptionClass(selectedResources[opponent.id] === null, isSubmitting || !hasCommodities)}`}
+                                    >
+                                        No Trade
+                                    </button>
+                                    {RESOURCE_TYPES.map(resource => {
                                         const needed = resourcesNeeded[resource];
                                         const available = player.resources[resource] || 0;
                                         const remaining = available - needed;
+                                        const disabled = isSubmitting || !hasCommodities || (remaining <= 0 && selectedResources[opponent.id] !== resource);
 
                                         return (
-                                            <option key={resource} value={resource}>
-                                                {RESOURCE_ICONS[resource]} {resource.charAt(0).toUpperCase() + resource.slice(1)} ({remaining})
-                                            </option>
+                                            <button
+                                                type="button"
+                                                key={resource}
+                                                onClick={() => handleResourceChange(opponent.id, resource)}
+                                                disabled={disabled}
+                                                aria-pressed={selectedResources[opponent.id] === resource}
+                                                className={`flex flex-col items-center rounded-lg border p-2 text-xs capitalize ${tabletopOptionClass(selectedResources[opponent.id] === resource, disabled)}`}
+                                            >
+                                                <TabletopResourceIcon type={resource} size={24} label={resource} />
+                                                <span>{resource} ({remaining})</span>
+                                            </button>
                                         );
                                     })}
-                                </select>
+                                </div>
                             </div>
                         );
                     })}
@@ -211,119 +207,11 @@ const OfferSelectionDialog: React.FC<{
                     </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                    <button
-                        onClick={handleCancel}
-                        disabled={isSubmitting}
-                        className="flex-1 py-3 rounded-lg font-semibold transition-colors bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className="flex-1 py-3 rounded-lg font-semibold transition-colors bg-yellow-600 hover:bg-yellow-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSubmitting ? 'Making Offers...' : 'Make Offers'}
-                    </button>
-                </div>
-
                 {/* Help Text */}
-                <div className="mt-4 text-xs text-slate-400 text-center">
-                    <p>💡 Players with commodities will choose which one to give you.</p>
+                <div className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-[var(--ui-muted)]">
+                    <TabletopStatusIcon type="info" size={15} />
+                    <p>Players with commodities will choose which one to give you.</p>
                 </div>
-            </div>
-        </div>
-    );
-};
-
-// Component showing status while waiting for responses
-const OfferStatusDialog: React.FC<{
-    gameState: GameState;
-    playerId: string;
-}> = ({ gameState, playerId }) => {
-    const harbor = gameState.pendingCommercialHarbor!;
-    const player = gameState.players.find(p => p.id === playerId)!;
-
-    const offersWithTrades = harbor.offers.filter(o => o.offeredResource !== null);
-    const respondedOffers = offersWithTrades.filter(o => o.response !== undefined);
-    const pendingOffers = offersWithTrades.filter(o => o.response === undefined);
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 pointer-events-auto">
-            <div className="bg-slate-900 border border-yellow-500/60 rounded-xl shadow-2xl p-6 w-[500px] text-white">
-                {/* Header */}
-                <div className="text-center mb-4">
-                    <div className="text-2xl font-bold text-yellow-100 mb-2">
-                        🏘️ Commercial Harbor
-                    </div>
-                    <div className="text-sm text-slate-300">
-                        Waiting for {pendingOffers.length} player{pendingOffers.length === 1 ? '' : 's'} to respond...
-                    </div>
-                </div>
-
-                {/* Progress */}
-                <div className="bg-slate-800/50 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                        <div className="text-2xl font-bold text-yellow-300">{respondedOffers.length}</div>
-                        <div className="text-slate-400">/</div>
-                        <div className="text-2xl font-bold text-slate-300">{offersWithTrades.length}</div>
-                        <div className="text-sm text-slate-400">responded</div>
-                    </div>
-                    <div className="w-full bg-slate-700 rounded-full h-2">
-                        <div
-                            className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(respondedOffers.length / offersWithTrades.length) * 100}%` }}
-                        />
-                    </div>
-                </div>
-
-                {/* Offer List */}
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {harbor.offers
-                        .filter(o => o.offeredResource !== null)
-                        .map(offer => {
-                            const opponent = gameState.players.find(p => p.id === offer.targetPlayerId);
-                            if (!opponent) return null;
-
-                            const hasResponded = offer.response !== undefined;
-
-                            return (
-                                <div
-                                    key={offer.targetPlayerId}
-                                    className={`flex items-center gap-3 p-3 rounded-lg ${
-                                        hasResponded ? 'bg-green-900/20 border border-green-500/30' : 'bg-slate-800/50'
-                                    }`}
-                                >
-                                    <div className="flex-1">
-                                        <div className="font-semibold">{opponent.name}</div>
-                                        <div className="text-xs text-slate-400">
-                                            Offered: {offer.offeredResource}
-                                        </div>
-                                    </div>
-                                    <div className="text-sm">
-                                        {hasResponded ? (
-                                            offer.response ? (
-                                                <span className="text-green-400">✓ Gave {offer.response}</span>
-                                            ) : (
-                                                <span className="text-slate-400">✓ No commodities</span>
-                                            )
-                                        ) : (
-                                            <span className="text-yellow-400">⏳ Waiting...</span>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                </div>
-
-                {/* Help Text */}
-                <div className="mt-4 text-xs text-slate-400 text-center">
-                    <p>You can continue your turn while players respond.</p>
-                    <p>The turn cannot end until all responses are received.</p>
-                </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

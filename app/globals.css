@@ -3,6 +3,28 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  -webkit-tap-highlight-color: rgb(201 151 63 / 28%);
+}
+
+button,
+a,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+html {
+  -webkit-tap-highlight-color: rgb(201 151 63 / 28%);
+}
+
+button,
+a,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

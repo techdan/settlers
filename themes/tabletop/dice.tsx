@@ -1,6 +1,7 @@
 import React from 'react';
 import { EventDieFace } from '@/core/rules/commodity-constants';
 import { TT, shade } from './palette';
+import { ImprovementGlyph } from './glyphs';
 
 /**
  * Tabletop dice faces (graphics plan Phase 4) — painted wooden dice under the
@@ -63,41 +64,9 @@ const ShipEmblem: React.FC = () => (
     </g>
 );
 
-/** alembic flask (science gate) */
-const ScienceEmblem: React.FC = () => (
-    <g transform="translate(0, 1)">
-        <path d="M -3.5 -11 L 3.5 -11 L 3.5 -4 L 9 5.5 Q 10.5 9.5 6.5 9.5 L -6.5 9.5 Q -10.5 9.5 -9 5.5 Z"
-            fill="none" stroke={TT.category.science} strokeWidth={2.2} strokeLinejoin="round" />
-        <path d="M -6.7 2.8 L 6.7 2.8 L 9 5.5 Q 10.5 9.5 6.5 9.5 L -6.5 9.5 Q -10.5 9.5 -9 5.5 Z" fill={TT.category.science} opacity={0.85} />
-        <line x1={-5.5} y1={-12.8} x2={5.5} y2={-12.8} stroke={TT.category.science} strokeWidth={2.2} strokeLinecap="round" />
-    </g>
-);
-
-/** balance scales (trade gate) */
-const TradeEmblem: React.FC = () => (
-    <g transform="translate(0, 0.5)" stroke={TT.category.trade} strokeWidth={1.8} strokeLinecap="round">
-        <line x1={0} y1={-11} x2={0} y2={9} />
-        <line x1={-9.5} y1={-7.5} x2={9.5} y2={-7.5} />
-        <path d="M -13.5 1 A 4.4 4.4 0 0 0 -4.7 1" fill={TT.category.trade} />
-        <line x1={-9.1} y1={-7.5} x2={-12.4} y2={0.4} strokeWidth={1.1} />
-        <line x1={-9.1} y1={-7.5} x2={-5.8} y2={0.4} strokeWidth={1.1} />
-        <path d="M 4.7 1 A 4.4 4.4 0 0 0 13.5 1" fill={TT.category.trade} />
-        <line x1={9.1} y1={-7.5} x2={5.8} y2={0.4} strokeWidth={1.1} />
-        <line x1={9.1} y1={-7.5} x2={12.4} y2={0.4} strokeWidth={1.1} />
-        <line x1={-4.5} y1={10.5} x2={4.5} y2={10.5} />
-    </g>
-);
-
-/** castle gate (politics gate) */
-const PoliticsEmblem: React.FC = () => (
-    <g transform="translate(0, 1)" fill={TT.category.politics}>
-        <rect x={-9.5} y={-4} width={19} height={13.5} />
-        {[-9.5, -2.4, 4.7].map(x => (
-            <rect key={x} x={x} y={-9} width={4.8} height={6} />
-        ))}
-        <path d="M -3.4 9.5 L -3.4 3 A 3.4 3.4 0 0 1 3.4 3 L 3.4 9.5 Z" fill={shade(TT.category.politics, 0.6)} />
-    </g>
-);
+const ScienceEmblem: React.FC = () => <ImprovementGlyph type="science" size={25} />;
+const TradeEmblem: React.FC = () => <ImprovementGlyph type="trade" size={25} />;
+const PoliticsEmblem: React.FC = () => <ImprovementGlyph type="politics" size={25} />;
 
 const EVENT_EMBLEMS: Record<EventDieFace, React.FC> = {
     ship: ShipEmblem,

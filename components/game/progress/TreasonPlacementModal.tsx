@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { TabletopButton, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
 interface TreasonPlacementModalProps {
     isOpen: boolean;
@@ -54,13 +55,13 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
     return (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
             <div
-                className="pointer-events-auto bg-slate-900 text-white border border-blue-500/60 rounded-lg shadow-xl px-4 py-4 w-[380px] space-y-3"
+                className="pointer-events-auto w-[380px] space-y-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] px-4 py-4 text-[var(--ui-text)] shadow-xl"
                 role="dialog"
                 aria-modal="true"
             >
                 <div className="space-y-1">
-                    <div className="text-xs uppercase tracking-[0.2em] text-blue-200 font-semibold">{headingMap[mode]}</div>
-                    <p className="text-sm text-slate-200">{descriptionMap[mode]}</p>
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--ui-accent)]">{headingMap[mode]}</div>
+                    <p className="text-sm text-[var(--ui-muted)]">{descriptionMap[mode]}</p>
                 </div>
 
                 {mode === 'select_opponent' && (
@@ -70,11 +71,7 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
                                 <button
                                     key={opp.id}
                                     type="button"
-                                    className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${
-                                        selectedOpponentId === opp.id
-                                            ? 'border-blue-400 bg-blue-800/60 text-white'
-                                            : 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-100'
-                                    } ${opp.hasKnights ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                                    className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${tabletopOptionClass(selectedOpponentId === opp.id, !opp.hasKnights)}`}
                                     onClick={() => onSelectOpponent?.(opp.id)}
                                     disabled={!opp.hasKnights}
                                 >
@@ -89,7 +86,7 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
                                             )}
                                             {opp.name}
                                         </span>
-                                        <span className="text-xs text-slate-200">
+                                        <span className="text-xs text-[var(--ui-muted)]">
                                             {opp.knightCount} knight{opp.knightCount === 1 ? '' : 's'}
                                         </span>
                                     </div>
@@ -121,27 +118,12 @@ export const TreasonPlacementModal: React.FC<TreasonPlacementModalProps> = ({
 
                 <div className="flex justify-end gap-3 pt-1">
                     {onCancel && (
-                        <button
-                            className="px-3 py-2 rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer text-sm"
-                            type="button"
-                            onClick={onCancel}
-                        >
-                            Cancel
-                        </button>
+                        <TabletopButton onClick={onCancel}>Cancel</TabletopButton>
                     )}
                     {onConfirm && (
-                        <button
-                            className={`px-3 py-2 rounded-md font-semibold shadow transition-colors text-sm ${
-                                hasSelection && !disableConfirm
-                                    ? 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'
-                                    : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                            }`}
-                            type="button"
-                            onClick={onConfirm}
-                            disabled={!hasSelection || disableConfirm}
-                        >
+                        <TabletopButton variant="primary" onClick={onConfirm} disabled={!hasSelection || disableConfirm}>
                             {confirmLabel || 'Confirm'}
-                        </button>
+                        </TabletopButton>
                     )}
                 </div>
             </div>

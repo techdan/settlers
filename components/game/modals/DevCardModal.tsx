@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { DevCardType } from '@/lib/types/player';
 import { GameState, PlayerState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
-import { Tooltip } from '@/components/ui/tooltip';
+import { DevCardFace } from '@/themes/tabletop/cards';
+import { TabletopResourceIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '../ui/TabletopModal';
 
 interface DevCardModalProps {
     isOpen: boolean;
@@ -37,14 +39,6 @@ const DEV_CARD_DEFINITIONS: Record<DevCardType, { name: string; description: str
 };
 
 const RESOURCES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
-
-const RESOURCE_COLORS: Record<ResourceType, string> = {
-    wood: 'bg-green-700 border-green-500',
-    brick: 'bg-red-700 border-red-500',
-    sheep: 'bg-lime-600 border-lime-400',
-    wheat: 'bg-yellow-600 border-yellow-400',
-    ore: 'bg-gray-600 border-gray-400'
-};
 
 export const DevCardModal: React.FC<DevCardModalProps> = ({
     isOpen,
@@ -111,13 +105,10 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                                     <button
                                         key={r}
                                         onClick={() => setResource1(r)}
-                                        className={`px-3 py-2 rounded border-2 transition-all capitalize text-sm cursor-pointer ${
-                                            resource1 === r
-                                                ? `${RESOURCE_COLORS[r]} ring-2 ring-white`
-                                                : 'bg-slate-700 border-slate-600 hover:bg-slate-600'
-                                        }`}
+                                        className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(resource1 === r)}`}
                                     >
-                                        {r}
+                                        <TabletopResourceIcon type={r} size={24} />
+                                        <span>{r}</span>
                                     </button>
                                 ))}
                             </div>
@@ -129,18 +120,15 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                                     <button
                                         key={r}
                                         onClick={() => setResource2(r)}
-                                        className={`px-3 py-2 rounded border-2 transition-all capitalize text-sm cursor-pointer ${
-                                            resource2 === r
-                                                ? `${RESOURCE_COLORS[r]} ring-2 ring-white`
-                                                : 'bg-slate-700 border-slate-600 hover:bg-slate-600'
-                                        }`}
+                                        className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(resource2 === r)}`}
                                     >
-                                        {r}
+                                        <TabletopResourceIcon type={r} size={24} />
+                                        <span>{r}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
-                        <p className="text-xs text-slate-300 mt-2">
+                        <p className="mt-2 text-xs text-[var(--ui-muted)]">
                             You will receive <span className="font-semibold text-emerald-300">1 {resource1}</span> and <span className="font-semibold text-emerald-300">1 {resource2}</span> from the bank.
                         </p>
                     </div>
@@ -156,18 +144,15 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                                     <button
                                         key={r}
                                         onClick={() => setMonopolyRes(r)}
-                                        className={`px-3 py-2 rounded border-2 transition-all capitalize text-sm cursor-pointer ${
-                                            monopolyRes === r
-                                                ? `${RESOURCE_COLORS[r]} ring-2 ring-white`
-                                                : 'bg-slate-700 border-slate-600 hover:bg-slate-600'
-                                        }`}
+                                        className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(monopolyRes === r)}`}
                                     >
-                                        {r}
+                                        <TabletopResourceIcon type={r} size={24} />
+                                        <span>{r}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             All other players must give you all of their <span className="font-semibold text-emerald-300">{monopolyRes}</span>.
                         </p>
                     </div>
@@ -177,13 +162,13 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
             case 'knight':
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             Playing this card will move the robber. You must relocate it to a different hex and may steal a resource from an adjacent player.
                         </p>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             This counts toward the Largest Army bonus (3+ knights).
                         </p>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             Your current knight count: <span className="font-semibold text-blue-300">{currentPlayer.knightsPlayed || 0}</span>
                         </p>
                     </div>
@@ -192,10 +177,10 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
             case 'victory_point':
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             Reveal this victory point card to claim <span className="font-semibold text-emerald-300">+1 Victory Point</span>!
                         </p>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             Once revealed, this point is permanent and visible to all players.
                         </p>
                     </div>
@@ -204,13 +189,13 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
             case 'road_building':
                 return (
                     <div className="space-y-3">
-                        <p className="text-sm text-slate-200">
+                        <p className="text-sm text-[var(--ui-text)]">
                             Place <span className="font-semibold text-emerald-300">2 roads</span> for free as if you had just built them.
                         </p>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             After playing this card, select road locations on the board.
                         </p>
-                        <p className="text-xs text-slate-300">
+                        <p className="text-xs text-[var(--ui-muted)]">
                             Roads remaining: <span className="font-semibold text-blue-300">{currentPlayer.roadsRemaining}</span>
                         </p>
                         {currentPlayer.roadsRemaining < 2 && (
@@ -223,7 +208,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
 
             default:
                 return (
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-[var(--ui-muted)]">
                         Click "Play Card" to use this card.
                     </p>
                 );
@@ -248,25 +233,20 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 pointer-events-auto">
-            <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 max-w-md w-full mx-4 text-white">
-                {/* Header */}
-                <div className="p-6 border-b border-slate-700 flex justify-between items-start">
+        <TabletopModal
+            title={cardMeta.name}
+            description={cardMeta.description}
+            onClose={onClose}
+            footer={(
+                <>
+                    <TabletopButton onClick={onClose}>Cancel</TabletopButton>
+                    <TabletopButton variant="primary" onClick={handlePlay}>{getActionLabel()}</TabletopButton>
+                </>
+            )}
+        >
+                <div className="grid grid-cols-[72px_1fr] gap-5">
+                    <DevCardFace type={cardType} width={72} />
                     <div>
-                        <h2 className="text-xl font-bold">{cardMeta.name}</h2>
-                        <p className="text-sm text-slate-300 mt-1">{cardMeta.description}</p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none cursor-pointer"
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
-                </div>
-
-                {/* Body */}
-                <div className="p-6">
                     {renderCardForm()}
 
                     {/* Error Message */}
@@ -275,24 +255,8 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                             {error}
                         </div>
                     )}
+                    </div>
                 </div>
-
-                {/* Footer */}
-                <div className="p-6 border-t border-slate-700 flex gap-3 justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white transition-colors cursor-pointer"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handlePlay}
-                        className="px-4 py-2 rounded font-medium transition-colors bg-green-600 hover:bg-green-700 text-white cursor-pointer"
-                    >
-                        {getActionLabel()}
-                    </button>
-                </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

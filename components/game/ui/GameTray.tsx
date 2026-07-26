@@ -169,7 +169,7 @@ export const GameTray: React.FC<GameTrayProps> = ({
   }
 
   return (
-    <div className="flex flex-wrap items-end justify-center gap-x-4 gap-y-3 rounded-xl px-5 py-3 shadow-xl backdrop-blur-sm bg-[var(--ui-panel)] border border-[var(--ui-border)]">
+    <div className="flex flex-wrap items-end justify-center gap-x-4 gap-y-3 rounded-xl px-5 py-3 shadow-xl backdrop-blur-sm bg-[var(--ui-panel)] border border-[var(--ui-border)] max-xl:w-full max-xl:gap-x-3 max-xl:gap-y-2 max-xl:px-3 max-xl:py-2 max-sm:w-max max-sm:min-w-full max-sm:flex-nowrap max-sm:justify-start">
       {slots.map((slot, i) => (
         <React.Fragment key={i}>
           {i > 0 && <Divider />}

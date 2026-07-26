@@ -5,6 +5,8 @@ import { SelectionState } from '@/lib/hooks/useSelectionManager';
 import { KnightController } from '@/lib/controllers/knight-controller';
 import { ProgressCardController } from '@/lib/controllers/progress-card-controller';
 import { ImprovementController } from '@/lib/controllers/improvement-controller';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton } from '@/components/game/ui/TabletopModal';
 
 interface GameBoardSectionProps {
   gameState: GameState;
@@ -42,30 +44,27 @@ export const GameBoardSection: React.FC<GameBoardSectionProps> = ({
   return (
     <>
       {selectionManager.selectingKnightsForSmith && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-6 py-4 rounded-xl border border-emerald-500/60 shadow-2xl pointer-events-auto">
+        <div className="pointer-events-auto absolute bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-[var(--ui-success)] bg-[var(--ui-panel)] px-6 py-4 text-[var(--ui-text)] shadow-2xl backdrop-blur-sm">
           <div className="flex items-center gap-4">
+            <TabletopStatusIcon type="info" size={28} label="Smith selection" />
             <div className="text-sm">
-              <div className="font-bold text-emerald-300">Smith</div>
+              <div className="font-bold text-[var(--ui-accent)]">Smith</div>
               <div>Select up to 2 knights to promote.</div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                className="px-3 py-2 rounded-md bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors cursor-pointer"
+              <TabletopButton
                 onClick={selectionManager.clearAllSelections}
               >
                 Cancel
-              </button>
-              <button
-                className={`px-3 py-2 rounded-md font-semibold shadow transition-colors ${
-                  selectionManager.selectedSmithKnightIds.length === 0
-                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                    : 'bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer'
-                }`}
+              </TabletopButton>
+              <TabletopButton
+                variant="primary"
+                className="shadow"
                 disabled={selectionManager.selectedSmithKnightIds.length === 0}
                 onClick={onConfirmSmithPromotions}
               >
                 Promote
-              </button>
+              </TabletopButton>
             </div>
           </div>
         </div>

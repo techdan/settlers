@@ -1,6 +1,7 @@
 import React from 'react';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
+import { TabletopCommodityIcon, TabletopResourceIcon } from '@/themes/tabletop';
 
 export type SelectionMap = Record<string, number>;
 
@@ -35,7 +36,7 @@ export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
     const atLimit = required <= 0 || selectedCount >= required;
 
     if (!items.length) {
-        return <div className="text-sm text-amber-200">{emptyMessage}</div>;
+        return <div className="py-3 text-center text-sm text-[var(--ui-muted)]">{emptyMessage}</div>;
     }
 
     return (
@@ -50,12 +51,17 @@ export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
                 return (
                     <div
                         key={key}
-                        className="flex items-center justify-between px-3 py-2 rounded border border-slate-600 bg-slate-800 text-sm"
+                        className="flex items-center justify-between rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-sm"
                     >
                         <div className="flex items-center gap-2">
+                            {item.type === 'resource' ? (
+                                <TabletopResourceIcon type={item.value as ResourceType} size={24} label={item.value} />
+                            ) : (
+                                <TabletopCommodityIcon type={item.value as CommodityType} size={24} label={item.value} />
+                            )}
                             <span
                                 className={`capitalize ${
-                                    selected > 0 ? 'text-red-200' : 'text-slate-100'
+                                    selected > 0 ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text)]'
                                 }`}
                             >
                                 {item.value} ({remaining})
@@ -64,10 +70,11 @@ export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                className={`w-8 h-8 rounded border text-lg leading-none font-bold transition-colors ${
+                                aria-label={`Remove one ${item.value}`}
+                                className={`h-8 w-8 rounded border text-lg font-bold leading-none transition-colors ${
                                     disableMinus
-                                        ? 'border-slate-700 text-slate-600 cursor-not-allowed'
-                                        : 'border-slate-500 text-white hover:bg-slate-700 cursor-pointer'
+                                        ? 'cursor-not-allowed border-[var(--ui-border)] text-[var(--ui-muted)] opacity-50'
+                                        : 'cursor-pointer border-[var(--ui-border)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-panel-solid)]'
                                 }`}
                                 onClick={() => {
                                     if (disableMinus) return;
@@ -80,13 +87,14 @@ export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
                             >
                                 -
                             </button>
-                            <span className="text-sm text-slate-200 w-5 text-center">{selected}</span>
+                            <span className="w-5 text-center text-sm text-[var(--ui-text)]">{selected}</span>
                             <button
                                 type="button"
-                                className={`w-8 h-8 rounded border text-lg leading-none font-bold transition-colors ${
+                                aria-label={`Add one ${item.value}`}
+                                className={`h-8 w-8 rounded border text-lg font-bold leading-none transition-colors ${
                                     disablePlus
-                                        ? 'border-slate-700 text-slate-600 cursor-not-allowed'
-                                        : 'border-emerald-400 text-white hover:bg-emerald-600 cursor-pointer'
+                                        ? 'cursor-not-allowed border-[var(--ui-border)] text-[var(--ui-muted)] opacity-50'
+                                        : 'cursor-pointer border-[var(--ui-accent)] text-[var(--ui-text)] hover:bg-[color-mix(in_oklab,var(--ui-accent)_18%,var(--ui-panel-raised))]'
                                 }`}
                                 onClick={() => {
                                     if (disablePlus) return;
@@ -105,7 +113,7 @@ export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
                 );
             })}
             {selectedCount > 0 && (
-                <div className="text-xs text-slate-300">
+                <div className="text-xs text-[var(--ui-muted)]">
                     {summaryPrefix}:{' '}
                     {Object.entries(selections)
                         .map(([key, count]) => `${key.split(':')[1]} x${count}`)

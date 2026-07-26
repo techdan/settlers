@@ -4,7 +4,9 @@ import { createHex, hexCornerToPixel } from '@/lib/hex';
 import { Knight } from '@/lib/types/player';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
+import type { BuildMode } from '@/lib/types/board-selection-state';
 import { Settlement, City, Metropolis, CityWall, KnightPiece } from '@/themes/tabletop';
+import { StatusGlyph } from '@/themes/tabletop/glyphs';
 
 interface VertexRendererProps {
     vertex: Vertex;
@@ -24,9 +26,10 @@ interface VertexRendererProps {
     isPendingPlacement?: boolean;
     onConfirmPlacement?: () => void;
     onCancelPlacement?: () => void;
+    validTargetType?: BuildMode;
 }
 
-export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick, isSelectedForAction, highlightVariant = 'default', isPendingPlacement, onConfirmPlacement, onCancelPlacement }) => {
+export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, size, color, onClick, isValid, isMoving, onCancelMove, currentPlayerId, showCancelIcon, cancelIconTitle, onCancelIconClick, isSelectedForAction, highlightVariant = 'default', isPendingPlacement, onConfirmPlacement, onCancelPlacement, validTargetType }) => {
     const pixel = hexCornerToPixel(createHex(vertex.q, vertex.r), vertex.d, size);
     const playerColorFill = color ? PLAYER_COLOR_VAR_MAP[(color.toLowerCase?.() as PlayerColor) || (color as PlayerColor)] || color : undefined;
     const pieceColor = playerColorFill || 'gray';
@@ -97,16 +100,47 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                             onCancelMove?.();
                         }}>
                             <circle r={8} fill="var(--color-highlight-danger)" stroke="var(--color-highlight-white)" strokeWidth={1} />
-                            <text x="0" y="3" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="10" fontWeight="bold">✕</text>
+                            <g transform="scale(0.65)"><StatusGlyph type="cancel" /></g>
                             <title>Cancel Move</title>
                         </g>
                     )}
                 </g>
             )}
 
-            {!vertex.structure && isValid && (
+            {!vertex.structure && isValid && validTargetType === 'knight' ? (
+                <g
+                    data-placement-target="knight"
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Legal knight placement"
+                    className="cursor-pointer transition-opacity hover:opacity-100 focus:outline-none"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onClick?.(vertex.id);
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            onClick?.(vertex.id);
+                        }
+                    }}
+                >
+                    <circle
+                        r={18}
+                        fill="var(--ui-panel-solid)"
+                        fillOpacity={0.9}
+                        stroke="var(--ui-accent)"
+                        strokeWidth={3}
+                        className="animate-pulse pointer-events-none"
+                    />
+                    <g opacity={0.82} className="pointer-events-none">
+                        <KnightPiece color={pieceColor} level="basic" active={false} />
+                    </g>
+                    <title>Place a knight here</title>
+                </g>
+            ) : !vertex.structure && isValid ? (
                 <circle r={8} fill="rgba(255, 255, 255, 0.5)" className="hover:fill-white transition-colors" />
-            )}
+            ) : null}
 
             {showCancelIcon && (
                 <g
@@ -118,7 +152,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                     }}
                 >
                     <circle r={8} fill="var(--color-highlight-danger)" stroke="var(--color-highlight-white)" strokeWidth={1} />
-                    <text x="0" y="3" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="10" fontWeight="bold">x</text>
+                    <g transform="scale(0.65)"><StatusGlyph type="cancel" /></g>
                     <title>{cancelIconTitle || 'Cancel selection'}</title>
                 </g>
             )}
@@ -136,7 +170,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                         }}
                     >
                         <circle r={10} fill="var(--color-highlight-success)" stroke="var(--color-highlight-white)" strokeWidth={2} />
-                        <text x="0" y="4" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="14" fontWeight="bold">✓</text>
+                        <g transform="scale(0.78)"><StatusGlyph type="confirm" /></g>
                         <title>Confirm Placement</title>
                     </g>
 
@@ -150,7 +184,7 @@ export const VertexRenderer: React.FC<VertexRendererProps> = ({ vertex, knight, 
                         }}
                     >
                         <circle r={10} fill="var(--color-highlight-danger)" stroke="var(--color-highlight-white)" strokeWidth={2} />
-                        <text x="0" y="4" textAnchor="middle" fill="var(--color-highlight-white)" fontSize="14" fontWeight="bold">✕</text>
+                        <g transform="scale(0.78)"><StatusGlyph type="cancel" /></g>
                         <title>Cancel Placement</title>
                     </g>
                 </>

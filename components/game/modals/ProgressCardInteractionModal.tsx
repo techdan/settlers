@@ -5,6 +5,7 @@ import { CommoditySelector } from './selectors/CommoditySelector';
 import { KnightSelector } from './selectors/KnightSelector';
 import { GameState } from '@/lib/types/game';
 import { PlayerState } from '@/lib/types';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface ProgressCardInteractionModalProps {
   interaction: CardInteraction;
@@ -88,21 +89,21 @@ export const ProgressCardInteractionModal: React.FC<ProgressCardInteractionModal
 
       case 'confirmation':
         return (
-          <div className="text-sm text-slate-200">
+          <div className="text-sm text-[var(--ui-text)]">
             {interaction.context?.message || 'Are you sure you want to proceed?'}
           </div>
         );
 
       case 'notification':
         return (
-          <div className="text-sm text-slate-200">
+          <div className="text-sm text-[var(--ui-text)]">
             {interaction.context?.message || 'Action completed successfully'}
           </div>
         );
 
       default:
         return (
-          <div className="text-sm text-slate-300">
+          <div className="text-sm text-[var(--ui-muted)]">
             Interaction type not yet implemented: {interaction.type}
           </div>
         );
@@ -131,27 +132,19 @@ export const ProgressCardInteractionModal: React.FC<ProgressCardInteractionModal
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 pointer-events-auto">
-      <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 max-w-md w-full mx-4 text-white">
-        {/* Header */}
-        <div className="p-6 border-b border-slate-700 flex justify-between items-start">
-          <div>
-            <h2 className="text-xl font-bold">{interaction.cardName}</h2>
-            <p className="text-sm text-slate-300 mt-1">{interaction.prompt}</p>
-          </div>
-          {interaction.allowCancel !== false && (
-            <button
-              onClick={onCancel}
-              className="ml-4 text-slate-400 hover:text-white transition-colors text-2xl leading-none cursor-pointer"
-              aria-label="Close"
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        {/* Body */}
-        <div className="p-6">
+    <TabletopModal
+      title={interaction.cardName}
+      description={interaction.prompt}
+      onClose={interaction.allowCancel !== false ? onCancel : undefined}
+      footer={(
+        <>
+          {interaction.allowCancel !== false ? <TabletopButton onClick={onCancel}>Cancel</TabletopButton> : null}
+          <TabletopButton variant="primary" onClick={handleSubmit} disabled={!canSubmit()}>
+            {getActionLabel()}
+          </TabletopButton>
+        </>
+      )}
+    >
           {renderSelector()}
 
           {/* Error Message */}
@@ -160,31 +153,6 @@ export const ProgressCardInteractionModal: React.FC<ProgressCardInteractionModal
               {error}
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-slate-700 flex gap-3 justify-end">
-          {interaction.allowCancel !== false && (
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 rounded bg-slate-700 hover:bg-slate-600 text-white transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit()}
-            className={`px-4 py-2 rounded font-medium transition-colors ${
-              !canSubmit()
-                ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
-            }`}
-          >
-            {getActionLabel()}
-          </button>
-        </div>
-      </div>
-    </div>
+    </TabletopModal>
   );
 };

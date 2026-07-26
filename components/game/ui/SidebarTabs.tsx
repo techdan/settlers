@@ -109,8 +109,9 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
                         key={tab.id}
                         onClick={() => handleTabClick(tab.id)}
                         className={`
-                            flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider
+                            min-h-11 flex-1 px-3 py-2 text-xs font-semibold uppercase tracking-wider
                             transition-colors cursor-pointer relative flex items-center justify-center gap-1.5
+                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ui-accent)]
                             ${activeTab === tab.id
                                 ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] border-b-2 border-[var(--ui-accent)]'
                                 : 'text-[var(--ui-muted)] hover:bg-[var(--ui-panel-solid)]/50 hover:text-[var(--ui-text)]'

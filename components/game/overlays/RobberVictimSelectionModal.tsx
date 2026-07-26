@@ -3,6 +3,7 @@
 import React from 'react';
 import { GameState } from '@/lib/types';
 import { getTotalResources } from '@/core/engine/resources/resource-manager';
+import { TabletopButton, TabletopModal, tabletopOptionClass } from '../ui/TabletopModal';
 
 interface RobberVictimSelectionModalProps {
     isOpen: boolean;
@@ -26,20 +27,12 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
         .filter(p => p !== undefined);
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div
-                className="bg-slate-800 border-2 border-slate-600 rounded-lg p-6 max-w-md w-full mx-4"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="victim-selection-title"
-            >
-                <h2 id="victim-selection-title" className="text-xl font-bold text-white mb-4">
-                    Choose a Player to Rob
-                </h2>
-
-                <p className="text-slate-300 mb-6">
-                    Select which player you want to steal a resource card from:
-                </p>
+        <TabletopModal
+            title="Choose a Player to Rob"
+            description="Select which player you want to steal a resource card from."
+            onClose={onCancel}
+            footer={<TabletopButton onClick={onCancel}>Cancel</TabletopButton>}
+        >
 
                 <div className="space-y-3 mb-6">
                     {victims.map(victim => {
@@ -52,11 +45,7 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
                                 key={victim.id}
                                 onClick={() => onSelectVictim(victim.id)}
                                 disabled={!hasResources}
-                                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                                    hasResources
-                                        ? 'border-slate-500 hover:border-slate-400 hover:bg-slate-700 cursor-pointer'
-                                        : 'border-slate-700 bg-slate-900 cursor-not-allowed opacity-50'
-                                }`}
+                                className={`w-full rounded-lg border-2 p-4 text-left transition-all ${tabletopOptionClass(false, !hasResources)}`}
                                 style={{
                                     borderColor: hasResources ? victim.color : undefined
                                 }}
@@ -67,15 +56,15 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
                                             className="w-6 h-6 rounded-full border-2 border-white"
                                             style={{ backgroundColor: victim.color }}
                                         />
-                                        <span className="text-white font-semibold">
+                                        <span className="font-semibold text-[var(--ui-text)]">
                                             {victim.name}
                                         </span>
                                     </div>
-                                    <div className="text-slate-300">
+                                    <div className="text-[var(--ui-muted)]">
                                         {hasResources ? (
                                             <span>{totalResources} card{totalResources !== 1 ? 's' : ''}</span>
                                         ) : (
-                                            <span className="text-slate-500">No cards</span>
+                                            <span className="text-[var(--ui-muted)]">No cards</span>
                                         )}
                                     </div>
                                 </div>
@@ -86,22 +75,15 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
 
                 {victims.every(v => v && getTotalResources(v) === 0) && (
                     <div className="mb-4">
-                        <button
+                        <TabletopButton
                             onClick={() => onSelectVictim(null)}
-                            className="w-full p-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors"
+                            className="w-full"
                         >
                             Continue (No one to rob)
-                        </button>
+                        </TabletopButton>
                     </div>
                 )}
 
-                <button
-                    onClick={onCancel}
-                    className="w-full p-3 rounded-lg bg-slate-600 hover:bg-slate-500 text-white font-semibold transition-colors"
-                >
-                    Cancel
-                </button>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

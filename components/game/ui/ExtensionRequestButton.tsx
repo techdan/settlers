@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { GameState } from '@/lib/types/game';
 import { formatTime } from '@/lib/hooks/useTimerState';
 import { Tooltip } from '@/components/ui/tooltip';
-import { ColoredSvgIcon } from '@/components/ui/icons/ColoredSvgIcon';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface ExtensionRequestButtonProps {
   gameState: GameState;
@@ -110,19 +110,13 @@ export function ExtensionRequestButton({
           onClick={handleRequest}
           disabled={!canRequest || isRequesting}
           aria-label="Request more time"
-          className={`pointer-events-auto inline-flex h-14 w-14 items-center justify-center rounded-xl border-2 text-sm font-semibold shadow-lg shadow-sky-900/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg)] p-0 overflow-hidden shadow-inner ${
+          className={`pointer-events-auto inline-flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border-2 p-0 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ui-bg)] ${
             canRequest
-              ? 'border-blue-200/70 bg-gradient-to-br from-sky-500 to-indigo-600 text-white focus-visible:ring-sky-200 cursor-pointer'
+              ? 'cursor-pointer border-[var(--ui-accent)] bg-[var(--ui-accent)] text-[var(--ui-accent-ink)]'
               : 'border-[var(--ui-border)] bg-[var(--ui-panel-raised)] text-[var(--ui-muted)] cursor-not-allowed'
           } ${isRequesting ? 'opacity-60' : ''}`}
         >
-          <ColoredSvgIcon
-            src="/icons/backward-time.svg"
-            color="#e0f2fe"
-            backgroundColor="#0ea5e9"
-            size={56}
-            className="h-full w-full rounded-lg"
-          />
+          <TabletopStatusIcon type="time" size={34} label="Request more time" />
           <span className="sr-only">
             {buttonLabel} ({subLabel})
           </span>
@@ -131,7 +125,7 @@ export function ExtensionRequestButton({
 
       {/* Error message */}
       {error && (
-        <div className="text-xs text-center text-red-600 dark:text-red-400">
+        <div className="text-center text-xs text-[var(--ui-danger)]">
           {error}
         </div>
       )}

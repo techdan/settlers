@@ -5,6 +5,7 @@ import { CommodityType } from '@/core/rules/commodity-constants';
 import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/GuildSelectionList';
 import { submitWeddingGiftsAction } from '@/app/actions';
 import { WeddingSelection } from '@/lib/types/game';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface WeddingGiftModalProps {
     gameState: GameState;
@@ -72,22 +73,18 @@ export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, p
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 pointer-events-auto">
-            <div className="bg-slate-900 border border-blue-500/60 rounded-xl shadow-2xl p-6 w-[520px] text-white">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <div className="text-xs uppercase tracking-wide text-blue-300 mb-1">Wedding</div>
-                        <h3 className="text-xl font-bold text-white">
-                            Give {required} card{required === 1 ? '' : 's'} to {initiator.name}
-                        </h3>
-                        <p className="text-sm text-slate-300">
-                            You currently have more victory points than {initiator.name}. Choose which cards to hand over.
-                        </p>
-                    </div>
-                </div>
-
+        <TabletopModal
+            title={`Give ${required} card${required === 1 ? '' : 's'} to ${initiator.name}`}
+            description={`Wedding — You currently have more victory points than ${initiator.name}. Choose which cards to hand over.`}
+            width="lg"
+            footer={(
+                <TabletopButton variant="primary" onClick={handleSubmit} disabled={isSubmitting || selectedCount !== required}>
+                    {isSubmitting ? 'Submitting...' : 'Give Cards'}
+                </TabletopButton>
+            )}
+        >
                 <div className="space-y-3">
-                    <div className="text-sm text-slate-200">
+                    <div className="text-sm text-[var(--ui-text)]">
                         Select {required} resource or commodity card{required === 1 ? '' : 's'} to give.
                     </div>
 
@@ -110,19 +107,6 @@ export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, p
                     )}
                 </div>
 
-                <div className="mt-6 flex justify-end">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting || selectedCount !== required}
-                        className={`px-4 py-2 rounded font-medium transition-colors ${isSubmitting || selectedCount !== required
-                                ? 'bg-slate-700 text-slate-300 cursor-not-allowed opacity-70'
-                                : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                            }`}
-                    >
-                        {isSubmitting ? 'Submitting...' : 'Give Cards'}
-                    </button>
-                </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

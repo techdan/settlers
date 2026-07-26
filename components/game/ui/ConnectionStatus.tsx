@@ -1,5 +1,6 @@
 import React from 'react';
 import { ConnectionStatus as Status } from '@/lib/hooks/useConnectionStatus';
+import { TabletopStatusIcon, TabletopStatusType } from '@/themes/tabletop/glyphs';
 
 interface ConnectionStatusProps {
     status: Status;
@@ -22,25 +23,22 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusProps> = ({
         switch (status) {
             case 'offline':
                 return {
-                    bg: 'bg-red-900/90',
-                    border: 'border-red-500',
-                    icon: '🔴',
+                    tone: 'border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_16%,var(--ui-panel-solid))]',
+                    icon: 'cancel' as TabletopStatusType,
                     title: 'Offline',
                     message: 'No internet connection. Waiting to reconnect...'
                 };
             case 'reconnecting':
                 return {
-                    bg: 'bg-yellow-900/90',
-                    border: 'border-yellow-500',
-                    icon: '🔄',
+                    tone: 'border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_16%,var(--ui-panel-solid))]',
+                    icon: 'time' as TabletopStatusType,
                     title: 'Reconnecting',
                     message: `Attempting to reconnect... (${consecutiveFailures} failed attempts)`
                 };
             case 'error':
                 return {
-                    bg: 'bg-orange-900/90',
-                    border: 'border-orange-500',
-                    icon: '⚠️',
+                    tone: 'border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_16%,var(--ui-panel-solid))]',
+                    icon: 'warning' as TabletopStatusType,
                     title: 'Connection Issue',
                     message: lastError?.message || 'Failed to fetch game state. Retrying...'
                 };
@@ -54,20 +52,20 @@ export const ConnectionStatusIndicator: React.FC<ConnectionStatusProps> = ({
 
     return (
         <div
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 ${config.bg} ${config.border} border-2 rounded-lg px-4 py-3 shadow-lg backdrop-blur-sm max-w-md`}
+            className={`fixed left-1/2 top-4 z-50 max-w-md -translate-x-1/2 rounded-lg border-2 px-4 py-3 shadow-lg backdrop-blur-sm ${config.tone}`}
         >
             <div className="flex items-center gap-3">
-                <span className="text-2xl">{config.icon}</span>
+                <TabletopStatusIcon type={config.icon} size={26} />
                 <div className="flex-1">
-                    <div className="font-bold text-white">{config.title}</div>
-                    <div className="text-sm text-white/90">{config.message}</div>
+                    <div className="font-bold text-[var(--ui-text)]">{config.title}</div>
+                    <div className="text-sm text-[var(--ui-muted)]">{config.message}</div>
                 </div>
             </div>
 
             {status === 'reconnecting' && (
-                <div className="mt-2 w-full bg-white/20 rounded-full h-1.5">
+                <div className="mt-2 h-1.5 w-full rounded-full bg-[var(--ui-panel-raised)]">
                     <div
-                        className="bg-yellow-400 h-1.5 rounded-full animate-pulse"
+                        className="h-1.5 animate-pulse rounded-full bg-[var(--ui-accent)]"
                         style={{ width: '60%' }}
                     />
                 </div>

@@ -5,9 +5,10 @@ import { GameState } from '@/lib/types';
 import { ImprovementType, CK_CONSTANTS, CommodityType } from '@/core/rules/commodity-constants';
 import { canAffordImprovement, getUpgradeCost } from '@/core/engine/improvements/improvement-manager';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import { CityWall, TabletopCommodityIcon, TabletopImprovementIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface CityManagementDialogProps {
     gameState: GameState;
@@ -20,12 +21,6 @@ interface CityManagementDialogProps {
     variant?: 'default' | 'crane';
     showCityWall?: boolean;
 }
-
-const COMMODITY_ICONS: Record<CommodityType, string> = {
-    paper: '📜',
-    cloth: '🧵',
-    coin: '🪙'
-};
 
 const IMPROVEMENT_NAMES: Record<ImprovementType, string> = {
     science: 'Science',
@@ -134,25 +129,9 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     const title = isCraneMode ? 'Crane' : 'City Management';
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto">
-            <div className="bg-slate-800 rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-slate-600 shadow-2xl">
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                            {title}
-                        </h2>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-white text-2xl cursor-pointer"
-                        aria-label="Close"
-                    >
-                        ×
-                    </button>
-                </div>
-
+        <TabletopModal title={title} onClose={onClose} width="lg">
                 {error && (
-                    <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded mb-4">
+                    <div className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]">
                         {error}
                     </div>
                 )}
@@ -191,53 +170,42 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                         // Disable button if upgrade would trigger metropolis but player has no cities
                         const isDisabled = !canAct || !canAfford || cannotBuildNoCity;
 
-                        // Updated colors from icons.md
-                        const iconColor = type === 'science'
-                            ? 'var(--color-improvement-science-alt)'
-                            : type === 'trade'
-                                ? 'var(--color-improvement-trade-alt)'
-                                : 'var(--color-improvement-politics-alt)';
-
                         return (
-                            <div key={type} className="bg-slate-700/50 p-4 rounded border border-slate-600">
+                            <div key={type} className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-4 flex-1">
                                         <Tooltip content={IMPROVEMENT_TOOLTIPS[type]} placement="left" tooltipClassName="whitespace-pre-line">
-                                            <div className="flex items-center justify-center w-12 h-12 cursor-default">
-                                                <GameIcon type={type} size={40} />
+                                            <div className="flex h-12 w-12 cursor-default items-center justify-center rounded-full bg-[var(--ui-panel-solid)]">
+                                                <TabletopImprovementIcon type={type} size={38} label={`${IMPROVEMENT_NAMES[type]} improvement`} />
                                             </div>
                                         </Tooltip>
                                         <div className="flex-1 flex items-center gap-6">
                                             <div className="flex-shrink-0">
-                                                <div className="font-bold text-lg text-white">
+                                                <div className="text-lg font-bold text-[var(--ui-text)]">
                                                     {IMPROVEMENT_NAMES[type]}
                                                 </div>
-                                                <div className="text-sm text-slate-400 whitespace-nowrap">
+                                                <div className="whitespace-nowrap text-sm text-[var(--ui-muted)]">
                                                     Level {level} / {CK_CONSTANTS.MAX_IMPROVEMENT_LEVEL}
                                                 </div>
                                             </div>
-                                            <div className={`text-xs px-3 ${level >= 3 ? 'text-green-400' : 'text-white'}`}>
+                                            <div className={`px-3 text-xs ${level >= 3 ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text)]'}`}>
                                                 {IMPROVEMENT_LEVEL3_DESCRIPTIONS[type]}
                                             </div>
                                         </div>
                                     </div>
 
                                     {!isMax ? (
-                                        <button
+                                        <TabletopButton
+                                            variant="primary"
                                             onClick={() => handleUpgrade(type)}
                                             disabled={!!isDisabled}
-                                            className={`
-                                                px-4 py-2 rounded text-sm font-bold transition-all min-w-[120px]
-                                                ${canAct && canAfford && !cannotBuildNoCity
-                                                    ? 'bg-slate-200 text-slate-900 hover:bg-white shadow-lg hover:scale-105 cursor-pointer'
-                                                    : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                                }
-                                            `}
+                                            className="flex min-w-[140px] items-center justify-center gap-2"
                                         >
-                                            Upgrade ({playerCommodityCount} / {cost}) {COMMODITY_ICONS[commodity]}
-                                        </button>
+                                            <span>Upgrade ({playerCommodityCount} / {cost})</span>
+                                            <TabletopCommodityIcon type={commodity} size={20} label={commodity} />
+                                        </TabletopButton>
                                     ) : (
-                                        <div className="px-4 py-2 bg-green-900/20 text-green-400 rounded border border-green-900/50 font-bold text-sm">
+                                        <div className="rounded border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] px-4 py-2 text-sm font-bold text-[var(--ui-text)]">
                                             Max Level
                                         </div>
                                     )}
@@ -245,29 +213,29 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
 
                                 {/* Metropolis Status and Messages */}
                                 {metropolis?.owner && !willBuildMetropolis && !willSecureMetropolis && !willStealMetropolis && (
-                                    <div className="text-xs text-slate-300 bg-slate-700/30 border border-slate-600/50 rounded px-3 py-2 mt-2">
-                                        🏛️ {metropolisOwner?.name} has the {IMPROVEMENT_NAMES[type]} Metropolis
+                                    <div className="mt-2 flex items-center gap-2 rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] px-3 py-2 text-xs text-[var(--ui-muted)]">
+                                        <TabletopImprovementIcon type={type} size={18} /> {metropolisOwner?.name} has the {IMPROVEMENT_NAMES[type]} Metropolis
                                         {metropolisSecured ? ' (secured at level 5)' : ' (level 4, can be stolen at level 5)'}
                                     </div>
                                 )}
                                 {willBuildMetropolis && hasCities && (
-                                    <div className="text-xs text-yellow-300 bg-yellow-900/20 border border-yellow-700/50 rounded px-3 py-2 mt-2">
-                                        ⭐ Upgrading will let you claim the {IMPROVEMENT_NAMES[type]} Metropolis! (+2 VP)
+                                    <div className="mt-2 flex items-center gap-2 rounded border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] px-3 py-2 text-xs text-[var(--ui-text)]">
+                                        <TabletopStatusIcon type="info" size={18} /> Upgrading will let you claim the {IMPROVEMENT_NAMES[type]} Metropolis! (+2 VP)
                                     </div>
                                 )}
                                 {willSecureMetropolis && (
-                                    <div className="text-xs text-blue-300 bg-blue-900/20 border border-blue-700/50 rounded px-3 py-2 mt-2">
-                                        🏛️ Upgrading will secure your {IMPROVEMENT_NAMES[type]} Metropolis at level 5! (cannot be stolen)
+                                    <div className="mt-2 flex items-center gap-2 rounded border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] px-3 py-2 text-xs text-[var(--ui-text)]">
+                                        <TabletopStatusIcon type="confirm" size={18} /> Upgrading will secure your {IMPROVEMENT_NAMES[type]} Metropolis at level 5! (cannot be stolen)
                                     </div>
                                 )}
                                 {willStealMetropolis && hasCities && (
-                                    <div className="text-xs text-orange-300 bg-orange-900/20 border border-orange-700/50 rounded px-3 py-2 mt-2">
-                                        ⚔️ Upgrading will let you steal the {IMPROVEMENT_NAMES[type]} Metropolis from {metropolisOwner?.name}!
+                                    <div className="mt-2 flex items-center gap-2 rounded border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2 text-xs text-[var(--ui-text)]">
+                                        <TabletopStatusIcon type="warning" size={18} /> Upgrading will let you steal the {IMPROVEMENT_NAMES[type]} Metropolis from {metropolisOwner?.name}!
                                     </div>
                                 )}
                                 {!isMax && upgradeWillTriggerMetropolis && cannotBuildNoCity && (
-                                    <div className="text-xs text-red-300 bg-red-900/20 border border-red-700/50 rounded px-3 py-2 mt-2">
-                                        ❌ You need at least one City to build a Metropolis. Build a city first!
+                                    <div className="mt-2 flex items-center gap-2 rounded border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2 text-xs text-[var(--ui-text)]">
+                                        <TabletopStatusIcon type="cancel" size={18} /> You need at least one City to build a Metropolis. Build a city first!
                                     </div>
                                 )}
                             </div>
@@ -276,50 +244,46 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
 
                     {/* City Wall */}
                     {!isCraneMode && showCityWall && vertex && (
-                        <div className="bg-slate-700/50 p-4 rounded border border-slate-600 flex items-center justify-between">
+                        <div className="flex items-center justify-between rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4">
                         <div className="flex items-center gap-4">
                             <Tooltip
                                 content="City Wall - Protects your city from the robber.\n\nCost: 2 Brick\n\nIncreases your maximum hand size by 2 cards (from 7 to 9).\n\nWhen a 7 is rolled, you only discard half your cards if you have more than 9 cards instead of 7."
                                 placement="left"
                                 tooltipClassName="whitespace-pre-line"
                             >
-                                <div className="flex items-center justify-center w-12 h-12 cursor-default">
-                                    <GameIcon type="city-wall" size={40} playerColor="var(--color-structure-wall-highlight)" />
+                                <div className="flex h-12 w-12 cursor-default items-center justify-center rounded-full bg-[var(--ui-panel-solid)]">
+                                    <svg viewBox="-18 -8 36 24" width="44" height="34" aria-hidden="true">
+                                        <CityWall color={player.color} />
+                                    </svg>
                                 </div>
                             </Tooltip>
                                 <div>
-                                    <div className="font-bold text-lg text-white">
+                                    <div className="text-lg font-bold text-[var(--ui-text)]">
                                         City Wall
                                     </div>
-                                    <div className="text-sm text-slate-400">
+                                    <div className="text-sm text-[var(--ui-muted)]">
                                         {vertex.hasCityWall ? 'Active' : 'Not Built'}
                                     </div>
                                 </div>
                             </div>
 
                             {!vertex.hasCityWall ? (
-                                <button
+                                <TabletopButton
+                                    variant="primary"
                                     onClick={handleBuildWall}
                                     disabled={!canAct || !canBuildWallForVertex}
-                                    className={`
-                                        px-4 py-2 rounded text-sm font-bold transition-all min-w-[120px]
-                                        ${canAct && canBuildWallForVertex
-                                            ? 'bg-orange-600 hover:bg-orange-500 text-white shadow-lg hover:scale-105 cursor-pointer'
-                                            : 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
-                                        }
-                                    `}
+                                    className="flex min-w-[150px] items-center justify-center gap-2"
                                 >
-                                    Build Wall (2 Brick)
-                                </button>
+                                    <span>Build Wall (2)</span><TabletopResourceIcon type="brick" size={20} label="brick" />
+                                </TabletopButton>
                             ) : (
-                                <div className="px-4 py-2 bg-green-900/20 text-green-400 rounded border border-green-900/50 font-bold text-sm">
+                                <div className="rounded border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] px-4 py-2 text-sm font-bold text-[var(--ui-text)]">
                                     Built City Wall
                                 </div>
                             )}
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };

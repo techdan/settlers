@@ -7,6 +7,7 @@ import { TaxationPlacementModal } from './TaxationPlacementModal';
 import { TreasonPlacementModal } from './TreasonPlacementModal';
 import { BoardSelectionPrompt } from '../overlays/BoardSelectionPrompt';
 import { ResourceType } from '@/core/rules/board-constants';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface ProgressCardPromptsProps {
   gameState: GameState;
@@ -259,14 +260,18 @@ export const ProgressCardPrompts: React.FC<ProgressCardPromptsProps> = ({
       {selectionManager.isInventorConfirmOpen &&
         selectionManager.inventorSelection.firstValue !== undefined &&
         selectionManager.inventorSelection.secondValue !== undefined && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60" onClick={onCancelSelection} />
-            <div
-              className="relative bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-6 w-[360px] space-y-4 pointer-events-auto"
-              onClick={e => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold">Inventor</h3>
-              <p className="text-sm text-slate-200">
+          <TabletopModal
+            title="Inventor"
+            onClose={onCancelSelection}
+            width="sm"
+            footer={(
+              <>
+                <TabletopButton onClick={onCancelSelection}>Cancel</TabletopButton>
+                <TabletopButton variant="primary" onClick={progressCardController.handleConfirmInventorSwap}>Swap</TabletopButton>
+              </>
+            )}
+          >
+              <p className="text-sm text-[var(--ui-text)]">
                 Swapping <span className="font-semibold text-emerald-300">#{selectionManager.inventorSelection.firstValue}</span> with{' '}
                 <span className="font-semibold text-cyan-300">#{selectionManager.inventorSelection.secondValue}</span>
               </p>
@@ -275,22 +280,7 @@ export const ProgressCardPrompts: React.FC<ProgressCardPromptsProps> = ({
                   {selectionManager.inventorError}
                 </div>
               )}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  className="px-4 py-2 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
-                  onClick={onCancelSelection}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow cursor-pointer"
-                  onClick={progressCardController.handleConfirmInventorSwap}
-                >
-                  Swap
-                </button>
-              </div>
-            </div>
-          </div>
+          </TabletopModal>
         )}
     </>
   );

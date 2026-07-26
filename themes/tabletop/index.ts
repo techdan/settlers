@@ -13,5 +13,17 @@ export { Road, Settlement, City, Metropolis, CityWall, KnightPiece } from './pie
 export { ResourceCardFace, CommodityCardFace, ProgressDeckBack, ProgressCardFace, DevCardFace, CardStack } from './cards';
 export { PROGRESS_ICONS } from './progress-icons';
 export { PipDie, EventDie } from './dice';
-export { ResourceGlyph, ShieldGlyph, TowerGlyph, CrossedSwords } from './glyphs';
+export {
+    ResourceGlyph,
+    CommodityGlyph,
+    ImprovementGlyph,
+    ShieldGlyph,
+    TowerGlyph,
+    CrossedSwords,
+    TabletopResourceIcon,
+    TabletopCommodityIcon,
+    TabletopImprovementIcon,
+    TabletopStatusIcon,
+    StatusGlyph,
+} from './glyphs';
 export { TT, TT_SERIF, shade, r2, hexPointsStr } from './palette';

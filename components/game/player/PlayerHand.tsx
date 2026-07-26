@@ -8,6 +8,7 @@ interface PlayerHandProps {
     player: PlayerState;
     roomId: string;
     lastTheft?: {
+        source?: 'robber' | 'wedding' | 'taxation' | 'guild_dues';
         victimId?: string;
         thiefId: string;
         items?: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];
@@ -62,11 +63,15 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
         const victimEntry = theftVictims.find(v => v.victimId === player.id);
         const victimItemHit = victimEntry?.items.some(item => item.type === type && item.value === value);
         if (victimEntry && victimItemHit) {
-            return 'bg-red-500/40 animate-pulse rounded ring-2 ring-red-500';
+            return visibleTheft.source === 'wedding'
+                ? 'bg-amber-400/30 animate-pulse rounded ring-2 ring-amber-300'
+                : 'bg-red-500/40 animate-pulse rounded ring-2 ring-red-500';
         }
         const thiefItemHit = thiefItems.some(item => item.type === type && item.value === value);
         if (visibleTheft.thiefId === player.id && thiefItemHit) {
-            return 'bg-green-500/40 animate-pulse rounded ring-2 ring-green-500';
+            return visibleTheft.source === 'wedding'
+                ? 'bg-amber-400/30 animate-pulse rounded ring-2 ring-amber-300'
+                : 'bg-green-500/40 animate-pulse rounded ring-2 ring-green-500';
         }
         return '';
     };
@@ -80,7 +85,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
             <div className={`relative flex items-start ${!hasCommodities ? 'w-full justify-evenly' : 'gap-2.5'}`}>
                 {/* Resources */}
                 {(['wood', 'brick', 'sheep', 'wheat', 'ore'] as ResourceType[]).map(res => (
-                    <div key={res} className={`px-1.5 py-1.5 rounded transition-all duration-300 ${getHighlightClass('resource', res)}`}>
+                    <div key={res} className={`px-1.5 py-1.5 rounded transition-[background-color,box-shadow] duration-300 ${getHighlightClass('resource', res)}`}>
                         <CardStack count={player.resources[res] || 0} width={46}>
                             <ResourceCardFace type={res} width={46} />
                         </CardStack>
@@ -92,7 +97,7 @@ export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastThef
                     <>
                         <div className="self-stretch w-px bg-white/15 mx-0.5" />
                         {(['paper', 'cloth', 'coin'] as CommodityType[]).map(commodity => (
-                            <div key={commodity} className={`px-1.5 py-1.5 rounded transition-all duration-300 ${getHighlightClass('commodity', commodity)}`}>
+                            <div key={commodity} className={`px-1.5 py-1.5 rounded transition-[background-color,box-shadow] duration-300 ${getHighlightClass('commodity', commodity)}`}>
                                 <CardStack count={player.commodities![commodity] || 0} width={46}>
                                     <CommodityCardFace type={commodity} width={46} />
                                 </CardStack>

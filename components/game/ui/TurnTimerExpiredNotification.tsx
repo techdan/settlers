@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types/game';
 import { useTimerState, formatTime } from '@/lib/hooks/useTimerState';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface TurnTimerExpiredNotificationProps {
   gameState: GameState;
@@ -17,14 +18,14 @@ export function TurnTimerExpiredNotification({ gameState, currentPlayerId }: Tur
   const timeBank = gameState.playerTimeBanks?.[currentPlayerId] ?? 0;
 
   return (
-    <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-400 dark:border-orange-600 rounded-lg px-4 py-3 shadow-lg">
+    <div className="rounded-lg border-2 border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-4 py-3 shadow-lg">
       <div className="flex items-center gap-3">
-        <div className="text-2xl">⏱️</div>
+        <TabletopStatusIcon type="time" size={26} />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+          <p className="text-sm font-semibold text-[var(--ui-text)]">
             Time is up!
           </p>
-          <p className="text-xs text-orange-800 dark:text-orange-200 mt-0.5">
+          <p className="mt-0.5 text-xs text-[var(--ui-muted)]">
             Most actions are disabled. Complete required actions and end your turn.
             {timeBank > 0 && (
               <> You have {formatTime(timeBank)} in your time bank to extend if needed.</>

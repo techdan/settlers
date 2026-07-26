@@ -3,7 +3,8 @@
 import React from 'react';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
-import { GameIcon } from '@/components/ui/icons/GameIcon';
+import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface TradeCompletedNotificationProps {
     isOpen: boolean;
@@ -30,6 +31,14 @@ const TRADE_ITEM_LABELS: Record<ResourceType | CommodityType, string> = {
     cloth: 'Cloth',
     coin: 'Coin'
 };
+
+const isCommodity = (type: ResourceType | CommodityType): type is CommodityType =>
+    type === 'paper' || type === 'cloth' || type === 'coin';
+
+const TradeItemIcon: React.FC<{ type: ResourceType | CommodityType; size?: number }> = ({ type, size = 28 }) =>
+    isCommodity(type)
+        ? <TabletopCommodityIcon type={type} size={size} label={TRADE_ITEM_LABELS[type]} />
+        : <TabletopResourceIcon type={type} size={size} label={TRADE_ITEM_LABELS[type]} />;
 
 export const TradeCompletedNotification: React.FC<TradeCompletedNotificationProps> = ({
     isOpen,
@@ -71,50 +80,30 @@ export const TradeCompletedNotification: React.FC<TradeCompletedNotificationProp
     const receivedItems = formatItems(received.resources, received.commodities);
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm pointer-events-auto">
-            <div className="relative bg-slate-800 border-2 border-green-600 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-                {/* Close X button */}
-                <button
-                    onClick={onDismiss}
-                    className="absolute top-2 right-2 text-slate-400 hover:text-white transition-colors"
-                    aria-label="Close notification"
-                >
-                    <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </button>
-
+        <TabletopModal
+            title="Trade Complete!"
+            description={wasInitiator ? `${partnerName} accepted your trade.` : `Trade completed with ${partnerName}.`}
+            onClose={onDismiss}
+            closeLabel="Close notification"
+            footer={<TabletopButton variant="primary" onClick={onDismiss} className="w-full">OK</TabletopButton>}
+        >
                 <div className="text-center">
-                    {/* Icon and title */}
-                    <div className="mb-4">
-                        <div className="text-green-400 text-4xl mb-2">✓</div>
-                        <h2 className="text-xl font-bold text-white">
-                            Trade Complete!
-                        </h2>
+                    <div className="mb-4 flex justify-center">
+                        <TabletopStatusIcon type="confirm" size={40} label="Trade completed" />
                     </div>
 
                     {/* Trade details */}
-                    <div className="bg-slate-700 rounded-lg p-4 mb-4">
+                    <div className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4 mb-4">
                         <div className="grid grid-cols-2 gap-4">
                             {/* You Gave */}
                             <div>
-                                <div className="text-xs text-red-400 uppercase mb-2">You Gave</div>
+                                <div className="text-xs text-[var(--ui-danger)] uppercase mb-2">You Gave</div>
                                 <div className="space-y-2">
                                     {gaveItems.map((item, index) => (
                                         <div key={index} className="flex items-center gap-2 justify-center">
-                                            <GameIcon type={item.type} size={28} />
-                                            <span className="text-sm text-white">
-                                                {item.count > 1 && <span className="text-yellow-400">{item.count}x </span>}
+                                            <TradeItemIcon type={item.type} />
+                                            <span className="text-sm text-[var(--ui-text)]">
+                                                {item.count > 1 && <span className="text-[var(--ui-accent)]">{item.count}x </span>}
                                                 {TRADE_ITEM_LABELS[item.type]}
                                             </span>
                                         </div>
@@ -124,13 +113,13 @@ export const TradeCompletedNotification: React.FC<TradeCompletedNotificationProp
 
                             {/* You Received */}
                             <div>
-                                <div className="text-xs text-green-400 uppercase mb-2">You Received</div>
+                                <div className="text-xs text-[var(--ui-success)] uppercase mb-2">You Received</div>
                                 <div className="space-y-2">
                                     {receivedItems.map((item, index) => (
                                         <div key={index} className="flex items-center gap-2 justify-center">
-                                            <GameIcon type={item.type} size={28} />
-                                            <span className="text-sm text-white">
-                                                {item.count > 1 && <span className="text-yellow-400">{item.count}x </span>}
+                                            <TradeItemIcon type={item.type} />
+                                            <span className="text-sm text-[var(--ui-text)]">
+                                                {item.count > 1 && <span className="text-[var(--ui-accent)]">{item.count}x </span>}
                                                 {TRADE_ITEM_LABELS[item.type]}
                                             </span>
                                         </div>
@@ -141,27 +130,19 @@ export const TradeCompletedNotification: React.FC<TradeCompletedNotificationProp
                     </div>
 
                     {/* Message */}
-                    <p className="text-slate-300 mb-6">
+                    <p className="text-[var(--ui-muted)]">
                         {wasInitiator ? (
                             <>
-                                <span className="font-semibold text-green-400">{partnerName}</span> accepted your trade!
+                                <span className="font-semibold text-[var(--ui-success)]">{partnerName}</span> accepted your trade!
                             </>
                         ) : (
                             <>
-                                Trade completed with <span className="font-semibold text-green-400">{partnerName}</span>
+                                Trade completed with <span className="font-semibold text-[var(--ui-success)]">{partnerName}</span>
                             </>
                         )}
                     </p>
 
-                    {/* OK button */}
-                    <button
-                        onClick={onDismiss}
-                        className="w-full py-3 px-6 bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg transition-colors"
-                    >
-                        OK
-                    </button>
                 </div>
-            </div>
-        </div>
+        </TabletopModal>
     );
 };
