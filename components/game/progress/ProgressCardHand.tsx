@@ -9,6 +9,8 @@ import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-util
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 import { useTimerState } from '@/lib/hooks/useTimerState';
 import { ProgressHandView, ProgressHandCard } from '@/components/game/player/ProgressHandView';
+import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface ProgressCardHandProps {
     player: PlayerState;
@@ -27,7 +29,6 @@ interface ProgressCardHandProps {
     isEngineerSelecting?: boolean;
     isSmithSelecting?: boolean;
     isMedicineSelecting?: boolean;
-    activeFollowupCard?: ProgressCardType | null;
     onCancelFollowupCard?: () => void;
     /**
      * Reports which card's panel is open (null when none). Board-visible panels
@@ -44,6 +45,24 @@ interface ProgressCardHandProps {
 }
 
 const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
+
+/**
+ * Turn a rejected card play into something a player can act on.
+ *
+ * Server actions rethrow service errors, and Next redacts those messages in
+ * production builds — so `e.message` is the real validation text in dev but a
+ * boilerplate "specific message is omitted" blurb in prod. Showing that blurb
+ * would be worse than showing nothing, so it is swapped for a plain sentence.
+ * (Repo-wide fix is tracked as §5.14 in the improvement plan: return typed
+ * results from the action layer instead of throwing.)
+ */
+function describePlayFailure(error: unknown, cardType: ProgressCardType): string {
+    const cardName = PROGRESS_CARD_DEFINITIONS[cardType]?.name ?? 'that card';
+    const raw = error instanceof Error ? error.message.trim() : '';
+    const isRedacted = !raw || /omitted in production|digest property|server components render/i.test(raw);
+
+    return isRedacted ? `${cardName} could not be played right now.` : raw;
+}
 
 // Cards that require parameter selection
 const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
@@ -80,7 +99,6 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     isEngineerSelecting,
     isSmithSelecting,
     isMedicineSelecting,
-    activeFollowupCard,
     onCancelFollowupCard,
     onOpenPanelChange,
     decorateCardHandler
@@ -88,22 +106,27 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     const [isPending, startTransition] = useTransition();
     const [manualFollowupCard, setManualFollowupCard] = useState<ProgressCardType | null>(null);
     const [modalCard, setModalCard] = useState<ProgressCardType | null>(null);
-    const currentActiveFollowup = modalCard ?? activeFollowupCard ?? manualFollowupCard ?? null;
+    // Server rejections used to reach console.error only, so an unplayable card
+    // simply did nothing when clicked. The hand is gated for the reasons it can
+    // see locally, but the server stays authoritative — anything it refuses
+    // (stale state, a race with another player) has to be visible here.
+    const [playError, setPlayError] = useState<string | null>(null);
 
     // Check timer status
     const timerStatus = useTimerState(gameState);
 
-    // Clear local follow-up highlight when the server-driven active card clears
-    useEffect(() => {
-        if (!activeFollowupCard) {
-            setManualFollowupCard(null);
-        }
-    }, [activeFollowupCard]);
+    // A panel must not outlive your turn. Board-visible panels have no scrim, so
+    // once the timer locks, an open one would both cover the "Time is up!"
+    // banner and leave its Play button live. Derived rather than cleared in an
+    // effect so there is no render cascade — and so the panel comes back with
+    // your selections intact if you buy time from your bank.
+    const openPanelCard = timerStatus.isLocked ? null : modalCard;
+    const currentActiveFollowup = openPanelCard ?? manualFollowupCard ?? null;
 
     // Keep the tray in sync with the open card panel (see onOpenPanelChange).
     useEffect(() => {
-        onOpenPanelChange?.(modalCard);
-    }, [modalCard, onOpenPanelChange]);
+        onOpenPanelChange?.(openPanelCard);
+    }, [openPanelCard, onOpenPanelChange]);
 
     // Only show in C&K mode. This guard must stay BELOW every hook — it used to
     // sit above them, which meant a player gaining progressCards mid-session
@@ -113,6 +136,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     }
 
     const handlePlayCard = (cardType: ProgressCardType) => {
+        setPlayError(null);
         const isBoardSelectionCard = BOARD_SELECTION_CARDS.includes(cardType);
         const isConfirmationModalCard = CONFIRMATION_MODAL_CARDS.includes(cardType);
         const isRoadPlacementCard = ROAD_PLACEMENT_CARDS.includes(cardType);
@@ -197,6 +221,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                 } catch (e) {
                     console.error('Failed to play card', e);
                     setManualFollowupCard(null);
+                    setPlayError(describePlayFailure(e, cardType));
                 }
             })();
             return;
@@ -212,6 +237,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                     await onPlayCard(cardType);
                 } catch (e) {
                     console.error('Failed to play card', e);
+                    setPlayError(describePlayFailure(e, cardType));
                 }
             });
         }
@@ -357,11 +383,28 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                         Hand limit is 4 at end of your turn.
                     </div>
                 )}
+                {playError && (
+                    <div
+                        role="alert"
+                        className="mb-1.5 flex items-start gap-2 rounded-md border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] px-3 py-1.5"
+                    >
+                        <TabletopStatusIcon type="cancel" size={14} className="mt-0.5 shrink-0" />
+                        <span className="text-xs font-semibold text-[var(--ui-text)]">{playError}</span>
+                        <button
+                            type="button"
+                            onClick={() => setPlayError(null)}
+                            aria-label="Dismiss error"
+                            className="ml-auto shrink-0 cursor-pointer text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] hover:text-[var(--ui-text)]"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
                 <ProgressHandView cards={handCards} onCardClick={handleCardClick} />
             </div>
 
-            {modalCard && typeof window !== 'undefined' && createPortal(
-                modalCard === 'commercial_harbor' ? (
+            {openPanelCard && typeof window !== 'undefined' && createPortal(
+                openPanelCard === 'commercial_harbor' ? (
                     <CommercialHarborInitiatorDialog
                         gameState={gameState}
                         playerId={player.id}
@@ -370,11 +413,20 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
                     />
                 ) : (
                     <ProgressCardModal
-                        cardType={modalCard}
-                        isOpen={!!modalCard}
+                        cardType={openPanelCard}
+                        isOpen
                         onClose={() => setModalCard(null)}
                         onPlay={async (cardType, options) => {
-                            await onPlayCard(cardType, options);
+                            // Rethrow so the modal keeps its own in-flight/error
+                            // handling, but surface it in the hand too — the
+                            // modal closes on some paths and the message would
+                            // vanish with it.
+                            try {
+                                await onPlayCard(cardType, options);
+                            } catch (e) {
+                                setPlayError(describePlayFailure(e, cardType));
+                                throw e;
+                            }
                         }}
                         gameState={gameState}
                         currentPlayer={player}
