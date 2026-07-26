@@ -42,3 +42,8 @@ next-env.d.ts
 
 # beads (retired task tracker) - local state only, not versioned
 .beads/
+
+# local database dumps/backups. Anchored with a leading slash so this only
+# matches the directory at the repo root - a bare `db/` would also swallow
+# the tracked lib/db/ schema.
+/db/
