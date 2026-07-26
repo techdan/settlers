@@ -39,9 +39,14 @@
       "Bash(cut:*)",
       "Bash(npx tsx:*)",
       "Bash(git checkout:*)",
-      "Bash(npx drizzle-kit push:*)"
+      "Bash(npx drizzle-kit push:*)",
+      "Bash(codex exec --sandbox read-only *)",
+      "Bash(codex exec --sandbox workspace-write *)",
+      "Bash(codex exec resume:*)",
+      "Bash(codex exec review:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "Explanatory"
 }
