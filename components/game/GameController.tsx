@@ -31,7 +31,6 @@ import { CommercialHarborInitiatorDialog } from './progress/CommercialHarborInit
 import { CityManagementDialog } from './city/CityManagementDialog';
 import { SettlementManagementDialog } from './city/SettlementManagementDialog';
 import { KnightManagementDialog } from './city/KnightManagementDialog';
-import { ProgressCardHand } from './progress/ProgressCardHand';
 import { ProgressCardDiscardDialog } from './progress/ProgressCardDiscardDialog';
 import { DebugPanel } from './ui/DebugPanel';
 import { OptimisticGameStateProvider, useOptimisticGameState } from '@/lib/hooks/useOptimisticGameState';
