@@ -59,6 +59,7 @@ export const RobberModals: React.FC<RobberModalsProps> = ({
             wasVictim={!isThief}
             thiefName={thief?.name}
             victimName={victim?.name}
+            source={theft.source}
             onDismiss={onDismissTheft}
           />
         );

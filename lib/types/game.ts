@@ -213,6 +213,7 @@ export interface GameState {
     pendingCommercialHarbor?: CommercialHarborState; // Pending Commercial Harbor trades awaiting responses
     pendingWedding?: WeddingState; // Pending Wedding gifts awaiting opponent selections
     lastTheft?: {
+        source?: 'robber' | 'wedding' | 'taxation' | 'guild_dues';
         victimId?: string;
         thiefId: string;
         items?: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; count: number }[];

@@ -92,6 +92,7 @@ export function respondToWedding(
 
     const totalGiven = selections.length;
     gameState.lastTheft = {
+        source: 'wedding',
         victimId: giver.id,
         thiefId: initiator.id,
         items: givenItems,
