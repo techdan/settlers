@@ -1,14 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { TaxationCommand } from '../TaxationCommand';
-import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
+import {
+    createTestBoard,
+    createTestGameState,
+    createTestPlayer,
+    createTestVertex,
+} from '@/lib/test-utils';
 import { getVertexIdsForHex } from '@/core/engine/progress/utilities/BoardScanning';
+import { createHex } from '@/lib/hex';
+import type { BoardHex } from '@/lib/types';
 
 /**
  * Taxation is gated behind the first barbarian attack, so it never got manual
  * QA during the Phase 4.5 pass.
  *
  * The theft assertions below were unreachable until the command's runtime
- * `require('@/...')` calls became ESM imports — Node's require, which is what
+ * CommonJS runtime imports became ESM imports — Node's loader, which is what
  * vitest hands the module, cannot resolve the `@/` alias.
  */
 
@@ -22,11 +29,19 @@ const setup = (opts: {
     const { hasBarbariansAttacked = true, occupants = [], victimOre = 0 } = opts;
 
     const hexVertices = getVertexIdsForHex(HEX_ID);
-    const vertices = occupants.map(([owner, hasStructure], index) => ({
-        id: hexVertices[index],
-        owner,
-        structure: hasStructure ? 'settlement' : undefined,
-    }));
+    const vertices = occupants.map(([owner, hasStructure], index) =>
+        createTestVertex({
+            id: hexVertices[index],
+            owner,
+            structure: hasStructure ? 'settlement' : null,
+        })
+    );
+    const taxableHex: BoardHex = {
+        id: HEX_ID,
+        hex: createHex(0, 0),
+        terrain: 'forest',
+        numberToken: 8,
+    };
 
     return createTestGameState({
         roomId: 'room-1',
@@ -41,11 +56,11 @@ const setup = (opts: {
                 resources: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: victimOre },
             }),
         ],
-        board: {
-            hexes: [{ id: HEX_ID, q: 0, r: 0, terrain: 'forest', numberToken: 8 }],
-            vertices: Object.fromEntries(vertices.map(v => [v.id, v])),
-            edges: {},
-        } as any,
+        board: createTestBoard({
+            hexes: [taxableHex],
+            vertices,
+            edges: [],
+        }),
     });
 };
 

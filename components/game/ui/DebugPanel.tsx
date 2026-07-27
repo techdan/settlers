@@ -144,7 +144,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId, defaultO
                 <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ItemCategory)}
-                    className="min-h-11 cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-2 py-1 text-sm text-[var(--ui-text)] focus:border-[var(--ui-accent)] focus:outline-none"
+                    className="min-h-11 cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-2 py-1 text-sm text-[var(--ui-text)] focus:border-[var(--ui-accent)] focus:outline-none disabled:cursor-not-allowed"
                     disabled={isPending}
                 >
                     {availableCategories.map(c => (
@@ -157,7 +157,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId, defaultO
                 <select
                     value={selectedItem}
                     onChange={(e) => setSelectedItem(e.target.value)}
-                    className="min-h-11 min-w-0 flex-1 cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-2 py-1 text-sm text-[var(--ui-text)] focus:border-[var(--ui-accent)] focus:outline-none"
+                    className="min-h-11 min-w-0 flex-1 cursor-pointer rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-2 py-1 text-sm text-[var(--ui-text)] focus:border-[var(--ui-accent)] focus:outline-none disabled:cursor-not-allowed"
                     disabled={isPending}
                 >
                     <option value="">Select item…</option>

@@ -1,7 +1,11 @@
-import { GameState } from '@/lib/types';
-import { SelectionState } from '@/lib/hooks/useSelectionManager';
+import type { GameState } from '@/lib/types';
+import type { SelectionState } from '@/lib/hooks/useSelectionManager';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 import { activateKnight, upgradeKnight, relocateKnight, chaseAwayRobber } from '@/app/actions';
+import {
+  controllerErrorMessage,
+  type PlayProgressCard,
+} from '@/lib/controllers/progress-card/types';
 
 /**
  * Knight Controller
@@ -15,7 +19,7 @@ export interface KnightControllerDeps {
   gameState: GameState | null;
   selectionManager: SelectionState;
   getOptimisticState: (state: GameState) => GameState;
-  handlePlayProgressCard: (cardType: any, options?: any) => Promise<void>;
+  handlePlayProgressCard: PlayProgressCard;
 }
 
 export interface KnightController {
@@ -137,8 +141,10 @@ export function createKnightController(deps: KnightControllerDeps): KnightContro
       selectionManager.setSelectingKnightsForSmith(false);
       selectionManager.setSelectedSmithKnightIds([]);
       selectionManager.setSmithError(null);
-    } catch (e: any) {
-      selectionManager.setSmithError(e?.message || 'Failed to promote knights');
+    } catch (e: unknown) {
+      selectionManager.setSmithError(
+        controllerErrorMessage(e, 'Failed to promote knights'),
+      );
     }
   };
 

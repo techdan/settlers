@@ -10,19 +10,36 @@ interface TimerConfigPanelProps {
 }
 
 export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelProps) {
+  const configKey = [
+    config.enabled,
+    config.turnTimeLimit,
+    config.timeBank,
+    config.extensionIncrement,
+    config.maxExtensionsPerTurn,
+    config.maxExtraSecondsPerTurn,
+  ].join(':');
+
+  return (
+    <TimerConfigForm
+      key={configKey}
+      config={config}
+      isHost={isHost}
+      onChange={onChange}
+    />
+  );
+}
+
+function TimerConfigForm({ config, isHost, onChange }: TimerConfigPanelProps) {
   const [enabled, setEnabled] = useState(config.enabled);
-  const [selectedPreset, setSelectedPreset] = useState<number>(-1);
+  const [selectedPreset, setSelectedPreset] = useState<number>(() => {
+    const preset = TIMER_PRESETS.find(p => p.value === config.turnTimeLimit);
+    return preset ? preset.value : -1;
+  });
   const [customTime, setCustomTime] = useState(config.turnTimeLimit);
   const [timeBank, setTimeBank] = useState(config.timeBank);
 
   // Debounce timer for slider changes
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Determine which preset is selected based on current turn time limit
-  useEffect(() => {
-    const preset = TIMER_PRESETS.find(p => p.value === config.turnTimeLimit);
-    setSelectedPreset(preset ? preset.value : -1);
-  }, [config.turnTimeLimit]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
@@ -122,7 +139,7 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
         </label>
         <button
           onClick={() => handleEnabledChange(!enabled)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+          className={`relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
             enabled ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-700'
           }`}
           role="switch"
@@ -151,7 +168,7 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
                     <button
                       key="custom"
                       onClick={() => setSelectedPreset(-1)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                      className={`cursor-pointer px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                         selectedPreset === -1
                           ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-400'
                           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
@@ -165,7 +182,7 @@ export function TimerConfigPanel({ config, isHost, onChange }: TimerConfigPanelP
                   <button
                     key={preset.value}
                     onClick={() => handlePresetChange(preset.value)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
+                    className={`cursor-pointer px-3 py-2 rounded-lg text-sm font-medium transition-all border-2 ${
                       selectedPreset === preset.value
                         ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 text-blue-700 dark:text-blue-400'
                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'

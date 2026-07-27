@@ -13,6 +13,7 @@ import { isRoadBuildingEffect } from '@/lib/types/effects';
  */
 export class RoadBuildingCommand implements ProgressCardCommand {
   execute(state: GameState, playerId: string, options?: unknown): GameState {
+    void options;
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');

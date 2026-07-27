@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useTransition } from 'react';
 import { generateLobbyBoard, requestNewLobbyBoard, toggleLobbyFairMode } from '@/app/actions';
 import { Loader2, RefreshCw, ShieldCheck, ShieldAlert, Users } from 'lucide-react';
 
@@ -74,7 +74,7 @@ export function GeneratorControls({
                     <button
                         onClick={handleGenerate}
                         disabled={isPending}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg font-medium btn-interactive"
+                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg font-medium btn-interactive disabled:cursor-not-allowed"
                     >
                         {isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
                         Generate New Board
@@ -87,19 +87,19 @@ export function GeneratorControls({
                                 await setLobbyStandardBoard(roomId, hostId);
                             })}
                             disabled={isPending}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition-all shadow-sm hover:shadow text-xs font-medium cursor-pointer"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg transition-all shadow-sm hover:shadow text-xs font-medium cursor-pointer disabled:cursor-not-allowed"
                         >
                             <ShieldCheck size={14} className="text-slate-500" />
                             Use Beginner Board
                         </button>
 
-                        <label className="flex-1 flex items-center justify-center gap-2 cursor-pointer group p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200">
+                        <label className={`flex-1 flex items-center justify-center gap-2 group p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 ${isPending ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                             <input
                                 type="checkbox"
                                 checked={fairMode}
                                 onChange={handleToggleFairness}
                                 disabled={isPending}
-                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
                             />
                             <span className="text-xs font-medium text-slate-700 select-none">Enable Fairness</span>
                         </label>
@@ -127,7 +127,7 @@ export function GeneratorControls({
             <button
                 onClick={handleRequest}
                 disabled={isPending || hasRequested}
-                className="flex items-center justify-center gap-2 w-full py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md transition-colors disabled:opacity-50"
+                className="flex cursor-pointer items-center justify-center gap-2 w-full py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
                 {isPending ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
                 {hasRequested ? 'Request Sent' : 'Request New Board'}

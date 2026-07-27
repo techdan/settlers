@@ -2,12 +2,9 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import {
     resolveBarbbarianAttack,
     getTotalCities,
-    getTotalKnightStrength,
-    getDefenderOfCatan
 } from '../barbarian-manager';
 import { createTestGameState, createTestPlayer, createTestVertex } from '@/lib/test-utils';
-import { GameState } from '@/lib/types';
-import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
+import type { GameState } from '@/lib/types';
 
 describe('Barbarian Manager', () => {
     let gameState: GameState;
@@ -50,7 +47,13 @@ describe('Barbarian Manager', () => {
             gameState.board.vertices['0,0,0'] = { id: '0,0,0', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 };
 
             // p1 has active strong knight (strength 2)
-            gameState.players[0].knights = [{ id: 'k1', level: 'strong', active: true, owner: 'p1', location: '0,0,0', hasMoved: false } as any];
+            gameState.players[0].knights = [{
+                id: 'k1',
+                level: 'strong',
+                active: true,
+                playerId: 'p1',
+                vertexId: '0,0,0',
+            }];
             gameState.players[0].activeKnightCount = 2; // Usually calculated, but setting for safety if mocked
 
             resolveBarbbarianAttack(gameState);
@@ -68,8 +71,20 @@ describe('Barbarian Manager', () => {
             // Setup: 1 city total. Knights: p1=1, p2=1. Total 2 >= 1.
             gameState.board.vertices['0,0,0'] = { id: '0,0,0', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 };
 
-            gameState.players[0].knights = [{ id: 'k1', level: 'basic', active: true, owner: 'p1', location: 'e1' } as any];
-            gameState.players[1].knights = [{ id: 'k2', level: 'basic', active: true, owner: 'p2', location: 'e2' } as any];
+            gameState.players[0].knights = [{
+                id: 'k1',
+                level: 'basic',
+                active: true,
+                playerId: 'p1',
+                vertexId: 'e1',
+            }];
+            gameState.players[1].knights = [{
+                id: 'k2',
+                level: 'basic',
+                active: true,
+                playerId: 'p2',
+                vertexId: 'e2',
+            }];
 
             resolveBarbbarianAttack(gameState);
 
@@ -89,7 +104,13 @@ describe('Barbarian Manager', () => {
         });
 
         it('weakest player loses city (p2 has 0 knights)', () => {
-            gameState.players[0].knights = [{ id: 'k1', level: 'basic', active: true, owner: 'p1', location: 'e1' } as any];
+            gameState.players[0].knights = [{
+                id: 'k1',
+                level: 'basic',
+                active: true,
+                playerId: 'p1',
+                vertexId: 'e1',
+            }];
             // p2 has 0 knights
 
             resolveBarbbarianAttack(gameState);
@@ -108,7 +129,13 @@ describe('Barbarian Manager', () => {
             // p1 has 2 cities. p1 becomes victim.
 
             gameState.board.vertices['v3'].structure = 'metropolis'; // p2's city is now metropolis
-            gameState.players[0].knights = [{ id: 'k1', level: 'basic', active: true, owner: 'p1', location: 'e1' } as any];
+            gameState.players[0].knights = [{
+                id: 'k1',
+                level: 'basic',
+                active: true,
+                playerId: 'p1',
+                vertexId: 'e1',
+            }];
 
             resolveBarbbarianAttack(gameState);
 

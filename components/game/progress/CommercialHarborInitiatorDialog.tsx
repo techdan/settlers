@@ -92,8 +92,12 @@ const OfferSelectionDialog: React.FC<{
 
             // Success - close the modal so player can continue their turn
             onClose?.();
-        } catch (e: any) {
-            setError(e.message || 'Failed to make offers');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to make offers'
+            );
             setIsSubmitting(false);
         }
     };
@@ -113,8 +117,12 @@ const OfferSelectionDialog: React.FC<{
             await cancelCommercialHarbor(roomId, playerId);
 
             // Success - modal will close
-        } catch (e: any) {
-            setError(e.message || 'Failed to cancel');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to cancel'
+            );
             setIsSubmitting(false);
         }
     };
@@ -202,7 +210,10 @@ const OfferSelectionDialog: React.FC<{
 
                 {/* Error Message */}
                 {error && (
-                    <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm text-center">
+                    <div
+                        role="alert"
+                        className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm text-center"
+                    >
                         {error}
                     </div>
                 )}

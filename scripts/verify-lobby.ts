@@ -35,7 +35,9 @@ async function verifyLobby() {
     console.log('Board generated successfully (19 hexes)');
 
     // 4. Verify Adjacency (Simple check)
-    const redTokens = state.boardPreview.filter((t: any) => t.numberToken === 6 || t.numberToken === 8);
+    const redTokens = state.boardPreview.filter(
+        tile => tile.numberToken === 6 || tile.numberToken === 8
+    );
     console.log(`Found ${redTokens.length} red tokens (should be 4)`);
 
     // 5. Toggle Fairness

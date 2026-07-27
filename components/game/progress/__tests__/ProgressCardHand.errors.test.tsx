@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,7 +11,9 @@ import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
  * but the server stays authoritative — anything it refuses must be visible.
  */
 
-const renderHand = (onPlayCard: (type: any, options?: any) => Promise<void>) => {
+type OnPlayCard = ComponentProps<typeof ProgressCardHand>['onPlayCard'];
+
+const renderHand = (onPlayCard: OnPlayCard) => {
     // Constitution plays directly with no follow-up modal, which is the
     // path that silently swallowed errors.
     const player = createTestPlayer({

@@ -1,7 +1,11 @@
-import { GameState } from '@/lib/types';
-import { ProgressCardType } from '@/lib/types/player';
-import { ProgressCardCategory } from '@/core/rules/commodity-constants';
-import { getCardMetadata, isCardImplemented } from './progress-card-definitions';
+import type { GameState } from '@/lib/types';
+import type { ProgressCardType } from '@/lib/types/player';
+import type { ProgressCardCategory } from '@/core/rules/commodity-constants';
+import {
+    createProgressDecks,
+    getCardMetadata,
+    isCardImplemented,
+} from './progress-card-definitions';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { getCardExecutor } from './CardExecutor';
 
@@ -25,7 +29,6 @@ export function drawProgressCard(
 ): ProgressCardType | null {
     if (!gameState.progressDecks) {
         // Lazy-create decks if missing (e.g., legacy game state)
-        const { createProgressDecks } = require('@/core/engine/progress/progress-card-definitions');
         gameState.progressDecks = createProgressDecks();
     }
 
@@ -121,7 +124,7 @@ export function playProgressCard(
     gameState: GameState,
     playerId: string,
     cardType: ProgressCardType,
-    options?: any
+    options?: unknown
 ): void {
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
@@ -208,7 +211,7 @@ function executeProgressCardEffect(
     gameState: GameState,
     playerId: string,
     cardType: ProgressCardType,
-    options?: any
+    options?: unknown
 ): void {
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return;

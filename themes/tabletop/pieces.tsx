@@ -7,8 +7,8 @@ import { TT } from './palette';
  *
  * Color handling: `color` arrives as a CSS custom property reference
  * (var(--color-player-N)), so facet shading uses CSS brightness() filters —
- * which work on any paint value — instead of hex math (the voxel theme proved
- * this pattern). Sun is top-left (§2.2): tops lightest, left lit, right dark.
+ * which work on any paint value instead of relying on hex-color math. Sun is
+ * top-left (§2.2): tops lightest, left lit, right dark.
  * Every grounded piece carries its own ellipse shadow.
  */
 

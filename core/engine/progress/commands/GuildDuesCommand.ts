@@ -6,6 +6,24 @@ import { CommodityType } from '@/core/rules/commodity-constants';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
 import { recordTheftEvent } from '@/core/engine/theft-events';
 
+type GuildDuesCardType = 'resource' | 'commodity';
+
+interface RequestedCard {
+  type: GuildDuesCardType;
+  value: string;
+}
+
+const RESOURCE_TYPES = new Set<string>(['wood', 'brick', 'sheep', 'wheat', 'ore']);
+const COMMODITY_TYPES = new Set<string>(['paper', 'cloth', 'coin']);
+
+function isResourceType(value: string): value is ResourceType {
+  return RESOURCE_TYPES.has(value);
+}
+
+function isCommodityType(value: string): value is CommodityType {
+  return COMMODITY_TYPES.has(value);
+}
+
 /**
  * Guild Dues Card Command
  * Trade card: Take up to 2 cards from an opponent with more VP
@@ -14,17 +32,38 @@ import { recordTheftEvent } from '@/core/engine/theft-events';
  * Legacy implementation: executeGuildDues() (lines 1306-1383)
  */
 export class GuildDuesCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const opponentId = options?.opponentId as string | undefined;
-    const card1Type = options?.card1Type as 'resource' | 'commodity' | undefined;
-    const card1Value = options?.card1Value as string | undefined;
-    const card2Type = options?.card2Type as 'resource' | 'commodity' | undefined;
-    const card2Value = options?.card2Value as string | undefined;
+    const commandOptions =
+      typeof options === 'object' && options !== null
+        ? (options as Record<string, unknown>)
+        : {};
+    const opponentId =
+      typeof commandOptions.opponentId === 'string'
+        ? commandOptions.opponentId
+        : undefined;
+    const card1Type =
+      commandOptions.card1Type === 'resource' ||
+      commandOptions.card1Type === 'commodity'
+        ? commandOptions.card1Type
+        : undefined;
+    const card1Value =
+      typeof commandOptions.card1Value === 'string'
+        ? commandOptions.card1Value
+        : undefined;
+    const card2Type =
+      commandOptions.card2Type === 'resource' ||
+      commandOptions.card2Type === 'commodity'
+        ? commandOptions.card2Type
+        : undefined;
+    const card2Value =
+      typeof commandOptions.card2Value === 'string'
+        ? commandOptions.card2Value
+        : undefined;
 
     if (!opponentId || !card1Type || !card1Value) {
       throw new Error('Guild Dues requires selecting an opponent and at least one card');
@@ -45,10 +84,12 @@ export class GuildDuesCommand implements ProgressCardCommand {
     }
 
     // Build requested cards list
-    const requested = [
+    const requested: RequestedCard[] = [
       { type: card1Type, value: card1Value },
-      ...(card2Type && card2Value ? [{ type: card2Type, value: card2Value }] : []),
     ];
+    if (card2Type && card2Value) {
+      requested.push({ type: card2Type, value: card2Value });
+    }
 
     const requiredCount = Math.min(2, availableCards);
     if (requested.length !== requiredCount) {
@@ -70,12 +111,16 @@ export class GuildDuesCommand implements ProgressCardCommand {
     for (const [key, count] of Object.entries(requestedCounts)) {
       const [type, rawValue] = key.split(':');
       if (type === 'resource') {
-        const available = opponent.resources[rawValue as ResourceType] ?? 0;
+        const available = isResourceType(rawValue)
+          ? opponent.resources[rawValue]
+          : 0;
         if (available < count) {
           throw new Error('Opponent does not have that resource');
         }
       } else {
-        const available = opponent.commodities?.[rawValue as CommodityType] ?? 0;
+        const available = isCommodityType(rawValue)
+          ? opponent.commodities?.[rawValue] ?? 0
+          : 0;
         if (available < count) {
           throw new Error('Opponent does not have that commodity');
         }
@@ -85,13 +130,19 @@ export class GuildDuesCommand implements ProgressCardCommand {
     // Transfer cards
     for (const pick of requested) {
       if (pick.type === 'resource') {
+        if (!isResourceType(pick.value)) {
+          throw new Error('Opponent does not have that resource');
+        }
         removeResources(opponent, { [pick.value]: 1 });
         addResources(player, { [pick.value]: 1 });
       } else {
+        if (!isCommodityType(pick.value)) {
+          throw new Error('Opponent does not have that commodity');
+        }
         if (!opponent.commodities) opponent.commodities = { paper: 0, cloth: 0, coin: 0 };
         if (!player.commodities) player.commodities = { paper: 0, cloth: 0, coin: 0 };
-        opponent.commodities[pick.value as CommodityType] -= 1;
-        player.commodities[pick.value as CommodityType] += 1;
+        opponent.commodities[pick.value] -= 1;
+        player.commodities[pick.value] += 1;
       }
     }
 
@@ -99,9 +150,13 @@ export class GuildDuesCommand implements ProgressCardCommand {
     const takenCount = requested.length;
     const stolenItems = Object.entries(requestedCounts).map(([key, count]) => {
       const [type, value] = key.split(':');
-      return type === 'resource'
-        ? { type: 'resource' as const, value: value as ResourceType, count }
-        : { type: 'commodity' as const, value: value as CommodityType, count };
+      if (type === 'resource' && isResourceType(value)) {
+        return { type: 'resource' as const, value, count };
+      }
+      if (type === 'commodity' && isCommodityType(value)) {
+        return { type: 'commodity' as const, value, count };
+      }
+      throw new Error('Invalid Guild Dues card selection');
     });
 
     recordTheftEvent(state, {

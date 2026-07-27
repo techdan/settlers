@@ -1,4 +1,4 @@
-import { ResourceType } from '@/core/rules/board-constants';
+import type { ResourceType } from '@/core/rules/board-constants';
 import type { CommodityType, ImprovementType, MetropolisType } from '@/core/rules/commodity-constants';
 
 /**
@@ -46,6 +46,12 @@ export type DevCardType =
     | 'road_building'
     | 'year_of_plenty'
     | 'monopoly';
+
+export interface DevCardPlayOptions {
+    resource1?: ResourceType;
+    resource2?: ResourceType;
+    monopolyResource?: ResourceType;
+}
 
 /**
  * Cities & Knights - Progress card types

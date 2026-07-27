@@ -49,9 +49,13 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
         try {
             await onDiscard(selectedCards);
             onClose();
-        } catch (e: any) {
-            console.error('Failed to discard cards:', e);
-            setError(e.message || 'Failed to discard cards. Please try again.');
+        } catch (error: unknown) {
+            console.error('Failed to discard cards:', error);
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to discard cards. Please try again.'
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -76,7 +80,7 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                     You have {cards.length} progress cards but can only keep {maxCards} at the end of your turn.
                     <br />
                     {isOtherTurn ? (
-                        <strong className="text-amber-400">You gained an extra card on another player's turn. Discard now to return to {maxCards}.</strong>
+                        <strong className="text-amber-400">You gained an extra card on another player&apos;s turn. Discard now to return to {maxCards}.</strong>
                     ) : (
                         <strong className="text-amber-400">You can briefly hold a 5th card on your turn, but must be at {maxCards} or fewer before ending it.</strong>
                     )}
@@ -124,7 +128,7 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                 )}
 
                 <p className="mt-4 text-center text-xs text-[var(--ui-muted)]">
-                    Progress card hand limit is 4. If you gain a 5th on someone else's turn, discard immediately. On your turn, discard or play cards before ending.
+                    Progress card hand limit is 4. If you gain a 5th on someone else&apos;s turn, discard immediately. On your turn, discard or play cards before ending.
                 </p>
         </TabletopModal>
     );

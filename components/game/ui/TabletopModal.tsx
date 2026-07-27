@@ -59,7 +59,7 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
     // the tablet HUD (top-0, xl:hidden) on narrow viewports.
     const wrapperClass = isBoardVisible
         ? 'fixed inset-x-0 top-4 z-[60] flex justify-center pointer-events-none px-[max(1rem,env(safe-area-inset-left))] max-xl:top-24'
-        : `fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 pointer-events-auto px-[max(1rem,env(safe-area-inset-left))] py-[max(1rem,env(safe-area-inset-top))] ${backdropBlur ? 'backdrop-blur-sm' : ''}`;
+        : `fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 pointer-events-auto px-[max(1rem,env(safe-area-inset-left))] py-[max(1rem,env(safe-area-inset-top))] ${onClose ? 'cursor-pointer' : ''} ${backdropBlur ? 'backdrop-blur-sm' : ''}`;
 
     // Board-visible panels stay short so they cover as few hexes as possible.
     const panelClass = isBoardVisible
@@ -81,7 +81,7 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
                 role="dialog"
                 aria-modal={!isBoardVisible}
                 aria-label={typeof title === 'string' ? title : 'Game dialog'}
-                className={`w-full ${WIDTH_CLASSES[width]} overflow-hidden overscroll-contain rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] text-[var(--ui-text)] ${panelClass} ${className}`}
+                className={`w-full ${WIDTH_CLASSES[width]} cursor-default overflow-hidden overscroll-contain rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] text-[var(--ui-text)] ${panelClass} ${className}`}
                 onClick={(event) => event.stopPropagation()}
             >
                 <header className={`flex items-start justify-between gap-4 border-b border-[var(--ui-border)] ${headerPad}`}>

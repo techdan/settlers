@@ -1,8 +1,8 @@
-import { GameState, DevCardType } from '@/lib/types';
-import { ResourceType } from '@/core/rules/board-constants';
+import type { DevCardPlayOptions, DevCardType, GameState } from '@/lib/types';
+import type { ResourceType } from '@/core/rules/board-constants';
 import { isRoadBuildingEffect, type RoadBuildingEffect } from '@/lib/types/effects';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-costs';
+import { canAfford, deductCost } from '@/core/rules/building-costs';
 import { updateLongestRoadIncremental } from '@/core/engine/scoring/longest-road';
 import { updateLargestArmy } from '@/core/engine/scoring/largest-army';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
@@ -103,11 +103,7 @@ export async function playDevCard(
     roomId: string,
     playerId: string,
     cardType: DevCardType,
-    options?: {
-        resource1?: ResourceType;
-        resource2?: ResourceType;
-        monopolyResource?: ResourceType;
-    }
+    options?: DevCardPlayOptions
 ): Promise<GameState> {
     // Get game state
     const gameState = await getGameStateByRoomId(roomId);

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { getCardExecutor, CardExecutor } from '../CardExecutor';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
-import { GameState } from '@/lib/types';
+import type { GameState, ProgressCardType } from '@/lib/types';
 import * as ResourceEffects from '../effects/ResourceEffects';
 
 // Mock the ResourceEffects module
@@ -35,7 +35,7 @@ describe('CardExecutor', () => {
 
     describe('execute', () => {
         it('throws error for unimplemented/unknown card', () => {
-            expect(() => executor.execute('unknown_card' as any, gameState, 'p1'))
+            expect(() => executor.execute('unknown_card' as ProgressCardType, gameState, 'p1'))
                 .toThrow(/not implemented|not found/);
         });
 

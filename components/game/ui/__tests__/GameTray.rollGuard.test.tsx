@@ -1,8 +1,51 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { GameTray } from '../GameTray';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-helpers';
+import type { ProgressCardType } from '@/lib/types';
+
+/*
+ * This test owns the GameTray -> ProgressCardHand -> panel-state integration.
+ * Artwork, tooltips, modal bodies, build controls, and player-hand rendering
+ * have focused suites of their own. Keeping those visual subtrees out of this
+ * fixture makes the timing assertion independent of full-suite CPU pressure.
+ */
+vi.mock('@/components/game/city/BuildControls', () => ({
+    BuildControls: () => null,
+}));
+vi.mock('@/components/game/player/PlayerHand', () => ({
+    PlayerHand: () => null,
+}));
+vi.mock('@/components/game/ui/ActionControls', () => ({
+    ActionControls: () => null,
+}));
+vi.mock('@/components/game/ui/DiceDisplay', () => ({
+    DiceDisplay: () => null,
+}));
+vi.mock('@/components/game/player/ProgressHandView', () => ({
+    ProgressHandView: ({
+        cards,
+        onCardClick,
+    }: {
+        cards: Array<{ type: ProgressCardType }>;
+        onCardClick: (type: ProgressCardType) => void;
+    }) => (
+        <>
+            {cards.map((card) => (
+                <button
+                    key={card.type}
+                    type="button"
+                    aria-label="Alchemy"
+                    onClick={() => onCardClick(card.type)}
+                />
+            ))}
+        </>
+    ),
+}));
+vi.mock('@/components/game/progress/ProgressCardModal', () => ({
+    ProgressCardModal: ({ isOpen }: { isOpen: boolean }) =>
+        isOpen ? <div role="dialog" aria-label="Alchemy" /> : null,
+}));
 
 /**
  * Alchemy is playable only in `waiting_for_roll` — the same phase where the Roll
@@ -78,33 +121,31 @@ describe('GameTray roll guard', () => {
         };
     };
 
-    it('gates the dice/actions slot while a card panel is open, and restores it on cancel', async () => {
-        const user = userEvent.setup();
+    it('gates the dice/actions slot while a card panel is open, and restores it on cancel', () => {
         const { container } = renderTray();
 
         const actionsSlot = () => container.querySelector('[data-tray-slot="actions"]')!;
         expect(actionsSlot().className).toContain('pointer-events-auto');
 
         // Open Alchemy from the hand.
-        const card = screen.getAllByRole('button', { name: /Alchemy/i })[0];
-        await user.click(card);
+        const card = screen.getByRole('button', { name: 'Alchemy' });
+        fireEvent.click(card);
         expect(screen.getByRole('dialog', { name: 'Alchemy' })).toBeInTheDocument();
         expect(actionsSlot().className).toContain('pointer-events-none');
 
         // Clicking the card again cancels — the card slot is never gated, so this
         // escape hatch always works.
-        await user.click(card);
+        fireEvent.click(card);
         expect(screen.queryByRole('dialog', { name: 'Alchemy' })).not.toBeInTheDocument();
         expect(actionsSlot().className).toContain('pointer-events-auto');
     });
 
-    it('closes an open panel and un-gates the tray when the turn timer expires', async () => {
-        const user = userEvent.setup();
+    it('closes an open panel and un-gates the tray when the turn timer expires', () => {
         // 10s into a 120s turn: running, not yet expired.
         const { container, rerenderWith } = renderTray(makeState({ startedSecondsAgo: 10 }));
         const actionsSlot = () => container.querySelector('[data-tray-slot="actions"]')!;
 
-        await user.click(screen.getAllByRole('button', { name: /Alchemy/i })[0]);
+        fireEvent.click(screen.getByRole('button', { name: 'Alchemy' }));
         expect(screen.getByRole('dialog', { name: 'Alchemy' })).toBeInTheDocument();
         expect(actionsSlot().className).toContain('pointer-events-none');
 

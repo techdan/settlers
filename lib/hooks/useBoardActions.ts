@@ -1,7 +1,7 @@
 import { useTransition, useState } from 'react';
-import { GameState } from '@/lib/types';
-import { Knight } from '@/lib/types/player';
-import { BoardSelectionState, BoardCallbacks } from '@/lib/types/board-selection-state';
+import type { GameState } from '@/lib/types';
+import type { Knight } from '@/lib/types/player';
+import type { BoardSelectionState, BoardCallbacks, PendingBoardPlacement } from '@/lib/types/board-selection-state';
 import {
   placeSettlement,
   placeRoad,
@@ -18,11 +18,14 @@ import {
 } from '@/app/actions';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
-import { isValidKnightPlacement } from '@/core/validation/knight-validator';
+import {
+  isValidKnightMovement,
+  isValidKnightPlacement,
+} from '@/core/validation/knight-validator';
+import { isValidMetropolisPlacement } from '@/core/validation/metropolis-validator';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { getTotalResources } from '@/core/engine/resources/resource-manager';
 import { getCanonicalVertexId } from '@/lib/hex';
-import { PendingBoardPlacement } from '@/lib/types/board-selection-state';
 
 /**
  * useBoardActions hook
@@ -155,7 +158,6 @@ export function useBoardActions(
 
     // Knight Movement Mode - USE SERVER ACTION (not fetch)
     if (movingKnightId) {
-      const { isValidKnightMovement } = require('@/core/validation/knight-validator');
       if (isValidKnightMovement(gameState, movingKnightId, vertexId, playerId)) {
         startTransition(async () => {
           try {
@@ -172,7 +174,6 @@ export function useBoardActions(
 
     // Metropolis Building Mode - USE SERVER ACTION (not fetch)
     if (buildingMetropolisType) {
-      const { isValidMetropolisPlacement } = require('@/core/validation/metropolis-validator');
       if (isValidMetropolisPlacement(gameState, vertexId, playerId, buildingMetropolisType)) {
         startTransition(async () => {
           try {

@@ -12,6 +12,7 @@ export function setActiveEffect(
   state: GameState,
   effect: string | null
 ): GameState {
+  void effect;
   // TODO: Implement based on actual GameState structure
   return state;
 }
@@ -30,6 +31,8 @@ export function clearActiveEffect(state: GameState): GameState {
  * TODO: Implement when active effect tracking is clarified
  */
 export function isEffectActive(state: GameState, effect: string): boolean {
+  void state;
+  void effect;
   // TODO: Implement based on actual GameState structure
   return false;
 }
@@ -42,16 +45,12 @@ export function addLog(
   message: string,
   playerId?: string
 ): GameState {
-  const playerName = playerId
-    ? state.players.find((p) => p.id === playerId)?.name || 'Unknown'
-    : 'System';
-
   state.logs.push({
     id: crypto.randomUUID(),
     message,
     timestamp: Date.now(),
-    playerId: playerId,
-  } as any);
+    playerId,
+  });
 
   return state;
 }
@@ -65,6 +64,8 @@ export function addPlayedProgressCard(
   playerId: string,
   cardType: string
 ): GameState {
+  void playerId;
+  void cardType;
   // TODO: Implement based on actual GameState structure
   return state;
 }
@@ -80,7 +81,7 @@ export function removeProgressCard(
   const player = state.players.find((p) => p.id === playerId);
   if (!player || !player.progressCards) return state;
 
-  const cardIndex = player.progressCards.indexOf(cardType as any);
+  const cardIndex = player.progressCards.findIndex((card) => card === cardType);
   if (cardIndex !== -1) {
     player.progressCards.splice(cardIndex, 1);
   }

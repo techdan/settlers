@@ -7,7 +7,6 @@ import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources, logDistribution } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { rollEventDie, processEventDieRoll, getCategoryFromColor, getEligiblePlayersForCardDraw } from '@/core/engine/dice/event-die-manager';
-import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board-generator';
 import { createDevCardDeck } from '@/core/engine/development/dev-card-manager';
@@ -61,7 +60,7 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
     const turnOrder = shuffledPlayers.map(p => p.id);
 
     // 3. Initialize Player States
-    const playerStates: PlayerState[] = shuffledPlayers.map((p, i) => {
+    const playerStates: PlayerState[] = shuffledPlayers.map(p => {
         const basePlayer = {
             id: p.id,
             name: p.name,

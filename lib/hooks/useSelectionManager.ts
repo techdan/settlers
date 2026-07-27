@@ -256,6 +256,7 @@ export function useSelectionManager(): SelectionState {
     setBuildingMetropolisType(null);
     setSelectingCityForMetropolis(null);
     setSelectedMetropolisCityId(null);
+    setIsMetropolisSubmitting(false);
     setSelectingHexForCard(null);
     setInventorSelection({});
     setIsInventorConfirmOpen(false);
@@ -269,25 +270,32 @@ export function useSelectionManager(): SelectionState {
     setSelectingVertexForCard(null);
     setIntrigueTarget(null);
     setIntrigueError(null);
+    setIsSubmittingIntrigue(false);
     setSelectingEdgeForCard(null);
     setDiplomatStage(null);
     setDiplomatSelectedEdgeId(null);
     setDiplomatSelectedEdgeOwner(null);
     setDiplomatRelocateEdgeId(null);
     setDiplomatError(null);
+    setIsSubmittingDiplomat(false);
+    setIsTreasonModalOpen(false);
     setTreasonMode(null);
     setTreasonSelectedOpponentId(null);
     setTreasonSelectedKnightId(null);
     setTreasonSelectedPlacementVertexId(null);
     setTreasonError(null);
+    setIsSubmittingTreason(false);
     setSelectingCityForEngineer(false);
     setSelectedEngineerCityId(null);
+    setIsEngineerSubmitting(false);
     setSelectingCityForMedicine(false);
     setSelectedMedicineCityId(null);
     setIsSubmittingMedicine(false);
     setSelectingKnightsForSmith(false);
     setSelectedSmithKnightIds([]);
     setSmithError(null);
+    setIsCraneDialogOpen(false);
+    setIsPlayerCityManagementOpen(false);
   };
 
   return {

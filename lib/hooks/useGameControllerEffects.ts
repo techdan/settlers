@@ -1,7 +1,22 @@
 import { useEffect } from 'react';
-import { GameState, TheftEvent } from '@/lib/types';
+import type { GameState, ProgressCardType, TheftEvent } from '@/lib/types';
 import { resolveBarbarianAttack } from '@/app/actions';
 import { synchronizeTimerClock } from '@/lib/services/timer-clock';
+import type { SelectionState } from './useSelectionManager';
+
+type SelectedCardSelectionState = Pick<
+  SelectionState,
+  | 'selectingHexForCard'
+  | 'selectingVertexForCard'
+  | 'selectingEdgeForCard'
+  | 'selectingCityForEngineer'
+  | 'selectingCityForMedicine'
+  | 'selectingCityForMetropolis'
+  | 'selectingKnightsForSmith'
+  | 'isCraneDialogOpen'
+  | 'treasonMode'
+  | 'isTreasonModalOpen'
+>;
 
 export function useInitialGameState(roomId: string, setBaseGameState: (state: GameState) => void) {
   useEffect(() => {
@@ -200,39 +215,34 @@ export function useTurnSubmissionReset(
   playerId: string,
   setTurnSubmitted: (val: boolean) => void
 ) {
+  const shouldReset =
+    gameState !== null &&
+    (gameState.currentTurn !== playerId || gameState.phase === 'waiting_for_roll');
+
   useEffect(() => {
-    if (!gameState) return;
-    if (gameState.currentTurn !== playerId || gameState.phase === 'waiting_for_roll') {
+    if (shouldReset) {
       setTurnSubmitted(false);
     }
-  }, [gameState?.currentTurn, gameState?.phase, playerId, setTurnSubmitted]);
+  }, [setTurnSubmitted, shouldReset]);
 }
 
 export function useGameOverModalEffect(
   gameState: GameState | null,
   setShowGameOverModal: (show: boolean) => void
 ) {
+  const isGameOver =
+    gameState?.phase === 'game_over' || Boolean(gameState?.winner);
+
   useEffect(() => {
-    if (gameState && (gameState.phase === 'game_over' || !!gameState.winner)) {
+    if (isGameOver) {
       setShowGameOverModal(true);
     }
-  }, [gameState?.phase, gameState?.winner, setShowGameOverModal]);
+  }, [isGameOver, setShowGameOverModal]);
 }
 
 export function useSelectedCardAutoClear(
-  selectedProgressCard: string | null,
-  selectionManager: {
-    selectingHexForCard: any;
-    selectingVertexForCard: any;
-    selectingEdgeForCard: any;
-    selectingCityForEngineer: any;
-    selectingCityForMedicine: any;
-    selectingCityForMetropolis: any;
-    selectingKnightsForSmith: any;
-    isCraneDialogOpen: any;
-    treasonMode: any;
-    isTreasonModalOpen: any;
-  },
+  selectedProgressCard: ProgressCardType | null,
+  selectionManager: SelectedCardSelectionState,
   clearSelectedCard: () => void
 ) {
   useEffect(() => {

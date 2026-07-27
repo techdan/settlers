@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { HexTileData } from '@/core/engine/board/board-generator';
+import { useMemo } from 'react';
+import type { HexTileData } from '@/core/engine/board/board-generator';
 import { HexTile, Port } from '@/themes/tabletop';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { BoardControls } from '@/components/board/BoardControls';
 import { generatePorts } from '@/core/engine/board/port-generator';
 import { hexToPixel } from '@/lib/hex';
+
+const HEX_SIZE = 60;
+const PORTS = generatePorts(HEX_SIZE);
 
 interface BoardPreviewProps {
     board: HexTileData[];
@@ -21,10 +24,10 @@ export function BoardPreview({ board }: BoardPreviewProps) {
         );
     }
 
-    const HEX_SIZE = 60;
+    return <GeneratedBoardPreview board={board} />;
+}
 
-    const ports = useMemo(() => generatePorts(HEX_SIZE), [HEX_SIZE]);
-
+function GeneratedBoardPreview({ board }: BoardPreviewProps) {
     const viewBox = useMemo(() => {
         // Include ports + port endpoints so connection lines never clip.
         const points: Array<{ x: number; y: number }> = [];
@@ -33,7 +36,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
             points.push(hexToPixel(tile.hex, HEX_SIZE));
         }
 
-        for (const port of ports) {
+        for (const port of PORTS) {
             points.push(port.position);
             if (port.vertices) {
                 points.push(...port.vertices);
@@ -66,7 +69,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
         const height = (maxY - minY) + topPadding + bottomPadding;
 
         return `${x} ${y} ${width} ${height}`;
-    }, [board, ports]);
+    }, [board]);
 
     return (
         <div className="w-full h-full bg-slate-50 dark:bg-slate-900 overflow-hidden relative cursor-grab active:cursor-grabbing">
@@ -82,7 +85,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                 limitToBounds={false}
                 alignmentAnimation={{ sizeX: 0, sizeY: 0 }}
             >
-                {({ zoomIn, zoomOut, resetTransform }) => (
+                {({ zoomIn, zoomOut }) => (
                     <>
                         <BoardControls
                             onZoomIn={() => zoomIn(0.1)}
@@ -115,7 +118,7 @@ export function BoardPreview({ board }: BoardPreviewProps) {
                                         />
                                     ))}
 
-                                    {ports.map((port) => (
+                                    {PORTS.map((port) => (
                                         <Port key={port.id} port={port} />
                                     ))}
                                 </g>

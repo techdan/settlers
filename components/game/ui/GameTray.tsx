@@ -6,32 +6,41 @@ import { PlayerDevCards } from '../player/PlayerDevCards';
 import { ProgressCardHand } from '../progress/ProgressCardHand';
 import { ActionControls } from './ActionControls';
 import { DiceDisplay } from './DiceDisplay';
-import { ProgressCardType } from '@/lib/types/player';
+import { PlayerState, ProgressCardType } from '@/lib/types/player';
+import type {
+  EdgeSelectionType,
+  HexSelectionType,
+  SelectionState,
+} from '@/lib/hooks/useSelectionManager';
+import type { ProgressCardHandlerDecorator } from '@/lib/hooks/useProgressCardSelectionDecorator';
 
-interface GameTrayProps {
+type GameTraySelectionState = Pick<
+  SelectionState,
+  'buildMode' | 'setBuildMode' | 'selectingKnightsForSmith' | 'selectingCityForMedicine'
+>;
+
+interface GameTrayProgressCardHandlers {
+  handlePlayProgressCard: (type: ProgressCardType, options?: unknown) => Promise<void>;
+  handleStartHexSelection: (type: HexSelectionType) => void;
+  handleStartVertexSelection: (type: 'intrigue') => void;
+  handleStartEdgeSelection: (type: EdgeSelectionType) => void;
+  handleStartEngineerSelection: () => void;
+  handleStartMedicineSelection: () => void;
+  handleStartTreasonSelection: () => void;
+}
+
+export interface GameTrayProps {
   gameState: GameState;
   playerId: string;
   isCitiesAndKnights: boolean;
-  currentPlayer: any;
-  selectionManager: any;
+  currentPlayer: PlayerState | undefined;
+  selectionManager: GameTraySelectionState;
   promptBlocksUI: boolean;
   engineerSelectionActive: boolean;
   isActiveTurn: boolean;
   handleCancelFollowupCard: () => void;
-  decorateCardHandler: <TArgs extends any[], TResult>(
-    cardType: ProgressCardType,
-    hasFollowupStep: boolean,
-    handler: (...args: TArgs) => TResult
-  ) => (...args: TArgs) => TResult;
-  progressCardControllerHandlers: {
-    handlePlayProgressCard: (type: ProgressCardType, options?: any) => Promise<void>;
-    handleStartHexSelection: (type: any) => void;
-    handleStartVertexSelection: (type: any) => void;
-    handleStartEdgeSelection: (type: any) => void;
-    handleStartEngineerSelection: () => void;
-    handleStartMedicineSelection: () => void;
-    handleStartTreasonSelection: () => void;
-  };
+  decorateCardHandler: ProgressCardHandlerDecorator;
+  progressCardControllerHandlers: GameTrayProgressCardHandlers;
   improvementControllerHandlers: {
     handleStartCraneDialog: () => void;
   };

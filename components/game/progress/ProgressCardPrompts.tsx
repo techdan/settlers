@@ -8,6 +8,7 @@ import { TreasonPlacementModal } from './TreasonPlacementModal';
 import { BoardSelectionPrompt } from '../overlays/BoardSelectionPrompt';
 import { ResourceType } from '@/core/rules/board-constants';
 import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
+import type { RoadBuildingEffect } from '@/lib/types/effects';
 
 interface ProgressCardPromptsProps {
   gameState: GameState;
@@ -41,7 +42,7 @@ interface ProgressCardPromptsProps {
   medicinePromptStatus?: string;
   showRoadBuildingPrompt: boolean;
   roadBuildingPromptStatus?: string;
-  roadBuildingEffect: any;
+  roadBuildingEffect?: RoadBuildingEffect;
   showInventorPrompt: boolean;
   inventorPromptStatus?: string;
   showDiplomatPrompt: boolean;
@@ -49,7 +50,6 @@ interface ProgressCardPromptsProps {
 }
 
 export const ProgressCardPrompts: React.FC<ProgressCardPromptsProps> = ({
-  gameState,
   selectionManager,
   progressCardController,
   onCancelSelection,

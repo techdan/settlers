@@ -58,8 +58,12 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
         try {
             await onActivate(knightId);
             onClose();
-        } catch (e: any) {
-            setError(e.message || 'Failed to activate knight');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to activate knight'
+            );
             setIsSubmitting(false);
         }
     };
@@ -73,8 +77,12 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
             // Don't close, allow further actions? Or close?
             // Upgrading doesn't necessarily end interaction.
             setIsSubmitting(false);
-        } catch (e: any) {
-            setError(e.message || 'Failed to upgrade knight');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to upgrade knight'
+            );
             setIsSubmitting(false);
         }
     };
@@ -92,8 +100,12 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
         try {
             await onChaseRobber(knightId);
             onClose();
-        } catch (e: any) {
-            setError(e.message || 'Failed to chase away robber');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to chase away robber'
+            );
             setIsSubmitting(false);
         }
     };
@@ -109,7 +121,10 @@ export const KnightManagementDialog: React.FC<KnightManagementDialogProps> = ({
     return (
         <TabletopModal title="Knight Management" onClose={onClose}>
                 {error && (
-                    <div className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]">
+                    <div
+                        role="alert"
+                        className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]"
+                    >
                         {error}
                     </div>
                 )}

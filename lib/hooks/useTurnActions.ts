@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { rollDice, endTurn } from '@/app/actions';
-import { GameState } from '@/lib/types';
+import type { GameState, PlayerState } from '@/lib/types';
 
 interface UseTurnActionsParams {
   roomId: string;
@@ -11,7 +11,7 @@ interface UseTurnActionsParams {
   clearOptimisticUpdate: (id: string) => void;
   setTurnSubmitted: (submitted: boolean) => void;
   isCitiesAndKnights: boolean;
-  currentPlayer: { progressCards?: any[] } | null | undefined;
+  currentPlayer: Pick<PlayerState, 'progressCards'> | null | undefined;
   setShowProgressCardDiscard: (show: boolean) => void;
   setProgressDiscardContext: (context: 'own_turn' | 'other_turn') => void;
 }
@@ -75,12 +75,12 @@ export function useTurnActions({
     setTurnSubmitted(true);
     try {
       await endTurn(roomId, playerId);
-    } catch (e: any) {
-      const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
       if (!message.includes('not your turn')) {
         setTurnSubmitted(false);
       }
-      console.error('Failed to end turn', e);
+      console.error('Failed to end turn', error);
     } finally {
       clearOptimisticUpdate(optimisticId);
     }

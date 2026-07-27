@@ -11,20 +11,24 @@ import { upgradeKnight } from '@/core/engine/knights/knight-manager';
  * Legacy implementation: executeSmith() (lines 698-743)
  */
 export class SmithCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
     // Parse knight IDs from options
-    const rawIds = Array.isArray(options?.knightIds)
-      ? options.knightIds
-      : options?.knightId
-      ? [options.knightId]
+    const commandOptions =
+      typeof options === 'object' && options !== null
+        ? (options as Record<string, unknown>)
+        : {};
+    const rawIds = Array.isArray(commandOptions.knightIds)
+      ? commandOptions.knightIds
+      : commandOptions.knightId
+      ? [commandOptions.knightId]
       : [];
 
-    const knightIds = Array.from(new Set(rawIds.filter(Boolean))) as string[];
+    const knightIds = Array.from(new Set(rawIds.filter(Boolean)));
 
     if (knightIds.length === 0) {
       throw new Error('Smithing requires selecting at least one of your knights to promote');

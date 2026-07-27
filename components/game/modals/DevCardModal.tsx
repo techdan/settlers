@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { DevCardType } from '@/lib/types/player';
-import { GameState, PlayerState } from '@/lib/types';
-import { ResourceType } from '@/core/rules/board-constants';
+import { useState, type FC } from 'react';
+import type {
+    DevCardPlayOptions,
+    DevCardType,
+    PlayerState
+} from '@/lib/types/player';
+import type { ResourceType } from '@/core/rules/board-constants';
 import { DevCardFace } from '@/themes/tabletop/cards';
 import { TabletopResourceIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton, TabletopModal, tabletopOptionClass } from '../ui/TabletopModal';
@@ -10,9 +13,11 @@ interface DevCardModalProps {
     isOpen: boolean;
     onClose: () => void;
     cardType: DevCardType | null;
-    gameState: GameState;
     currentPlayer: PlayerState;
-    onPlay: (cardType: DevCardType, options: any) => Promise<void>;
+    onPlay: (
+        cardType: DevCardType,
+        options?: DevCardPlayOptions
+    ) => Promise<void>;
 }
 
 const DEV_CARD_DEFINITIONS: Record<DevCardType, { name: string; description: string }> = {
@@ -38,13 +43,12 @@ const DEV_CARD_DEFINITIONS: Record<DevCardType, { name: string; description: str
     }
 };
 
-const RESOURCES: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
+const RESOURCES = ['wood', 'brick', 'sheep', 'wheat', 'ore'] satisfies ResourceType[];
 
-export const DevCardModal: React.FC<DevCardModalProps> = ({
+export const DevCardModal: FC<DevCardModalProps> = ({
     isOpen,
     onClose,
     cardType,
-    gameState,
     currentPlayer,
     onPlay
 }) => {
@@ -65,7 +69,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
     };
 
     const handlePlay = async () => {
-        let options: any = {};
+        let options: DevCardPlayOptions | undefined;
         setError('');
 
         switch (cardType) {
@@ -88,8 +92,10 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
             await onPlay(cardType, options);
             onClose();
             resetState();
-        } catch (e: any) {
-            setError(e.message || 'Failed to play card');
+        } catch (caught: unknown) {
+            setError(caught instanceof Error && caught.message
+                ? caught.message
+                : 'Failed to play card');
         }
     };
 
@@ -103,6 +109,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                             <div className="grid grid-cols-5 gap-2">
                                 {RESOURCES.map(r => (
                                     <button
+                                        type="button"
                                         key={r}
                                         onClick={() => setResource1(r)}
                                         className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(resource1 === r)}`}
@@ -118,6 +125,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                             <div className="grid grid-cols-5 gap-2">
                                 {RESOURCES.map(r => (
                                     <button
+                                        type="button"
                                         key={r}
                                         onClick={() => setResource2(r)}
                                         className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(resource2 === r)}`}
@@ -142,6 +150,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
                             <div className="grid grid-cols-5 gap-2">
                                 {RESOURCES.map(r => (
                                     <button
+                                        type="button"
                                         key={r}
                                         onClick={() => setMonopolyRes(r)}
                                         className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(monopolyRes === r)}`}
@@ -209,7 +218,7 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
             default:
                 return (
                     <p className="text-sm text-[var(--ui-muted)]">
-                        Click "Play Card" to use this card.
+                        Click “Play Card” to use this card.
                     </p>
                 );
         }
@@ -251,7 +260,10 @@ export const DevCardModal: React.FC<DevCardModalProps> = ({
 
                     {/* Error Message */}
                     {error && (
-                        <div className="mt-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm">
+                        <div
+                            role="alert"
+                            className="mt-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm"
+                        >
                             {error}
                         </div>
                     )}

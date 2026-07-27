@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { GameState, DevCardType } from '@/lib/types';
+import type { DevCardPlayOptions, DevCardType, GameState } from '@/lib/types';
 import { playDevCard } from '@/app/actions';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useTimerState } from '@/lib/hooks/useTimerState';
@@ -63,14 +63,16 @@ const devCardTooltipContent = (type: DevCardType, canPlay: boolean, timerLocked:
 
 export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playerId }) => {
     const player = gameState.players.find(p => p.id === playerId);
-    const [isPending, startTransition] = useTransition();
     const [modalCard, setModalCard] = useState<DevCardType | null>(null);
 
     const timerStatus = useTimerState(gameState);
 
     if (!player) return null;
 
-    const handlePlayCard = async (cardType: DevCardType, options: any) => {
+    const handlePlayCard = async (
+        cardType: DevCardType,
+        options?: DevCardPlayOptions
+    ) => {
         await playDevCard(gameState.roomId, playerId, cardType, options);
     };
 
@@ -104,7 +106,7 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                         <div className="flex flex-wrap gap-3 pt-1">
                             {heldTypes.map(type => {
                                 const canPlay = type === 'victory_point' || !player.hasPlayedDevCard;
-                                const isDisabled = isPending || timerStatus.isLocked || notPlayerTurn || wrongPhase || !canPlay;
+                                const isDisabled = timerStatus.isLocked || notPlayerTurn || wrongPhase || !canPlay;
 
                                 return (
                                     <Tooltip
@@ -171,7 +173,6 @@ export const PlayerDevCards: React.FC<PlayerDevCardsProps> = ({ gameState, playe
                         await handlePlayCard(cardType, options);
                         setModalCard(null);
                     }}
-                    gameState={gameState}
                     currentPlayer={player}
                 />,
                 document.body

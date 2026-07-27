@@ -2,6 +2,9 @@
  * Board structure types
  */
 
+import type { TerrainType } from '@/core/rules/board-constants';
+import type { Hex } from '@/lib/hex';
+
 export type PortType =
     | "generic"
     | "wood"
@@ -39,8 +42,16 @@ export interface Edge {
     structure: 'road' | null;
 }
 
+export interface BoardHex {
+    hex: Hex;
+    terrain: TerrainType;
+    numberToken: number | null;
+    id: string;
+    pips?: number;
+}
+
 export interface BoardState {
-    hexes: any[]; // HexTileData
+    hexes: BoardHex[];
     vertices: Record<string, Vertex>;
     edges: Record<string, Edge>;
 }

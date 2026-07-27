@@ -44,6 +44,8 @@ export { formatTime } from '@/lib/services/timer-service';
  * Get color class based on time remaining (for progress bars with backgrounds)
  */
 export function getTimerColorClass(timeRemaining: number, timeLimit: number): string {
+  void timeLimit;
+
   if (timeRemaining <= 0) {
     return 'bg-red-600 text-white'; // Expired
   } else if (timeRemaining <= 10) {
@@ -60,6 +62,8 @@ export function getTimerColorClass(timeRemaining: number, timeLimit: number): st
  * Get text color class based on time remaining (for text-only displays)
  */
 export function getTimerTextColorClass(timeRemaining: number, timeLimit: number): string {
+  void timeLimit;
+
   if (timeRemaining <= 0) {
     return 'text-red-600'; // Expired
   } else if (timeRemaining <= 10) {

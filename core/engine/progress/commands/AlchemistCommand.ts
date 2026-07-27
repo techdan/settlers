@@ -23,14 +23,24 @@ import { setPhase } from '@/lib/services/timer-service';
  * Legacy implementation: executeAlchemist() (lines 455-579)
  */
 export class AlchemistCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const chosenDice1 = options?.chosenDice1 as number | undefined;
-    const chosenDice2 = options?.chosenDice2 as number | undefined;
+    const commandOptions =
+      typeof options === 'object' && options !== null
+        ? (options as Record<string, unknown>)
+        : {};
+    const chosenDice1 =
+      typeof commandOptions.chosenDice1 === 'number'
+        ? commandOptions.chosenDice1
+        : undefined;
+    const chosenDice2 =
+      typeof commandOptions.chosenDice2 === 'number'
+        ? commandOptions.chosenDice2
+        : undefined;
 
     if (chosenDice1 === undefined || chosenDice2 === undefined) {
       throw new Error('Alchemist requires choosing both dice values (1-6 each)');

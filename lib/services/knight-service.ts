@@ -1,7 +1,6 @@
 import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { placeKnight, activateKnight, moveKnight, upgradeKnight, updateActiveKnightCount, relocateKnight, chaseAwayRobber } from '@/core/engine/knights/knight-manager';
-import { getHexesForVertex } from '@/lib/hex';
+import { placeKnight, activateKnight, moveKnight, upgradeKnight, relocateKnight, chaseAwayRobber } from '@/core/engine/knights/knight-manager';
 import {
     isValidKnightPlacement,
     isValidKnightActivation,

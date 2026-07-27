@@ -1,6 +1,6 @@
 import { GameState } from '@/lib/types';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { upgradeImprovement, canAffordImprovement, tryAwardMetropolis, tryStealMetropolis } from '@/core/engine/improvements/improvement-manager';
+import { upgradeImprovement, canAffordImprovement } from '@/core/engine/improvements/improvement-manager';
 import { ImprovementType, MetropolisType } from '@/core/rules/commodity-constants';
 import { buildMetropolis, canBuildMetropolis } from '@/core/engine/metropolis/metropolis-manager';
 

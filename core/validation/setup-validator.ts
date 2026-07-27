@@ -18,6 +18,8 @@ export function isValidSetupSettlement(
     vertexId: string,
     playerId: string
 ): boolean {
+    void playerId;
+
     // 1. Check if vertex exists and is empty
     const vertex = gameState.board.vertices[vertexId];
     if (!vertex) return false; // Invalid vertex ID
@@ -61,6 +63,8 @@ export function isValidSetupRoad(
     edgeId: string,
     playerId: string
 ): boolean {
+    void playerId;
+
     // 1. Check if edge exists and is empty
     const edge = gameState.board.edges[edgeId];
     if (!edge) return false; // Invalid edge ID

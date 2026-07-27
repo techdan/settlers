@@ -1,10 +1,15 @@
-import React, { useMemo, useState } from 'react';
-import { GameState } from '@/lib/types';
-import { ResourceType } from '@/core/rules/board-constants';
-import { CommodityType } from '@/core/rules/commodity-constants';
-import { GuildSelectionList, SelectionMap, getSelectionCount } from '../city/GuildSelectionList';
+import { useState, type FC } from 'react';
+import type { ResourceType } from '@/core/rules/board-constants';
+import type { CommodityType } from '@/core/rules/commodity-constants';
+import {
+    GuildSelectionList,
+    getSelectionCount,
+    type GuildSelectionItem,
+    type SelectionMap
+} from '../city/GuildSelectionList';
 import { submitWeddingGiftsAction } from '@/app/actions';
-import { WeddingSelection } from '@/lib/types/game';
+import type { GameState, WeddingSelection } from '@/lib/types/game';
+import type { PlayerState } from '@/lib/types/player';
 import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
 
 interface WeddingGiftModalProps {
@@ -13,37 +18,46 @@ interface WeddingGiftModalProps {
     roomId: string;
 }
 
-export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, playerId, roomId }) => {
+function getAvailableItems(player: PlayerState): GuildSelectionItem[] {
+    const entries: GuildSelectionItem[] = [];
+
+    Object.entries(player.resources).forEach(([resource, available]) => {
+        if (available > 0) {
+            entries.push({
+                type: 'resource',
+                value: resource as ResourceType,
+                available
+            });
+        }
+    });
+
+    Object.entries(player.commodities ?? {}).forEach(([commodity, available]) => {
+        if (available > 0) {
+            entries.push({
+                type: 'commodity',
+                value: commodity as CommodityType,
+                available
+            });
+        }
+    });
+
+    return entries;
+}
+
+export const WeddingGiftModal: FC<WeddingGiftModalProps> = ({ gameState, playerId, roomId }) => {
     const wedding = gameState.pendingWedding;
-    if (!wedding) return null;
-
-    const request = wedding.requests.find(r => r.playerId === playerId && r.status === 'pending');
-    if (!request || request.requiredCards <= 0) return null;
-
-    const initiator = gameState.players.find(p => p.id === wedding.initiatorId);
+    const request = wedding?.requests.find(r => r.playerId === playerId && r.status === 'pending');
+    const initiator = wedding
+        ? gameState.players.find(p => p.id === wedding.initiatorId)
+        : undefined;
     const player = gameState.players.find(p => p.id === playerId);
-
-    if (!initiator || !player) return null;
-
     const [selections, setSelections] = useState<SelectionMap>({});
     const [error, setError] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const availableItems = useMemo(() => {
-        const entries: { type: 'resource' | 'commodity'; value: ResourceType | CommodityType; available: number }[] = [];
-        Object.entries(player.resources || {}).forEach(([res, count]) => {
-            if ((count || 0) > 0) {
-                entries.push({ type: 'resource', value: res as ResourceType, available: count || 0 });
-            }
-        });
-        Object.entries(player.commodities || {}).forEach(([com, count]) => {
-            if ((count || 0) > 0) {
-                entries.push({ type: 'commodity', value: com as CommodityType, available: count || 0 });
-            }
-        });
-        return entries;
-    }, [player]);
+    if (!request || request.requiredCards <= 0 || !initiator || !player) return null;
 
+    const availableItems = getAvailableItems(player);
     const required = request.requiredCards;
     const selectedCount = getSelectionCount(selections);
 
@@ -66,8 +80,10 @@ export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, p
 
         try {
             await submitWeddingGiftsAction(roomId, playerId, payload);
-        } catch (e: any) {
-            setError(e.message || 'Failed to submit cards');
+        } catch (caught: unknown) {
+            setError(caught instanceof Error && caught.message
+                ? caught.message
+                : 'Failed to submit cards');
             setIsSubmitting(false);
         }
     };
@@ -101,7 +117,10 @@ export const WeddingGiftModal: React.FC<WeddingGiftModalProps> = ({ gameState, p
                     />
 
                     {error && (
-                        <div className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm">
+                        <div
+                            role="alert"
+                            className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm"
+                        >
                             {error}
                         </div>
                     )}

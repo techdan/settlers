@@ -1,10 +1,10 @@
 import React from 'react';
 import { Board } from '@/components/board/Board';
-import { GameState } from '@/lib/types';
-import { SelectionState } from '@/lib/hooks/useSelectionManager';
-import { KnightController } from '@/lib/controllers/knight-controller';
-import { ProgressCardController } from '@/lib/controllers/progress-card-controller';
-import { ImprovementController } from '@/lib/controllers/improvement-controller';
+import type { GameState } from '@/lib/types';
+import type { SelectionState } from '@/lib/hooks/useSelectionManager';
+import type { KnightController } from '@/lib/controllers/knight-controller';
+import type { ProgressCardController } from '@/lib/controllers/progress-card-controller';
+import type { ImprovementController } from '@/lib/controllers/improvement-controller';
 import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton } from '@/components/game/ui/TabletopModal';
 

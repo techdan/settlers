@@ -110,7 +110,7 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
           <div className="flex gap-2 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
             <TabletopStatusIcon type="info" size={19} className="flex-shrink-0" />
             <p className="text-xs text-[var(--ui-muted)]">
-              The game is paused until all players complete their required actions. This ensures everyone's decisions are properly resolved before continuing.
+              The game is paused until all players complete their required actions. This ensures everyone&apos;s decisions are properly resolved before continuing.
             </p>
           </div>
         </div>

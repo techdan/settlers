@@ -3,50 +3,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GameState } from '@/lib/types';
 import { DebugPanel } from './DebugPanel';
-import { GameTray } from './GameTray';
 import { SidebarTabs } from './SidebarTabs';
 import { CompactGameStatus } from './CompactGameStatus';
 import { TurnTimerExpiredNotification } from './TurnTimerExpiredNotification';
 import { ProgressDecksPanel } from '../overlays/ProgressDecksPanel';
-import { ProgressCardType } from '@/lib/types/player';
 
 interface GameLayoutPanelsProps {
   gameState: GameState;
   playerId: string;
-  isCitiesAndKnights: boolean;
   isDebugMode: boolean;
-  currentPlayer: any;
-  selectionManager: any;
-  promptBlocksUI: boolean;
-  engineerSelectionActive: boolean;
-  isActiveTurn: boolean;
-  handleOpenPlayerCityManagement: () => void;
-  handleCancelFollowupCard: () => void;
-  decorateCardHandler: <TArgs extends any[], TResult>(
-    cardType: ProgressCardType,
-    hasFollowupStep: boolean,
-    handler: (...args: TArgs) => TResult
-  ) => (...args: TArgs) => TResult;
-  progressCardControllerHandlers: {
-    handlePlayProgressCard: (type: ProgressCardType, options?: any) => Promise<void>;
-    handleStartHexSelection: (type: any) => void;
-    handleStartVertexSelection: (type: any) => void;
-    handleStartEdgeSelection: (type: any) => void;
-    handleStartEngineerSelection: () => void;
-    handleStartMedicineSelection: () => void;
-    handleStartTreasonSelection: () => void;
-  };
-  improvementControllerHandlers: {
-    handleStartCraneDialog: () => void;
-  };
-  knightControllerHandlers: {
-    handleStartSmithSelection: () => void;
-  };
-  onRollDice: () => void;
-  onEndTurn: () => void;
-  onOpenTrade: () => void;
-  turnSubmitted: boolean;
-  hasOptimisticUpdates: boolean;
+  onOpenPlayerCityManagement: () => void;
+  tray: React.ReactNode;
 }
 
 /** Viewport height at/above which the desktop HUD renders at full size. */
@@ -59,24 +26,9 @@ const HUD_MIN_SCALE = 0.72;
 export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
   gameState,
   playerId,
-  isCitiesAndKnights,
   isDebugMode,
-  currentPlayer,
-  selectionManager,
-  promptBlocksUI,
-  engineerSelectionActive,
-  isActiveTurn,
-  handleOpenPlayerCityManagement,
-  handleCancelFollowupCard,
-  decorateCardHandler,
-  progressCardControllerHandlers,
-  improvementControllerHandlers,
-  knightControllerHandlers,
-  onRollDice,
-  onEndTurn,
-  onOpenTrade,
-  turnSubmitted,
-  hasOptimisticUpdates,
+  onOpenPlayerCityManagement,
+  tray,
 }) => {
   const [tabletPanel, setTabletPanel] = useState<'status' | 'activity' | 'decks' | 'debug' | null>(null);
 
@@ -124,6 +76,8 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
   }, [hud.scale]);
 
   const activePlayerName = gameState.players.find(player => player.id === gameState.currentTurn)?.name ?? 'Waiting';
+  const currentPlayer = gameState.players.find(player => player.id === playerId);
+  const isCitiesAndKnights = gameState.gameMode === 'cities_and_knights';
   const phaseLabel = gameState.phase.replaceAll('_', ' ');
 
   const toggleTabletPanel = (panel: NonNullable<typeof tabletPanel>) => {
@@ -167,7 +121,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
             longer enough reliable vertical room, so this slot may shrink (with
             a floor) and CompactGameStatus becomes the fallback scroller. */}
         <div className="flex min-h-[9rem] shrink-0 overflow-visible [@media(max-height:620px)]:shrink [@media(max-height:620px)]:overflow-hidden">
-          <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={handleOpenPlayerCityManagement} />
+          <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={onOpenPlayerCityManagement} />
         </div>
         <div className="flex min-h-0 shrink flex-col">
           <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
@@ -192,6 +146,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
             <button
               type="button"
               className={`${tabletButtonClass('status')} min-w-max text-left`}
+              aria-label={`${phaseLabel} ${activePlayerName}`}
               aria-expanded={tabletPanel === 'status'}
               onClick={() => toggleTabletPanel('status')}
             >
@@ -216,7 +171,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
           {tabletPanel ? (
             <div className="mt-2 max-h-[min(52dvh,32rem)] overflow-y-auto overscroll-contain rounded-lg" data-tablet-panel={tabletPanel}>
               {tabletPanel === 'status' ? (
-                <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={handleOpenPlayerCityManagement} />
+                <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={onOpenPlayerCityManagement} />
               ) : null}
               {tabletPanel === 'activity' ? (
                 <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
@@ -258,26 +213,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
           </div>
         )}
         <div className="pointer-events-auto max-xl:w-full max-xl:max-h-[40dvh] max-xl:overflow-x-auto max-xl:overflow-y-auto max-xl:overscroll-contain">
-          <GameTray
-            gameState={gameState}
-            playerId={playerId}
-            isCitiesAndKnights={isCitiesAndKnights}
-            currentPlayer={currentPlayer}
-            selectionManager={selectionManager}
-            promptBlocksUI={promptBlocksUI}
-            engineerSelectionActive={engineerSelectionActive}
-            isActiveTurn={isActiveTurn}
-            handleCancelFollowupCard={handleCancelFollowupCard}
-            decorateCardHandler={decorateCardHandler}
-            progressCardControllerHandlers={progressCardControllerHandlers}
-            improvementControllerHandlers={improvementControllerHandlers}
-            knightControllerHandlers={knightControllerHandlers}
-            onRollDice={onRollDice}
-            onEndTurn={onEndTurn}
-            onOpenTrade={onOpenTrade}
-            turnSubmitted={turnSubmitted}
-            hasOptimisticUpdates={hasOptimisticUpdates}
-          />
+          {tray}
         </div>
       </div>
     </div>

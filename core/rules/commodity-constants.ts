@@ -5,7 +5,7 @@
  * specific to the Cities & Knights expansion.
  */
 
-import { TerrainType } from './board-constants';
+import type { ResourceType, TerrainType } from './board-constants';
 
 /**
  * Commodity types produced by cities in C&K expansion
@@ -113,6 +113,14 @@ export const KNIGHT_COST = {
     sheep: 1,
     ore: 1,
 } as const;
+
+/**
+ * Discounted resource cost to upgrade a settlement with the Medicine progress card.
+ */
+export const MEDICINE_COST = {
+    ore: 2,
+    wheat: 1,
+} as const satisfies Partial<Record<ResourceType, number>>;
 
 /**
  * Resource cost to activate a knight (wheat)

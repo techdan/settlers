@@ -105,7 +105,7 @@ export function generateBoard(options: BoardGenerationOptions): HexTileData[] {
         try {
             const board = tryGenerateBoard(options);
             return board;
-        } catch (e) {
+        } catch {
             // Retry if generation failed (e.g. fairness constraints)
             continue;
         }
@@ -183,8 +183,6 @@ function shuffleTerrains(fairMode: boolean): TerrainType[] {
     const result: (TerrainType | null)[] = new Array(SPIRAL_COORDS.length).fill(null);
 
     for (let i = 0; i < SPIRAL_COORDS.length; i++) {
-        const coord = SPIRAL_COORDS[i];
-
         // Find neighbors that are already placed
         const neighborIndices = getNeighborIndices(i);
         const placedNeighborTerrains = neighborIndices

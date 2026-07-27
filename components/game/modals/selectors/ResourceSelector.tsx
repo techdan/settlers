@@ -22,7 +22,6 @@ export const ResourceSelector: React.FC<ResourceSelectorProps> = ({
   options,
   selections,
   onSelectionsChange,
-  minSelections = 1,
   maxSelections = 1,
 }) => {
   const handleSelect = (optionId: string) => {

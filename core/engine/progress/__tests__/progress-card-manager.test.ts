@@ -4,14 +4,29 @@ import {
     playProgressCard
 } from '../progress-card-manager';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
-import { GameState } from '@/lib/types';
-import { ProgressCardType } from '@/lib/types/player';
+import type { GameState } from '@/lib/types';
+import type { ProgressCardType } from '@/lib/types/player';
+
+type ExecuteCard = (
+    cardType: ProgressCardType,
+    state: GameState,
+    playerId: string,
+    options?: unknown
+) => GameState;
+
+const { executeCardMock } = vi.hoisted(() => ({
+    executeCardMock: vi.fn<ExecuteCard>(),
+}));
+
+function removeLegacyProgressDecks(state: GameState): void {
+    delete state.progressDecks;
+}
 
 // Mock CardExecutor to avoid executing real effects during this manager test
 vi.mock('../CardExecutor', () => {
     return {
         getCardExecutor: () => ({
-            execute: vi.fn(), // Mock execute method
+            execute: executeCardMock,
         })
     };
 });
@@ -20,6 +35,9 @@ describe('Progress Card Manager', () => {
     let gameState: GameState;
 
     beforeEach(() => {
+        vi.clearAllMocks();
+        executeCardMock.mockImplementation((...args) => args[1]);
+
         gameState = createTestGameState({
             players: [
                 createTestPlayer({ id: 'p1', name: 'Player 1' }),
@@ -43,6 +61,20 @@ describe('Progress Card Manager', () => {
             expect(card).toBe('mining');
             expect(gameState.progressDecks?.science).toHaveLength(1); // One removed
             expect(gameState.players[0].progressCards).toContain('mining');
+        });
+
+        it('lazily creates missing legacy decks before drawing', () => {
+            removeLegacyProgressDecks(gameState);
+
+            const card = drawProgressCard(gameState, 'p1', 'science');
+            const decks = gameState.progressDecks;
+
+            expect(card).not.toBeNull();
+            expect(decks).toBeDefined();
+            expect(decks?.science).toHaveLength(17);
+            expect(decks?.trade).toHaveLength(18);
+            expect(decks?.politics).toHaveLength(18);
+            expect(gameState.players[0].progressCards).toContain(card);
         });
 
         it('returns null if deck is empty', () => {
@@ -82,6 +114,21 @@ describe('Progress Card Manager', () => {
 
             expect(player.progressCards).not.toContain('mining');
             expect(gameState.logs.find(l => l.message.includes('played Mining'))).toBeDefined();
+        });
+
+        it('forwards card-specific options unchanged to CardExecutor', () => {
+            const player = gameState.players[0];
+            const options = { knightIds: ['knight-1'] };
+            player.progressCards = ['smith'];
+
+            playProgressCard(gameState, 'p1', 'smith', options);
+
+            expect(executeCardMock).toHaveBeenCalledWith(
+                'smith',
+                gameState,
+                'p1',
+                options,
+            );
         });
 
         it('throws error if player does not have card', () => {

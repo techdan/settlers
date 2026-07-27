@@ -1,7 +1,7 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
 import { KnightLevel, CK_CONSTANTS } from '@/core/rules/commodity-constants';
-import { getCanonicalEdgeId, getAdjacentVertexIds, getAdjacentEdgesForVertex, getEdgeEndpoints, getHexesForVertex } from '@/lib/hex';
+import { getAdjacentVertexIds, getAdjacentEdgesForVertex, getEdgeEndpoints, getHexesForVertex } from '@/lib/hex';
 import { GamePhase } from '@/lib/types';
 import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
 

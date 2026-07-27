@@ -1,9 +1,9 @@
 import { useCallback, useState } from 'react';
 import { ProgressCardType } from '@/lib/types/player';
 
-type CardHandler<TArgs extends any[], TResult> = (...args: TArgs) => TResult;
+export type CardHandler<TArgs extends unknown[], TResult> = (...args: TArgs) => TResult;
 
-type Decorator = <TArgs extends any[], TResult>(
+export type ProgressCardHandlerDecorator = <TArgs extends unknown[], TResult>(
     cardType: ProgressCardType,
     hasFollowupStep: boolean,
     handler: CardHandler<TArgs, TResult>
@@ -12,7 +12,7 @@ type Decorator = <TArgs extends any[], TResult>(
 export function useProgressCardSelectionDecorator() {
     const [selectedCard, setSelectedCard] = useState<ProgressCardType | null>(null);
 
-    const decorateCardHandler: Decorator = useCallback((cardType, hasFollowupStep, handler) => {
+    const decorateCardHandler: ProgressCardHandlerDecorator = useCallback((cardType, hasFollowupStep, handler) => {
         return (...args) => {
             if (hasFollowupStep) {
                 setSelectedCard(prev => (prev === cardType ? null : cardType));

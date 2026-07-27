@@ -1,17 +1,14 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
     initializeMetropolises,
-    getMetropolis,
     canBuildMetropolis,
     buildMetropolis,
     downgradeMetropolis,
     calculateMetropolisVP,
     checkMetropolisOwnership,
-    getAllMetropolises
 } from '../metropolis-manager';
 import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
-import { CK_CONSTANTS } from '@/core/rules/commodity-constants';
-import { GameState } from '@/lib/types';
+import type { GameState } from '@/lib/types';
 
 describe('Metropolis Manager', () => {
     let gameState: GameState;
@@ -49,13 +46,14 @@ describe('Metropolis Manager', () => {
     describe('initializeMetropolises', () => {
         it('initializes empty metropolis state', () => {
             const state = createTestGameState();
-            state.metropolises = undefined as any;
+            delete state.metropolises;
             initializeMetropolises(state);
 
-            expect(state.metropolises).toBeDefined();
-            expect(state.metropolises?.science).toBeDefined();
-            expect(state.metropolises?.trade).toBeDefined();
-            expect(state.metropolises?.politics).toBeDefined();
+            expect(state.metropolises).toEqual({
+                science: { type: 'science', owner: null, vertexId: null },
+                trade: { type: 'trade', owner: null, vertexId: null },
+                politics: { type: 'politics', owner: null, vertexId: null },
+            });
         });
     });
 

@@ -11,7 +11,6 @@ import { BUILDING_COSTS, canAfford, deductCost } from '@/core/rules/building-cos
 import { updateLongestRoadIncremental } from '@/core/engine/scoring/longest-road';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
-import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { getHexesForVertex } from '@/lib/hex';
 import { getResourceFromTerrain } from '@/core/rules/game-rules';
 

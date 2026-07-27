@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import {
     placeKnight,
     activateKnight,
@@ -7,11 +7,9 @@ import {
     calculateKnightStrength,
     getValidRelocationTargets,
     relocateKnight,
-    displaceKnight,
 } from '../knight-manager';
-import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex, createTestEdge } from '@/lib/test-utils';
-import { CK_CONSTANTS } from '@/core/rules/commodity-constants';
-import { GameState } from '@/lib/types';
+import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
+import type { GameState } from '@/lib/types';
 
 describe('Knight Manager', () => {
     let gameState: GameState;
@@ -170,9 +168,7 @@ describe('Knight Manager', () => {
             // 0,0,0 neighbors:
             // direction 0: 0,0,1
 
-            // Ensure edge exists and owned by p1
-            const edgeId = '0,0,0'; // Simplification of edge ID logic if possible, but existing code uses derived IDs
-            // We need to put the edge in gameState.board.edges
+            // We would need to put the edge in gameState.board.edges
             // But manager doesn't check edge existence for *move*, only for *relocation*?
             // Wait, moveKnight checks "active" and then simply sets vertexId?
             // It does NOT check for road connection in the `moveKnight` function explicitly!
@@ -223,7 +219,7 @@ describe('Knight Manager', () => {
             const k1 = placeKnight(gameState, 'p1', '0,0,0'); // basic
             activateKnight(gameState, k1.id);
 
-            const k2 = placeKnight(gameState, 'p2', '0,0,1'); // basic
+            placeKnight(gameState, 'p2', '0,0,1'); // basic
 
             expect(() => moveKnight(gameState, k1.id, '0,0,1')).toThrow('Cannot displace');
         });

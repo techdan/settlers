@@ -12,13 +12,19 @@ import { updateAllVictoryPoints, checkVictoryCondition } from '@/core/rules/vict
  * Legacy implementation: executeMerchant() (lines 863-899)
  */
 export class MerchantCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const hexId = options?.hexId as string | undefined;
+    const hexId =
+      typeof options === 'object' &&
+      options !== null &&
+      'hexId' in options &&
+      typeof options.hexId === 'string'
+        ? options.hexId
+        : undefined;
     if (!hexId) {
       throw new Error('Merchant requires selecting a hex to place the merchant');
     }

@@ -22,7 +22,6 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
   options,
   selections,
   onSelectionsChange,
-  minSelections = 1,
   maxSelections = 1,
 }) => {
   const handleSelect = (optionId: string) => {

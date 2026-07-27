@@ -10,33 +10,49 @@ interface PlayerHandProps {
     lastTheft?: TheftEvent;
 }
 
-export const PlayerHand: React.FC<PlayerHandProps> = ({ player, roomId, lastTheft }) => {
-    const [visibleTheft, setVisibleTheft] = useState<PlayerHandProps['lastTheft']>();
+const THEFT_HIGHLIGHT_DURATION_MS = 5000;
+
+function getTheftKey(theft: TheftEvent | undefined): string {
+    if (!theft) return 'no-theft';
+
+    return [
+        theft.id ?? '',
+        theft.timestamp,
+        theft.thiefId,
+        theft.victimId ?? '',
+        theft.source ?? '',
+        theft.items
+            ?.map(item => `${item.type}:${item.value}:${item.count}`)
+            .join(',') ?? '',
+        theft.victims
+            ?.map(victim => [
+                victim.victimId,
+                victim.items
+                    .map(item => `${item.type}:${item.value}:${item.count}`)
+                    .join(','),
+            ].join('='))
+            .join(';') ?? '',
+    ].join(':');
+}
+
+export const PlayerHand: React.FC<PlayerHandProps> = (props) => (
+    <PlayerHandView key={getTheftKey(props.lastTheft)} {...props} />
+);
+
+const PlayerHandView: React.FC<PlayerHandProps> = ({ player, lastTheft }) => {
+    const [visibleTheft, setVisibleTheft] = useState(lastTheft);
 
     // Track the active theft highlight locally so it auto-clears after 5 seconds even if game state doesn't refresh
     useEffect(() => {
-        if (!lastTheft) {
-            setVisibleTheft(undefined);
-            return;
-        }
+        if (!lastTheft) return;
 
         const elapsed = Date.now() - lastTheft.timestamp;
-        const remaining = 5000 - elapsed;
-        if (remaining <= 0) {
-            setVisibleTheft(undefined);
-            return;
-        }
-
-        setVisibleTheft(lastTheft);
+        const remaining = Math.max(0, THEFT_HIGHLIGHT_DURATION_MS - elapsed);
         const timeout = setTimeout(() => setVisibleTheft(undefined), remaining);
         return () => clearTimeout(timeout);
     }, [lastTheft]);
 
     const hasCommodities = !!player.commodities;
-    const totalResources = Object.values(player.resources).reduce((a, b) => a + b, 0);
-    const totalCommodities = player.commodities
-        ? Object.values(player.commodities).reduce((a, b) => a + b, 0)
-        : 0;
     const theftVictims = visibleTheft?.victims ?? (
         visibleTheft?.victimId
             ? [{ victimId: visibleTheft.victimId, items: visibleTheft.items ?? [] }]

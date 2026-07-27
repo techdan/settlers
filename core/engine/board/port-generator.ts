@@ -1,4 +1,5 @@
-import { Port, PortType } from '@/lib/types/board';
+import type { Port, PortType } from '@/lib/types/board';
+import type { ResourceType } from '@/core/rules/board-constants';
 import { hexToPixel, createHex, getEdgeEndpoints } from '@/lib/hex';
 
 // Re-export PortType for backward compatibility with legacy imports
@@ -133,14 +134,15 @@ export function getPortForVertex(vertexId: string): PortType | null {
     return PORT_VERTEX_MAP.get(vertexId) || null;
 }
 
-export function getTradeRatio(portType: PortType | null, resourceType: any): number {
+export function getTradeRatio(portType: PortType | null, resourceType: string): number {
+    void resourceType;
     // Default 4:1 trade ratio, 3:1 for generic ports, 2:1 for specific ports
     if (!portType) return 4;
     if (portType === 'generic') return 3;
     return 2;
 }
 
-export function getBestTradeRatio(vertexIds: string[], resourceType: any): number {
+export function getBestTradeRatio(vertexIds: string[], resourceType: ResourceType): number {
     initializePortVertexMap();
 
     let bestRatio = 4; // Default 4:1 ratio

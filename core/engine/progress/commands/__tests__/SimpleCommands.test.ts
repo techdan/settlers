@@ -87,7 +87,7 @@ describe('Simple Science Commands', () => {
             cmd.execute(gameState, 'p1', { vertexId: 'v1' });
 
             expect(gameState.board.vertices['v1'].hasCityWall).toBe(true);
-            expect(gameState.logs.find((l: any) => l.message.includes('built a city wall'))).toBeDefined();
+            expect(gameState.logs.find((log) => log.message.includes('built a city wall'))).toBeDefined();
         });
 
         it('throws if city not eligible', () => {

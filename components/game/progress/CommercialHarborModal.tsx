@@ -63,8 +63,12 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
             await respondToCommercialHarbor(roomId, playerId, hasNoCommodities ? null : effectiveSelectedCommodity);
 
             // Success - modal will close automatically when gameState updates
-        } catch (e: any) {
-            setError(e.message || 'Failed to submit response');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to submit response'
+            );
             setIsSubmitting(false);
         }
     };
@@ -142,7 +146,10 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
 
                 {/* Error Message */}
                 {error && (
-                    <div className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm text-center">
+                    <div
+                        role="alert"
+                        className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm text-center"
+                    >
                         {error}
                     </div>
                 )}

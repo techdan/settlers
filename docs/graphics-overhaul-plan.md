@@ -3,7 +3,7 @@
 **Direction:** A — Illustrated Tabletop (straight to A; the B→A ramp was declined)
 **Date locked:** 2026-07-09
 **Reference pitch:** https://claude.ai/code/artifact/95a848d1-a210-4c55-999e-449affe2db7e
-**Companion doc:** `docs/codebase-improvement-plan.md` (§4 = Phase 0 of this plan)
+**Historical companion:** `docs/archive/codebase-improvement-plan-v2.1.md` (§4 = Phase 0 of this plan)
 
 ## 0. Locked decisions
 
@@ -36,7 +36,7 @@ Two kinds of work with very different failure modes:
 - State wiring for the barbarian route (data already exists: `gameState.barbarianPosition`)
 - Tailwind slate→warm token sweep (§4, Phase 4) — with the grep patterns in §6
 - Emoji replacement once replacement icons exist
-- Everything in `docs/codebase-improvement-plan.md` §1, §2, §5, §6
+- Everything in the archived `docs/archive/codebase-improvement-plan-v2.1.md` §1, §2, §5, §6
 
 Rule of thumb: **if the task's output is judged by looking at it, Fable does it; if it's judged by tests passing and diffs matching a spec, delegate it.**
 
@@ -109,7 +109,7 @@ Every phase ends: `npm run test:run` green, lint no worse than baseline, manual 
 
 ### Phase 0 — Plumbing (delegable, ~1–2 days agent work)
 
-Prereq for everything. Execute `docs/codebase-improvement-plan.md` §4.1 (sprite pipeline), §4.2 (palette module), §4.3 (extract piece paths), plus:
+Prereq for everything. Execute the archived `docs/archive/codebase-improvement-plan-v2.1.md` §4.1 (sprite pipeline), §4.2 (palette module), §4.3 (extract piece paths), plus:
 
 1. **Retire voxel** (supersedes the two-theme parts of §4.4):
    - Delete `themes/voxel/` (7 files).
@@ -120,7 +120,7 @@ Prereq for everything. Execute `docs/codebase-improvement-plan.md` §4.1 (sprite
 2. **Board smoke tests** (improvement plan §6.2) — the safety net: fixture `GameState`, assert tile count, token numbers, piece placement, port count, and that selection highlights attach to the right vertices/edges.
    - ✅ **Done (uncommitted, working tree):** `components/board/__tests__/BoardCanvas.smoke.test.tsx`, 10 tests, single (flat) theme only per the locked decision. Written first, then kept green (with expected, intentional assertion updates) through steps 1/2/4/5/6 below.
 3. **Scaffold `themes/tabletop/`**: `defs.tsx`, `palette.ts` re-export, empty component shells matching the (now single-theme, light) `BoardTheme` object: `{ HexTile, Port, NumberToken, Robber, Merchant, pieces: { Road, Settlement, City, Metropolis, Knight }, BarbarianRoute }`.
-   - **Not touched** — explicitly out of scope for this pass (lead-authored in parallel in this same working tree).
+   - ✅ **Completed 2026-07-26:** the tabletop implementation is fully built, and `themes/board-theme.ts` now supplies the previously missing typed `BoardTheme` boundary. It includes the current sea frame/viewBox, status glyph and city-wall additions alongside the planned surface. `BoardCanvas`, `VertexRenderer`, and `EdgeRenderer` consume the stable object at module scope; no hitbox/selection markup changed. The inline tabletop implementation makes the originally proposed shared `defs.tsx` unnecessary.
 
 ### Phase 1 — The island (F art + D wiring, the big visual drop)
 

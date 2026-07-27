@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { HexTile, Port, SeaFrame, BarbarianRoute, BOARD_VIEWBOX, TT } from '@/themes/tabletop';
+import { boardTheme } from '@/themes/board-theme';
 import { generatePorts } from '@/core/engine/board/port-generator';
 import { getBarbarianForces } from '@/core/rules/barbarian-strength';
-import { GameState } from '@/lib/types';
+import { Edge, GameState, Vertex } from '@/lib/types';
 import { Knight } from '@/lib/types/player';
 import { BoardSelectionState, PendingBoardPlacement } from '@/lib/types/board-selection-state';
 import { VertexRenderer } from './VertexRenderer';
@@ -19,6 +19,14 @@ const BOARD_ALIGNMENT_OPTIONS = {
   sizeX: BOARD_PAN_MARGIN_PX,
   sizeY: BOARD_PAN_MARGIN_PX,
 } as const;
+const {
+  BarbarianRoute,
+  HexTile,
+  Port,
+  SeaFrame,
+  palette: BOARD_PALETTE,
+  viewBox: BOARD_VIEWBOX,
+} = boardTheme;
 
 /**
  * BoardCanvas - Pure rendering component for the game board
@@ -43,8 +51,8 @@ interface BoardCanvasProps {
     validEdges: Set<string>;
     validHexes: Set<string>;
   };
-  vertices: any[];
-  renderEdges: any[];
+  vertices: Vertex[];
+  renderEdges: Edge[];
   knightsMap: Map<string, Knight>;
   pendingPlacement: PendingBoardPlacement | null;
   displayedRobberHexId: string | null;
@@ -74,8 +82,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   onCancelPlacement,
   onCancelBuild
 }) => {
-  const [zoomLevel, setZoomLevel] = useState(0.8);
-
   // Generate ports based on hex size
   const ports = useMemo(() => generatePorts(hexSize), [hexSize]);
 
@@ -106,7 +112,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   const currentPlayerColor = gameState.players.find(player => player.id === playerId)?.color;
 
   return (
-    <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: TT.sea }}>
+    <div className="relative w-full h-full overflow-hidden" style={{ backgroundColor: BOARD_PALETTE.sea }}>
       <TransformWrapper
         initialScale={1}
         minScale={0.5}
@@ -115,11 +121,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         limitToBounds
         panning={BOARD_PANNING_OPTIONS}
         alignmentAnimation={BOARD_ALIGNMENT_OPTIONS}
-        onTransformed={ref => {
-          setZoomLevel(ref.state.scale);
-        }}
       >
-        {({ zoomIn, zoomOut, resetTransform, setTransform }) => (
+        {({ zoomIn, zoomOut }) => (
           <>
             <BoardControls
               onZoomIn={() => zoomIn(0.1)}

@@ -1,5 +1,6 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardCommand } from '../types/CardConfig';
+import type { GameState } from '@/lib/types/game';
+import type { ProgressCardCommand } from '../types/CardConfig';
+import { getTotalResources } from '../../resources/resource-manager';
 import { addLog } from '../utilities/StateManagement';
 
 /**
@@ -11,7 +12,8 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeSaboteur() (lines 1660-1704)
  */
 export class SaboteurCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState;
+  execute(state: GameState, playerId: string): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
@@ -36,9 +38,6 @@ export class SaboteurCommand implements ProgressCardCommand {
       );
       return state;
     }
-
-    // Import resource utilities
-    const { getTotalResources } = require('@/core/engine/resources/resource-manager');
 
     // Check if any targets have resources
     const targetsWithCards = targets.filter((opponent) => getTotalResources(opponent) > 0);

@@ -2,7 +2,7 @@ import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { isMerchantFleetEffect, type MerchantFleetEffect } from '@/lib/types/effects';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { getPortForVertex, getBestTradeRatio } from '@/core/engine/board/port-generator';
+import { getBestTradeRatio } from '@/core/engine/board/port-generator';
 import { CommodityType } from '@/core/rules/commodity-constants';
 
 /**

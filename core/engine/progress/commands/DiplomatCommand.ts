@@ -1,6 +1,27 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardCommand } from '../types/CardConfig';
+import type { GameState } from '@/lib/types/game';
+import type { ProgressCardCommand } from '../types/CardConfig';
+import { isValidMainPhaseRoad } from '@/core/validation/building-validator';
+import { isOpenRoad } from '@/core/validation/diplomat-validator';
 import { addLog } from '../utilities/StateManagement';
+
+interface DiplomatOptions {
+  edgeId?: string;
+  newEdgeId?: string;
+}
+
+function getDiplomatOptions(options: unknown): DiplomatOptions {
+  if (typeof options !== 'object' || options === null) return {};
+
+  const candidate = options as Record<string, unknown>;
+  return {
+    edgeId:
+      typeof candidate.edgeId === 'string' ? candidate.edgeId : undefined,
+    newEdgeId:
+      typeof candidate.newEdgeId === 'string'
+        ? candidate.newEdgeId
+        : undefined,
+  };
+}
 
 /**
  * Diplomat Card Command
@@ -12,14 +33,13 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeDiplomat() (lines 1385-1458)
  */
 export class DiplomatCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const edgeId = options?.edgeId as string | undefined;
-    const newEdgeId = options?.newEdgeId as string | undefined;
+    const { edgeId, newEdgeId } = getDiplomatOptions(options);
 
     if (!edgeId) {
       throw new Error('Diplomat requires selecting a road to remove');
@@ -33,7 +53,6 @@ export class DiplomatCommand implements ProgressCardCommand {
     const roadOwner = edge.owner;
 
     // Validate the road is "open"
-    const { isOpenRoad } = require('@/core/validation/diplomat-validator');
     if (!isOpenRoad(state, edgeId)) {
       throw new Error(
         'Road is not "open" - must be at the end of a road chain with no same-color pieces at that end'
@@ -60,7 +79,6 @@ export class DiplomatCommand implements ProgressCardCommand {
         },
       };
 
-      const { isValidMainPhaseRoad } = require('@/core/validation/building-validator');
       if (!isValidMainPhaseRoad(simulatedState, newEdgeId, playerId)) {
         throw new Error('Invalid new edge location');
       }

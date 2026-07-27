@@ -1,7 +1,20 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardCommand } from '../types/CardConfig';
+import type { GameState } from '@/lib/types/game';
+import type { ProgressCardCommand } from '../types/CardConfig';
+import { removeResources } from '@/core/engine/resources/resource-manager';
 import { addLog } from '../utilities/StateManagement';
-import { ResourceType } from '@/core/rules/board-constants';
+import { MEDICINE_COST } from '@/core/rules/commodity-constants';
+import {
+  checkVictoryCondition,
+  updateAllVictoryPoints,
+} from '@/core/rules/victory-conditions';
+import { isValidMainPhaseCity } from '@/core/validation/building-validator';
+
+function getMedicineVertexId(options: unknown): string | undefined {
+  if (typeof options !== 'object' || options === null) return undefined;
+
+  const vertexId = (options as Record<string, unknown>).vertexId;
+  return typeof vertexId === 'string' ? vertexId : undefined;
+}
 
 /**
  * Medicine Card Command
@@ -10,24 +23,18 @@ import { ResourceType } from '@/core/rules/board-constants';
  * Legacy implementation: executeMedicine() (lines 654-696)
  */
 export class MedicineCommand implements ProgressCardCommand {
-  private static readonly MEDICINE_COST: Partial<Record<ResourceType, number>> = {
-    ore: 2,
-    wheat: 1,
-  };
-
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const vertexId = options?.vertexId as string | undefined;
+    const vertexId = getMedicineVertexId(options);
     if (!vertexId) {
       throw new Error('Medicine requires selecting one of your settlements');
     }
 
     // Validate the settlement can be upgraded
-    const { isValidMainPhaseCity } = require('@/core/validation/building-validator');
     if (!isValidMainPhaseCity(state, vertexId, playerId)) {
       throw new Error('Selected location is not an eligible settlement for Medicine');
     }
@@ -38,8 +45,7 @@ export class MedicineCommand implements ProgressCardCommand {
     }
 
     // Deduct resources
-    const { removeResources } = require('@/core/engine/resources/resource-manager');
-    removeResources(player, MedicineCommand.MEDICINE_COST);
+    removeResources(player, MEDICINE_COST);
 
     // Upgrade settlement to city
     player.citiesRemaining = Math.max(0, (player.citiesRemaining || 0) - 1);
@@ -47,7 +53,6 @@ export class MedicineCommand implements ProgressCardCommand {
     vertex.structure = 'city';
 
     // Update victory points
-    const { updateAllVictoryPoints, checkVictoryCondition } = require('@/core/rules/victory-conditions');
     updateAllVictoryPoints(state);
 
     addLog(

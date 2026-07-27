@@ -103,7 +103,6 @@ export function updateLongestRoad(gameState: GameState): void {
 
     const longest = roadLengths[0];
     const previousOwner = gameState.longestRoadOwner;
-    const previousLength = gameState.longestRoadLength;
 
     // Must be at least 5 roads to claim
     if (longest.length < 5) {

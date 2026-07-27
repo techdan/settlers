@@ -12,7 +12,8 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeCommercialHarbor() (lines 1291-1304)
  */
 export class CommercialHarborCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
+    void options;
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');

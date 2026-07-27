@@ -11,13 +11,19 @@ import { getCityWallCount } from '@/core/utils/city-wall-utils';
  * Legacy implementation: executeEngineer() (lines 607-631)
  */
 export class EngineerCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const vertexId = options?.vertexId as string | undefined;
+    const vertexId =
+      typeof options === 'object' &&
+      options !== null &&
+      'vertexId' in options &&
+      typeof options.vertexId === 'string'
+        ? options.vertexId
+        : undefined;
     if (!vertexId) {
       throw new Error('Engineering requires selecting a city without a wall');
     }

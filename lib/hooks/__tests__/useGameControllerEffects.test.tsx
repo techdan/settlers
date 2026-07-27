@@ -1,8 +1,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useCallback, useRef, useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-helpers';
-import { useTheftNotificationEffect } from '../useGameControllerEffects';
+import {
+    useGameOverModalEffect,
+    useSelectedCardAutoClear,
+    useTheftNotificationEffect,
+    useTurnSubmissionReset,
+} from '../useGameControllerEffects';
 import type { GameState, TheftEvent } from '@/lib/types';
 
 describe('useTheftNotificationEffect', () => {
@@ -89,5 +94,132 @@ describe('useTheftNotificationEffect', () => {
 
         act(() => result.current.dismiss());
         expect(result.current.notifications).toEqual([second]);
+    });
+});
+
+describe('controller modal and selection effects', () => {
+    it('resets turn submission only when the turn or phase requires it', async () => {
+        const setTurnSubmitted = vi.fn();
+        const activeMainPhase = createTestGameState({
+            currentTurn: 'p1',
+            phase: 'main_phase',
+        });
+        const { rerender } = renderHook(
+            ({ state }: { state: GameState }) =>
+                useTurnSubmissionReset(state, 'p1', setTurnSubmitted),
+            { initialProps: { state: activeMainPhase } }
+        );
+
+        expect(setTurnSubmitted).not.toHaveBeenCalled();
+
+        rerender({
+            state: {
+                ...activeMainPhase,
+                phase: 'waiting_for_roll',
+            },
+        });
+
+        await waitFor(() =>
+            expect(setTurnSubmitted).toHaveBeenCalledExactlyOnceWith(false)
+        );
+    });
+
+    it('opens the game-over modal when a winner appears', async () => {
+        const setShowGameOverModal = vi.fn();
+        const activeGame = createTestGameState({
+            phase: 'main_phase',
+            winner: null,
+        });
+        const { rerender } = renderHook(
+            ({ state }: { state: GameState }) =>
+                useGameOverModalEffect(state, setShowGameOverModal),
+            { initialProps: { state: activeGame } }
+        );
+
+        expect(setShowGameOverModal).not.toHaveBeenCalled();
+
+        rerender({
+            state: {
+                ...activeGame,
+                winner: 'p1',
+            },
+        });
+
+        await waitFor(() =>
+            expect(setShowGameOverModal).toHaveBeenCalledExactlyOnceWith(true)
+        );
+    });
+
+    it('clears a selected card only after its local follow-up state ends', async () => {
+        const clearSelectedCard = vi.fn();
+        const inactiveSelection: Parameters<
+            typeof useSelectedCardAutoClear
+        >[1] = {
+            selectingHexForCard: null,
+            selectingVertexForCard: null,
+            selectingEdgeForCard: null,
+            selectingCityForEngineer: false,
+            selectingCityForMedicine: false,
+            selectingCityForMetropolis: null,
+            selectingKnightsForSmith: false,
+            isCraneDialogOpen: false,
+            treasonMode: null,
+            isTreasonModalOpen: false,
+        };
+        const activeSelection: Parameters<
+            typeof useSelectedCardAutoClear
+        >[1] = {
+            ...inactiveSelection,
+            selectingHexForCard: 'merchant',
+        };
+        const { rerender } = renderHook(
+            ({
+                selection,
+            }: {
+                selection: Parameters<typeof useSelectedCardAutoClear>[1];
+            }) =>
+                useSelectedCardAutoClear(
+                    'merchant',
+                    selection,
+                    clearSelectedCard
+                ),
+            { initialProps: { selection: activeSelection } }
+        );
+
+        expect(clearSelectedCard).not.toHaveBeenCalled();
+
+        rerender({ selection: inactiveSelection });
+
+        await waitFor(() =>
+            expect(clearSelectedCard).toHaveBeenCalledOnce()
+        );
+    });
+
+    it('keeps Road Building selected while its server-driven flow is active', () => {
+        const clearSelectedCard = vi.fn();
+        const inactiveSelection: Parameters<
+            typeof useSelectedCardAutoClear
+        >[1] = {
+            selectingHexForCard: null,
+            selectingVertexForCard: null,
+            selectingEdgeForCard: null,
+            selectingCityForEngineer: false,
+            selectingCityForMedicine: false,
+            selectingCityForMetropolis: null,
+            selectingKnightsForSmith: false,
+            isCraneDialogOpen: false,
+            treasonMode: null,
+            isTreasonModalOpen: false,
+        };
+
+        renderHook(() =>
+            useSelectedCardAutoClear(
+                'road_building_progress',
+                inactiveSelection,
+                clearSelectedCard
+            )
+        );
+
+        expect(clearSelectedCard).not.toHaveBeenCalled();
     });
 });

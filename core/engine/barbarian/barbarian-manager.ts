@@ -1,6 +1,9 @@
 import { GameState, PlayerState } from '@/lib/types';
 import { calculateKnightStrength } from '@/core/engine/knights/knight-manager';
 import { setPhase } from '@/lib/services/timer-service';
+import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
+import { getTotalResources } from '@/core/engine/resources/resource-manager';
+import { getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 
 /**
  * Barbarian Manager (Cities & Knights Expansion)
@@ -399,11 +402,6 @@ export function loseCityToBarbarians(gameState: GameState, playerId: string, ver
         if (gameState.pendingRobberAfterBarbarian) {
             gameState.pendingRobberAfterBarbarian = false;
             gameState.pendingBarbarianVictims = undefined;
-
-            // Import utilities for robber handling
-            const { getRobberDiscardThreshold } = require('@/core/utils/city-wall-utils');
-            const { getTotalResources } = require('@/core/engine/resources/resource-manager');
-            const { getTotalCommodities } = require('@/core/engine/resources/commodity-manager');
 
             // Check if any players need to discard (resources + commodities count toward hand limit)
             const playersToDiscard = gameState.players.filter(p => {

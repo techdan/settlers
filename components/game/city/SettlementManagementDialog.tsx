@@ -54,8 +54,12 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
         try {
             await onUpgradeToCity(vertexId);
             onClose();
-        } catch (e: any) {
-            setError(e.message || 'Failed to upgrade to city');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to upgrade to city'
+            );
             setIsSubmitting(false);
         }
     };
@@ -67,7 +71,10 @@ export const SettlementManagementDialog: React.FC<SettlementManagementDialogProp
     return (
         <TabletopModal title="Settlement Management" onClose={onClose}>
                 {error && (
-                    <div className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]">
+                    <div
+                        role="alert"
+                        className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]"
+                    >
                         {error}
                     </div>
                 )}

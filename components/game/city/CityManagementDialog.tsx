@@ -104,8 +104,12 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
             } else {
                 throw new Error('Upgrade handler not provided');
             }
-        } catch (e: any) {
-            setError(e.message || 'Failed to upgrade');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to upgrade'
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -118,8 +122,12 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
         setError(null);
         try {
             await onBuildWall(vertexId);
-        } catch (e: any) {
-            setError(e.message || 'Failed to build wall');
+        } catch (error: unknown) {
+            setError(
+                error instanceof Error && error.message
+                    ? error.message
+                    : 'Failed to build wall'
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -131,7 +139,10 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
     return (
         <TabletopModal title={title} onClose={onClose} width="lg">
                 {error && (
-                    <div className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]">
+                    <div
+                        role="alert"
+                        className="mb-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-3 text-[var(--ui-text)]"
+                    >
                         {error}
                     </div>
                 )}

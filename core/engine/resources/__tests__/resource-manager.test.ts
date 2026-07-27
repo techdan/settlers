@@ -4,29 +4,28 @@ import {
     getTotalResources,
     hasResources,
     transferResources,
-    addResources,
-    removeResources,
     stealRandomResource,
     logDistribution
 } from '../resource-manager';
 import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
-import { GameState } from '@/lib/types';
-// Note: Hex is not exported from types/board, so we use any or define a local shape
-type Hex = any;
+import type { BoardHex, GameState } from '@/lib/types';
+import type { TerrainType } from '@/core/rules/board-constants';
+import { createHex } from '@/lib/hex';
 
 describe('Resource Manager', () => {
     let gameState: GameState;
 
-    // Helper to create a hex
-    // Core Hex type: { id, q, r, terrain, numberToken, ... }
-    const createHex = (id: string, numberToken: number, terrain: string): Hex => {
+    const createBoardHex = (
+        id: string,
+        numberToken: number,
+        terrain: TerrainType
+    ): BoardHex => {
         const [q, r] = id.split(',').map(Number);
         return {
-            id, q, r,
-            terrain: terrain as any,
+            id,
+            hex: createHex(q, r),
+            terrain,
             numberToken,
-            vertices: [], edges: [],
-            resource: terrain === 'desert' ? null : 'wood' // simplified
         };
     };
 
@@ -40,7 +39,7 @@ describe('Resource Manager', () => {
             board: createTestBoard({
                 // Hex at 0,0 with number 6, Forest (produces wood)
                 hexes: [
-                    createHex('0,0', 6, 'forest')
+                    createBoardHex('0,0', 6, 'forest')
                 ],
                 vertices: [
                     // p1 settlement at 0,0,0
@@ -81,7 +80,7 @@ describe('Resource Manager', () => {
             // "In C&K, cities on commodity-producing hexes yield 1 resource (plus 1 commodity elsewhere)"
             // So resource manager should give 1 resource for city, not 2.
 
-            const distribution = distributeResources(gameState, 6);
+            distributeResources(gameState, 6);
 
             // p1 settlement -> 1 wood (unchanged)
             // p2 city -> 1 wood (C&K rule for commodity hex)

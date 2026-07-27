@@ -36,7 +36,7 @@ interface GameState {
         trade: ProgressCardType[];
         politics: ProgressCardType[];
     };
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 const ROOM_ID = 'FFOE';

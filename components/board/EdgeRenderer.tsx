@@ -3,8 +3,12 @@ import { Edge } from '@/lib/types';
 import { createHex, hexEdgeToPixel } from '@/lib/hex';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
-import { Road } from '@/themes/tabletop';
-import { StatusGlyph } from '@/themes/tabletop/glyphs';
+import { boardTheme } from '@/themes/board-theme';
+
+const {
+    StatusGlyph,
+    pieces: { Road },
+} = boardTheme;
 
 interface EdgeRendererProps {
     edge: Edge;

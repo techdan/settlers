@@ -8,15 +8,22 @@ import { getEligibleCityWallVertices } from '@/core/utils/city-wall-utils';
 import { getUpgradeableSettlementVertices } from '@/core/utils/city-upgrade-utils';
 import { getPromotableKnights } from '@/core/utils/knight-upgrade-utils';
 import { useTimerState } from '@/lib/hooks/useTimerState';
+import type { ProgressCardHandlerDecorator } from '@/lib/hooks/useProgressCardSelectionDecorator';
 import { ProgressHandView, ProgressHandCard } from '@/components/game/player/ProgressHandView';
 import { PROGRESS_CARD_DEFINITIONS } from '@/core/engine/progress/progress-card-definitions';
+import {
+    getProgressCardInteraction,
+    hasProgressCardFollowup,
+    hasProgressCardInteractionMode,
+} from '@/core/engine/progress/config/card-definitions';
+import { MEDICINE_COST } from '@/core/rules/commodity-constants';
 import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
 interface ProgressCardHandProps {
     player: PlayerState;
     roomId: string;
     gameState: GameState;
-    onPlayCard: (cardType: ProgressCardType, options?: any) => Promise<void>;
+    onPlayCard: (cardType: ProgressCardType, options?: unknown) => Promise<void>;
     onStartHexSelection?: (cardType: 'merchant' | 'inventor' | 'taxation') => void;
     onStartVertexSelection?: (cardType: 'intrigue') => void;
     onStartEdgeSelection?: (cardType: 'diplomat') => void;
@@ -37,14 +44,8 @@ interface ProgressCardHandProps {
      * `waiting_for_roll` would burn the Alchemy card.
      */
     onOpenPanelChange?: (cardType: ProgressCardType | null) => void;
-    decorateCardHandler?: <TArgs extends any[], TResult>(
-        cardType: ProgressCardType,
-        hasFollowupStep: boolean,
-        handler: (...args: TArgs) => TResult
-    ) => (...args: TArgs) => TResult;
+    decorateCardHandler?: ProgressCardHandlerDecorator;
 }
-
-const MEDICINE_COST = { ore: 2, wheat: 1 } as const;
 
 /**
  * Turn a rejected card play into something a player can act on.
@@ -62,24 +63,6 @@ function describePlayFailure(error: unknown, cardType: ProgressCardType): string
     const isRedacted = !raw || /omitted in production|digest property|server components render/i.test(raw);
 
     return isRedacted ? `${cardName} could not be played right now.` : raw;
-}
-
-// Cards that require parameter selection
-const CARDS_REQUIRING_PARAMETERS: ProgressCardType[] = [
-    'alchemist',
-    'guild_dues',
-    'merchant_fleet',
-    'resource_monopoly',
-    'trade_monopoly',
-    'espionage'
-];
-
-const BOARD_SELECTION_CARDS: ProgressCardType[] = ['merchant', 'inventor', 'intrigue', 'diplomat', 'taxation'];
-const CONFIRMATION_MODAL_CARDS: ProgressCardType[] = ['irrigation', 'mining', 'encouragement', 'wedding', 'saboteur'];
-const ROAD_PLACEMENT_CARDS: ProgressCardType[] = ['road_building_progress'];
-
-function requiresParameters(cardType: ProgressCardType): boolean {
-    return CARDS_REQUIRING_PARAMETERS.includes(cardType);
 }
 
 export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
@@ -139,18 +122,8 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
 
     const handlePlayCard = (cardType: ProgressCardType) => {
         setPlayError(null);
-        const isBoardSelectionCard = BOARD_SELECTION_CARDS.includes(cardType);
-        const isConfirmationModalCard = CONFIRMATION_MODAL_CARDS.includes(cardType);
-        const isRoadPlacementCard = ROAD_PLACEMENT_CARDS.includes(cardType);
-        const hasFollowupStep =
-            isBoardSelectionCard ||
-            isConfirmationModalCard ||
-            isRoadPlacementCard ||
-            requiresParameters(cardType) ||
-            cardType === 'crane' ||
-            cardType === 'engineer' ||
-            cardType === 'smith' ||
-            cardType === 'medicine';
+        const interaction = getProgressCardInteraction(cardType);
+        const hasFollowupStep = hasProgressCardFollowup(cardType);
 
         if (hasFollowupStep && currentActiveFollowup === cardType) {
             if (modalCard === cardType) {
@@ -192,30 +165,38 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
-        // Check for board selection cards first
-        if (onStartHexSelection && (cardType === 'merchant' || cardType === 'inventor' || cardType === 'taxation')) {
+        if (
+            onStartHexSelection &&
+            hasProgressCardInteractionMode(cardType, 'hex')
+        ) {
             onStartHexSelection(cardType);
             return;
         }
 
-        if (onStartVertexSelection && cardType === 'intrigue') {
+        if (
+            onStartVertexSelection &&
+            hasProgressCardInteractionMode(cardType, 'vertex')
+        ) {
             onStartVertexSelection(cardType);
             return;
         }
 
-        if (onStartEdgeSelection && cardType === 'diplomat') {
+        if (
+            onStartEdgeSelection &&
+            hasProgressCardInteractionMode(cardType, 'edge')
+        ) {
             onStartEdgeSelection(cardType);
             return;
         }
 
         // Commercial Harbor opens modal without playing card yet
         // Card will be played when offers are submitted
-        if (cardType === 'commercial_harbor') {
+        if (interaction.mode === 'commercial-harbor') {
             setModalCard(cardType);
             return;
         }
 
-        if (isRoadPlacementCard) {
+        if (interaction.mode === 'road-placement') {
             setManualFollowupCard(cardType);
             (async () => {
                 try {
@@ -229,8 +210,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             return;
         }
 
-        // Check if card requires parameters
-        if (isConfirmationModalCard || requiresParameters(cardType)) {
+        if (interaction.mode === 'modal') {
             setModalCard(cardType);
         } else {
             // Play card directly
@@ -278,15 +258,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
     // decorateCardHandler must receive the render-loop notion of "has follow-up"
     // (which includes treason) so its selection tracking is unchanged.
     const handleCardClick = (cardType: ProgressCardType) => {
-        const hasFollowup =
-            requiresParameters(cardType) ||
-            BOARD_SELECTION_CARDS.includes(cardType) ||
-            ROAD_PLACEMENT_CARDS.includes(cardType) ||
-            cardType === 'engineer' ||
-            cardType === 'smith' ||
-            cardType === 'medicine' ||
-            cardType === 'treason' ||
-            cardType === 'crane';
+        const hasFollowup = hasProgressCardFollowup(cardType);
         const run = decorateCardHandler
             ? decorateCardHandler(cardType, hasFollowup, () => handlePlayCard(cardType))
             : () => handlePlayCard(cardType);
@@ -357,15 +329,7 @@ export const ProgressCardHand: React.FC<ProgressCardHandProps> = ({
             disabledReason = 'Cannot be played before the first barbarian attack';
         }
 
-        const hasFollowup =
-            requiresParameters(cardType) ||
-            BOARD_SELECTION_CARDS.includes(cardType) ||
-            ROAD_PLACEMENT_CARDS.includes(cardType) ||
-            isEngineer ||
-            isSmith ||
-            isMedicine ||
-            isTreason ||
-            cardType === 'crane';
+        const hasFollowup = hasProgressCardFollowup(cardType);
         const active =
             hasFollowup && (
                 currentActiveFollowup === cardType ||

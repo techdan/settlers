@@ -1,10 +1,10 @@
 import { EMPTY_DICE_STATS, EMPTY_EVENT_DIE_STATS, GameState } from '@/lib/types/game';
-import { BoardState, Edge, Vertex } from '@/lib/types/board';
+import { BoardHex, BoardState, Edge, Vertex } from '@/lib/types/board';
 import { PlayerColor, PlayerState } from '@/lib/types/player';
 import { ResourceType } from '@/core/rules/board-constants';
 import { DevCardType } from '@/lib/types';
 import { getCanonicalEdgeId, getCanonicalVertexId, getEdgeEndpoints } from '@/lib/hex';
-import { CK_CONSTANTS, MetropolisType } from '@/core/rules/commodity-constants';
+import { MetropolisType } from '@/core/rules/commodity-constants';
 
 type EdgeInput = Partial<Edge> & { q?: number; r?: number; d?: number; id?: string };
 type VertexInput = Partial<Vertex> & { q?: number; r?: number; d?: number; id?: string };
@@ -88,7 +88,7 @@ export function createTestEdge(overrides: EdgeInput = {}): Edge {
  * Create a simple board for testing.
  * Automatically ensures vertices exist for any provided edges.
  */
-export function createTestBoard(config: { vertices?: VertexInput[]; edges?: EdgeInput[]; hexes?: any[] } = {}): BoardState {
+export function createTestBoard(config: { vertices?: VertexInput[]; edges?: EdgeInput[]; hexes?: BoardHex[] } = {}): BoardState {
     const vertexRecords: Record<string, Vertex> = {};
     const edgeRecords: Record<string, Edge> = {};
 

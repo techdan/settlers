@@ -1,4 +1,5 @@
 import { GameState } from '@/lib/types/game';
+import type { PlayerState } from '@/lib/types/player';
 import { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
 
@@ -9,7 +10,8 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeEncouragement() (lines 1759-1782)
  */
 export class EncouragementCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
+    void options;
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
@@ -43,15 +45,13 @@ export class EncouragementCommand implements ProgressCardCommand {
    * Update the active knight count cache on the player
    * This matches the legacy updateActiveKnightCount() function
    */
-  private updateActiveKnightCount(player: any): void {
+  private updateActiveKnightCount(player: PlayerState): void {
     if (!player.knights) {
       player.activeKnightCount = 0;
       return;
     }
 
-    const activeCount = player.knights.filter(
-      (k: any) => k.active
-    ).length;
+    const activeCount = player.knights.filter((knight) => knight.active).length;
     player.activeKnightCount = activeCount;
   }
 }

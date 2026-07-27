@@ -1,14 +1,20 @@
 import { useMemo } from 'react';
-import { GameState } from '@/lib/types';
-import { BoardSelectionState } from '@/lib/types/board-selection-state';
+import type { Edge, GameState, Vertex } from '@/lib/types';
+import type { HexTileData } from '@/core/engine/board/board-generator';
+import type {
+  BoardSelectionState,
+  PendingBoardPlacement
+} from '@/lib/types/board-selection-state';
 import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
-import { isValidKnightPlacement } from '@/core/validation/knight-validator';
+import {
+  canMoveKnightToVertex,
+  isValidKnightPlacement
+} from '@/core/validation/knight-validator';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
 import { getValidRelocationTargets } from '@/core/engine/knights/knight-manager';
 import { getOpenRoadIds } from '@/core/validation/diplomat-validator';
-import { getAdjacentEdgesForVertex } from '@/lib/hex';
-import { PendingBoardPlacement } from '@/lib/types/board-selection-state';
+import { getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
 
 /**
  * useBoardValidation hook
@@ -29,9 +35,9 @@ export function useBoardValidation(
   gameState: GameState,
   playerId: string,
   selectionState: BoardSelectionState,
-  vertices: any[],
-  edges: any[],
-  tiles: any[],
+  vertices: Vertex[],
+  edges: Edge[],
+  tiles: HexTileData[],
   pendingPlacement: PendingBoardPlacement | null
 ) {
   // Extract selection state properties
@@ -133,8 +139,6 @@ export function useBoardValidation(
         .find(k => k.id === movingKnightId);
 
       if (knight && knight.playerId === playerId) {
-        // Import the validator function inline to avoid circular dependencies
-        const { canMoveKnightToVertex } = require('@/core/validation/knight-validator');
         vertices.forEach(v => {
           if (canMoveKnightToVertex(gameState, knight, v.id, playerId)) {
             valid.add(v.id);
@@ -376,7 +380,6 @@ export function useBoardValidation(
     const getHexVertexIds = (hexId: string): string[] => {
       const [q, r] = hexId.split(',').map(Number);
       if (Number.isNaN(q) || Number.isNaN(r)) return [];
-      const { getCanonicalVertexId } = require('@/lib/hex');
       return Array.from({ length: 6 }, (_, d) => getCanonicalVertexId(q, r, d));
     };
 
@@ -388,24 +391,24 @@ export function useBoardValidation(
             const vertex = gameState.board.vertices[vertexId];
             return vertex && vertex.owner === playerId && vertex.structure;
           });
-          if (hasAdjacentSettlement && hex.terrain !== 'desert' && hex.terrain !== 'ocean') {
+          if (hasAdjacentSettlement && hex.terrain !== 'desert') {
             valid.add(hex.id);
           }
           break;
 
         case 'inventor':
-          // Any non-restricted hex with a number token (not 2,6,8,12 and not desert/ocean)
+          // Any non-restricted hex with a number token (not 2,6,8,12 or desert)
           const restrictedNumbers = [2, 6, 8, 12];
           const token = hex.numberToken;
           const isRestrictedToken = token ? restrictedNumbers.includes(token) : true;
-          const isRestrictedTerrain = hex.terrain === 'desert' || hex.terrain === 'ocean';
+          const isRestrictedTerrain = hex.terrain === 'desert';
           if (!isRestrictedToken && !isRestrictedTerrain) {
             valid.add(hex.id);
           }
           break;
 
         case 'taxation':
-          if (hex.terrain !== 'ocean' && hex.id !== gameState.robberHexId) {
+          if (hex.id !== gameState.robberHexId) {
             valid.add(hex.id);
           }
           break;

@@ -2,7 +2,6 @@ import { GameState } from '@/lib/types';
 import { GAME_CONSTANTS } from './constants';
 import { CK_CONSTANTS } from './commodity-constants';
 import { calculateMetropolisVP } from '@/core/engine/metropolis/metropolis-manager';
-import { isVictoryPointCard } from '@/core/engine/progress/progress-card-definitions';
 
 /**
  * Get victory point threshold based on game mode

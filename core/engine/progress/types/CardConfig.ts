@@ -41,5 +41,5 @@ export interface CardConfig {
  */
 export interface ProgressCardCommand {
   /** Execute the card's logic */
-  execute(state: GameState, playerId: string, options?: any): GameState;
+  execute(state: GameState, playerId: string, options?: unknown): GameState;
 }

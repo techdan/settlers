@@ -1,6 +1,7 @@
 import { EMPTY_EVENT_DIE_STATS, GameState } from '@/lib/types';
 import { EventDieFace, ProgressCardCategory } from '@/core/rules/commodity-constants';
 import { canDrawProgressCard } from '@/core/engine/improvements/improvement-manager';
+import { resolveBarbbarianAttack } from '@/core/engine/barbarian/barbarian-manager';
 
 /**
  * Event Die Manager (Cities & Knights Expansion)
@@ -118,7 +119,6 @@ function processBarbarianAdvance(gameState: GameState): void {
             gameState.hasBarbariansAttacked = true;
         } else {
             // Trigger barbarian attack immediately
-            const { resolveBarbbarianAttack } = require('@/core/engine/barbarian/barbarian-manager');
             resolveBarbbarianAttack(gameState);
             gameState.hasBarbariansAttacked = true;
         }

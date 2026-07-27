@@ -126,7 +126,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 <button
                     onClick={() => canInteract && onSetBuildMode(buildMode === 'road' ? null : 'road')}
                     disabled={!canInteract || !canAffordRoad || (player?.roadsRemaining ?? 0) <= 0}
-                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'road'
+                    className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'road'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
                             ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
@@ -153,7 +153,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 <button
                     onClick={() => canInteract && onSetBuildMode(buildMode === 'settlement' ? null : 'settlement')}
                     disabled={!canInteract || !canAffordSettlement || (player?.settlementsRemaining ?? 0) <= 0}
-                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'settlement'
+                    className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'settlement'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
                             ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
@@ -182,7 +182,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                 <button
                     onClick={() => canInteract && onSetBuildMode(buildMode === 'city' ? null : 'city')}
                     disabled={!canInteract || !canAffordCity || (player?.citiesRemaining ?? 0) <= 0}
-                    className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city'
+                    className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'city'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordCity && (player?.citiesRemaining ?? 0) > 0
                             ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
@@ -210,7 +210,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     <button
                         onClick={() => canInteract && handleBuyDevCard()}
                         disabled={!canInteract || !canAffordDevCard || deckSize === 0 || isPending}
-                        className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${canAffordDevCard && deckSize > 0
+                        className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${canAffordDevCard && deckSize > 0
                             ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
@@ -238,7 +238,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     <button
                         onClick={() => canInteract && onSetBuildMode(buildMode === 'knight' ? null : 'knight')}
                         disabled={!canInteract || !canBuildKnight}
-                        className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'knight'
+                        className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'knight'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildKnight
                                 ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
@@ -267,7 +267,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     <button
                         onClick={() => canInteract && onSetBuildMode(buildMode === 'city_wall' ? null : 'city_wall')}
                         disabled={!canInteract || !canBuildCityWall}
-                        className={`flex flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors ${buildMode === 'city_wall'
+                        className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'city_wall'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildCityWall
                                 ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')

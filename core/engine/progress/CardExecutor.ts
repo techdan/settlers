@@ -1,7 +1,7 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardType } from '@/lib/types/player';
-import { CardConfig, ProgressCardCommand } from './types/CardConfig';
-import { CardEffect } from './types/CardEffect';
+import type { GameState } from '@/lib/types/game';
+import type { ProgressCardType } from '@/lib/types/player';
+import type { CardConfig, ProgressCardCommand } from './types/CardConfig';
+import type { CardEffect } from './types/CardEffect';
 import { getCardConfig, isSimpleCard } from './config/card-definitions';
 import {
   executeAddResourcePerHex,
@@ -37,6 +37,22 @@ import { GuildDuesCommand } from './commands/GuildDuesCommand';
 import { TaxationCommand } from './commands/TaxationCommand';
 import { CommercialHarborCommand } from './commands/CommercialHarborCommand';
 import { AlchemistCommand } from './commands/AlchemistCommand';
+
+type StealOptions = NonNullable<
+  Parameters<typeof executeStealFromOpponents>[3]
+>;
+
+function isStealOptions(options: unknown): options is StealOptions {
+  if (typeof options !== 'object' || options === null) return false;
+
+  const candidate = options as Record<string, unknown>;
+  return (
+    (candidate.resource === undefined ||
+      typeof candidate.resource === 'string') &&
+    (candidate.commodity === undefined ||
+      typeof candidate.commodity === 'string')
+  );
+}
 
 /**
  * CardExecutor
@@ -85,7 +101,7 @@ export class CardExecutor {
     cardType: ProgressCardType,
     state: GameState,
     playerId: string,
-    options?: any
+    options?: unknown
   ): GameState {
     // Check if this is a complex card with a custom command
     const command = this.commands.get(cardType);
@@ -113,7 +129,7 @@ export class CardExecutor {
     config: CardConfig,
     state: GameState,
     playerId: string,
-    options?: any
+    options?: unknown
   ): GameState {
     // Validate if custom validator exists
     if (config.validator && !config.validator(state, playerId)) {
@@ -136,7 +152,7 @@ export class CardExecutor {
     effect: CardEffect,
     state: GameState,
     playerId: string,
-    options?: any
+    options?: unknown
   ): GameState {
     switch (effect.type) {
       case 'add_resource_per_hex':
@@ -149,7 +165,12 @@ export class CardExecutor {
         return executeAddCommodityPerCity(state, playerId, effect);
 
       case 'steal_from_opponents':
-        return executeStealFromOpponents(state, playerId, effect, options);
+        return executeStealFromOpponents(
+          state,
+          playerId,
+          effect,
+          isStealOptions(options) ? options : undefined
+        );
 
       case 'upgrade_knight':
         return executeUpgradeKnight(state, playerId, effect);
@@ -177,7 +198,14 @@ export class CardExecutor {
       default:
         // TypeScript exhaustiveness check
         const _exhaustive: never = effect;
-        throw new Error(`Unknown effect type: ${(_exhaustive as any).type}`);
+        const unknownEffect: unknown = _exhaustive;
+        const effectType =
+          typeof unknownEffect === 'object' &&
+          unknownEffect !== null &&
+          'type' in unknownEffect
+            ? String(unknownEffect.type)
+            : 'unknown';
+        throw new Error(`Unknown effect type: ${effectType}`);
     }
   }
 

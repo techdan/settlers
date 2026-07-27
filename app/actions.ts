@@ -1,117 +1,50 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { randomUUID, randomInt } from 'crypto';
-import * as roomRepository from '@/lib/repositories/room-repository';
-import * as playerRepository from '@/lib/repositories/player-repository';
+import { revalidatePath } from 'next/cache';
+import type { ResourceType } from '@/core/rules/board-constants';
+import type { CommodityType, ImprovementType } from '@/core/rules/commodity-constants';
+import type { DevCardPlayOptions, DevCardType } from '@/lib/types';
+import type { WeddingSelection } from '@/lib/types/game';
+import type { PlayerColor, ProgressCardType } from '@/lib/types/player';
+import * as buildingService from '@/lib/services/building-service';
 import * as chatService from '@/lib/services/chat-service';
-
-function generateRoomCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let result = '';
-    for (let i = 0; i < 4; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
+import * as cityWallsService from '@/lib/services/city-walls-service';
+import * as ckGameService from '@/lib/services/ck-game-service';
+import * as debugService from '@/lib/services/debug-service';
+import * as devCardService from '@/lib/services/devcard-service';
+import * as gameService from '@/lib/services/game-service';
+import * as improvementService from '@/lib/services/improvement-service';
+import * as knightService from '@/lib/services/knight-service';
+import { LobbyService } from '@/lib/services/lobby-service';
+import * as progressCardService from '@/lib/services/progress-card-service';
+import * as robberService from '@/lib/services/robber-service';
+import { requestTimeExtensionForGame } from '@/lib/services/timer-request-service';
+import * as tradingService from '@/lib/services/trading-service';
 
 export async function createRoom(formData: FormData) {
     const playerName = formData.get('playerName') as string;
-    if (!playerName) throw new Error('Player name is required');
-
-    const roomId = generateRoomCode();
-    const playerId = randomUUID();
-
-    // Create room using repository
-    await roomRepository.createRoom(roomId);
-
-    // Create host player using repository
-    await playerRepository.createPlayer(playerId, roomId, playerName, true);
-
-    // Initialize lobby with the beginner board so hosts land on a ready-to-play setup
-    await LobbyService.setStandardBoard(roomId, playerId);
-
+    const { roomId, playerId } = await LobbyService.createRoom(playerName);
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
 
 export async function getRoomPlayers(roomId: string) {
-    // Check if room exists
-    const room = await roomRepository.findRoomById(roomId.toUpperCase());
-    if (!room) {
-        throw new Error('Room not found');
-    }
-
-    const players = await playerRepository.findPlayersByRoomId(roomId.toUpperCase());
-    return players.map(p => ({ id: p.id, name: p.name }));
+    return LobbyService.getRoomPlayerSummaries(roomId);
 }
 
 export async function resumeGame(formData: FormData) {
-    const roomId = (formData.get('roomId') as string).toUpperCase();
+    const roomId = formData.get('roomId') as string;
     const playerId = formData.get('playerId') as string | null;
     const playerName = formData.get('playerName') as string | null;
-
-    if (!roomId) throw new Error('Room ID is required');
-
-    // Check if room exists
-    const room = await roomRepository.findRoomById(roomId);
-    if (!room) {
-        throw new Error('Room not found');
-    }
-
-    let targetPlayerId = playerId;
-
-    if (!targetPlayerId && playerName) {
-        // Find existing player by name
-        const player = await playerRepository.findPlayerByName(roomId, playerName);
-        if (player) {
-            targetPlayerId = player.id;
-        }
-    }
-
-    if (!targetPlayerId) {
-        throw new Error('Player not found in this room. Please check the name or join as a new player.');
-    }
-
-    redirect(`/room/${roomId}?playerId=${targetPlayerId}`);
+    const destination = await LobbyService.resolveResumePlayer(roomId, playerId, playerName);
+    redirect(`/room/${destination.roomId}?playerId=${destination.playerId}`);
 }
 
 export async function joinRoom(formData: FormData) {
     const playerName = formData.get('playerName') as string;
-    const roomId = (formData.get('roomId') as string).toUpperCase();
-
-    if (!playerName) throw new Error('Player name is required');
-    if (!roomId) throw new Error('Room ID is required');
-
-    // Check if room exists using repository
-    const room = await roomRepository.findRoomById(roomId);
-
-    if (!room) {
-        throw new Error('Room not found');
-    }
-
-    const playerId = randomUUID();
-
-    // Create player using repository
-    await playerRepository.createPlayer(playerId, roomId, playerName);
-
+    const { roomId, playerId } = await LobbyService.joinRoom(formData.get('roomId') as string, playerName);
     redirect(`/room/${roomId}?playerId=${playerId}`);
 }
-
-import { DevCardType, GameState } from '@/lib/types';
-import { PlayerColor } from '@/lib/types/player';
-import { ResourceType } from '@/core/rules/board-constants';
-import { getHexesForVertex, getAdjacentEdgesForVertex, getCanonicalVertexId } from '@/lib/hex';
-import * as gameService from '@/lib/services/game-service';
-import * as buildingService from '@/lib/services/building-service';
-import * as tradingService from '@/lib/services/trading-service';
-import * as robberService from '@/lib/services/robber-service';
-import * as devCardService from '@/lib/services/devcard-service';
-import * as progressCardService from '@/lib/services/progress-card-service';
-import * as ckGameService from '@/lib/services/ck-game-service';
-import { games } from '@/lib/db/schema';
-import { db } from '@/lib/db';
-import { eq } from 'drizzle-orm';
-import { isValidSetupSettlement, isValidSetupRoad } from '@/core/validation/setup-validator';
 
 export async function startGame(roomId: string, gameMode?: 'base' | 'cities_and_knights') {
     return gameService.startGame(roomId, gameMode);
@@ -141,15 +74,18 @@ export async function buyDevCard(roomId: string, playerId: string) {
     return devCardService.buyDevCard(roomId, playerId);
 }
 
-export async function playDevCard(roomId: string, playerId: string, cardType: DevCardType, options?: { resource1?: ResourceType, resource2?: ResourceType, monopolyResource?: ResourceType }) {
+export async function playDevCard(
+    roomId: string,
+    playerId: string,
+    cardType: DevCardType,
+    options?: DevCardPlayOptions
+) {
     return devCardService.playDevCard(roomId, playerId, cardType, options);
 }
 
 export async function discardCards(roomId: string, playerId: string, resources: Record<ResourceType, number>, commodities?: Record<CommodityType, number>) {
     return robberService.discardCards(roomId, playerId, resources, commodities);
 }
-
-import { getPortForVertex } from '@/core/engine/board/port-generator';
 
 export async function tradeWithBank(roomId: string, playerId: string, giveResource: ResourceType | CommodityType, getResource: ResourceType | CommodityType) {
     return tradingService.tradeWithBank(roomId, playerId, giveResource, getResource);
@@ -182,9 +118,6 @@ export async function cancelTrade(roomId: string, playerId: string) {
     return tradingService.cancelTrade(roomId, playerId);
 }
 
-import { isValidMainPhaseRoad, isValidMainPhaseSettlement, isValidMainPhaseCity } from '@/core/validation/building-validator';
-import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
-
 export async function buildRoad(roomId: string, playerId: string, edgeId: string) {
     return buildingService.buildRoad(roomId, playerId, edgeId);
 }
@@ -196,10 +129,6 @@ export async function buildSettlement(roomId: string, playerId: string, vertexId
 export async function buildCity(roomId: string, playerId: string, vertexId: string) {
     return buildingService.buildCity(roomId, playerId, vertexId);
 }
-
-import * as knightService from '@/lib/services/knight-service';
-import * as cityWallsService from '@/lib/services/city-walls-service';
-import * as improvementService from '@/lib/services/improvement-service';
 
 export async function buildKnight(roomId: string, playerId: string, vertexId: string) {
     return knightService.buildKnightAction(roomId, playerId, vertexId);
@@ -263,175 +192,26 @@ export async function loseCityToBarbarian(roomId: string, playerId: string, vert
 }
 
 export async function debugGiveResource(roomId: string, playerId: string, resource: ResourceType) {
-    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
-    if (!game) throw new Error('Game not found');
-    const gameState = JSON.parse(game.state) as GameState;
-
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
-    player.resources[resource]++;
-
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `DEBUG: ${player.name} gave themselves 1 ${resource}.`,
-        playerId
-    });
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return debugService.giveResource(roomId, playerId, resource);
 }
 
-import { CommodityType, ImprovementType } from '@/core/rules/commodity-constants';
-import { ProgressCardType } from '@/lib/types/player';
-import { WeddingSelection } from '@/lib/types/game';
-import { updateAllVictoryPoints, checkVictoryCondition } from '@/core/rules/victory-conditions';
-
 export async function debugGiveCommodity(roomId: string, playerId: string, commodity: CommodityType) {
-    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
-    if (!game) throw new Error('Game not found');
-    const gameState = JSON.parse(game.state) as GameState;
-
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
-    if (!player.commodities) {
-        throw new Error('Player does not have commodities (not in C&K mode)');
-    }
-
-    player.commodities[commodity]++;
-
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `DEBUG: ${player.name} gave themselves 1 ${commodity}.`,
-        playerId
-    });
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return debugService.giveCommodity(roomId, playerId, commodity);
 }
 
 export async function debugGiveProgressCard(roomId: string, playerId: string, cardType: ProgressCardType) {
-    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
-    if (!game) throw new Error('Game not found');
-    const gameState = JSON.parse(game.state) as GameState;
-
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
-    if (!player.progressCards) {
-        throw new Error('Player does not have progress cards (not in C&K mode)');
-    }
-
-    const isVPCard = cardType === 'printer' || cardType === 'constitution';
-
-    if (isVPCard) {
-        if (!player.revealedVPCards) {
-            player.revealedVPCards = [];
-        }
-        if (!player.revealedVPCards.includes(cardType)) {
-            player.revealedVPCards.push(cardType);
-        }
-
-        gameState.lastVPCardGain = {
-            playerId,
-            cardType,
-            timestamp: Date.now()
-        };
-
-        updateAllVictoryPoints(gameState);
-
-        const winnerId = checkVictoryCondition(gameState);
-        if (winnerId) {
-            gameState.winner = winnerId;
-            gameState.phase = 'game_over';
-
-            const winner = gameState.players.find(p => p.id === winnerId);
-            gameState.logs.push({
-                id: randomUUID(),
-                timestamp: Date.now(),
-                message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
-            });
-        }
-
-        gameState.logs.push({
-            id: randomUUID(),
-            timestamp: Date.now(),
-            message: `DEBUG: ${player.name} revealed ${cardType} for +1 VP.`,
-            playerId
-        });
-    } else {
-        player.progressCards.push(cardType);
-
-        gameState.logs.push({
-            id: randomUUID(),
-            timestamp: Date.now(),
-            message: `DEBUG: ${player.name} gave themselves a ${cardType} progress card.`,
-            playerId
-        });
-    }
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return debugService.giveProgressCard(roomId, playerId, cardType);
 }
 
 export async function debugGiveDevCard(roomId: string, playerId: string, cardType: DevCardType) {
-    const game = await db.query.games.findFirst({ where: eq(games.roomId, roomId) });
-    if (!game) throw new Error('Game not found');
-    const gameState = JSON.parse(game.state) as GameState;
-
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
-    // Be defensive against older serialized states.
-    if (!player.devCards) {
-        player.devCards = {
-            knight: 0,
-            monopoly: 0,
-            road_building: 0,
-            victory_point: 0,
-            year_of_plenty: 0
-        };
-    }
-    player.devCards[cardType] = (player.devCards[cardType] || 0) + 1;
-
-    updateAllVictoryPoints(gameState);
-
-    const winnerId = checkVictoryCondition(gameState);
-    if (winnerId) {
-        gameState.winner = winnerId;
-        gameState.phase = 'game_over';
-
-        const winner = gameState.players.find(p => p.id === winnerId);
-        gameState.logs.push({
-            id: randomUUID(),
-            timestamp: Date.now(),
-            message: `${winner?.name} wins with ${winner?.victoryPoints} victory points!`
-        });
-    }
-
-    gameState.logs.push({
-        id: randomUUID(),
-        timestamp: Date.now(),
-        message: `DEBUG: ${player.name} gave themselves 1 ${cardType.replace(/_/g, ' ')} development card.`,
-        playerId
-    });
-
-    await db.update(games)
-        .set({ state: JSON.stringify(gameState), updatedAt: new Date() })
-        .where(eq(games.id, gameState.id));
+    return debugService.giveDevCard(roomId, playerId, cardType);
 }
 
 export async function playProgressCard(
     roomId: string,
     playerId: string,
     cardType: ProgressCardType,
-    options?: any
+    options?: Record<string, unknown>
 ) {
     const result = await progressCardService.playProgressCardAction(roomId, playerId, cardType, options);
     revalidatePath(`/room/${roomId}`);
@@ -518,9 +298,6 @@ export async function placeBonusRoad(roomId: string, playerId: string, edgeId: s
     return devCardService.placeBonusRoad(roomId, playerId, edgeId);
 }
 
-import { LobbyService } from '@/lib/services/lobby-service';
-import { revalidatePath } from 'next/cache';
-
 export async function generateLobbyBoard(roomId: string, hostId: string, fairMode: boolean) {
     const result = await LobbyService.generateBoard(roomId, hostId, fairMode);
     revalidatePath(`/room/${roomId}`);
@@ -576,22 +353,7 @@ export async function kickPlayerFromLobby(roomId: string, hostId: string, player
 }
 
 export async function requestTimeExtension(roomId: string, playerId: string) {
-    const { requestExtension } = await import('@/lib/services/timer-service');
-    const { getGameStateByRoomId, updateGameState } = await import('@/lib/repositories/game-repository');
-
-    const gameState = await getGameStateByRoomId(roomId);
-    if (!gameState) throw new Error('Game not found');
-
-    const result = requestExtension(gameState, playerId);
-
-    if (!result.success) {
-        throw new Error(result.error || 'Failed to request extension');
-    }
-
-    if (result.newState) {
-        await updateGameState(result.newState);
-    }
-
+    const result = await requestTimeExtensionForGame(roomId, playerId);
     revalidatePath(`/room/${roomId}`);
     return result;
 }

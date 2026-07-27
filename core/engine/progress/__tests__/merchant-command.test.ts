@@ -9,6 +9,7 @@ vi.mock(
 );
 
 import { MerchantCommand } from '../commands/MerchantCommand';
+import { createHex } from '@/lib/hex';
 import { createTestBoard, createTestGameState, createTestPlayer } from '@/lib/test-utils';
 
 describe('MerchantCommand', () => {
@@ -30,7 +31,12 @@ describe('MerchantCommand', () => {
     const gameState = createTestGameState({
       players: [player],
       board: createTestBoard({
-        hexes: [{ id: '0,0', terrain: 'forest' }],
+        hexes: [{
+          id: '0,0',
+          hex: createHex(0, 0),
+          terrain: 'forest',
+          numberToken: 8,
+        }],
       }),
       gameMode: 'cities_and_knights',
     });

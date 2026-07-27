@@ -1,6 +1,5 @@
 import { GameState } from '@/lib/types/game';
 import { ResourceType } from '@/core/rules/board-constants';
-import { CommodityType } from '@/core/rules/commodity-constants';
 import { addResources, removeResources } from '@/core/engine/resources/resource-manager';
 
 /**

@@ -1,6 +1,7 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardCommand } from '../types/CardConfig';
+import type { GameState, WeddingGiftRequest } from '@/lib/types/game';
+import type { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
+import { getTotalCardCount } from '../utilities/ResourceTransfer';
 
 /**
  * Wedding Card Command
@@ -10,14 +11,9 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeWedding() (lines 1706-1757)
  */
 
-interface WeddingGiftRequest {
-  playerId: string;
-  requiredCards: number;
-  status: 'pending' | 'completed' | 'skipped';
-}
-
 export class WeddingCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState;
+  execute(state: GameState, playerId: string): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
@@ -41,9 +37,6 @@ export class WeddingCommand implements ProgressCardCommand {
       );
       return state;
     }
-
-    // Import resource utilities
-    const { getTotalCardCount } = require('@/core/engine/progress/utilities/ResourceTransfer');
 
     // Create requests for each qualifying opponent
     const requests: WeddingGiftRequest[] = higherVPOpponents.map((opponent) => {

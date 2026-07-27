@@ -16,6 +16,14 @@ export type CardInteractionType =
   | 'confirmation' // Simple yes/no confirmation
   | 'notification'; // Just show result message
 
+export interface CardInteractionContext {
+  /** Message rendered for confirmation and notification interactions */
+  message?: string;
+
+  /** Card-specific context that consumers must narrow before use */
+  [key: string]: unknown;
+}
+
 /**
  * Describes the interaction required from the player
  */
@@ -42,7 +50,7 @@ export interface CardInteraction {
   allowCancel?: boolean;
 
   /** Additional context data for the interaction */
-  context?: Record<string, any>;
+  context?: CardInteractionContext;
 }
 
 /**
@@ -68,7 +76,7 @@ export interface InteractionOption {
   disabledReason?: string;
 
   /** Additional data for this option */
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }
 
 /**
@@ -119,5 +127,5 @@ export interface CardInteractionResponse {
   selections: string[];
 
   /** Additional data from the interaction */
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
 }

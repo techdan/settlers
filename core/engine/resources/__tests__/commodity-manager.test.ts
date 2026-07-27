@@ -8,21 +8,24 @@ import {
     getCommodityForImprovement
 } from '../commodity-manager';
 import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
-import { GameState } from '@/lib/types';
-
-type Hex = any;
+import type { BoardHex, GameState } from '@/lib/types';
+import type { TerrainType } from '@/core/rules/board-constants';
+import { createHex } from '@/lib/hex';
 
 describe('Commodity Manager', () => {
     let gameState: GameState;
 
-    const createHex = (id: string, numberToken: number, terrain: string): Hex => {
+    const createBoardHex = (
+        id: string,
+        numberToken: number,
+        terrain: TerrainType
+    ): BoardHex => {
         const [q, r] = id.split(',').map(Number);
         return {
-            id, q, r,
-            terrain: terrain as any,
+            id,
+            hex: createHex(q, r),
+            terrain,
             numberToken,
-            vertices: [], edges: [],
-            resource: terrain === 'desert' ? null : 'wood'
         };
     };
 
@@ -43,9 +46,9 @@ describe('Commodity Manager', () => {
             gameMode: 'cities_and_knights',
             board: createTestBoard({
                 hexes: [
-                    createHex('0,0', 6, 'forest'), // Produces Paper
-                    createHex('1,0', 5, 'pasture'), // Produces Cloth
-                    createHex('-1,0', 4, 'mountain') // Produces Coin (singular 'mountain')
+                    createBoardHex('0,0', 6, 'forest'), // Produces Paper
+                    createBoardHex('1,0', 5, 'pasture'), // Produces Cloth
+                    createBoardHex('-1,0', 4, 'mountain') // Produces Coin (singular 'mountain')
                 ],
                 vertices: [
                     // p1 city on Forest (0,0,0)

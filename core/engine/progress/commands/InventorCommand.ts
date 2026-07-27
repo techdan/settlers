@@ -15,13 +15,24 @@ export class InventorCommand implements ProgressCardCommand {
     8: 5, 9: 4, 10: 3, 11: 2, 12: 1,
   };
 
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const { hex1Id, hex2Id } = options || {};
+    const commandOptions =
+      typeof options === 'object' && options !== null
+        ? (options as Record<string, unknown>)
+        : {};
+    const hex1Id =
+      typeof commandOptions.hex1Id === 'string'
+        ? commandOptions.hex1Id
+        : undefined;
+    const hex2Id =
+      typeof commandOptions.hex2Id === 'string'
+        ? commandOptions.hex2Id
+        : undefined;
     if (!hex1Id || !hex2Id) {
       throw new Error('Inventor requires selecting two hexes to swap');
     }

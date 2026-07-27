@@ -65,26 +65,11 @@ describe('Event Die Manager', () => {
         it('triggers barbarian attack when reaching 7', () => {
             gameState.barbarianPosition = 6;
 
-            // We need to mock the barbarian manager require if possible, 
-            // but since it's a require inside the function, it's hard to mock without vi.mock.
-            // Vitest automocks might work if setup correctly, but here we can check side effects.
-            // If the module is not found, it might error. Check imports.
-            // The file uses `require('@/core/engine/barbarian/barbarian-manager')`.
-            // Ideally we mock this.
+            processEventDieRoll(gameState, 'ship', 3);
 
-            try {
-                processEventDieRoll(gameState, 'ship', 3);
-                // If it doesn't crash, we check if flag is set.
-                // Assuming barbarian manager is available in checking environment or mocked.
-                // For now, let's allow it to fail if dependency missing, but let's assume it works.
-                // We verify state change.
-
-                // If real manager runs, it might set phase.
-                // If we want to be safe, we verify position is 7.
-                expect(gameState.barbarianPosition).toBe(7);
-            } catch (e) {
-                // If 'resolveBarbbarianAttack' fails due to missing impl or something, ignore for this test
-            }
+            expect(gameState.barbarianPosition).toBe(0);
+            expect(gameState.hasBarbariansAttacked).toBe(true);
+            expect(gameState.logs.some(log => log.message.includes('Barbarian'))).toBe(true);
         });
 
         it('identifies eligible players for progress cards', () => {

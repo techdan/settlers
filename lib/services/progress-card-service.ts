@@ -111,14 +111,12 @@ export async function cancelRoadBuildingProgress(roomId: string, playerId: strin
     }
 
     const placedEdges = effect.placedEdges || [];
-    let removedCount = 0;
 
     placedEdges.forEach(edgeId => {
         const edge = state.board.edges[edgeId];
         if (edge && edge.owner === playerId && edge.structure === 'road') {
             edge.owner = null;
             edge.structure = null;
-            removedCount += 1;
             player.roadsRemaining = (player.roadsRemaining || 0) + 1;
         }
     });

@@ -1,7 +1,27 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardCommand } from '../types/CardConfig';
+import type { GameState } from '@/lib/types/game';
+import type { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
-import { ImprovementType } from '@/core/rules/commodity-constants';
+import type { ImprovementType } from '@/core/rules/commodity-constants';
+import {
+  tryAwardMetropolis,
+  tryStealMetropolis,
+  upgradeImprovement,
+} from '../../improvements/improvement-manager';
+
+function getImprovementOption(options: unknown): ImprovementType | undefined {
+  if (typeof options !== 'object' || options === null) return undefined;
+
+  const improvement = (options as Record<string, unknown>).improvement;
+  if (
+    improvement === 'science' ||
+    improvement === 'trade' ||
+    improvement === 'politics'
+  ) {
+    return improvement;
+  }
+
+  return undefined;
+}
 
 /**
  * Crane Card Command
@@ -10,20 +30,16 @@ import { ImprovementType } from '@/core/rules/commodity-constants';
  * Legacy implementation: executeCrane() (lines 581-605)
  */
 export class CraneCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
     }
 
-    const improvement = options?.improvement as ImprovementType | undefined;
+    const improvement = getImprovementOption(options);
     if (!improvement) {
       throw new Error('Crane requires selecting an improvement to upgrade');
     }
-
-    // Import improvement utilities
-    const { upgradeImprovement, tryAwardMetropolis, tryStealMetropolis } =
-      require('@/core/engine/improvements/improvement-manager');
 
     // Upgrade with 1 commodity discount
     const discount = 1;

@@ -35,14 +35,12 @@ export function getEligibleCityWallVertices(
 ): string[] {
     if (getCityWallCount(gameState, playerId) >= 3) return [];
 
+    const player = gameState.players.find(candidate => candidate.id === playerId);
+    if (!options?.ignoreCost && (!player || player.resources.brick < 2)) return [];
+
     return Object.values(gameState.board.vertices)
         .filter(v => v.owner === playerId && (v.structure === 'city' || v.structure === 'metropolis'))
         .filter(v => !v.hasCityWall)
-        .filter(v => {
-            if (options?.ignoreCost) return true;
-            const player = gameState.players.find(p => p.id === playerId);
-            return player ? player.resources.brick >= 2 : false;
-        })
         .slice(0) // ensure array copy
         .map(v => v.id);
 }

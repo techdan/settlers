@@ -1,6 +1,6 @@
 import React from 'react';
-import { GameState } from '@/lib/types/game';
-import { PlayerState } from '@/lib/types';
+import type { GameState } from '@/lib/types/game';
+import type { Knight, PlayerState } from '@/lib/types';
 import { KnightPiece, TabletopStatusIcon } from '@/themes/tabletop';
 import { tabletopOptionClass } from '@/components/game/ui/TabletopModal';
 
@@ -18,7 +18,6 @@ interface KnightSelectorProps {
  * Used by Smith (Smithing) card and other knight-related cards
  */
 export const KnightSelector: React.FC<KnightSelectorProps> = ({
-  gameState,
   currentPlayer,
   selections,
   onSelectionsChange,
@@ -35,7 +34,7 @@ export const KnightSelector: React.FC<KnightSelectorProps> = ({
     }
   };
 
-  const getKnightLevelDisplay = (level: string) => {
+  const getKnightLevelDisplay = (level: Knight['level']) => {
     switch (level) {
       case 'basic':
         return { label: 'Basic', strength: 1 };
@@ -43,12 +42,10 @@ export const KnightSelector: React.FC<KnightSelectorProps> = ({
         return { label: 'Strong', strength: 2 };
       case 'mighty':
         return { label: 'Mighty', strength: 3 };
-      default:
-        return { label: 'Unknown', strength: 0 };
     }
   };
 
-  const canPromote = (knight: any) => {
+  const canPromote = (knight: Knight) => {
     // Basic check - real implementation would check politics level
     if (knight.level === 'mighty') return false;
     if (knight.level === 'strong') {

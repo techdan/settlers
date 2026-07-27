@@ -1,6 +1,10 @@
-import { GameState } from '@/lib/types';
-import { SelectionState, ImprovementType } from '@/lib/hooks/useSelectionManager';
+import type { GameState } from '@/lib/types';
+import type { SelectionState, ImprovementType } from '@/lib/hooks/useSelectionManager';
 import { buildCityWall, buildCity, placeMetropolis, upgradeImprovement } from '@/app/actions';
+import {
+  controllerErrorMessage,
+  type PlayProgressCard,
+} from '@/lib/controllers/progress-card/types';
 
 /**
  * Improvement Controller
@@ -20,7 +24,7 @@ export interface ImprovementControllerDeps {
   gameState: GameState | null;
   selectionManager: SelectionState;
   metropolisPrompt: ProgressPrompt;
-  handlePlayProgressCard: (cardType: any, options?: any) => Promise<void>;
+  handlePlayProgressCard: PlayProgressCard;
 }
 
 export interface ImprovementController {
@@ -141,10 +145,10 @@ export function createImprovementController(deps: ImprovementControllerDeps): Im
       selectionManager.setSelectingCityForMetropolis(null);
       selectionManager.setSelectedMetropolisCityId(null);
       metropolisPrompt.clear();
-    } catch (e: any) {
-      const message = e?.message || 'Failed to upgrade to metropolis';
+    } catch (error: unknown) {
+      const message = controllerErrorMessage(error, 'Failed to upgrade to metropolis');
       metropolisPrompt.setStatus(message);
-      console.error('Failed to upgrade to metropolis', e);
+      console.error('Failed to upgrade to metropolis', error);
     } finally {
       selectionManager.setIsMetropolisSubmitting(false);
     }

@@ -27,7 +27,7 @@ export function useConnectionStatus() {
         status: 'online',
         lastError: null,
         consecutiveFailures: 0,
-        lastSuccessTime: Date.now()
+        lastSuccessTime: null
     });
 
     // Listen to browser online/offline events
@@ -61,12 +61,12 @@ export function useConnectionStatus() {
      * Mark request as successful
      */
     const markSuccess = useCallback(() => {
-        setState(prev => ({
+        setState({
             status: 'online',
             lastError: null,
             consecutiveFailures: 0,
             lastSuccessTime: Date.now()
-        }));
+        });
     }, []);
 
     /**

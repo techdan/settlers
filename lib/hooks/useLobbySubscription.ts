@@ -16,6 +16,33 @@ type Room = {
     metadata: string | null;
 };
 
+const VALID_PLAYER_COLORS: readonly PlayerColor[] = [
+    '#ff0000',
+    '#0000ff',
+    '#ff7a00',
+    '#d4b483',
+];
+
+function isPlayerColor(value: unknown): value is PlayerColor {
+    return VALID_PLAYER_COLORS.some(color => color === value);
+}
+
+function normalizePlayer(value: unknown): Player {
+    const player = typeof value === 'object' && value !== null
+        ? value as Record<string, unknown>
+        : {};
+    const colorValue = player.color ?? null;
+    const joinedAtValue = player.joinedAt ?? player.joined_at ?? null;
+
+    return {
+        id: typeof player.id === 'string' ? player.id : '',
+        name: typeof player.name === 'string' ? player.name : '',
+        isHost: Boolean(player.isHost ?? player.is_host ?? false),
+        color: isPlayerColor(colorValue) ? colorValue : null,
+        joinedAt: typeof joinedAtValue === 'string' ? joinedAtValue : null,
+    };
+}
+
 export function useLobbySubscription(
     roomId: string,
     initialRoom: Room,
@@ -23,26 +50,11 @@ export function useLobbySubscription(
 ) {
     const [room, setRoom] = useState<Room>(initialRoom);
     const [players, setPlayers] = useState<Player[]>(initialPlayers);
-    const [isRealtime, setIsRealtime] = useState(false);
     const supabase = useMemo(() => getSupabaseClient(), []);
+    const isRealtime = Boolean(roomId && supabase);
 
     useEffect(() => {
         if (!roomId || !supabase) return;
-
-        setIsRealtime(true);
-
-        const normalizePlayer = (player: any): Player => {
-            const colorValue = player.color ?? null;
-            const validColors: PlayerColor[] = ['#ff0000', '#0000ff', '#ff7a00', '#d4b483'];
-
-            return {
-                id: player.id,
-                name: player.name,
-                isHost: Boolean(player.isHost ?? player.is_host ?? false),
-                color: colorValue && validColors.includes(colorValue) ? colorValue : null,
-                joinedAt: player.joinedAt ?? player.joined_at ?? null,
-            };
-        };
 
         // Subscribe to Room updates
         const roomChannel = supabase
@@ -74,7 +86,7 @@ export function useLobbySubscription(
                     table: 'players',
                     filter: `room_id=eq.${roomId}`,
                 },
-                async (payload) => {
+                async () => {
                     // Refetch player list on any change
                     const { data, error } = await supabase
                         .from('players')

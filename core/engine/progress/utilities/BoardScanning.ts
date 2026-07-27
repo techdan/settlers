@@ -36,7 +36,7 @@ export function hasAdjacentBuilding(
  * Get all hexes of a specific terrain type
  */
 export function getHexesByTerrain(board: BoardState, terrain: TerrainType) {
-  return Object.values(board.hexes).filter((hex: any) => hex.terrain === terrain);
+  return board.hexes.filter((hex) => hex.terrain === terrain);
 }
 
 /**
@@ -51,7 +51,7 @@ export function getHexesWithAdjacentBuildings(
     ? getHexesByTerrain(state.board, terrain)
     : Object.values(state.board.hexes);
 
-  return hexes.filter((hex: any) => hasAdjacentBuilding(state, hex.id, playerId));
+  return hexes.filter((hex) => hasAdjacentBuilding(state, hex.id, playerId));
 }
 
 /**
@@ -104,6 +104,7 @@ export function getCitiesWithImprovement(
   playerId: string,
   improvementLevel: number
 ): Vertex[] {
+  void improvementLevel;
   return getPlayerCities(state, playerId);
 }
 

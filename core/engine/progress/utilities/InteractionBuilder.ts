@@ -7,6 +7,8 @@ import { CommodityType } from '@/core/rules/commodity-constants';
  * Builds interaction options for resource selection
  */
 export function buildResourceOptions(state?: GameState, playerId?: string): InteractionOption[] {
+  void state;
+  void playerId;
   const resources: ResourceType[] = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 
   return resources.map((resource) => ({
@@ -20,6 +22,8 @@ export function buildResourceOptions(state?: GameState, playerId?: string): Inte
  * Builds interaction options for commodity selection
  */
 export function buildCommodityOptions(state?: GameState, playerId?: string): InteractionOption[] {
+  void state;
+  void playerId;
   const commodities: CommodityType[] = ['paper', 'cloth', 'coin'];
 
   return commodities.map((commodity) => ({

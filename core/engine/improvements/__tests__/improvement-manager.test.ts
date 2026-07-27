@@ -1,17 +1,13 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
-    initializeImprovements,
     getUpgradeCost,
-    canAffordImprovement,
     upgradeImprovement,
     canDrawProgressCard,
-    getPlayersEligibleForCardDraw,
     tryAwardMetropolis,
     tryStealMetropolis
 } from '../improvement-manager';
-import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
-import { GameState } from '@/lib/types';
-import { CK_CONSTANTS } from '@/core/rules/commodity-constants';
+import { createTestGameState, createTestPlayer, createTestVertex } from '@/lib/test-utils';
+import type { GameState } from '@/lib/types';
 
 describe('Improvement Manager', () => {
     let gameState: GameState;

@@ -1,6 +1,27 @@
-import { GameState } from '@/lib/types/game';
-import { ProgressCardCommand } from '../types/CardConfig';
+import type { GameState } from '@/lib/types/game';
+import type { ProgressCardCommand } from '../types/CardConfig';
+import { displaceKnight } from '@/core/engine/knights/knight-manager';
+import { getAdjacentEdgesForVertex } from '@/lib/hex';
 import { addLog } from '../utilities/StateManagement';
+
+interface IntrigueOptions {
+  opponentId?: string;
+  knightId?: string;
+}
+
+function getIntrigueOptions(options: unknown): IntrigueOptions {
+  if (typeof options !== 'object' || options === null) return {};
+
+  const candidate = options as Record<string, unknown>;
+  return {
+    opponentId:
+      typeof candidate.opponentId === 'string'
+        ? candidate.opponentId
+        : undefined,
+    knightId:
+      typeof candidate.knightId === 'string' ? candidate.knightId : undefined,
+  };
+}
 
 /**
  * Intrigue Card Command
@@ -10,7 +31,7 @@ import { addLog } from '../utilities/StateManagement';
  * Legacy implementation: executeIntrigue() (lines 1529-1577)
  */
 export class IntrigueCommand implements ProgressCardCommand {
-  execute(state: GameState, playerId: string, options?: any): GameState {
+  execute(state: GameState, playerId: string, options?: unknown): GameState {
     const player = state.players.find((p) => p.id === playerId);
     if (!player) {
       throw new Error('Player not found');
@@ -21,8 +42,7 @@ export class IntrigueCommand implements ProgressCardCommand {
       throw new Error('Cannot displace knights before the first barbarian attack');
     }
 
-    const opponentId = options?.opponentId as string | undefined;
-    const knightId = options?.knightId as string | undefined;
+    const { opponentId, knightId } = getIntrigueOptions(options);
 
     if (!opponentId || !knightId) {
       throw new Error('Intrigue requires selecting an opponent and a knight');
@@ -47,7 +67,6 @@ export class IntrigueCommand implements ProgressCardCommand {
     const [q, r, d] = knightVertexId.split(',').map(Number);
 
     // Get all edges adjacent to the knight's vertex
-    const { getAdjacentEdgesForVertex } = require('@/lib/hex');
     const adjacentEdges = getAdjacentEdgesForVertex(q, r, d);
 
     // Check if any of these edges are owned by the player
@@ -65,7 +84,6 @@ export class IntrigueCommand implements ProgressCardCommand {
     }
 
     // Displace the knight
-    const { displaceKnight } = require('@/core/engine/knights/knight-manager');
     displaceKnight(state, knight, 'main_phase');
 
     addLog(

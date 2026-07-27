@@ -49,32 +49,9 @@ const renderPanels = () => {
         <GameLayoutPanels
             gameState={gameState}
             playerId="p1"
-            isCitiesAndKnights={false}
             isDebugMode={false}
-            currentPlayer={players[0]}
-            selectionManager={{ buildMode: null, setBuildMode: vi.fn(), selectingKnightsForSmith: false, selectingCityForMedicine: false }}
-            promptBlocksUI={false}
-            engineerSelectionActive={false}
-            isActiveTurn
-            handleOpenPlayerCityManagement={vi.fn()}
-            handleCancelFollowupCard={vi.fn()}
-            decorateCardHandler={(_cardType, _hasFollowupStep, handler) => handler}
-            progressCardControllerHandlers={{
-                handlePlayProgressCard: vi.fn(),
-                handleStartHexSelection: vi.fn(),
-                handleStartVertexSelection: vi.fn(),
-                handleStartEdgeSelection: vi.fn(),
-                handleStartEngineerSelection: vi.fn(),
-                handleStartMedicineSelection: vi.fn(),
-                handleStartTreasonSelection: vi.fn(),
-            }}
-            improvementControllerHandlers={{ handleStartCraneDialog: vi.fn() }}
-            knightControllerHandlers={{ handleStartSmithSelection: vi.fn() }}
-            onRollDice={vi.fn()}
-            onEndTurn={vi.fn()}
-            onOpenTrade={vi.fn()}
-            turnSubmitted={false}
-            hasOptimisticUpdates={false}
+            onOpenPlayerCityManagement={vi.fn()}
+            tray={<div data-testid="composed-tray">Tray</div>}
         />
     );
 };

@@ -3,11 +3,18 @@ import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateStandardBoard } from '@/core/engine/board/board-generator';
 import { useBoardActions } from '@/lib/hooks/useBoardActions';
-import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
+import { createTestBoard, createTestGameState, createTestPlayer } from '@/lib/test-utils';
 import type { BoardCallbacks, PendingBoardPlacement } from '@/lib/types/board-selection-state';
 
 const actionMocks = vi.hoisted(() => ({
   moveRobber: vi.fn(),
+  moveKnight: vi.fn(),
+  placeMetropolis: vi.fn(),
+}));
+
+const validatorMocks = vi.hoisted(() => ({
+  isValidKnightMovement: vi.fn(),
+  isValidMetropolisPlacement: vi.fn(),
 }));
 
 vi.mock('@/app/actions', () => ({
@@ -21,8 +28,17 @@ vi.mock('@/app/actions', () => ({
   buildKnight: vi.fn(),
   buildCityWall: vi.fn(),
   relocateKnight: vi.fn(),
-  moveKnight: vi.fn(),
-  placeMetropolis: vi.fn(),
+  moveKnight: actionMocks.moveKnight,
+  placeMetropolis: actionMocks.placeMetropolis,
+}));
+
+vi.mock('@/core/validation/knight-validator', () => ({
+  isValidKnightMovement: validatorMocks.isValidKnightMovement,
+  isValidKnightPlacement: vi.fn(),
+}));
+
+vi.mock('@/core/validation/metropolis-validator', () => ({
+  isValidMetropolisPlacement: validatorMocks.isValidMetropolisPlacement,
 }));
 
 describe('useBoardActions robber confirmation', () => {
@@ -102,6 +118,86 @@ describe('useBoardActions robber confirmation', () => {
       expect(actionMocks.moveRobber).toHaveBeenCalledWith('room-1', player.id, targetHexId, undefined);
       expect(onGameStateUpdated).toHaveBeenCalledWith(updatedGameState);
       expect(result.current.pendingPlacement).toBeNull();
+    });
+  });
+
+  it('validates and moves a selected knight through the imported validator and action', async () => {
+    const player = createTestPlayer({ id: 'p1' });
+    const gameState = createTestGameState({
+      roomId: 'room-1',
+      players: [player],
+      currentTurn: player.id,
+      phase: 'main_phase',
+      board: createTestBoard({ vertices: [{ id: 'target' }] }),
+    });
+    const onCancelBuild = vi.fn();
+    validatorMocks.isValidKnightMovement.mockReturnValue(true);
+    actionMocks.moveKnight.mockResolvedValue(gameState);
+
+    const { result } = renderHook(() =>
+      useBoardActions(
+        gameState,
+        player.id,
+        { buildMode: null, movingKnightId: 'knight-1' },
+        { onCancelBuild },
+        { validVertices: new Set(), validEdges: new Set(), validHexes: new Set() },
+        new Map(),
+        null,
+        vi.fn(),
+      ),
+    );
+
+    act(() => result.current.handleVertexClick('target'));
+
+    expect(validatorMocks.isValidKnightMovement).toHaveBeenCalledWith(
+      gameState,
+      'knight-1',
+      'target',
+      player.id,
+    );
+    await waitFor(() => {
+      expect(actionMocks.moveKnight).toHaveBeenCalledWith('room-1', player.id, 'knight-1', 'target');
+      expect(onCancelBuild).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('validates and places a selected metropolis through the imported validator and action', async () => {
+    const player = createTestPlayer({ id: 'p1' });
+    const gameState = createTestGameState({
+      roomId: 'room-1',
+      players: [player],
+      currentTurn: player.id,
+      phase: 'main_phase',
+      board: createTestBoard({ vertices: [{ id: 'target' }] }),
+    });
+    const onCancelBuild = vi.fn();
+    validatorMocks.isValidMetropolisPlacement.mockReturnValue(true);
+    actionMocks.placeMetropolis.mockResolvedValue(gameState);
+
+    const { result } = renderHook(() =>
+      useBoardActions(
+        gameState,
+        player.id,
+        { buildMode: null, buildingMetropolisType: 'science' },
+        { onCancelBuild },
+        { validVertices: new Set(), validEdges: new Set(), validHexes: new Set() },
+        new Map(),
+        null,
+        vi.fn(),
+      ),
+    );
+
+    act(() => result.current.handleVertexClick('target'));
+
+    expect(validatorMocks.isValidMetropolisPlacement).toHaveBeenCalledWith(
+      gameState,
+      'target',
+      player.id,
+      'science',
+    );
+    await waitFor(() => {
+      expect(actionMocks.placeMetropolis).toHaveBeenCalledWith('room-1', player.id, 'target', 'science');
+      expect(onCancelBuild).toHaveBeenCalledOnce();
     });
   });
 });

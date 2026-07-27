@@ -5,8 +5,18 @@ import { Knight } from '@/lib/types/player';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
 import type { BuildMode } from '@/lib/types/board-selection-state';
-import { Settlement, City, Metropolis, CityWall, KnightPiece } from '@/themes/tabletop';
-import { StatusGlyph } from '@/themes/tabletop/glyphs';
+import { boardTheme } from '@/themes/board-theme';
+
+const {
+    StatusGlyph,
+    pieces: {
+        Settlement,
+        City,
+        Metropolis,
+        CityWall,
+        Knight: KnightPiece,
+    },
+} = boardTheme;
 
 interface VertexRendererProps {
     vertex: Vertex;

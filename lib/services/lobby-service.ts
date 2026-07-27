@@ -1,7 +1,10 @@
+import { randomUUID } from 'crypto';
 import { generateBoard } from '@/core/engine/board/board-generator';
 import { LobbyState } from '@/lib/types/lobby';
 import { PlayerColor } from '@/lib/types/player';
 import * as lobbyRepository from '@/lib/repositories/lobby-repository';
+import * as roomRepository from '@/lib/repositories/room-repository';
+import * as playerRepository from '@/lib/repositories/player-repository';
 import { DEFAULT_TIMER_CONFIG } from '@/lib/types/timer';
 
 const PLAYER_COLORS: PlayerColor[] = ['#ff0000', '#0000ff', '#d4b483', '#ff7a00'];
@@ -32,6 +35,75 @@ const normalizeColor = (color: string | null | undefined): PlayerColor => {
 };
 
 export class LobbyService {
+    private static generateRoomCode(): string {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let result = '';
+        for (let i = 0; i < 4; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    static async createRoom(playerName: string): Promise<{ roomId: string; playerId: string }> {
+        if (!playerName) throw new Error('Player name is required');
+
+        const roomId = this.generateRoomCode();
+        const playerId = randomUUID();
+
+        await roomRepository.createRoom(roomId);
+        await playerRepository.createPlayer(playerId, roomId, playerName, true);
+        await this.setStandardBoard(roomId, playerId);
+
+        return { roomId, playerId };
+    }
+
+    static async getRoomPlayerSummaries(roomId: string): Promise<Array<{ id: string; name: string }>> {
+        const normalizedRoomId = roomId.toUpperCase();
+        const room = await roomRepository.findRoomById(normalizedRoomId);
+        if (!room) throw new Error('Room not found');
+
+        const players = await playerRepository.findPlayersByRoomId(normalizedRoomId);
+        return players.map(player => ({ id: player.id, name: player.name }));
+    }
+
+    static async resolveResumePlayer(
+        roomId: string,
+        playerId: string | null,
+        playerName: string | null
+    ): Promise<{ roomId: string; playerId: string }> {
+        if (!roomId) throw new Error('Room ID is required');
+
+        const normalizedRoomId = roomId.toUpperCase();
+        const room = await roomRepository.findRoomById(normalizedRoomId);
+        if (!room) throw new Error('Room not found');
+
+        let targetPlayerId = playerId;
+        if (!targetPlayerId && playerName) {
+            const player = await playerRepository.findPlayerByName(normalizedRoomId, playerName);
+            targetPlayerId = player?.id ?? null;
+        }
+
+        if (!targetPlayerId) {
+            throw new Error('Player not found in this room. Please check the name or join as a new player.');
+        }
+
+        return { roomId: normalizedRoomId, playerId: targetPlayerId };
+    }
+
+    static async joinRoom(roomId: string, playerName: string): Promise<{ roomId: string; playerId: string }> {
+        if (!playerName) throw new Error('Player name is required');
+        if (!roomId) throw new Error('Room ID is required');
+
+        const normalizedRoomId = roomId.toUpperCase();
+        const room = await roomRepository.findRoomById(normalizedRoomId);
+        if (!room) throw new Error('Room not found');
+
+        const playerId = randomUUID();
+        await playerRepository.createPlayer(playerId, normalizedRoomId, playerName);
+
+        return { roomId: normalizedRoomId, playerId };
+    }
+
     /**
      * Ensure all players in a room have valid, unique colors.
      * Assigns defaults when missing or duplicated and persists updates.

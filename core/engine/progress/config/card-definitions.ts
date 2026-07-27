@@ -1,5 +1,102 @@
 import { CardConfig } from '../types/CardConfig';
 import { buildResourceOptions, buildCommodityOptions } from '../utilities/InteractionBuilder';
+import type { ProgressCardType } from '@/lib/types/player';
+
+export type ProgressCardModalSurface = 'board-visible' | 'blocking';
+
+export type ProgressCardInteraction =
+  | {
+      mode: 'direct';
+    }
+  | {
+      mode: 'modal';
+      surface: ProgressCardModalSurface;
+      requiresParameters: boolean;
+    }
+  | {
+      mode: 'hex';
+    }
+  | {
+      mode: 'vertex';
+    }
+  | {
+      mode: 'edge';
+    }
+  | {
+      mode: 'custom';
+    }
+  | {
+      mode: 'road-placement';
+    }
+  | {
+      mode: 'commercial-harbor';
+    };
+
+/**
+ * Client interaction routing for every progress card.
+ *
+ * This is the single source of truth for whether a card opens a modal, starts a
+ * board selection, starts a custom flow, or plays immediately. Components may
+ * derive group membership from `mode`; do not reintroduce parallel card lists.
+ */
+export const PROGRESS_CARD_INTERACTIONS = {
+  alchemist: { mode: 'modal', surface: 'board-visible', requiresParameters: true },
+  crane: { mode: 'custom' },
+  engineer: { mode: 'custom' },
+  inventor: { mode: 'hex' },
+  irrigation: { mode: 'modal', surface: 'board-visible', requiresParameters: false },
+  medicine: { mode: 'custom' },
+  mining: { mode: 'modal', surface: 'board-visible', requiresParameters: false },
+  printer: { mode: 'direct' },
+  road_building_progress: { mode: 'road-placement' },
+  smith: { mode: 'custom' },
+  commercial_harbor: { mode: 'commercial-harbor' },
+  guild_dues: { mode: 'modal', surface: 'blocking', requiresParameters: true },
+  merchant: { mode: 'hex' },
+  merchant_fleet: { mode: 'modal', surface: 'board-visible', requiresParameters: true },
+  resource_monopoly: { mode: 'modal', surface: 'board-visible', requiresParameters: true },
+  trade_monopoly: { mode: 'modal', surface: 'board-visible', requiresParameters: true },
+  constitution: { mode: 'direct' },
+  diplomat: { mode: 'edge' },
+  encouragement: { mode: 'modal', surface: 'blocking', requiresParameters: false },
+  espionage: { mode: 'modal', surface: 'blocking', requiresParameters: true },
+  intrigue: { mode: 'vertex' },
+  saboteur: { mode: 'modal', surface: 'blocking', requiresParameters: false },
+  taxation: { mode: 'hex' },
+  treason: { mode: 'custom' },
+  wedding: { mode: 'modal', surface: 'blocking', requiresParameters: false },
+} satisfies Record<ProgressCardType, ProgressCardInteraction>;
+
+export type ProgressCardInteractionMode = ProgressCardInteraction['mode'];
+
+export type ProgressCardsWithMode<
+  Mode extends ProgressCardInteractionMode,
+> = {
+  [CardType in ProgressCardType]: (typeof PROGRESS_CARD_INTERACTIONS)[CardType] extends {
+    mode: Mode;
+  }
+    ? CardType
+    : never;
+}[ProgressCardType];
+
+export function getProgressCardInteraction<CardType extends ProgressCardType>(
+  cardType: CardType
+): (typeof PROGRESS_CARD_INTERACTIONS)[CardType] {
+  return PROGRESS_CARD_INTERACTIONS[cardType];
+}
+
+export function hasProgressCardFollowup(cardType: ProgressCardType): boolean {
+  return getProgressCardInteraction(cardType).mode !== 'direct';
+}
+
+export function hasProgressCardInteractionMode<
+  Mode extends ProgressCardInteractionMode,
+>(
+  cardType: ProgressCardType,
+  mode: Mode
+): cardType is ProgressCardsWithMode<Mode> {
+  return getProgressCardInteraction(cardType).mode === mode;
+}
 
 /**
  * Simple progress card definitions
