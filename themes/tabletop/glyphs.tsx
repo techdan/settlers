@@ -1,7 +1,7 @@
 import React from 'react';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType, ProgressCardCategory } from '@/core/rules/commodity-constants';
-import { TT, shade, r2 } from './palette';
+import { TT, TT_SERIF, shade, r2 } from './palette';
 
 /**
  * Miniature glyphs for ports, chips, and (later) cards — drawn in a nominal
@@ -101,6 +101,79 @@ export const CrossedSwords: React.FC<{ size?: number; fill?: string }> = ({ size
         <g transform={`scale(${k})`}>
             <rect x={-5.5} y={-1} width={11} height={2} rx={0.6} fill={fill} transform="rotate(45)" />
             <rect x={-5.5} y={-1} width={11} height={2} rx={0.6} fill={fill} transform="rotate(-45)" />
+        </g>
+    );
+};
+
+/* ---------------- HUD chips (§3 "VP/knight/hand-size chips") ---------------- */
+
+/**
+ * A face-down card pair — the hand-size chip on the player panels. The whole
+ * thing is derived from one `stock` color so a caller can tint a deck (cream
+ * resources, green commodities, brass progress) without new geometry.
+ */
+export const CardBackGlyph: React.FC<{ stock?: string; size?: number }> = ({
+    stock = TT.token.face,
+    size = 20,
+}) => {
+    const k = r2(size / 20);
+    const ring = shade(stock, 0.62);
+    const inner = shade(stock, 0.82);
+    return (
+        <g transform={`scale(${k})`}>
+            {/* the card behind, fanned left, so a chip reads as a hand not a tile */}
+            <g transform="rotate(-11 -2.6 0)">
+                <rect x={-8.2} y={-7.6} width={11} height={15.4} rx={1.6} fill={shade(stock, 0.76)} stroke={ring} strokeWidth={1} />
+            </g>
+            <rect x={-4.4} y={-8.4} width={11} height={16.4} rx={1.7} fill={stock} stroke={ring} strokeWidth={1.1} />
+            <rect x={-2.7} y={-6.6} width={7.6} height={12.8} rx={1} fill="none" stroke={inner} strokeWidth={0.8} />
+            <path d="M 1.1 -3.4 L 3.5 -0.2 L 1.1 3 L -1.3 -0.2 Z" fill={inner} />
+        </g>
+    );
+};
+
+/**
+ * Victory-point disc. Deliberately the same punched-cardboard language as
+ * `NumberToken` on the board (cream face, double brass ring, serif numeral) so
+ * a score reads as a game token rather than as UI text; `ring` takes the owning
+ * player's color.
+ */
+export const VictoryPointToken: React.FC<{ value: number; ring?: string; size?: number }> = ({
+    value,
+    ring = TT.token.ring,
+    size = 20,
+}) => {
+    const k = r2(size / 20);
+    // Two-digit scores need to shrink to stay inside the disc (13 VP is reachable).
+    const fontSize = value >= 10 ? 8.6 : 11;
+    return (
+        <g transform={`scale(${k})`}>
+            <circle cy={0.9} r={9} fill="#000000" opacity={0.3} />
+            <circle r={9} fill={TT.token.face} stroke={ring} strokeWidth={2} />
+            <circle r={6.8} fill="none" stroke={TT.token.ringInner} strokeWidth={0.9} />
+            <text
+                y={r2(fontSize * 0.35)}
+                textAnchor="middle"
+                fill={TT.token.ink}
+                fontSize={fontSize}
+                fontWeight={700}
+                fontFamily={TT_SERIF}
+            >
+                {value}
+            </text>
+        </g>
+    );
+};
+
+/** Road segment, angled — the road-length stat and the Longest Road trophy. */
+export const RoadGlyph: React.FC<{ size?: number; fill?: string }> = ({ size = 20, fill = TT.status.neutral }) => {
+    const k = r2(size / 20);
+    return (
+        <g transform={`scale(${k})`}>
+            <g transform="rotate(-16)">
+                <rect x={-9} y={-2.7} width={18} height={5.4} rx={1.3} fill={fill} />
+                <rect x={-7.2} y={-1.7} width={14.4} height={1.4} rx={0.7} fill="#ffffff" opacity={0.3} />
+            </g>
         </g>
     );
 };
@@ -240,4 +313,28 @@ export const TabletopImprovementIcon: React.FC<StandaloneIconProps & { type: Pro
 
 export const TabletopStatusIcon: React.FC<StandaloneIconProps & { type: TabletopStatusType }> = ({ type, ...props }) => (
     <StandaloneIcon {...props}><StatusGlyph type={type} /></StandaloneIcon>
+);
+
+export const TabletopCardBackIcon: React.FC<StandaloneIconProps & { stock?: string }> = ({ stock, ...props }) => (
+    <StandaloneIcon {...props}><CardBackGlyph stock={stock} /></StandaloneIcon>
+);
+
+export const TabletopVictoryPointIcon: React.FC<StandaloneIconProps & { value: number; ring?: string }> = ({
+    value,
+    ring,
+    ...props
+}) => (
+    <StandaloneIcon {...props}><VictoryPointToken value={value} ring={ring} /></StandaloneIcon>
+);
+
+export const TabletopRoadIcon: React.FC<StandaloneIconProps & { fill?: string }> = ({ fill, ...props }) => (
+    <StandaloneIcon {...props}><RoadGlyph fill={fill} /></StandaloneIcon>
+);
+
+export const TabletopShieldIcon: React.FC<StandaloneIconProps & { fill?: string }> = ({ fill, ...props }) => (
+    <StandaloneIcon {...props}><ShieldGlyph size={20} fill={fill} /></StandaloneIcon>
+);
+
+export const TabletopCrossedSwordsIcon: React.FC<StandaloneIconProps & { fill?: string }> = ({ fill, ...props }) => (
+    <StandaloneIcon {...props}><CrossedSwords size={18} fill={fill} /></StandaloneIcon>
 );

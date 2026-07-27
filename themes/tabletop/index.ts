@@ -20,10 +20,18 @@ export {
     ShieldGlyph,
     TowerGlyph,
     CrossedSwords,
+    CardBackGlyph,
+    VictoryPointToken,
+    RoadGlyph,
     TabletopResourceIcon,
     TabletopCommodityIcon,
     TabletopImprovementIcon,
     TabletopStatusIcon,
+    TabletopCardBackIcon,
+    TabletopVictoryPointIcon,
+    TabletopRoadIcon,
+    TabletopShieldIcon,
+    TabletopCrossedSwordsIcon,
     StatusGlyph,
 } from './glyphs';
 export { TT, TT_SERIF, shade, r2, hexPointsStr } from './palette';

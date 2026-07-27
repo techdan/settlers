@@ -8,6 +8,24 @@ import { IMPROVEMENT_TOOLTIPS } from '../city/CityManagementDialog';
 import { calculateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { GAME_CONSTANTS } from '@/core/rules/constants';
 import { calculatePublicVictoryPoints } from '@/core/rules/victory-conditions';
+import {
+    Merchant,
+    TabletopCardBackIcon,
+    TabletopCrossedSwordsIcon,
+    TabletopImprovementIcon,
+    TabletopRoadIcon,
+    TabletopShieldIcon,
+    TabletopVictoryPointIcon,
+} from '@/themes/tabletop';
+import { TT, mix } from '@/themes/tabletop/palette';
+
+/** Live turn-clock state, supplied only for the player whose turn it is. */
+export interface PlayerCardTimer {
+    /** 0-100, elapsed against the base turn limit. */
+    percentage: number;
+    /** Tailwind background class carrying the urgency tint. */
+    colorClass: string;
+}
 
 interface CompactPlayerCardProps {
     player: PlayerState;
@@ -15,63 +33,98 @@ interface CompactPlayerCardProps {
     isCurrentPlayer: boolean;  // Is this the local user?
     isTurn: boolean;           // Is it this player's turn?
     onOpenCityManagement?: () => void;
+    timer?: PlayerCardTimer | null;
 }
 
-/* Stat glyphs — drawn, fill=currentColor so each stat's semantic tint
- * (danger red, longest-road orange, …) colors the icon along with the number. */
-const G: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <svg viewBox="0 0 14 14" width={12} height={12} fill="currentColor" aria-hidden="true" className="flex-shrink-0">
-        {children}
+/* Card stocks for the hand-size chips. Derived from the tabletop palette so a
+ * chip reads as the same physical deck the tray renders full-size. */
+const STOCK_RESOURCE = TT.token.face;
+const STOCK_COMMODITY = mix(TT.token.face, TT.category.science, 0.5);
+const STOCK_DECK = mix(TT.token.face, TT.port.generic, 0.55);
+
+const CHIP_ICON = 16;
+const TOOLTIP_CLASS = 'min-w-[12rem] max-w-[20rem] whitespace-pre-line text-xs';
+
+/**
+ * The Merchant trophy is the board piece itself — hat, sash and all — not the
+ * trade-improvement scales, which mean a different thing entirely. Wrapped here
+ * rather than in the glyph set for the same reason `CompactImprovementBar` wraps
+ * `Metropolis`: it is an existing piece at HUD size, not new art.
+ */
+const MerchantBadgeIcon: React.FC<{ color: string; height?: number }> = ({ color, height = 15 }) => (
+    <svg
+        viewBox="-13 -17 26 33"
+        width={Math.round((height * 26) / 33)}
+        height={height}
+        role="img"
+        aria-label="Merchant"
+    >
+        <Merchant color={color} />
     </svg>
-);
-const HandGlyph = () => (
-    <G>
-        <rect x={1.6} y={2.6} width={7} height={10} rx={1.2} opacity={0.55} transform="rotate(-9 5.1 7.6)" />
-        <rect x={5.2} y={1.9} width={7} height={10.3} rx={1.2} transform="rotate(8 8.7 7)" />
-    </G>
-);
-const ScrollGlyph = () => (
-    <G>
-        <rect x={2.6} y={3.2} width={8.8} height={7.6} rx={0.8} opacity={0.85} />
-        <rect x={1} y={2.3} width={2.2} height={9.4} rx={1.1} />
-        <rect x={10.8} y={2.3} width={2.2} height={9.4} rx={1.1} />
-    </G>
-);
-const RoadGlyph = () => (
-    <G>
-        <rect x={0.8} y={5} width={12.4} height={4.2} rx={2.1} />
-        <rect x={2} y={5.9} width={10} height={1.1} rx={0.55} fill="#ffffff" opacity={0.35} />
-    </G>
-);
-const ShieldFillGlyph = () => (
-    <G>
-        <path d="M 7 1.2 L 12 3 L 12 7.2 Q 12 10.6 7 12.8 Q 2 10.6 2 7.2 L 2 3 Z" />
-    </G>
-);
-const ShieldLineGlyph = () => (
-    <G>
-        <path d="M 7 1.8 L 11.4 3.4 L 11.4 7.1 Q 11.4 9.9 7 11.9 Q 2.6 9.9 2.6 7.1 L 2.6 3.4 Z" fill="none" stroke="currentColor" strokeWidth={1.6} />
-    </G>
-);
-const StarGlyph = () => (
-    <G>
-        <polygon points="7,0.8 8.7,5.1 13.2,5.1 9.6,7.9 10.9,12.3 7,9.6 3.1,12.3 4.4,7.9 0.8,5.1 5.3,5.1" />
-    </G>
-);
-const HatGlyph = () => (
-    <G>
-        <ellipse cx={7} cy={9.4} rx={6.2} ry={2.4} />
-        <path d="M 4 8.8 L 4 6 A 3 2.4 0 0 1 10 6 L 10 8.8 Z" />
-    </G>
 );
 
 /**
- * Compact 3-row player card for the right sidebar.
- * Row 1: Identity (color, name, VP, turn indicator)
- * Row 2: Stats + Special VP indicators
- * Row 3: City improvement bars (C&K only)
- * 
- * All detailed information available via tooltips.
+ * One stat: a shaped icon plus its number. Zeros drop to 40% so the eye lands
+ * on whoever actually has something; `danger` rings the chip rather than merely
+ * recoloring the digits, because hand size over the discard limit is the one
+ * number an opponent needs to see from across the rail.
+ */
+const StatChip: React.FC<{
+    testId: string;
+    tooltip: string;
+    icon: React.ReactNode;
+    value: number;
+    tint?: string;
+    danger?: boolean;
+}> = ({ testId, tooltip, icon, value, tint, danger = false }) => (
+    <Tooltip content={tooltip} className="cursor-default" tooltipClassName={TOOLTIP_CLASS} placement="bottom">
+        <span
+            data-testid={testId}
+            data-danger={danger ? 'true' : 'false'}
+            className={`flex items-center gap-1 transition-opacity ${value === 0 ? 'opacity-40' : ''} ${
+                danger ? 'rounded -mx-0.5 px-1 ring-1 ring-[var(--ui-danger)] bg-[var(--ui-danger)]/20' : ''
+            }`}
+        >
+            {icon}
+            <span
+                className="text-[13px] font-bold leading-none tabular-nums"
+                style={{ color: danger ? 'var(--ui-danger)' : tint ?? 'var(--ui-text)' }}
+            >
+                {value}
+            </span>
+        </span>
+    </Tooltip>
+);
+
+/** A trophy the player currently holds. Never rendered when unheld — an empty
+ *  award slot costs the same attention as a full one and says nothing. */
+const AwardBadge: React.FC<{ testId: string; tooltip: string; icon: React.ReactNode; label?: string }> = ({
+    testId,
+    tooltip,
+    icon,
+    label,
+}) => (
+    <Tooltip content={tooltip} className="cursor-default" tooltipClassName={TOOLTIP_CLASS} placement="bottom">
+        <span
+            data-testid={testId}
+            className="flex items-center gap-0.5 rounded bg-[var(--ui-panel-raised)] px-1 py-0.5 ring-1 ring-[var(--ui-border)]"
+        >
+            {icon}
+            {label ? (
+                <span className="text-[11px] font-bold leading-none tabular-nums text-[var(--ui-text)]">{label}</span>
+            ) : null}
+        </span>
+    </Tooltip>
+);
+
+/**
+ * Compact player card for the right rail.
+ * Row 1: identity (color spine, name, VP token)
+ * Row 2: hand-size chips + road length + knight/army strength
+ * Row 3: city improvement tracks + trophies (C&K only)
+ *
+ * Detail lives in tooltips; the card itself only carries what should be
+ * readable at a glance across four stacked panels.
  */
 export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
     player,
@@ -79,9 +132,9 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
     isCurrentPlayer,
     isTurn,
     onOpenCityManagement,
+    timer,
 }) => {
     const isCK = gameState.gameMode === 'cities_and_knights';
-    const tooltipClassName = 'min-w-[12rem] max-w-[20rem] whitespace-pre-line text-xs';
     const canOpenCityManagement = isCK && isCurrentPlayer && !!onOpenCityManagement;
     const publicVictoryPoints = calculatePublicVictoryPoints(gameState, player.id);
 
@@ -99,6 +152,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
     const longestRoad = calculateLongestRoad(gameState, player.id);
     const hasLongestRoad = gameState.longestRoadOwner === player.id;
+    const hasLargestArmy = gameState.largestArmyOwner === player.id;
 
     const activeKnightStrength = player.activeKnightCount || 0;
 
@@ -115,15 +169,18 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
     const hasMerchant = gameState.activeMerchant === player.id;
 
     // Tooltips
+    const overLimitNote = isDanger ? '\nOver limit - vulnerable to robber!' : '';
     const resourceTooltip = isCK
-        ? `Resources: ${resourceCount}\nCommodities: ${commodityCount}\nTotal: ${totalCards}\nSafe limit: ${safeLimit}${isDanger ? '\nOver limit - vulnerable to robber!' : ''}`
-        : `Total cards: ${totalCards}\nSafe limit: ${safeLimit}${isDanger ? '\nOver limit - vulnerable to robber!' : ''}`;
+        ? `Resources: ${resourceCount}\nHand total (with commodities): ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`
+        : `Resource cards: ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`;
 
-    const roadTooltip = `Road length: ${longestRoad}${hasLongestRoad ? '\n🏆 Longest Road (+2 VP)' : '\nLongest Road requires 5+'}`;
+    const commodityTooltip = `Commodities: ${commodityCount}\nHand total (with resources): ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`;
+
+    const roadTooltip = `Road length: ${longestRoad}${hasLongestRoad ? '\nHolds Longest Road (+2 VP)' : `\nLongest Road requires ${GAME_CONSTANTS.MIN_LONGEST_ROAD_LENGTH}+`}`;
 
     const defenseTooltip = `Active knight strength: ${activeKnightStrength}\nUsed to defend against Barbarian attacks`;
 
-    const armyTooltip = `Knights played: ${player.knightsPlayed || 0}\nLargest Army (>=${GAME_CONSTANTS.MIN_LARGEST_ARMY_COUNT}) grants ${GAME_CONSTANTS.VP_FROM_LARGEST_ARMY} VP.${gameState.largestArmyOwner === player.id ? '\n(Currently holds Largest Army)' : ''}`;
+    const armyTooltip = `Knights played: ${player.knightsPlayed || 0}\nLargest Army (>=${GAME_CONSTANTS.MIN_LARGEST_ARMY_COUNT}) grants ${GAME_CONSTANTS.VP_FROM_LARGEST_ARMY} VP.${hasLargestArmy ? '\n(Currently holds Largest Army)' : ''}`;
 
     const cardTooltip = isCK
         ? `Progress cards: ${progressCardCount}`
@@ -131,15 +188,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
     const defenderTooltip = `Defender of Catan: ${defenderVP} VP\nEarned by contributing most knights to defense`;
 
-    const vpCardTooltip = player.revealedVPCards?.length
-        ? `VP Progress Cards: ${player.revealedVPCards.join(', ')}`
-        : 'No VP progress cards revealed';
-
-    const merchantTooltip = hasMerchant
-        ? 'Merchant: +1 VP\n2:1 trade ratio for the hex resource'
-        : 'Merchant not owned';
-
-    const devVpTooltip = `VP Dev Cards (revealed): ${player.revealedDevCardVictoryPoints || 0}\nHidden VP dev cards are not shown here.`;
+    const merchantTooltip = 'Merchant: +1 VP\n2:1 trade ratio for the hex resource';
 
     // VP breakdown for tooltip
     const getVPBreakdown = () => {
@@ -158,220 +207,191 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
             const metropolisCount = player.metropolisOwned?.length || 0;
             if (metropolisCount > 0) parts.push(`Metropolis: ${metropolisCount * 2} VP`);
         } else {
-            if (gameState.largestArmyOwner === player.id) parts.push('Largest Army: 2 VP');
+            if (hasLargestArmy) parts.push('Largest Army: 2 VP');
         }
         return parts.join('\n');
     };
 
+    // The player's color washes the whole surface rather than sitting in a 12px
+    // dot: across four stacked cards, hue is what maps a panel to its pieces on
+    // the board. player.color is a 4-value hex union, so every blend is known.
+    const surface = isTurn
+        ? `color-mix(in oklab, ${player.color} 18%, var(--ui-panel-raised))`
+        : `color-mix(in oklab, ${player.color} 9%, var(--ui-panel-solid))`;
+
     return (
         <div
-            className={`
-                flex flex-col gap-1 p-2 rounded-lg transition-all
-                ${isTurn
-                    ? 'bg-[var(--ui-panel-raised)] ring-1 ring-inset ring-[var(--ui-accent)]/60 shadow-lg'
-                    : 'bg-[var(--ui-panel-solid)]/60'
-                }
-            `}
+            data-testid={`player-card-${player.id}`}
+            data-turn={isTurn ? 'true' : 'false'}
+            className={`relative overflow-hidden rounded-lg transition-all ${
+                isTurn ? 'ring-1 ring-inset ring-[var(--ui-accent)]/70 shadow-lg' : ''
+            }`}
+            style={{ background: surface }}
         >
-            {/* Row 1: Identity */}
-            <div className="flex items-center gap-2">
-                {/* Color dot */}
-                <div
-                    className="w-3 h-3 rounded-full shadow-sm flex-shrink-0"
-                    style={{ backgroundColor: player.color }}
-                />
+            {/* Color spine */}
+            <span
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 w-1"
+                style={{ backgroundColor: player.color }}
+            />
 
-                {/* Name */}
-                <span
-                    className={`
-                        text-sm font-semibold truncate flex-1
-                        ${isCurrentPlayer ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text)]'}
-                    `}
-                    title={player.name}
-                >
-                    {player.name}
-                    {isCurrentPlayer && <span className="text-xs text-[var(--ui-muted)] ml-1">(You)</span>}
-                </span>
-
-                {/* VP */}
-                <Tooltip
-                    content={getVPBreakdown()}
-                    className="cursor-default"
-                    tooltipClassName={tooltipClassName}
-                    placement="left"
-                >
-                    <span className="text-lg font-bold text-amber-400 tabular-nums">
-                        {publicVictoryPoints}
+            <div className="flex flex-col gap-1.5 py-2 pl-3 pr-2">
+                {/* Row 1: Identity */}
+                <div className="flex items-center gap-2">
+                    <span
+                        className={`flex-1 truncate text-sm font-semibold ${
+                            isCurrentPlayer ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text)]'
+                        }`}
+                        title={player.name}
+                    >
+                        {player.name}
+                        {isCurrentPlayer && <span className="ml-1 text-xs text-[var(--ui-muted)]">(You)</span>}
                     </span>
-                </Tooltip>
-            </div>
 
-            {/* Row 2: Stats + Special VP */}
-            <div className="flex items-center gap-1 text-[12px] leading-tight text-[var(--ui-muted)]">
-                {/* Basic stats */}
-                <div className="flex items-center gap-1">
-                    {/* Resources */}
                     <Tooltip
-                        content={resourceTooltip}
+                        content={getVPBreakdown()}
                         className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
+                        tooltipClassName={TOOLTIP_CLASS}
+                        placement="left"
                     >
-                        <span className={`flex items-center gap-1 ${isDanger ? 'text-red-400' : ''}`}>
-                            <HandGlyph />
-                            <span className="font-bold tabular-nums">{totalCards}</span>
-                        </span>
+                        <TabletopVictoryPointIcon
+                            value={publicVictoryPoints}
+                            ring={player.color}
+                            size={26}
+                            label={`${publicVictoryPoints} victory points`}
+                        />
                     </Tooltip>
+                </div>
 
-                    {/* Cards (Dev or Progress) */}
-                    <Tooltip
-                        content={cardTooltip}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <span className="flex items-center gap-1">
-                            <ScrollGlyph />
-                            <span className="font-bold tabular-nums">{isCK ? progressCardCount : devCardCount}</span>
-                        </span>
-                    </Tooltip>
+                {/* Row 2: Hand size, road, military */}
+                <div className="flex items-center gap-2.5">
+                    <StatChip
+                        testId="chip-resources"
+                        tooltip={resourceTooltip}
+                        icon={<TabletopCardBackIcon stock={STOCK_RESOURCE} size={CHIP_ICON} />}
+                        value={resourceCount}
+                        danger={isDanger}
+                    />
 
-                    {/* Roads */}
-                    <Tooltip
-                        content={roadTooltip}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <span className={`flex items-center gap-1 ${hasLongestRoad ? 'text-orange-400' : ''}`}>
-                            <RoadGlyph />
-                            <span className="font-bold tabular-nums">{longestRoad}</span>
-                        </span>
-                    </Tooltip>
+                    {isCK && (
+                        <StatChip
+                            testId="chip-commodities"
+                            tooltip={commodityTooltip}
+                            icon={<TabletopCardBackIcon stock={STOCK_COMMODITY} size={CHIP_ICON} />}
+                            value={commodityCount}
+                        />
+                    )}
 
-                    {/* Defense (C&K) or Army (base) */}
+                    <StatChip
+                        testId="chip-deck"
+                        tooltip={cardTooltip}
+                        icon={<TabletopCardBackIcon stock={STOCK_DECK} size={CHIP_ICON} />}
+                        value={isCK ? progressCardCount : devCardCount}
+                    />
+
+                    <StatChip
+                        testId="chip-road"
+                        tooltip={roadTooltip}
+                        icon={<TabletopRoadIcon fill={hasLongestRoad ? TT.port.generic : TT.status.neutral} size={CHIP_ICON} />}
+                        value={longestRoad}
+                        tint={hasLongestRoad ? TT.port.generic : undefined}
+                    />
+
                     {isCK ? (
-                        <Tooltip
-                            content={defenseTooltip}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span className="flex items-center gap-1">
-                                <ShieldFillGlyph />
-                                <span className="font-bold tabular-nums">{activeKnightStrength}</span>
-                            </span>
-                        </Tooltip>
+                        <StatChip
+                            testId="chip-military"
+                            tooltip={defenseTooltip}
+                            icon={<TabletopShieldIcon size={CHIP_ICON} />}
+                            value={activeKnightStrength}
+                        />
                     ) : (
-                        <Tooltip
-                            content={armyTooltip}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span className={`flex items-center gap-1 ${gameState.largestArmyOwner === player.id ? 'text-purple-400' : ''}`}>
-                                <ShieldFillGlyph />
-                                <span className="font-bold tabular-nums">{player.knightsPlayed || 0}</span>
-                            </span>
-                        </Tooltip>
+                        <StatChip
+                            testId="chip-military"
+                            tooltip={armyTooltip}
+                            icon={<TabletopShieldIcon fill={hasLargestArmy ? TT.category.politics : TT.status.neutral} size={CHIP_ICON} />}
+                            value={player.knightsPlayed || 0}
+                            tint={hasLargestArmy ? TT.status.good : undefined}
+                        />
+                    )}
+
+                    {!isCK && hasLargestArmy && (
+                        <span className="ml-auto">
+                            <AwardBadge
+                                testId="award-largest-army"
+                                tooltip={armyTooltip}
+                                icon={<TabletopCrossedSwordsIcon fill={TT.token.ringInner} size={13} label="Largest Army" />}
+                            />
+                        </span>
                     )}
                 </div>
 
-                {/* Special VP (base game) */}
-                {!isCK && (
-                    <Tooltip
-                        content={devVpTooltip}
-                        className="cursor-default"
-                        tooltipClassName={tooltipClassName}
-                        placement="bottom"
-                    >
-                        <span className={`flex items-center gap-1 ${(player.revealedDevCardVictoryPoints || 0) > 0 ? 'text-amber-300' : 'text-[var(--ui-muted)]'}`}>
-                            <StarGlyph />
-                            <span className="font-bold tabular-nums">{player.revealedDevCardVictoryPoints || 0}</span>
-                        </span>
-                    </Tooltip>
-                )}
-
-                {/* Divider for special VP */}
-                {isCK && <span className="text-[var(--ui-muted)] mx-0.5">│</span>}
-
-                {/* Special VP (C&K only) - moved from row 3 to row 2 */}
+                {/* Row 3: City improvement tracks + trophies (C&K only) */}
                 {isCK && (
-                    <div className="flex items-center gap-1.5">
-                        {/* Defender VP */}
-                        <Tooltip
-                            content={defenderTooltip}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span className={`flex items-center gap-1 ${defenderVP > 0 ? 'text-blue-300' : 'text-[var(--ui-muted)]'}`}>
-                                <ShieldLineGlyph />
-                                <span className="font-bold tabular-nums">{defenderVP}</span>
-                            </span>
-                        </Tooltip>
-
-                        {/* VP Cards */}
-                        <Tooltip
-                            content={vpCardTooltip}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span className={`flex items-center gap-1 ${vpCardsCount > 0 ? 'text-amber-300' : 'text-[var(--ui-muted)]'}`}>
-                                <StarGlyph />
-                                <span className="font-bold tabular-nums">{vpCardsCount}</span>
-                            </span>
-                        </Tooltip>
-
-                        {/* Merchant */}
-                        <Tooltip
-                            content={merchantTooltip}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <span className={`flex items-center gap-1 ${hasMerchant ? 'text-green-400' : 'text-[var(--ui-muted)]'}`}>
-                                <HatGlyph />{hasMerchant ? '●' : '–'}
-                            </span>
-                        </Tooltip>
-                    </div>
-                )}
-            </div>
-
-            {/* Row 3: City Improvement bars (C&K only) - on their own row */}
-            {isCK && (
-                <div className="flex items-center gap-1.5 mt-0.5 text-[12px] leading-tight">
-                    {([
-                        { type: 'science', label: 'S', color: 'var(--color-improvement-science-alt)' },
-                        { type: 'trade', label: 'T', color: 'var(--color-improvement-trade-alt)' },
-                        { type: 'politics', label: 'P', color: 'var(--color-improvement-politics-alt)' },
-                    ] as const).map(({ type, label, color }) => (
-                        <Tooltip
-                            key={type}
-                            content={IMPROVEMENT_TOOLTIPS[type]}
-                            className="cursor-default"
-                            tooltipClassName={tooltipClassName}
-                            placement="bottom"
-                        >
-                            <button
-                                type="button"
-                                onClick={() => canOpenCityManagement && onOpenCityManagement?.()}
-                                className={`flex items-center gap-1 focus:outline-none rounded px-0.5 py-0.5 transition ${canOpenCityManagement ? 'hover:bg-[var(--ui-panel-raised)] cursor-pointer' : 'cursor-default'
-                                    }`}
+                    <div className="flex items-center gap-2">
+                        {(['science', 'trade', 'politics'] as const).map(type => (
+                            <Tooltip
+                                key={type}
+                                content={IMPROVEMENT_TOOLTIPS[type]}
+                                className="cursor-default"
+                                tooltipClassName={TOOLTIP_CLASS}
+                                placement="bottom"
                             >
-                                <span className="font-bold" style={{ color }}>{label}</span>
-                                <div className="scale-[0.85] origin-left">
+                                <button
+                                    type="button"
+                                    onClick={() => canOpenCityManagement && onOpenCityManagement?.()}
+                                    aria-label={`${type} improvements`}
+                                    className={`flex items-center gap-1 rounded px-0.5 py-0.5 transition focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ui-accent)] ${
+                                        canOpenCityManagement ? 'cursor-pointer hover:bg-[var(--ui-panel-raised)]' : 'cursor-default'
+                                    }`}
+                                >
+                                    <TabletopImprovementIcon type={type} size={13} />
                                     <CompactImprovementBar
                                         type={type}
                                         level={player.improvements?.[type] || 0}
                                         hasMetropolis={player.metropolisOwned?.includes(type)}
-                                        size="md"
+                                        dotSize={5}
                                     />
-                                </div>
-                            </button>
-                        </Tooltip>
-                    ))}
+                                </button>
+                            </Tooltip>
+                        ))}
+
+                        {(defenderVP > 0 || hasMerchant) && (
+                            <div className="ml-auto flex items-center gap-1">
+                                {defenderVP > 0 && (
+                                    <AwardBadge
+                                        testId="award-defender"
+                                        tooltip={defenderTooltip}
+                                        // Crossed swords, not a shield: the shield is
+                                        // already the knight-strength stat on this same
+                                        // card. Largest Army (base) and Defender (C&K)
+                                        // never co-occur, so one glyph can carry "the
+                                        // military honour" in whichever mode you are in.
+                                        icon={<TabletopCrossedSwordsIcon fill={TT.token.ringInner} size={13} label="Defender of Catan" />}
+                                        label={String(defenderVP)}
+                                    />
+                                )}
+                                {hasMerchant && (
+                                    <AwardBadge
+                                        testId="award-merchant"
+                                        tooltip={merchantTooltip}
+                                        icon={<MerchantBadgeIcon color={player.color} />}
+                                    />
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Turn clock, on the card it belongs to rather than in the shared
+                header — whose turn it is and how long is left are one fact. */}
+            {timer && (
+                <div className="absolute inset-x-0 bottom-0 h-[3px] bg-[var(--ui-panel-raised)]">
+                    <div
+                        data-testid="turn-timer-bar"
+                        className={`h-full transition-all duration-1000 ease-linear ${timer.colorClass}`}
+                        style={{ width: `${timer.percentage}%` }}
+                    />
                 </div>
             )}
         </div>

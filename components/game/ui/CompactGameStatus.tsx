@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { GameState } from '@/lib/types';
-import { CompactPlayerCard } from '../player/CompactPlayerCard';
+import { CompactPlayerCard, PlayerCardTimer } from '../player/CompactPlayerCard';
 import { useTimerState, formatTime, getTimerTextColorClass } from '@/lib/hooks/useTimerState';
 
 interface CompactGameStatusProps {
@@ -40,26 +40,30 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
         displayColor = 'text-[var(--ui-muted)]';
     }
 
-    // Calculate progress percentage for the progress bar
+    // The turn clock rides on the active player's card rather than in this
+    // header: whose turn it is and how long is left are one fact, and splitting
+    // them made the bar read as a property of the phase instead of the player.
+    // The hook stays subscribed once here — four per-card subscriptions would
+    // mean four independent one-second render loops.
     const baseTimeLimit = gameState.timerConfig?.turnTimeLimit || 180;
-    let progressPercentage = 0;
-    let progressColorClass = 'bg-green-500';
+    let activeTimer: PlayerCardTimer | null = null;
 
     if (isTimerEnabled && timerStatus.isActive) {
-        progressPercentage = Math.min(100, (timerStatus.timeElapsed / baseTimeLimit) * 100);
-
-        // Determine progress bar color based on remaining time
+        let colorClass = 'bg-green-500';
         if (timerStatus.timeRemaining <= 0) {
-            progressColorClass = 'bg-red-600';
+            colorClass = 'bg-red-600';
         } else if (timerStatus.timeRemaining <= 10) {
-            progressColorClass = 'bg-red-500 animate-pulse';
+            colorClass = 'bg-red-500 animate-pulse';
         } else if (timerStatus.timeRemaining <= 30) {
-            progressColorClass = 'bg-orange-500';
+            colorClass = 'bg-orange-500';
         } else if (timerStatus.timeRemaining <= 60) {
-            progressColorClass = 'bg-yellow-500';
-        } else {
-            progressColorClass = 'bg-green-500';
+            colorClass = 'bg-yellow-500';
         }
+
+        activeTimer = {
+            percentage: Math.min(100, (timerStatus.timeElapsed / baseTimeLimit) * 100),
+            colorClass,
+        };
     }
 
     return (
@@ -81,15 +85,6 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
                         </div>
                     )}
                 </div>
-                {/* Progress bar below phase */}
-                {isTimerEnabled && (
-                    <div className="mt-1.5 h-1.5 bg-[var(--ui-panel-raised)] rounded-full overflow-hidden">
-                        <div
-                            className={`h-full transition-all duration-1000 ease-linear ${progressColorClass}`}
-                            style={{ width: `${progressPercentage}%` }}
-                        />
-                    </div>
-                )}
             </div>
 
             {/* Player Cards */}
@@ -106,6 +101,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
                         isCurrentPlayer={player.id === currentPlayerId}
                         isTurn={gameState.currentTurn === player.id}
                         onOpenCityManagement={onOpenCityManagement}
+                        timer={gameState.currentTurn === player.id ? activeTimer : null}
                     />
                 ))}
             </div>

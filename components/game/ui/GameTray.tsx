@@ -167,10 +167,13 @@ export const GameTray: React.FC<GameTrayProps> = ({
     );
   }
 
-  // (d) Dice + turn actions
+  // (d) Dice + turn actions. They share a slot but are not the same kind of
+  // thing — one reports the roll, the other is what you can do about it. Both
+  // clusters space their own children at gap-2, so the boundary between them is
+  // drawn at 3x that rather than with a third style of divider line.
   if (showActionSlot) {
     slots.push(
-      <div key="actions" data-tray-slot="actions" className={`flex items-end gap-3 ${gated}`}>
+      <div key="actions" data-tray-slot="actions" className={`flex items-end gap-6 max-xl:gap-4 ${gated}`}>
         <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={visibleEventDieRoll} />
         <ActionControls
           gameState={gameState}
