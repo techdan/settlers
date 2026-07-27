@@ -1,8 +1,8 @@
 /**
  * Tabletop theme palette — the single color source for all tabletop art.
- * Values match the approved art-direction vignette (docs/graphics-overhaul-plan.md §2.1).
+ * Values match the approved art-direction vignette (docs/archive/graphics-overhaul-plan-v2.1.md §2.1).
  *
- * Rule (§2.2): outlines are always a darkened version of the shape's own fill
+ * Archived art rule (§2.2): outlines are always a darkened version of the shape's own fill
  * (use shade()), never black or white.
  */
 

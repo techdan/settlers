@@ -1,5 +1,8 @@
 # Turn Timer Specification (Lobby-Configured)
 
+**Status:** Implemented and current as of v2.1
+**Historical implementation documents:** [`turn-timer-implementation-plan.md`](../archive/planning/turn-timer-implementation-plan.md) and [`turn-timer-completion-summary.md`](../archive/planning/turn-timer-completion-summary.md)
+
 ## Goals
 
 - Limit the amount of time a player can spend actively taking their turn.
@@ -241,4 +244,3 @@ This approach provides identical UX to a background cron job while being simpler
   - Extension request button shows confirmation tooltip with bank balance.
   - Stats panel shows Total Gameplay Time.
   - When `Roll Dice` is blocked, show the over-board "Waiting on…" message and notify the blocking player(s).
-

@@ -1,6 +1,9 @@
 # Chat Feature Specification (Game Log Panel → Chat Tab)
 
-This document specifies a room-scoped, real-time chat feature to be implemented on the **Chat** tab within the existing right-sidebar panel (see `components/game/ui/SidebarTabs.tsx`).
+**Status:** Implemented and current as of v2.1
+**Historical implementation plan:** [`docs/archive/planning/chat-feature-implementation-plan.md`](../archive/planning/chat-feature-implementation-plan.md)
+
+This document specifies the implemented room-scoped, real-time chat feature on the **Chat** tab within the existing right-sidebar panel (see `components/game/ui/SidebarTabs.tsx`).
 
 ## 1) Goals / Non-Goals
 
@@ -169,4 +172,3 @@ Otherwise, keep unread state local to `SidebarTabs` (acceptable for MVP if sideb
 - Scroll behavior matches spec (auto-scroll only when near bottom; otherwise show “New messages” pill).
 - Unread badge increments when receiving messages while not on Chat tab; clears when opening Chat tab.
 - Server rejects invalid messages (empty/too long/not-in-room) and client shows failure feedback.
-

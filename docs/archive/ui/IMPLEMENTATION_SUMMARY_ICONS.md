@@ -1,8 +1,8 @@
-# Icon System Implementation Summary
+# Icon System Implementation Summary (Archived)
 
 **Date:** 2025-12-01
 **Phase:** UI Redesign - Phase 4 (Icon System)
-**Status:** ✅ Complete
+**Status:** Archived — completed legacy implementation superseded by the tabletop system
 
 ---
 

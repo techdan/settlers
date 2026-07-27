@@ -1,8 +1,10 @@
-# Turn Timer Implementation Plan
+# Turn Timer Implementation Plan (Archived)
+
+**Status:** Historical implementation plan; the feature is implemented in v2.1.
 
 ## Executive Summary
 
-This plan provides step-by-step implementation guidance for adding a turn timer feature to Settlers of Catan, based on the requirements in [turn-timer-spec.md](turn-timer-spec.md). The feature adds lobby-configured turn time limits, per-player time banks, and global obligation gating while preserving the "pause anytime" workflow.
+This plan provides step-by-step implementation guidance for adding a turn timer feature to Settlers of Catan, based on the retained requirements in [turn-timer-spec.md](../../planning/turn-timer-spec.md). The feature adds lobby-configured turn time limits, per-player time banks, and global obligation gating while preserving the "pause anytime" workflow.
 
 **Target Audience**: Junior to mid-level developers
 **Estimated Complexity**: Medium-High (15-20 implementation units)
@@ -2735,7 +2737,7 @@ These features are intentionally excluded from v1 to reduce scope:
 11. `lib/services/obligation-tracker.test.ts` - Unit tests
 12. `lib/services/timer-integration.test.ts` - Integration tests
 13. `docs/planning/timer-testing-checklist.md` - Test checklist
-14. `docs/planning/turn-timer-implementation-plan.md` - This document
+14. `docs/archive/planning/turn-timer-implementation-plan.md` - This archived document
 15. `docs/planning/turn-timer-spec.md` - Updated spec
 
 ### Modified Files (8)

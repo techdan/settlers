@@ -1,8 +1,8 @@
-# Cities & Knights UI Redesign Documentation
+# Cities & Knights UI Redesign Documentation (Archived)
 
 **Project:** Settlers of Lancaster - Cities & Knights Edition
 **Date:** 2025-12-06 (Updated)
-**Status:** In Development
+**Status:** Archived — superseded by the illustrated-tabletop overhaul
 
 ---
 
@@ -146,8 +146,8 @@ gameState.gameMode                       // 'base' | 'cities_and_knights'
 
 // ⚠️ PITFALL: Resource count should include commodities in C&K!
 const totalCards = Object.values(player.resources).reduce((a, b) => a + b, 0)
-    + (gameState.gameMode === 'cities_and_knights' 
-        ? Object.values(player.commodities || {}).reduce((a, b) => a + b, 0) 
+    + (gameState.gameMode === 'cities_and_knights'
+        ? Object.values(player.commodities || {}).reduce((a, b) => a + b, 0)
         : 0);
 
 // ⚠️ PITFALL: Show danger indicator when over safe limit (7 base + 2 per city wall)

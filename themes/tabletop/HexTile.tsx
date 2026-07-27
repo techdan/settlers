@@ -9,7 +9,7 @@ import { StatusGlyph } from './glyphs';
 
 /**
  * Tabletop hex tile — each terrain is a small illustrated scene on warm tile
- * stock with a cream cardboard seam (docs/graphics-overhaul-plan.md §2).
+ * stock with a cream cardboard seam (docs/archive/graphics-overhaul-plan-v2.1.md §2).
  *
  * Drop-in replacement for themes/flat/HexTile: identical props contract.
  * Art rules: one sun top-left; outlines are darkened own-fill; one ellipse

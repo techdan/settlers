@@ -5,7 +5,7 @@ import { ShieldGlyph, TowerGlyph, CrossedSwords } from './glyphs';
 import { TT, shade, r2 } from './palette';
 
 /**
- * Barbarian sea route (docs/graphics-overhaul-plan.md §5) — the drakkar sails
+ * Barbarian sea route (docs/archive/graphics-overhaul-plan-v2.1.md §5) — the drakkar sails
  * an 8-step Bézier through the western sea toward a landfall marker off the
  * coast. Replaces the HUD BarbarianTrack panel; the full text summary lives in
  * this group's <title> tooltip.

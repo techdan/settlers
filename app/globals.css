@@ -138,7 +138,7 @@ select,
 
   /**
    * Game-Specific Colors
-   * Source of truth: docs/ui/icons.md
+   * Current resource palette; the retired icon mapping is archived at docs/archive/ui/icons.md.
    * Uses CSS Color 5 relative color syntax to preserve exact hex while exposing OKLCH tokens.
    */
   :root {

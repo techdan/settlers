@@ -1,6 +1,6 @@
 /**
  * Tabletop theme — Illustrated Tabletop art direction (Style A).
- * See docs/graphics-overhaul-plan.md for the art system spec.
+ * See docs/archive/graphics-overhaul-plan-v2.1.md for the established art system.
  */
 export { HexTile } from './HexTile';
 export { NumberToken } from './NumberToken';
@@ -20,10 +20,18 @@ export {
     ShieldGlyph,
     TowerGlyph,
     CrossedSwords,
+    CardBackGlyph,
+    VictoryPointToken,
+    RoadGlyph,
     TabletopResourceIcon,
     TabletopCommodityIcon,
     TabletopImprovementIcon,
     TabletopStatusIcon,
+    TabletopCardBackIcon,
+    TabletopVictoryPointIcon,
+    TabletopRoadIcon,
+    TabletopShieldIcon,
+    TabletopCrossedSwordsIcon,
     StatusGlyph,
 } from './glyphs';
 export { TT, TT_SERIF, shade, r2, hexPointsStr } from './palette';

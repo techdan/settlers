@@ -1,6 +1,8 @@
-# Chat Feature Implementation Plan
+# Chat Feature Implementation Plan (Archived)
 
-This document provides step-by-step implementation instructions for the chat feature based on [chat-feature-spec.md](./chat-feature-spec.md).
+**Status:** Historical implementation plan; the feature is implemented in v2.1.
+
+This document provides step-by-step implementation instructions for the chat feature based on the retained [chat-feature-spec.md](../../planning/chat-feature-spec.md).
 
 ## Overview
 

@@ -438,7 +438,7 @@ See `docs/phase4-refactoring-summary.md` for complete details.
 
 Beads (bd) was **retired as the tracker of record on 2026-07-09** (git hooks removed, `.beads/` untracked and gitignored). Do not use `bd` commands.
 
-- Work items live in plan documents under `docs/` — currently `docs/codebase-improvement-plan.md` (refactor/cleanup backlog) and `docs/graphics-overhaul-plan.md` (graphics overhaul execution plan).
+- Work items live in plan documents under `docs/` — currently `docs/codebase-improvement-plan.md` (the §5.14 production-readiness migration) and `docs/graphics-overhaul-plan.md` (optional presentation-polish backlog).
 - Each item carries concrete file paths and acceptance criteria. When an item lands, mark it done in the plan doc with the commit hash.
 - Newly discovered work: add it to the relevant plan doc in the same format (paths + acceptance criteria), in the section where it belongs.
 - Use the built-in session task tools for in-session progress; the plan docs are the cross-session record.

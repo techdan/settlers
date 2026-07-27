@@ -1,8 +1,8 @@
-# Barbarian Hex Tiles - Design Document
+# Barbarian Hex Tiles - Design Document (Archived)
 
-**Project:** Settlers of Lancaster - Cities & Knights Edition  
-**Date:** 2025-12-07  
-**Status:** Draft - Awaiting Implementation  
+**Project:** Settlers of Lancaster - Cities & Knights Edition
+**Date:** 2025-12-07
+**Status:** Archived — superseded by the implemented barbarian sea route
 
 ---
 

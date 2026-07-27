@@ -1,4 +1,6 @@
-# Icon Mapping Configuration
+# Icon Mapping Configuration (Archived)
+
+**Status:** Archived — this mapping belongs to the retired `/public/icons` pipeline
 
 This file maps SVG icons from `/public/icons` to game elements with their associated colors. Game icons come from https://game-icons.net/
 
@@ -83,7 +85,7 @@ Fill in the following columns:
 
 ### Resources (Natural, Earthy)
 - Wood: #E79108 `#723921` (foreground) + Stroke `#4b2619` # Extracted from wood-pile.svg
-- Brick: #EEE4DA  #CA7728 # OTHER OPTIONS  #D74315   #d35830 (foreground) + Stroke #FFA648   #891e21 
+- Brick: #EEE4DA  #CA7728 # OTHER OPTIONS  #D74315   #d35830 (foreground) + Stroke #FFA648   #891e21
 - Sheep: `#ded7bc` # Other (Beige)
 - Wheat: `#db8b1f` # Other (Goldenrod)
 - Ore: `#4f4a3c` # Other (Slate gray)
@@ -91,7 +93,7 @@ Fill in the following columns:
 ### Commodities (Refined, Valuable)
 - Paper: `#e8c4a4` + Grey stroke `#4A4A4A`
 - Cloth: `#ecd998`
-- Coin: `#707c79` 
+- Coin: `#707c79`
 
 ### Knights (Martial Progression)
 - Basic: `#CD7F32` (Bronze)

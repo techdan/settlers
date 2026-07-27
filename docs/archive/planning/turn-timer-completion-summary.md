@@ -1,4 +1,4 @@
-# Turn Timer Feature - Implementation Complete (Phases 0-8)
+# Turn Timer Feature - Implementation Complete (Archived)
 
 ## Summary
 
@@ -6,7 +6,7 @@ Successfully implemented a comprehensive turn timer feature for Settlers of Cata
 
 **Branch**: `feature/turn-timer`
 **Commits**: 9 (Phases 0-8)
-**Status**: ✅ Implementation Complete - Ready for Integration Testing
+**Status**: Archived implementation snapshot; subsequent integration is present in v2.1
 
 ---
 
@@ -352,9 +352,9 @@ End Turn → Timer STOPS → Refund → Next turn
 ## 📖 Documentation References
 
 - Spec: `docs/planning/turn-timer-spec.md`
-- Implementation Plan: `docs/planning/turn-timer-implementation-plan.md`
-- Handoff Guide: `docs/planning/turn-timer-implementation-handoff.md`
-- This Summary: `docs/planning/turn-timer-completion-summary.md`
+- Implementation Plan: `docs/archive/planning/turn-timer-implementation-plan.md`
+- Handoff Guide: historical reference; not retained in the repository
+- This Summary: `docs/archive/planning/turn-timer-completion-summary.md`
 
 ---
 

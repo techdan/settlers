@@ -24,7 +24,7 @@
 ### 1.1 Delete unused `BarbarianHexOverlay` — ✅ Done 2026-07-09 (deleted with `BarbarianTrack` when the on-board barbarian route landed; see graphics plan Phase 1)
 - **File:** `components/board/BarbarianHexOverlay.tsx` (201 lines)
 - **Evidence:** Zero imports anywhere in `components/`, `app/`, `lib/`. Only referenced in docs. The live barbarian UI is `components/game/overlays/BarbarianTrack.tsx`.
-- **Action:** Delete the file. `docs/ui/BARBARIAN_HEX_TILES_DESIGN.md` references it as a starting point for an on-board version — that doc stays; the component is trivially recreatable and its tooltip copy can be lifted from git history.
+- **Action:** Delete the file. The now-archived `docs/archive/ui/BARBARIAN_HEX_TILES_DESIGN.md` references it as a starting point for an on-board version; the component is trivially recreatable and its tooltip copy can be lifted from git history.
 - **Accept:** Build passes, no import errors.
 
 ### 1.2 Unify the two board-type modules — ✅ Done 2026-07-10 (Codex-executed, lead-verified: root `types/board.ts` merged into `lib/types/board.ts`, all importers updated incl. `board-palette.ts`, root file deleted)
@@ -112,7 +112,7 @@
 
 > These make the upcoming art overhaul cheap instead of painful. They change *how* graphics are delivered, not how they look.
 >
-> **Update 2026-07-09:** The overhaul decisions are locked — see `docs/graphics-overhaul-plan.md`. This section is that plan's **Phase 0**; execute it via the work orders there (which fold in voxel retirement and adjust §4.4 below).
+> **Update 2026-07-09:** The overhaul decisions are locked — see the historical `docs/archive/graphics-overhaul-plan-v2.1.md`. This section is that plan's **Phase 0**; execute it via the work orders there (which fold in voxel retirement and adjust §4.4 below).
 
 ### 4.1 Replace `foreignObject` + `<img>` icons inside the board SVG
 - **Files:** `themes/flat/HexTile.tsx` (resource + desert icons), `themes/flat/Port.tsx` (port icons)
@@ -141,13 +141,13 @@
 ### 4.4 Formalize the theme interface — ✅ Done 2026-07-26 (uncommitted working tree)
 - **Files:** `themes/flat/*`, `themes/voxel/*`, `components/board/BoardCanvas.tsx`
 - **Evidence:** Flat and voxel components share prop shapes by convention only; `BoardCanvas` picks components with ternaries; `VertexRenderer`/`EdgeRenderer` take `theme: 'flat' | 'voxel'` and branch internally — so piece rendering is half in the theme folders, half in board components.
-- **Action (revised per locked decision):** The voxel theme is **retired** — delete `themes/voxel/`, remove all `theme === 'voxel'` branches, the `BoardControls` 3D toggle, and the `theme` prop chain (full work order: `docs/graphics-overhaul-plan.md` Phase 0.1). Then define a light single-theme object `boardTheme = { HexTile, Port, NumberToken, Robber, Merchant, pieces… }` in `themes/` so piece rendering leaves `VertexRenderer`/`EdgeRenderer` and the upcoming `tabletop` theme is a drop-in swap.
+- **Action (revised per locked decision):** The voxel theme is **retired** — delete `themes/voxel/`, remove all `theme === 'voxel'` branches, the `BoardControls` 3D toggle, and the `theme` prop chain (full work order: `docs/archive/graphics-overhaul-plan-v2.1.md` Phase 0.1). Then define a light single-theme object `boardTheme = { HexTile, Port, NumberToken, Robber, Merchant, pieces… }` in `themes/` so piece rendering leaves `VertexRenderer`/`EdgeRenderer` and the upcoming `tabletop` theme is a drop-in swap.
 - **Accept:** `grep -rn "voxel"` in source → 0 hits; no theme string comparisons anywhere; flat theme renders pixel-identical to today.
 - ✅ **Completed:** Voxel retirement remains complete, and `themes/board-theme.ts` now exports an explicit `BoardTheme` contract plus the stable single `boardTheme` implementation. The object owns the viewBox/palette, frame, tiles, ports, number tokens, robber, merchant, barbarian route, status glyph, and all player pieces. `BoardCanvas`, `VertexRenderer`, and `EdgeRenderer` consume that boundary instead of importing concrete tabletop artwork; their component references are hoisted at module scope. No renderer under `components/board/` imports `themes/tabletop` directly, and the `VertexRenderer`/`EdgeRenderer` diff changes no hitbox or selection markup. Non-incremental TypeScript, focused ESLint, 15 board SVG/pan tests, and the full 61-file / 336-test suite pass.
 
 ### 4.5 Emoji as game iconography — ✅ Done in graphics Phase 4.5 (`3e8876f`)
 - **Resolution:** superseded by the far broader Phase 4.5 legacy visual retirement, which replaced every emoji/Unicode glyph across `components/game` and `components/board` with `themes/tabletop` SVG glyphs (not `GameIcon`/lucide as originally proposed — `GameIcon` was itself deleted in the same pass). Static emoji scans return 0 hits.
-- **Evidence:** `BarbarianTrack.tsx` (⚔️ 🛡️ ✓ ✗), `ProgressCardHand.tsx` (`CATEGORY_ICONS` 🟢🟡🔵), confirm/cancel buttons in `VertexRenderer`/`EdgeRenderer` (✓ ✕ as `<text>`). Emoji render differently per OS and clash with the SVG icon system (`docs/ui/ICON_SYSTEM.md`).
+- **Evidence:** `BarbarianTrack.tsx` (⚔️ 🛡️ ✓ ✗), `ProgressCardHand.tsx` (`CATEGORY_ICONS` 🟢🟡🔵), confirm/cancel buttons in `VertexRenderer`/`EdgeRenderer` (✓ ✕ as `<text>`). Emoji render differently per OS and clash with the archived SVG icon system (`docs/archive/ui/ICON_SYSTEM.md`).
 - **Action:** Replace with `GameIcon`/lucide icons or sprite symbols. Keep this cosmetic pass separate from the art overhaul.
 - **Accept:** No emoji literals in `components/` (chat content excluded).
 

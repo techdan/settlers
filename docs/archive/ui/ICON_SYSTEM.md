@@ -1,4 +1,6 @@
-# Icon System Documentation
+# Icon System Documentation (Archived)
+
+**Status:** Archived — superseded by the tabletop SVG/card/piece system
 
 **Design Philosophy:** Medieval Illuminated Manuscript
 **Source:** [game-icons.net](https://game-icons.net/)
@@ -66,54 +68,54 @@ dice:            '#1e293b'  // Slate-900 (neutral)
 
 | Icon | Type | Source | Color | Usage |
 |------|------|--------|-------|-------|
-| ![wood](../public/icons/wood-pile.svg) | `wood` | [wood-pile](https://game-icons.net/1x1/lorc/wood-pile.html) | Saddle brown | PlayerHand, BuildControls |
-| ![brick](../public/icons/stone-pile.svg) | `brick` | [stone-pile](https://game-icons.net/1x1/delapouite/stone-pile.html) | Sienna | PlayerHand, BuildControls |
-| ![sheep](../public/icons/sheep.svg) | `sheep` | [sheep](https://game-icons.net/1x1/delapouite/sheep.html) | Beige | PlayerHand, BuildControls |
-| ![wheat](../public/icons/wheat.svg) | `wheat` | [wheat](https://game-icons.net/1x1/lorc/wheat.html) | Goldenrod | PlayerHand, BuildControls |
-| ![ore](../public/icons/ore.svg) | `ore` | [stone-block](https://game-icons.net/1x1/lorc/stone-block.html) | Slate gray | PlayerHand, BuildControls |
+| `wood-pile.svg` (asset not retained) | `wood` | [wood-pile](https://game-icons.net/1x1/lorc/wood-pile.html) | Saddle brown | PlayerHand, BuildControls |
+| ![brick](../../../public/icons/stone-pile.svg) | `brick` | [stone-pile](https://game-icons.net/1x1/delapouite/stone-pile.html) | Sienna | PlayerHand, BuildControls |
+| ![sheep](../../../public/icons/sheep.svg) | `sheep` | [sheep](https://game-icons.net/1x1/delapouite/sheep.html) | Beige | PlayerHand, BuildControls |
+| ![wheat](../../../public/icons/wheat.svg) | `wheat` | [wheat](https://game-icons.net/1x1/lorc/wheat.html) | Goldenrod | PlayerHand, BuildControls |
+| `ore.svg` (asset not retained) | `ore` | [stone-block](https://game-icons.net/1x1/lorc/stone-block.html) | Slate gray | PlayerHand, BuildControls |
 
 ### Commodities (3 icons)
 
 | Icon | Type | Source | Color | Usage |
 |------|------|--------|-------|-------|
-| ![paper](../public/icons/paper.svg) | `paper` | [scroll-unfurled](https://game-icons.net/1x1/lorc/scroll-unfurled.html) | Rich purple | PlayerHand, C&K mode |
-| ![cloth](../public/icons/cloth.svg) | `cloth` | [spool](https://game-icons.net/1x1/lorc/spool.html) | Deep crimson | PlayerHand, C&K mode |
-| ![coin](../public/icons/coin.svg) | `coin` | [two-coins](https://game-icons.net/1x1/lorc/two-coins.html) | Gold | PlayerHand, C&K mode |
+| `paper.svg` (asset not retained) | `paper` | [scroll-unfurled](https://game-icons.net/1x1/lorc/scroll-unfurled.html) | Rich purple | PlayerHand, C&K mode |
+| ![cloth](../../../public/icons/cloth.svg) | `cloth` | [spool](https://game-icons.net/1x1/lorc/spool.html) | Deep crimson | PlayerHand, C&K mode |
+| ![coin](../../../public/icons/coin.svg) | `coin` | [two-coins](https://game-icons.net/1x1/lorc/two-coins.html) | Gold | PlayerHand, C&K mode |
 
 ### Structures (5 icons)
 
 | Icon | Type | Source | Color | Usage |
 |------|------|--------|-------|-------|
-| ![settlement](../public/icons/settlement.svg) | `settlement` | [wooden-sign](https://game-icons.net/1x1/delapouite/wooden-sign.html) | Player color | BuildControls, Board |
-| ![city](../public/icons/city.svg) | `city` | [castle](https://game-icons.net/1x1/delapouite/castle.html) | Player color | BuildControls, Board |
-| ![metropolis](../public/icons/metropolis.svg) | `metropolis` | [citadel](https://game-icons.net/1x1/lorc/citadel.html) | Player color | Board (C&K) |
-| ![road](../public/icons/road.svg) | `road` | [stone-path](https://game-icons.net/1x1/lorc/stone-path.html) | Player color | BuildControls, Board |
-| ![city-wall](../public/icons/city-wall.svg) | `city-wall` | [stone-wall](https://game-icons.net/1x1/lorc/stone-wall.html) | Player color | BuildControls, Board (C&K) |
+| `settlement.svg` (asset not retained) | `settlement` | [wooden-sign](https://game-icons.net/1x1/delapouite/wooden-sign.html) | Player color | BuildControls, Board |
+| ![city](../../../public/icons/city.svg) | `city` | [castle](https://game-icons.net/1x1/delapouite/castle.html) | Player color | BuildControls, Board |
+| ![metropolis](../../../public/icons/metropolis.svg) | `metropolis` | [citadel](https://game-icons.net/1x1/lorc/citadel.html) | Player color | Board (C&K) |
+| ![road](../../../public/icons/road.svg) | `road` | [stone-path](https://game-icons.net/1x1/lorc/stone-path.html) | Player color | BuildControls, Board |
+| ![city-wall](../../../public/icons/city-wall.svg) | `city-wall` | [stone-wall](https://game-icons.net/1x1/lorc/stone-wall.html) | Player color | BuildControls, Board (C&K) |
 
 ### Knights (3 tiers)
 
 | Icon | Type | Source | Color | Usage |
 |------|------|--------|-------|-------|
-| ![basic](../public/icons/knight-basic.svg) | `basic` | [light-helm](https://game-icons.net/1x1/delapouite/light-helm.html) | Bronze | BuildControls, Board |
-| ![strong](../public/icons/knight-strong.svg) | `strong` | [flanged-mace](https://game-icons.net/1x1/lorc/flanged-mace.html) | Silver | Board (C&K) |
-| ![mighty](../public/icons/knight-mighty.svg) | `mighty` | [crowned-skull](https://game-icons.net/1x1/lorc/crowned-skull.html) | Gold | Board (C&K) |
+| ![basic](../../../public/icons/knight-basic.svg) | `basic` | [light-helm](https://game-icons.net/1x1/delapouite/light-helm.html) | Bronze | BuildControls, Board |
+| `knight-strong.svg` (asset not retained) | `strong` | [flanged-mace](https://game-icons.net/1x1/lorc/flanged-mace.html) | Silver | Board (C&K) |
+| `knight-mighty.svg` (asset not retained) | `mighty` | [crowned-skull](https://game-icons.net/1x1/lorc/crowned-skull.html) | Gold | Board (C&K) |
 
 ### City Improvements (3 tracks)
 
 | Icon | Type | Source | Color | Usage |
 |------|------|--------|-------|-------|
-| ![science](../public/icons/science.svg) | `science` | [beaker](https://game-icons.net/1x1/lorc/beaker.html) | Green-600 | GameStatus, Progress Cards |
-| ![trade](../public/icons/trade.svg) | `trade` | [gold-bar](https://game-icons.net/1x1/delapouite/gold-bar.html) | Amber-500 | GameStatus, Progress Cards |
-| ![politics](../public/icons/politics.svg) | `politics` | [crown](https://game-icons.net/1x1/lorc/crown.html) | Blue-500 | GameStatus, Progress Cards |
+| ![science](../../../public/icons/science.svg) | `science` | [beaker](https://game-icons.net/1x1/lorc/beaker.html) | Green-600 | GameStatus, Progress Cards |
+| ![trade](../../../public/icons/trade.svg) | `trade` | [gold-bar](https://game-icons.net/1x1/delapouite/gold-bar.html) | Amber-500 | GameStatus, Progress Cards |
+| `politics.svg` (asset not retained) | `politics` | [crown](https://game-icons.net/1x1/lorc/crown.html) | Blue-500 | GameStatus, Progress Cards |
 
 ### Special Pieces (4 icons)
 
 | Icon | Type | Source | Color | Usage |
 |------|------|--------|-------|-------|
-| ![robber](../public/icons/robber.svg) | `robber` | [masked-spider](https://game-icons.net/1x1/lorc/masked-spider.html) | Near black | Board |
-| ![merchant](../public/icons/merchant.svg) | `merchant` | [trade](https://game-icons.net/1x1/lorc/trade.html) | Green | Board (C&K) |
-| ![ship](../public/icons/barbarian-ship.svg) | `barbarian-ship` | [galleon](https://game-icons.net/1x1/lorc/galleon.html) | Dark red | Barbarian Track |
-| ![dice](../public/icons/dice.svg) | `dice` | [dice-six](https://game-icons.net/1x1/skoll/perspective-dice-six-faces-random.html) | Slate-900 | DiceDisplay, BuildControls |
+| ![robber](../../../public/icons/robber.svg) | `robber` | [masked-spider](https://game-icons.net/1x1/lorc/masked-spider.html) | Near black | Board |
+| `merchant.svg` (asset not retained) | `merchant` | [trade](https://game-icons.net/1x1/lorc/trade.html) | Green | Board (C&K) |
+| `barbarian-ship.svg` (asset not retained) | `barbarian-ship` | [galleon](https://game-icons.net/1x1/lorc/galleon.html) | Dark red | Barbarian Track |
+| `dice.svg` (asset not retained) | `dice` | [dice-six](https://game-icons.net/1x1/skoll/perspective-dice-six-faces-random.html) | Slate-900 | DiceDisplay, BuildControls |
 
 ---
 
