@@ -1,8 +1,7 @@
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
-import { isMerchantFleetEffect, type MerchantFleetEffect } from '@/lib/types/effects';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { getBestTradeRatio } from '@/core/engine/board/port-generator';
+import { getBankTradeRatio, isCommodity } from '@/lib/trade/bank-ratios';
 import { CommodityType } from '@/core/rules/commodity-constants';
 
 /**
@@ -19,38 +18,6 @@ import { CommodityType } from '@/core/rules/commodity-constants';
  * @param getResource - Resource to get
  * @returns Updated game state
  */
-// Helper to check if type is commodity
-function isCommodity(type: string): type is CommodityType {
-    return ['paper', 'cloth', 'coin'].includes(type);
-}
-
-const terrainToResource: Record<string, ResourceType | null> = {
-    forest: 'wood',
-    hill: 'brick',
-    pasture: 'sheep',
-    field: 'wheat',
-    mountain: 'ore',
-    desert: null,
-    ocean: null
-};
-
-function getMerchantResource(gameState: GameState): ResourceType | null {
-    if (!gameState.merchantHexId) return null;
-    const merchantHex = gameState.board.hexes.find(hex => hex.id === gameState.merchantHexId);
-    if (!merchantHex) return null;
-    return terrainToResource[merchantHex.terrain] ?? null;
-}
-
-function getMerchantFleetTradeItem(gameState: GameState, playerId: string): ResourceType | CommodityType | null {
-    const activeEffects = gameState.activeEffects ?? [];
-    const effect = activeEffects.find(
-        (entry): entry is MerchantFleetEffect =>
-            isMerchantFleetEffect(entry) && entry.playerId === playerId
-    );
-
-    return effect?.tradeItem ?? null;
-}
-
 function formatResourceList(resources: Record<ResourceType, number>): string {
     const parts = Object.entries(resources)
         .filter(([, amount]) => amount > 0)
@@ -82,31 +49,9 @@ export async function tradeWithBank(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    // Determine trade ratio
-    let ratio = 4; // Default
-    const merchantFleetTradeItem = getMerchantFleetTradeItem(gameState, playerId);
-    const merchantResource = getMerchantResource(gameState);
-
-    if (merchantFleetTradeItem === giveResource) {
-        ratio = 2;
-    } else if (isCommodity(giveResource)) {
-        // Commodities: Default 4:1, or 2:1 with Trading House (Trade improvement level 3+)
-        if ((player.improvements?.trade || 0) >= 3) {
-            ratio = 2;
-        }
-        // Note: Ports do NOT apply to commodities
-    } else {
-        // Resources: Merchant benefit or ports
-        if (gameState.activeMerchant === playerId && merchantResource === giveResource) {
-            ratio = 2;
-        } else {
-            // Get all vertices owned by player
-            const playerVertices = Object.keys(gameState.board.vertices).filter(
-                vId => gameState.board.vertices[vId].owner === playerId
-            );
-            ratio = getBestTradeRatio(playerVertices, giveResource);
-        }
-    }
+    // Merchant Fleet > Trading House (commodities) > Merchant > ports. Shared with the
+    // trade modal so the ratio badge a player clicks is the ratio they get charged.
+    const ratio = getBankTradeRatio(gameState, playerId, giveResource);
 
     // Get current amount of 'give' item
     const currentAmount = isCommodity(giveResource)

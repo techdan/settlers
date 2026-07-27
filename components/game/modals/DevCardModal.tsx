@@ -6,8 +6,9 @@ import type {
 } from '@/lib/types/player';
 import type { ResourceType } from '@/core/rules/board-constants';
 import { DevCardFace } from '@/themes/tabletop/cards';
-import { TabletopResourceIcon } from '@/themes/tabletop/glyphs';
-import { TabletopButton, TabletopModal, tabletopOptionClass } from '../ui/TabletopModal';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal } from '../ui/TabletopModal';
+import { CARD_LABELS, CardIcon, CardRow, CardToken, CardTokenGroup } from '../ui/CardToken';
 
 interface DevCardModalProps {
     isOpen: boolean;
@@ -45,6 +46,19 @@ const DEV_CARD_DEFINITIONS: Record<DevCardType, { name: string; description: str
 
 const RESOURCES = ['wood', 'brick', 'sheep', 'wheat', 'ore'] satisfies ResourceType[];
 
+/** Year of Plenty takes two cards, and they are allowed to be the same one. */
+const YEAR_OF_PLENTY_PICKS = 2;
+
+type ResourceTally = Partial<Record<ResourceType, number>>;
+
+const tallyTotal = (tally: ResourceTally) =>
+    Object.values(tally).reduce<number>((sum, n) => sum + (n || 0), 0);
+
+/** `{ ore: 2 }` → `['ore', 'ore']`, which is what the play options expect. */
+const expandTally = (tally: ResourceTally): ResourceType[] =>
+    (Object.entries(tally) as [ResourceType, number][])
+        .flatMap(([resource, count]) => Array<ResourceType>(count).fill(resource));
+
 export const DevCardModal: FC<DevCardModalProps> = ({
     isOpen,
     onClose,
@@ -52,20 +66,39 @@ export const DevCardModal: FC<DevCardModalProps> = ({
     currentPlayer,
     onPlay
 }) => {
-    const [resource1, setResource1] = useState<ResourceType>('wood');
-    const [resource2, setResource2] = useState<ResourceType>('brick');
-    const [monopolyRes, setMonopolyRes] = useState<ResourceType>('ore');
+    // Year of Plenty is a tally, not two separate picks: "two ore" is a normal
+    // play, and expressing it as resource1=ore, resource2=ore made the player
+    // set the same control twice to say one thing.
+    const [plentyPicks, setPlentyPicks] = useState<ResourceTally>({});
+    const [monopolyRes, setMonopolyRes] = useState<ResourceType | null>(null);
     const [error, setError] = useState<string>('');
 
     if (!isOpen || !cardType) return null;
 
     const cardMeta = DEV_CARD_DEFINITIONS[cardType];
+    const plentyTotal = tallyTotal(plentyPicks);
 
     const resetState = () => {
-        setResource1('wood');
-        setResource2('brick');
-        setMonopolyRes('ore');
+        setPlentyPicks({});
+        setMonopolyRes(null);
         setError('');
+    };
+
+    const adjustPlenty = (resource: ResourceType, delta: number) => {
+        setError('');
+        setPlentyPicks(prev => {
+            const next = (prev[resource] || 0) + delta;
+            if (next < 0 || tallyTotal(prev) + delta > YEAR_OF_PLENTY_PICKS) return prev;
+            return { ...prev, [resource]: next };
+        });
+    };
+
+    // Nothing is pre-selected, so a stray click on the action button can no
+    // longer spend a card on resources the player never chose.
+    const canPlay = () => {
+        if (cardType === 'year_of_plenty') return plentyTotal === YEAR_OF_PLENTY_PICKS;
+        if (cardType === 'monopoly') return monopolyRes !== null;
+        return true;
     };
 
     const handlePlay = async () => {
@@ -73,12 +106,14 @@ export const DevCardModal: FC<DevCardModalProps> = ({
         setError('');
 
         switch (cardType) {
-            case 'year_of_plenty':
+            case 'year_of_plenty': {
+                const [resource1, resource2] = expandTally(plentyPicks);
                 options = { resource1, resource2 };
                 break;
+            }
 
             case 'monopoly':
-                options = { monopolyResource: monopolyRes };
+                options = { monopolyResource: monopolyRes ?? undefined };
                 break;
 
             case 'knight':
@@ -99,74 +134,26 @@ export const DevCardModal: FC<DevCardModalProps> = ({
         }
     };
 
+    /**
+     * The card face and its blurb sit side by side; anything the player has to
+     * *pick* is rendered full-width below by `renderCardPicker`, because five
+     * tokens need 372px and the column beside the 72px card face is only 308px.
+     */
     const renderCardForm = () => {
         switch (cardType) {
             case 'year_of_plenty':
                 return (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium block mb-2">First Resource:</label>
-                            <div className="grid grid-cols-5 gap-2">
-                                {RESOURCES.map(r => (
-                                    <button
-                                        type="button"
-                                        key={r}
-                                        onClick={() => setResource1(r)}
-                                        className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(resource1 === r)}`}
-                                    >
-                                        <TabletopResourceIcon type={r} size={24} />
-                                        <span>{r}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium block mb-2">Second Resource:</label>
-                            <div className="grid grid-cols-5 gap-2">
-                                {RESOURCES.map(r => (
-                                    <button
-                                        type="button"
-                                        key={r}
-                                        onClick={() => setResource2(r)}
-                                        className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(resource2 === r)}`}
-                                    >
-                                        <TabletopResourceIcon type={r} size={24} />
-                                        <span>{r}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <p className="mt-2 text-xs text-[var(--ui-muted)]">
-                            You will receive <span className="font-semibold text-emerald-300">1 {resource1}</span> and <span className="font-semibold text-emerald-300">1 {resource2}</span> from the bank.
-                        </p>
-                    </div>
+                    <p className="text-sm text-[var(--ui-text)]">
+                        Take any two resource cards from the bank — including two of the same.
+                    </p>
                 );
 
-            case 'monopoly': {
+            case 'monopoly':
                 return (
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium block mb-2">Select Resource to Monopolize:</label>
-                            <div className="grid grid-cols-5 gap-2">
-                                {RESOURCES.map(r => (
-                                    <button
-                                        type="button"
-                                        key={r}
-                                        onClick={() => setMonopolyRes(r)}
-                                        className={`flex flex-col items-center gap-1 rounded-lg border-2 px-2 py-2 text-xs capitalize transition ${tabletopOptionClass(monopolyRes === r)}`}
-                                    >
-                                        <TabletopResourceIcon type={r} size={24} />
-                                        <span>{r}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <p className="text-sm text-[var(--ui-text)]">
-                            All other players must give you all of their <span className="font-semibold text-emerald-300">{monopolyRes}</span>.
-                        </p>
-                    </div>
+                    <p className="text-sm text-[var(--ui-text)]">
+                        Name a resource, and every other player hands you all of theirs.
+                    </p>
                 );
-            }
 
             case 'knight':
                 return (
@@ -178,7 +165,7 @@ export const DevCardModal: FC<DevCardModalProps> = ({
                             This counts toward the Largest Army bonus (3+ knights).
                         </p>
                         <p className="text-xs text-[var(--ui-muted)]">
-                            Your current knight count: <span className="font-semibold text-blue-300">{currentPlayer.knightsPlayed || 0}</span>
+                            Your current knight count: <span className="font-semibold text-[var(--ui-accent)]">{currentPlayer.knightsPlayed || 0}</span>
                         </p>
                     </div>
                 );
@@ -187,7 +174,7 @@ export const DevCardModal: FC<DevCardModalProps> = ({
                 return (
                     <div className="space-y-3">
                         <p className="text-sm text-[var(--ui-text)]">
-                            Reveal this victory point card to claim <span className="font-semibold text-emerald-300">+1 Victory Point</span>!
+                            Reveal this victory point card to claim <span className="font-semibold text-[var(--ui-success)]">+1 Victory Point</span>!
                         </p>
                         <p className="text-xs text-[var(--ui-muted)]">
                             Once revealed, this point is permanent and visible to all players.
@@ -199,16 +186,16 @@ export const DevCardModal: FC<DevCardModalProps> = ({
                 return (
                     <div className="space-y-3">
                         <p className="text-sm text-[var(--ui-text)]">
-                            Place <span className="font-semibold text-emerald-300">2 roads</span> for free as if you had just built them.
+                            Place <span className="font-semibold text-[var(--ui-success)]">2 roads</span> for free as if you had just built them.
                         </p>
                         <p className="text-xs text-[var(--ui-muted)]">
                             After playing this card, select road locations on the board.
                         </p>
                         <p className="text-xs text-[var(--ui-muted)]">
-                            Roads remaining: <span className="font-semibold text-blue-300">{currentPlayer.roadsRemaining}</span>
+                            Roads remaining: <span className="font-semibold text-[var(--ui-accent)]">{currentPlayer.roadsRemaining}</span>
                         </p>
                         {currentPlayer.roadsRemaining < 2 && (
-                            <div className="text-xs text-amber-200 bg-amber-900/40 border border-amber-600 rounded px-3 py-2">
+                            <div className="rounded-lg border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] px-3 py-2 text-xs text-[var(--ui-text)]">
                                 You only have {currentPlayer.roadsRemaining} road{currentPlayer.roadsRemaining === 1 ? '' : 's'} remaining, so you will only place {currentPlayer.roadsRemaining}.
                             </div>
                         )}
@@ -222,6 +209,83 @@ export const DevCardModal: FC<DevCardModalProps> = ({
                     </p>
                 );
         }
+    };
+
+    /** Full-width picker for the two cards that need one. */
+    const renderCardPicker = () => {
+        if (cardType === 'year_of_plenty') {
+            const taken = expandTally(plentyPicks);
+            return (
+                <div className="mt-5 space-y-3">
+                    <p className="text-sm font-medium text-[var(--ui-muted)]">
+                        Choose {YEAR_OF_PLENTY_PICKS} cards — click one twice to take two of it:
+                    </p>
+                    <CardRow label="Resources to take">
+                        {RESOURCES.map(resource => {
+                            const picked = plentyPicks[resource] || 0;
+                            const atLimit = plentyTotal >= YEAR_OF_PLENTY_PICKS;
+                            return (
+                                <CardToken
+                                    key={resource}
+                                    type={resource}
+                                    badge={picked > 0 ? `+${picked}` : undefined}
+                                    badgeTone="good"
+                                    selected={picked > 0}
+                                    disabled={atLimit && picked === 0}
+                                    disabledReason={`You have already chosen ${YEAR_OF_PLENTY_PICKS} cards`}
+                                    trend={picked > 0 ? 'up' : null}
+                                    onClick={() => adjustPlenty(resource, 1)}
+                                    onRemove={picked > 0 ? () => adjustPlenty(resource, -1) : undefined}
+                                    removeLabel={`Take one fewer ${CARD_LABELS[resource]}`}
+                                    ariaLabel={`Take one more ${CARD_LABELS[resource]}, taking ${picked} of ${YEAR_OF_PLENTY_PICKS}`}
+                                />
+                            );
+                        })}
+                    </CardRow>
+                    <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-[var(--ui-muted)]" aria-live="polite">
+                        {taken.length === 0
+                            ? `Choose ${YEAR_OF_PLENTY_PICKS} cards to continue.`
+                            : (
+                                <>
+                                    <span>You will receive</span>
+                                    {taken.map((resource, index) => (
+                                        <span key={`${resource}-${index}`} className="inline-flex items-center gap-1">
+                                            <CardIcon type={resource} size={16} />
+                                            <span className="text-[var(--ui-text)]">{CARD_LABELS[resource]}</span>
+                                        </span>
+                                    ))}
+                                    <span>from the bank.</span>
+                                </>
+                            )}
+                    </p>
+                </div>
+            );
+        }
+
+        if (cardType === 'monopoly') {
+            return (
+                <div className="mt-5 space-y-3">
+                    <p className="text-sm font-medium text-[var(--ui-muted)]">Resource to monopolize:</p>
+                    <CardTokenGroup
+                        label="Resource to monopolize"
+                        items={RESOURCES.map(resource => ({
+                            type: resource,
+                            ariaLabel: `Monopolize ${CARD_LABELS[resource]}`,
+                        }))}
+                        selected={monopolyRes}
+                        onSelect={type => { setMonopolyRes(type as ResourceType); setError(''); }}
+                    />
+                    <p className="text-center text-sm text-[var(--ui-muted)]" aria-live="polite">
+                        {monopolyRes
+                            ? <>All other players must give you all of their{' '}
+                                <span className="font-semibold text-[var(--ui-success)]">{CARD_LABELS[monopolyRes]}</span>.</>
+                            : 'Choose a resource to continue.'}
+                    </p>
+                </div>
+            );
+        }
+
+        return null;
     };
 
     const getActionLabel = () => {
@@ -249,26 +313,28 @@ export const DevCardModal: FC<DevCardModalProps> = ({
             footer={(
                 <>
                     <TabletopButton onClick={onClose}>Cancel</TabletopButton>
-                    <TabletopButton variant="primary" onClick={handlePlay}>{getActionLabel()}</TabletopButton>
+                    <TabletopButton variant="primary" onClick={handlePlay} disabled={!canPlay()}>
+                        {getActionLabel()}
+                    </TabletopButton>
                 </>
             )}
         >
-                <div className="grid grid-cols-[72px_1fr] gap-5">
+                <div className="grid grid-cols-[72px_1fr] items-start gap-5">
                     <DevCardFace type={cardType} width={72} />
-                    <div>
-                    {renderCardForm()}
-
-                    {/* Error Message */}
-                    {error && (
-                        <div
-                            role="alert"
-                            className="mt-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm"
-                        >
-                            {error}
-                        </div>
-                    )}
-                    </div>
+                    <div>{renderCardForm()}</div>
                 </div>
+
+                {renderCardPicker()}
+
+                {error && (
+                    <div
+                        role="alert"
+                        className="mt-4 flex items-start gap-2 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2"
+                    >
+                        <TabletopStatusIcon type="cancel" size={16} className="mt-0.5 shrink-0" />
+                        <span className="text-sm text-[var(--ui-text)]">{error}</span>
+                    </div>
+                )}
         </TabletopModal>
     );
 };

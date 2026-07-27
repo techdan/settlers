@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { CardInteraction, CardInteractionResponse } from '@/core/engine/progress/types/CardInteraction';
-import { ResourceSelector } from './selectors/ResourceSelector';
-import { CommoditySelector } from './selectors/CommoditySelector';
+import { CardPicker } from './selectors/CardPicker';
 import { KnightSelector } from './selectors/KnightSelector';
 import { GameState } from '@/lib/types/game';
 import { PlayerState } from '@/lib/types';
@@ -53,23 +52,16 @@ export const ProgressCardInteractionModal: React.FC<ProgressCardInteractionModal
 
   const renderSelector = () => {
     switch (interaction.type) {
+      // One picker for both: the options already say which cards are on offer,
+      // and CardToken draws the right face for each.
       case 'select_resource':
-        return (
-          <ResourceSelector
-            options={interaction.options || []}
-            selections={selections}
-            onSelectionsChange={setSelections}
-            minSelections={interaction.minSelections}
-            maxSelections={interaction.maxSelections}
-          />
-        );
-
       case 'select_commodity':
         return (
-          <CommoditySelector
+          <CardPicker
             options={interaction.options || []}
             selections={selections}
             onSelectionsChange={setSelections}
+            label={interaction.prompt || 'Choose a card'}
             minSelections={interaction.minSelections}
             maxSelections={interaction.maxSelections}
           />
@@ -147,9 +139,11 @@ export const ProgressCardInteractionModal: React.FC<ProgressCardInteractionModal
     >
           {renderSelector()}
 
-          {/* Error Message */}
           {error && (
-            <div className="mt-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm">
+            <div
+              role="alert"
+              className="mt-4 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2 text-sm text-[var(--ui-text)]"
+            >
               {error}
             </div>
           )}

@@ -66,9 +66,6 @@ export interface InteractionOption {
   /** Optional description with more details */
   description?: string;
 
-  /** Optional icon or emoji */
-  icon?: string;
-
   /** Whether this option is disabled */
   disabled?: boolean;
 

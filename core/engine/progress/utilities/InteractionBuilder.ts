@@ -14,7 +14,6 @@ export function buildResourceOptions(state?: GameState, playerId?: string): Inte
   return resources.map((resource) => ({
     id: resource,
     label: resource.charAt(0).toUpperCase() + resource.slice(1),
-    icon: getResourceIcon(resource),
   }));
 }
 
@@ -29,42 +28,6 @@ export function buildCommodityOptions(state?: GameState, playerId?: string): Int
   return commodities.map((commodity) => ({
     id: commodity,
     label: commodity.charAt(0).toUpperCase() + commodity.slice(1),
-    icon: getCommodityIcon(commodity),
   }));
 }
 
-/**
- * Gets icon/emoji for resource type
- */
-function getResourceIcon(resource: ResourceType): string {
-  switch (resource) {
-    case 'wood':
-      return '🪵';
-    case 'brick':
-      return '🧱';
-    case 'sheep':
-      return '🐑';
-    case 'wheat':
-      return '🌾';
-    case 'ore':
-      return '⛰️';
-    default:
-      return '❓';
-  }
-}
-
-/**
- * Gets icon/emoji for commodity type
- */
-function getCommodityIcon(commodity: CommodityType): string {
-  switch (commodity) {
-    case 'paper':
-      return '📜';
-    case 'cloth':
-      return '🧵';
-    case 'coin':
-      return '🪙';
-    default:
-      return '❓';
-  }
-}

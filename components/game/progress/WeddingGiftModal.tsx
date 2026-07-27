@@ -114,12 +114,14 @@ export const WeddingGiftModal: FC<WeddingGiftModalProps> = ({ gameState, playerI
                         }}
                         emptyMessage="You have no resources or commodities to give."
                         summaryPrefix="You selected"
+                        intent="give"
+                        label="Cards to give"
                     />
 
                     {error && (
                         <div
                             role="alert"
-                            className="mt-2 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm"
+                            className="mt-2 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2 text-sm text-[var(--ui-text)]"
                         >
                             {error}
                         </div>

@@ -3,28 +3,15 @@ import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { TradeController } from '@/lib/controllers/trade-controller';
-import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton } from '@/components/game/ui/TabletopModal';
+import { CardTally, cardCountsFrom } from '@/components/game/ui/CardToken';
 
 interface TradeOfferDisplayProps {
     gameState: GameState;
     playerId: string;
     tradeController: TradeController;
 }
-
-const RESOURCE_LABELS: Record<ResourceType, string> = {
-    wood: 'Wood',
-    brick: 'Brick',
-    sheep: 'Sheep',
-    wheat: 'Wheat',
-    ore: 'Ore'
-};
-
-const COMMODITY_LABELS: Record<CommodityType, string> = {
-    paper: 'Paper',
-    cloth: 'Cloth',
-    coin: 'Coin'
-};
 
 export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState, playerId, tradeController }) => {
     const [isPending, startTransition] = useTransition();
@@ -105,69 +92,19 @@ export const TradeOfferDisplay: React.FC<TradeOfferDisplayProps> = ({ gameState,
                 {isInitiator ? 'Your Active Offer' : `Trade Offer from ${initiatorName}`}
             </div>
 
-            <div className="flex items-center gap-4 justify-center mb-4">
+            <div className="mb-4 flex items-center justify-center gap-4">
                 {/* They Give */}
-                <div className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-2">
+                <div className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2">
                     <div className="mb-1 text-center text-xs text-[var(--ui-muted)]">{isInitiator ? 'You Give' : 'They Give'}</div>
-                    <div className="flex gap-2 flex-wrap">
-                        {Object.entries(offer.give).map(([res, amount]) => {
-                            if (amount === 0) return null;
-                            return (
-                                <div key={res} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
-                                    <div className="flex flex-col items-center leading-none">
-                                        <TabletopResourceIcon type={res as ResourceType} size={28} label={RESOURCE_LABELS[res as ResourceType]} />
-                                        <span className="text-[10px] text-[var(--ui-muted)]">{RESOURCE_LABELS[res as ResourceType]}</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
-                                </div>
-                            );
-                        })}
-                        {offer.giveCommodities && Object.entries(offer.giveCommodities).map(([comm, amount]) => {
-                            if (amount === 0) return null;
-                            return (
-                                <div key={comm} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
-                                    <div className="flex flex-col items-center leading-none">
-                                        <TabletopCommodityIcon type={comm as CommodityType} size={28} label={COMMODITY_LABELS[comm as CommodityType]} />
-                                        <span className="text-[10px] text-[var(--ui-muted)]">{COMMODITY_LABELS[comm as CommodityType]}</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <CardTally counts={cardCountsFrom(offer.give, offer.giveCommodities)} />
                 </div>
 
-                <div className="font-bold text-[var(--ui-muted)]" aria-hidden="true">→</div>
+                <TabletopStatusIcon type="trade" size={18} label="in exchange for" />
 
                 {/* They Get */}
-                <div className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-2">
+                <div className="rounded border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2">
                     <div className="mb-1 text-center text-xs text-[var(--ui-muted)]">{isInitiator ? 'You Get' : 'They Want'}</div>
-                    <div className="flex gap-2 flex-wrap">
-                        {Object.entries(offer.get).map(([res, amount]) => {
-                            if (amount === 0) return null;
-                            return (
-                                <div key={res} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
-                                    <div className="flex flex-col items-center leading-none">
-                                        <TabletopResourceIcon type={res as ResourceType} size={28} label={RESOURCE_LABELS[res as ResourceType]} />
-                                        <span className="text-[10px] text-[var(--ui-muted)]">{RESOURCE_LABELS[res as ResourceType]}</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
-                                </div>
-                            );
-                        })}
-                        {offer.getCommodities && Object.entries(offer.getCommodities).map(([comm, amount]) => {
-                            if (amount === 0) return null;
-                            return (
-                                <div key={comm} className="flex items-center gap-2 rounded bg-[var(--ui-panel-solid)] px-2 py-1">
-                                    <div className="flex flex-col items-center leading-none">
-                                        <TabletopCommodityIcon type={comm as CommodityType} size={28} label={COMMODITY_LABELS[comm as CommodityType]} />
-                                        <span className="text-[10px] text-[var(--ui-muted)]">{COMMODITY_LABELS[comm as CommodityType]}</span>
-                                    </div>
-                                    <span className="text-sm font-bold text-[var(--ui-text)]">{amount}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <CardTally counts={cardCountsFrom(offer.get, offer.getCommodities)} />
                 </div>
             </div>
 

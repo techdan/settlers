@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { GameState } from '@/lib/types';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { respondToCommercialHarbor } from '@/app/actions';
-import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
-import { TabletopButton, TabletopModal, tabletopOptionClass } from '@/components/game/ui/TabletopModal';
+import { TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
+import { CARD_LABELS, CardTokenGroup } from '@/components/game/ui/CardToken';
 
 interface CommercialHarborModalProps {
     gameState: GameState;
@@ -90,8 +91,9 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
         >
                 {/* Description */}
                 {hasNoCommodities ? (
-                    <div className="bg-orange-900/30 border border-orange-500 rounded-lg p-4 mb-4">
-                        <p className="text-sm text-orange-200 text-center">
+                    <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] p-4">
+                        <TabletopStatusIcon type="warning" size={16} className="mt-0.5 shrink-0" />
+                        <p className="text-sm text-[var(--ui-text)]">
                             You have <span className="font-semibold">no commodities</span> to trade.{' '}
                             The {offeredResource} will be returned to {initiator.name}.
                         </p>
@@ -107,50 +109,37 @@ export const CommercialHarborModal: React.FC<CommercialHarborModalProps> = ({
 
                 {/* Commodity Selection */}
                 {!hasNoCommodities && (
-                    <div className="space-y-3 mb-4">
-                        <label className="block text-sm font-medium text-[var(--ui-muted)]">
+                    <div className="mb-4 space-y-3">
+                        <p className="text-sm font-medium text-[var(--ui-muted)]">
                             Select a commodity to give:
-                        </label>
-                        <div className="grid grid-cols-3 gap-3">
-                            {COMMODITY_TYPES.map(commodity => {
+                        </p>
+                        <CardTokenGroup
+                            label="Commodity to give"
+                            items={COMMODITY_TYPES.map(commodity => {
                                 const available = player.commodities?.[commodity] ?? 0;
-                                const isDisabled = available <= 0;
-                                const isSelected = effectiveSelectedCommodity === commodity;
-
-                                return (
-                                    <button
-                                        key={commodity}
-                                        onClick={() => !isDisabled && setSelectedCommodity(commodity)}
-                                        disabled={isDisabled || isSubmitting}
-                                        aria-pressed={isSelected}
-                                        className={`relative rounded-lg border-2 p-4 transition-all ${tabletopOptionClass(isSelected, isDisabled || isSubmitting)}`}
-                                    >
-                                        <TabletopCommodityIcon type={commodity} size={36} label={commodity} className="mx-auto mb-1" />
-                                        <div className="text-xs font-semibold capitalize mb-1">{commodity}</div>
-                                        <div className="text-xs text-[var(--ui-muted)]">
-                                            {available} available
-                                        </div>
-                                        {isSelected && (
-                                            <div className="absolute top-1 right-1">
-                                                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--ui-panel-solid)]">
-                                                    <TabletopStatusIcon type="confirm" size={15} />
-                                                </div>
-                                            </div>
-                                        )}
-                                    </button>
-                                );
+                                return {
+                                    type: commodity,
+                                    count: available,
+                                    disabled: available <= 0 || isSubmitting,
+                                    disabledReason: available <= 0
+                                        ? `You have no ${CARD_LABELS[commodity]}`
+                                        : 'Submitting your response…',
+                                    ariaLabel: `Give ${CARD_LABELS[commodity]}, you have ${available}`,
+                                };
                             })}
-                        </div>
+                            selected={effectiveSelectedCommodity}
+                            onSelect={type => { setSelectedCommodity(type as CommodityType); setError(''); }}
+                        />
                     </div>
                 )}
 
-                {/* Error Message */}
                 {error && (
                     <div
                         role="alert"
-                        className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded text-red-200 text-sm text-center"
+                        className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_12%,var(--ui-panel-solid))] px-3 py-2"
                     >
-                        {error}
+                        <TabletopStatusIcon type="cancel" size={16} className="mt-0.5 shrink-0" />
+                        <span className="text-sm text-[var(--ui-text)]">{error}</span>
                     </div>
                 )}
 

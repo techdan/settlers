@@ -1,7 +1,7 @@
 import React from 'react';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
-import { TabletopCommodityIcon, TabletopResourceIcon } from '@/themes/tabletop';
+import { CARD_LABELS, CardRow, CardToken, type CardTokenItem } from '@/components/game/ui/CardToken';
 
 export type SelectionMap = Record<string, number>;
 
@@ -11,6 +11,15 @@ export type GuildSelectionItem = {
     available: number;
 };
 
+/**
+ * Whose hand the cards are leaving.
+ *
+ * `give` — your own cards, on their way out (Wedding). `take` — an opponent's
+ * cards, on their way to you (Guild Dues). Same tally, opposite feeling, so the
+ * badge and the count tint have to differ.
+ */
+export type SelectionIntent = 'give' | 'take';
+
 interface GuildSelectionListProps {
     items: GuildSelectionItem[];
     required: number;
@@ -18,19 +27,30 @@ interface GuildSelectionListProps {
     onChange: (next: SelectionMap) => void;
     emptyMessage?: string;
     summaryPrefix?: string;
+    intent?: SelectionIntent;
+    label?: string;
 }
 
 export function getSelectionCount(selections: SelectionMap): number {
     return Object.values(selections).reduce((sum, n) => sum + n, 0);
 }
 
+/**
+ * Tally a fixed number of cards out of a hand.
+ *
+ * The composite `type:value` key is kept because both callers decode it when
+ * building their payloads — the card kind is derivable from the value, but
+ * changing the shape would ripple into two submit paths for no user-visible gain.
+ */
 export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
     items,
     required,
     selections,
     onChange,
     emptyMessage = 'No cards available.',
-    summaryPrefix = 'Selected'
+    summaryPrefix = 'Selected',
+    intent = 'give',
+    label = 'Cards to select'
 }) => {
     const selectedCount = getSelectionCount(selections);
     const atLimit = required <= 0 || selectedCount >= required;
@@ -39,84 +59,51 @@ export const GuildSelectionList: React.FC<GuildSelectionListProps> = ({
         return <div className="py-3 text-center text-sm text-[var(--ui-muted)]">{emptyMessage}</div>;
     }
 
+    const adjust = (key: string, delta: number) => {
+        const next = { ...selections };
+        const value = (next[key] || 0) + delta;
+        if (value <= 0) delete next[key];
+        else next[key] = value;
+        onChange(next);
+    };
+
     return (
         <div className="space-y-2">
-            {items.map(item => {
-                const key = `${item.type}:${item.value}`;
-                const selected = selections[key] || 0;
-                const remaining = Math.max(0, item.available - selected);
-                const disableMinus = selected === 0;
-                const disablePlus = remaining === 0 || atLimit;
+            <CardRow label={label}>
+                {items.map(item => {
+                    const key = `${item.type}:${item.value}`;
+                    const cardType = item.value as CardTokenItem;
+                    const selected = selections[key] || 0;
+                    const remaining = Math.max(0, item.available - selected);
+                    const exhausted = remaining === 0;
 
-                return (
-                    <div
-                        key={key}
-                        className="flex items-center justify-between rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] px-3 py-2 text-sm"
-                    >
-                        <div className="flex items-center gap-2">
-                            {item.type === 'resource' ? (
-                                <TabletopResourceIcon type={item.value as ResourceType} size={24} label={item.value} />
-                            ) : (
-                                <TabletopCommodityIcon type={item.value as CommodityType} size={24} label={item.value} />
-                            )}
-                            <span
-                                className={`capitalize ${
-                                    selected > 0 ? 'text-[var(--ui-accent)]' : 'text-[var(--ui-text)]'
-                                }`}
-                            >
-                                {item.value} ({remaining})
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                type="button"
-                                aria-label={`Remove one ${item.value}`}
-                                className={`h-8 w-8 rounded border text-lg font-bold leading-none transition-colors ${
-                                    disableMinus
-                                        ? 'cursor-not-allowed border-[var(--ui-border)] text-[var(--ui-muted)] opacity-50'
-                                        : 'cursor-pointer border-[var(--ui-border)] text-[var(--ui-text)] hover:border-[var(--ui-accent)] hover:bg-[var(--ui-panel-solid)]'
-                                }`}
-                                onClick={() => {
-                                    if (disableMinus) return;
-                                    const next = { ...selections };
-                                    next[key] = Math.max(0, (next[key] || 0) - 1);
-                                    if (next[key] === 0) delete next[key];
-                                    onChange(next);
-                                }}
-                                disabled={disableMinus}
-                            >
-                                -
-                            </button>
-                            <span className="w-5 text-center text-sm text-[var(--ui-text)]">{selected}</span>
-                            <button
-                                type="button"
-                                aria-label={`Add one ${item.value}`}
-                                className={`h-8 w-8 rounded border text-lg font-bold leading-none transition-colors ${
-                                    disablePlus
-                                        ? 'cursor-not-allowed border-[var(--ui-border)] text-[var(--ui-muted)] opacity-50'
-                                        : 'cursor-pointer border-[var(--ui-accent)] text-[var(--ui-text)] hover:bg-[color-mix(in_oklab,var(--ui-accent)_18%,var(--ui-panel-raised))]'
-                                }`}
-                                onClick={() => {
-                                    if (disablePlus) return;
-                                    const next = {
-                                        ...selections,
-                                        [key]: (selections[key] || 0) + 1
-                                    };
-                                    onChange(next);
-                                }}
-                                disabled={disablePlus}
-                            >
-                                +
-                            </button>
-                        </div>
-                    </div>
-                );
-            })}
+                    return (
+                        <CardToken
+                            key={key}
+                            type={cardType}
+                            count={remaining}
+                            badge={selected > 0 ? `${intent === 'give' ? '−' : '+'}${selected}` : undefined}
+                            badgeTone={intent === 'give' ? 'bad' : 'good'}
+                            selected={selected > 0}
+                            disabled={exhausted || atLimit}
+                            disabledReason={exhausted
+                                ? `No more ${CARD_LABELS[cardType]} available`
+                                : `You have already chosen ${required}`}
+                            trend={selected > 0 ? (intent === 'give' ? 'down' : 'up') : null}
+                            onClick={() => adjust(key, 1)}
+                            onRemove={selected > 0 ? () => adjust(key, -1) : undefined}
+                            removeLabel={`Remove one ${CARD_LABELS[cardType]}`}
+                            ariaLabel={`Add one ${CARD_LABELS[cardType]}, chosen ${selected} of ${item.available}`}
+                        />
+                    );
+                })}
+            </CardRow>
+
             {selectedCount > 0 && (
-                <div className="text-xs text-[var(--ui-muted)]">
+                <div className="text-center text-xs text-[var(--ui-muted)]" aria-live="polite">
                     {summaryPrefix}:{' '}
                     {Object.entries(selections)
-                        .map(([key, count]) => `${key.split(':')[1]} x${count}`)
+                        .map(([key, count]) => `${CARD_LABELS[key.split(':')[1] as CardTokenItem]} x${count}`)
                         .join(', ')}
                 </div>
             )}

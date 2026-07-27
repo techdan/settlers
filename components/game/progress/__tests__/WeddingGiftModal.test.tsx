@@ -79,8 +79,8 @@ describe('WeddingGiftModal', () => {
             />
         );
 
-        await user.click(screen.getByRole('button', { name: 'Add one wood' }));
-        await user.click(screen.getByRole('button', { name: 'Add one wood' }));
+        await user.click(screen.getByRole('button', { name: /Add one Wood/ }));
+        await user.click(screen.getByRole('button', { name: /Add one Wood/ }));
         await user.click(screen.getByRole('button', { name: 'Give Cards' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent(

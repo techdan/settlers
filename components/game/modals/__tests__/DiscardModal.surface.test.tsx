@@ -43,7 +43,7 @@ describe('DiscardModal surface', () => {
 
         expect(screen.getByRole('dialog', { name: 'Robber Attack!' })).toBeInTheDocument();
         expect(screen.getByText(/You have 9 cards/)).toBeInTheDocument();
-        expect(screen.getByText('paper')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Discard one Paper/ })).toBeInTheDocument();
         expect(screen.queryByRole('dialog', { name: 'Waiting for Discards' })).not.toBeInTheDocument();
     });
 });

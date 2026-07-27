@@ -2,8 +2,9 @@
 
 import React from 'react';
 import type { TheftItem, TheftSource } from '@/lib/types/game';
-import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
+import { CardIcon, type CardTokenItem } from '@/components/game/ui/CardToken';
 
 interface RobberTheftNotificationProps {
     isOpen: boolean;
@@ -23,15 +24,18 @@ const formatItemName = (value: TheftItem['value']) =>
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
 
-const TradeItemIcon: React.FC<{ item: TheftItem; size?: number }> = ({ item, size = 40 }) => {
+/**
+ * Theft is the one card display that is not purely cards: Espionage steals a
+ * *progress* card, which has no resource face. So this delegates the card cases
+ * to the shared `CardIcon` and keeps its own branch for the third kind, rather
+ * than teaching the shared component about a concept it has no business knowing.
+ */
+const TheftIcon: React.FC<{ item: TheftItem; size?: number }> = ({ item, size = 40 }) => {
     const label = formatItemName(item.value);
-    if (item.type === 'commodity') {
-        return <TabletopCommodityIcon type={item.value} size={size} label={label} />;
+    if (item.type === 'progress_card') {
+        return <TabletopStatusIcon type="info" size={size} label={`${label} progress card`} />;
     }
-    if (item.type === 'resource') {
-        return <TabletopResourceIcon type={item.value} size={size} label={label} />;
-    }
-    return <TabletopStatusIcon type="info" size={size} label={`${label} progress card`} />;
+    return <CardIcon type={item.value as CardTokenItem} size={size} label={label} />;
 };
 
 const SOURCE_TITLES: Partial<Record<TheftSource, { thief: string; victim: string }>> = {
@@ -104,7 +108,7 @@ export const RobberTheftNotification: React.FC<RobberTheftNotificationProps> = (
                                     const name = formatItemName(item.value);
                                     return (
                                         <div key={index} className="flex items-center justify-center gap-3">
-                                            <TradeItemIcon item={item} />
+                                            <TheftIcon item={item} />
                                             <div className="text-left">
                                                 <div className="text-xl font-bold text-[var(--ui-text)]">
                                                     {item.count > 1 && <span className="text-[var(--ui-accent)]">{item.count}x </span>}
@@ -117,7 +121,7 @@ export const RobberTheftNotification: React.FC<RobberTheftNotificationProps> = (
                             </div>
                         ) : (
                             <div className="flex items-center justify-center gap-3">
-                                <TradeItemIcon item={primaryItem} size={48} />
+                                <TheftIcon item={primaryItem} size={48} />
                                 <div className="text-left">
                                     <div className="text-2xl font-bold text-[var(--ui-text)]">
                                         {count > 1 && <span className="text-[var(--ui-accent)]">{count}x </span>}

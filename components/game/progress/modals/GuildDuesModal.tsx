@@ -134,12 +134,12 @@ export function GuildDuesModal({
                                 ))}
                             </select>
                             {eligibleOpponents.length === 0 ? (
-                                <p className="mt-1 text-xs text-amber-300">
+                                <p className="mt-1 text-xs text-[var(--ui-muted)]">
                                     No opponents have more victory points than you.
                                 </p>
                             ) : null}
                         </div>
-                        <div className="rounded border border-amber-600 bg-amber-900/30 px-3 py-2 text-xs text-amber-200">
+                        <div className="flex items-start gap-2 rounded-lg border border-[var(--ui-accent)] bg-[color-mix(in_oklab,var(--ui-accent)_12%,var(--ui-panel-solid))] px-3 py-2 text-xs text-[var(--ui-text)]">
                             <TabletopStatusIcon type="warning" size={16} /> Once you
                             click &quot;Select&quot;, you cannot cancel and must take
                             cards from this opponent&apos;s hand.
@@ -149,7 +149,7 @@ export function GuildDuesModal({
                     <>
                         <div className="mb-2 text-sm text-[var(--ui-text)]">
                             Taking from:{' '}
-                            <span className="font-semibold text-emerald-300">
+                            <span className="font-semibold text-[var(--ui-success)]">
                                 {opponent?.name}
                             </span>
                         </div>
@@ -163,7 +163,7 @@ export function GuildDuesModal({
                                     from {opponent?.name}&apos;s hand.
                                 </div>
                             ) : (
-                                <div className="text-sm text-amber-200">
+                                <div className="text-sm text-[var(--ui-muted)]">
                                     This opponent has no cards to take.
                                 </div>
                             )}
@@ -176,6 +176,8 @@ export function GuildDuesModal({
                                     setError('');
                                 }}
                                 emptyMessage="Opponent has no resources or commodities to take."
+                                intent="take"
+                                label="Cards to take"
                             />
                         </div>
                     </>

@@ -1,36 +1,16 @@
 'use client';
 
 import React from 'react';
-import { ResourceType } from '@/core/rules/board-constants';
-import { CommodityType } from '@/core/rules/commodity-constants';
 import { GameState } from '@/lib/types';
-import { TabletopCommodityIcon, TabletopResourceIcon, TabletopStatusIcon } from '@/themes/tabletop/glyphs';
+import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton, TabletopModal } from '@/components/game/ui/TabletopModal';
+import { CardTally, cardCountsFrom } from '@/components/game/ui/CardToken';
 
 interface TradeProgressModalProps {
     gameState: GameState;
     playerId: string;
     onCancel: () => void;
 }
-
-const TRADE_ITEM_LABELS: Record<ResourceType | CommodityType, string> = {
-    wood: 'Wood',
-    brick: 'Brick',
-    sheep: 'Sheep',
-    wheat: 'Wheat',
-    ore: 'Ore',
-    paper: 'Paper',
-    cloth: 'Cloth',
-    coin: 'Coin'
-};
-
-const isCommodity = (type: ResourceType | CommodityType): type is CommodityType =>
-    type === 'paper' || type === 'cloth' || type === 'coin';
-
-const TradeItemIcon: React.FC<{ type: ResourceType | CommodityType }> = ({ type }) =>
-    isCommodity(type)
-        ? <TabletopCommodityIcon type={type} size={24} label={TRADE_ITEM_LABELS[type]} />
-        : <TabletopResourceIcon type={type} size={24} label={TRADE_ITEM_LABELS[type]} />;
 
 export const TradeProgressModal: React.FC<TradeProgressModalProps> = ({
     gameState,
@@ -44,34 +24,8 @@ export const TradeProgressModal: React.FC<TradeProgressModalProps> = ({
         return null;
     }
 
-    // Format items to display
-    const formatItems = (
-        resources: Record<ResourceType, number>,
-        commodities?: Record<CommodityType, number>
-    ): { type: ResourceType | CommodityType; count: number }[] => {
-        const items: { type: ResourceType | CommodityType; count: number }[] = [];
-
-        // Add resources
-        Object.entries(resources).forEach(([type, count]) => {
-            if (count > 0) {
-                items.push({ type: type as ResourceType, count });
-            }
-        });
-
-        // Add commodities
-        if (commodities) {
-            Object.entries(commodities).forEach(([type, count]) => {
-                if (count > 0) {
-                    items.push({ type: type as CommodityType, count });
-                }
-            });
-        }
-
-        return items;
-    };
-
-    const givingItems = formatItems(tradeOffer.give, tradeOffer.giveCommodities);
-    const gettingItems = formatItems(tradeOffer.get, tradeOffer.getCommodities);
+    const givingCounts = cardCountsFrom(tradeOffer.give, tradeOffer.giveCommodities);
+    const gettingCounts = cardCountsFrom(tradeOffer.get, tradeOffer.getCommodities);
 
     // Get list of players and their response status
     const otherPlayers = gameState.players.filter(p => p.id !== playerId);
@@ -94,34 +48,13 @@ export const TradeProgressModal: React.FC<TradeProgressModalProps> = ({
                     {/* Trade details */}
                     <div className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-4 mb-4">
                         <div className="grid grid-cols-2 gap-4">
-                            {/* You Give */}
                             <div>
-                                <div className="text-xs text-[var(--ui-muted)] uppercase mb-2">You Give</div>
-                                <div className="space-y-2">
-                                    {givingItems.map((item, index) => (
-                                        <div key={index} className="flex items-center gap-2">
-                                            <TradeItemIcon type={item.type} />
-                                            <span className="text-sm text-[var(--ui-text)]">
-                                                {item.count}x {TRADE_ITEM_LABELS[item.type]}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
+                                <div className="mb-2 text-xs uppercase text-[var(--ui-muted)]">You Give</div>
+                                <CardTally counts={givingCounts} />
                             </div>
-
-                            {/* You Get */}
                             <div>
-                                <div className="text-xs text-[var(--ui-muted)] uppercase mb-2">You Get</div>
-                                <div className="space-y-2">
-                                    {gettingItems.map((item, index) => (
-                                        <div key={index} className="flex items-center gap-2">
-                                            <TradeItemIcon type={item.type} />
-                                            <span className="text-sm text-[var(--ui-text)]">
-                                                {item.count}x {TRADE_ITEM_LABELS[item.type]}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
+                                <div className="mb-2 text-xs uppercase text-[var(--ui-muted)]">You Get</div>
+                                <CardTally counts={gettingCounts} />
                             </div>
                         </div>
                     </div>

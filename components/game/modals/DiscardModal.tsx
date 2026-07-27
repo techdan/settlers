@@ -4,8 +4,9 @@ import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { discardCards } from '@/app/actions';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
-import { TabletopCommodityIcon, TabletopResourceIcon } from '@/themes/tabletop/glyphs';
 import { TabletopButton, TabletopModal } from '../ui/TabletopModal';
+import { CARD_LABELS, CardRow, CardToken } from '../ui/CardToken';
+import { isCommodity } from '@/lib/trade/bank-ratios';
 
 interface DiscardModalProps {
     gameState: GameState;
@@ -26,10 +27,6 @@ const INITIAL_SELECTION: Record<DiscardableCard, number> = {
     cloth: 0,
     coin: 0,
 };
-
-function isCommodity(card: DiscardableCard): card is CommodityType {
-    return COMMODITY_ORDER.includes(card as CommodityType);
-}
 
 function selectionsEqual(a: Record<DiscardableCard, number>, b: Record<DiscardableCard, number>): boolean {
     return CARD_ORDER.every(card => a[card] === b[card]);
@@ -202,50 +199,49 @@ export const DiscardModal: React.FC<DiscardModalProps> = ({ gameState, playerId 
                 </TabletopButton>
             )}
         >
-                <p className="mb-6 text-center text-[var(--ui-muted)]">
-                    You have {isSabotage ? totalResources : totalCards} cards. You must discard <span className="font-bold text-white">{requiredDiscard}</span> cards.
+                <p className="mb-5 text-center text-[var(--ui-muted)]">
+                    You have {isSabotage ? totalResources : totalCards} cards. You must discard{' '}
+                    <span className="font-bold text-[var(--ui-text)]">{requiredDiscard}</span> cards.
                 </p>
 
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                {/* Counts show what survives the discard, so the hand you are left with is
+                    the number you read — the same reading as the trade composer. */}
+                <CardRow label="Cards to discard" className="mb-5">
                     {CARD_ORDER.map(card => {
                         const max = availableCards[card];
                         if (max === 0) return null;
 
-                        return (
-                            <div key={card} className="flex flex-col items-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-raised)] p-3">
-                                {isCommodity(card)
-                                    ? <TabletopCommodityIcon type={card} size={30} label={card} />
-                                    : <TabletopResourceIcon type={card} size={30} label={card} />}
-                                <div className="mb-2 text-sm font-semibold capitalize text-[var(--ui-text)]">{card}</div>
+                        const picked = selected[card];
+                        const atLimit = currentSelected >= requiredDiscard;
+                        const exhausted = picked === max;
 
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => handleDecrement(card)}
-                                        disabled={selected[card] === 0}
-                                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] font-bold text-[var(--ui-text)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
-                                    >-</button>
-                                    <span className="font-bold w-4 text-center text-white">{selected[card]}</span>
-                                    <button
-                                        onClick={() => handleIncrement(card)}
-                                        disabled={selected[card] === max || currentSelected >= requiredDiscard}
-                                        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-[var(--ui-border)] bg-[var(--ui-panel-solid)] font-bold text-[var(--ui-text)] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-30"
-                                    >+</button>
-                                </div>
-                                <div className={`mt-1 text-xs font-semibold ${selected[card] > 0 ? 'text-red-300' : 'text-[var(--ui-muted)]'}`}>
-                                    Have: {max - selected[card]}
-                                </div>
-                            </div>
+                        return (
+                            <CardToken
+                                key={card}
+                                type={card}
+                                count={max - picked}
+                                badge={picked > 0 ? `−${picked}` : undefined}
+                                badgeTone="bad"
+                                selected={picked > 0}
+                                disabled={exhausted || atLimit}
+                                disabledReason={exhausted
+                                    ? `You have no more ${CARD_LABELS[card]} to discard`
+                                    : `You have already chosen ${requiredDiscard} cards`}
+                                trend={picked > 0 ? 'down' : null}
+                                onClick={() => handleIncrement(card)}
+                                onRemove={picked > 0 ? () => handleDecrement(card) : undefined}
+                                removeLabel={`Keep one ${CARD_LABELS[card]}`}
+                                ariaLabel={`Discard one ${CARD_LABELS[card]}, discarding ${picked} of ${max}`}
+                            />
                         );
                     })}
-                </div>
+                </CardRow>
 
-                <div className="flex flex-col items-center gap-4">
-                    <div className="text-lg font-bold text-white">
-                        Selected: <span className={currentSelected === requiredDiscard ? "text-green-400" : "text-yellow-400"}>
-                            {currentSelected}
-                        </span> / {requiredDiscard}
-                    </div>
-
+                <div aria-live="polite" className="text-center text-lg font-bold text-[var(--ui-text)]">
+                    Selected:{' '}
+                    <span className={currentSelected === requiredDiscard ? 'text-[var(--ui-success)]' : 'text-[var(--ui-accent)]'}>
+                        {currentSelected}
+                    </span> / {requiredDiscard}
                 </div>
         </TabletopModal>
     );

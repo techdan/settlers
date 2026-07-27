@@ -74,7 +74,16 @@ describe('Progress Card Manager', () => {
             expect(decks?.science).toHaveLength(17);
             expect(decks?.trade).toHaveLength(18);
             expect(decks?.politics).toHaveLength(18);
-            expect(gameState.players[0].progressCards).toContain(card);
+
+            // `printer` is the science deck's lone VP card, and VP cards are
+            // auto-played on draw — they land in revealedVPCards, never the hand.
+            // Since createProgressDecks() shuffles, asserting only on the hand
+            // failed roughly one run in eighteen.
+            if (card === 'printer') {
+                expect(gameState.players[0].revealedVPCards).toContain(card);
+            } else {
+                expect(gameState.players[0].progressCards).toContain(card);
+            }
         });
 
         it('returns null if deck is empty', () => {
