@@ -126,16 +126,18 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({ player, roomId, defaultO
         setSelectedItem('');
     }, [category]);
 
+    // Collapsed chrome is tuned to a 36px chip: border-2 (4) + p-1.5 (12) +
+    // a 20px header row. Expanded it relaxes back to the roomier p-2.
     return (
-        <div className="pointer-events-auto rounded-lg border-2 border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] p-2 text-[var(--ui-text)] shadow-lg">
+        <div className={`pointer-events-auto rounded-lg border-2 border-[var(--ui-danger)] bg-[color-mix(in_oklab,var(--ui-danger)_14%,var(--ui-panel-solid))] text-[var(--ui-text)] shadow-lg ${isOpen ? 'p-2' : 'h-full p-1.5'}`}>
             <button
                 type="button"
                 onClick={() => setIsOpen(open => !open)}
                 aria-expanded={isOpen}
-                className={`flex w-full cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] ${isOpen ? 'mb-2' : ''}`}
+                className={`flex w-full cursor-pointer items-center rounded py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] ${isOpen ? 'mb-2 gap-2 px-1' : 'h-full gap-1.5'}`}
             >
                 <TabletopStatusIcon type="warning" size={16} />
-                <span className="text-xs font-bold uppercase tracking-wider text-[var(--ui-text)]">Debug</span>
+                <span className="min-w-0 truncate text-xs font-bold uppercase tracking-wider text-[var(--ui-text)]">Debug</span>
                 <span aria-hidden className="ml-auto text-[10px] text-[var(--ui-muted)]">{isOpen ? '▾' : '▸'}</span>
             </button>
             {isOpen && (

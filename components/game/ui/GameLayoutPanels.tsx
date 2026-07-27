@@ -128,6 +128,22 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
         </div>
       </div>
 
+      {/* Debug panel (dev-only) sits in the top-left corner, immediately right of
+          the board zoom controls (16px gutter + 76px of buttons = 6.5rem).
+          Collapsed it is a 36px chip matching the zoom buttons' height, and its
+          right edge (104px + 102px = 206px) is flush with the progress decks
+          panel below (left-4 + 190px). Expanded it grows over those decks, hence
+          the higher z-index. The open state is read off the toggle's own
+          aria-expanded rather than lifted into this layout. */}
+      {isDebugMode && currentPlayer && (
+        <div
+          className="absolute top-4 left-[6.5rem] z-30 hidden h-9 w-[6.375rem] pointer-events-auto has-[[aria-expanded=true]]:h-auto has-[[aria-expanded=true]]:w-[22rem] xl:block"
+          style={{ transform: 'scale(var(--hud-scale, 1))', transformOrigin: 'top left' }}
+        >
+          <DebugPanel player={currentPlayer} roomId={gameState.roomId} />
+        </div>
+      )}
+
       {/* Barbarian status lives on the board itself now (BarbarianRoute in BoardCanvas) */}
       {isCitiesAndKnights && (
         <div
@@ -205,13 +221,6 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
             : {}),
         }}
       >
-        {/* Debug panel (dev-only) stacks directly above the tray rather than
-            floating at a fixed offset, so it can never overlap a tall tray. */}
-        {isDebugMode && currentPlayer && (
-          <div className="hidden max-w-full self-start pointer-events-auto xl:block">
-            <DebugPanel player={currentPlayer} roomId={gameState.roomId} />
-          </div>
-        )}
         <div className="pointer-events-auto max-xl:w-full max-xl:max-h-[40dvh] max-xl:overflow-x-auto max-xl:overflow-y-auto max-xl:overscroll-contain">
           {tray}
         </div>
