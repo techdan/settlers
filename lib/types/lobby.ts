@@ -14,6 +14,8 @@ export interface LobbyState {
     roomId: string;
     hostId: string;
     players: LobbyPlayer[];
+    /** Explicit lobby/turn order, retained across realtime refreshes. */
+    playerOrder?: string[];
     boardPreview: HexTileData[] | null;
     fairMode: boolean;
     gameMode: 'base' | 'cities_and_knights'; // The selected game mode

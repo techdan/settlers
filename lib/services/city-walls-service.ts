@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { randomUUID } from 'crypto';
 import { removeResources } from '@/core/engine/resources/resource-manager';
 import { getCityWallCount } from '@/core/utils/city-wall-utils';
@@ -90,6 +91,6 @@ export async function buildCityWall(
         playerId
     });
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }

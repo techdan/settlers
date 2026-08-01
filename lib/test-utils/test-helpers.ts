@@ -195,6 +195,7 @@ export function createTestGameState(overrides: Partial<GameState> = {}): GameSta
         lastTheft: overrides.lastTheft,
         theftEvents: overrides.theftEvents,
         lastVPCardGain: overrides.lastVPCardGain,
+        lastInventorSwap: overrides.lastInventorSwap,
         discardContext: overrides.discardContext,
     };
 }

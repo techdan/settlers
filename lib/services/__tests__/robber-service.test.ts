@@ -42,4 +42,44 @@ describe('Robber Service', () => {
         expect(result.phase).toBe('robber_placement');
         expect(updateGameState).toHaveBeenCalledWith(result);
     });
+
+    it('pauses the active turn while another player still has to discard', async () => {
+        const p1 = createTestPlayer({
+            id: 'p1',
+            resources: { wood: 8, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+        });
+        const p2 = createTestPlayer({
+            id: 'p2',
+            resources: { wood: 8, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+        });
+        const gameState = {
+            ...createTestGameState({
+            roomId: 'AVXU',
+            players: [p1, p2],
+            currentTurn: 'p1',
+            phase: 'discarding',
+            discardContext: { type: 'robber' },
+            }),
+            timerConfig: {
+                enabled: true,
+                turnTimeLimit: 120,
+                timeBank: 300,
+                extensionIncrement: 60,
+                maxExtensionsPerTurn: 2,
+                maxExtraSecondsPerTurn: 180,
+            },
+            turnStartTime: Date.now() - 5_000,
+        };
+        vi.mocked(getGameStateByRoomId).mockResolvedValue(gameState);
+
+        const result = await discardCards(
+            'AVXU',
+            'p1',
+            { wood: 4, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+        );
+
+        expect(result.phase).toBe('discarding');
+        expect(result.turnPausedAt).toBeDefined();
+        expect(updateGameState).toHaveBeenCalledWith(result);
+    });
 });

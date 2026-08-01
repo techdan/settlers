@@ -104,6 +104,24 @@ export interface VictoryPointCardGain {
 }
 
 /**
+ * A completed Inventor swap, retained in authoritative game state so every
+ * connected player can see exactly which hexes changed.
+ */
+export interface InventorSwapHex {
+    id: string;
+    resource: ResourceType;
+    before: number;
+    after: number;
+}
+
+export interface InventorSwapEvent {
+    id: string;
+    playerId: string;
+    hexes: [InventorSwapHex, InventorSwapHex];
+    timestamp: number;
+}
+
+/**
  * Cities & Knights - Metropolis ownership
  */
 export interface MetropolisState {
@@ -261,11 +279,14 @@ export interface GameState {
         timestamp: number;
     };
     lastVPCardGain?: VictoryPointCardGain;
+    lastInventorSwap?: InventorSwapEvent;
     discardContext?: DiscardContext;
 
     // Turn timer state (added for turn timer feature)
     timerConfig?: TimerConfig;                              // Timer configuration (copied from lobby)
     turnStartTime?: number;                                 // Unix timestamp (ms) when turn began
+    turnPausedAt?: number;                                  // Unix timestamp (ms) when waiting on another player began
+    turnPausedDurationMs?: number;                          // Total time spent waiting on other players this turn
     timerServerTime?: number;                               // Server clock sample (ms), refreshed with authoritative state
     timerClockOffsetMs?: number;                            // Client-only offset from local clock to timerServerTime
     turnTimeLimit?: number;                                 // Effective limit for current turn (base + extensions)

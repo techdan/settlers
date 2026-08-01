@@ -1,6 +1,7 @@
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { getBankTradeRatio, isCommodity } from '@/lib/trade/bank-ratios';
 import { CommodityType } from '@/core/rules/commodity-constants';
 
@@ -89,7 +90,7 @@ export async function tradeWithBank(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -205,7 +206,7 @@ export async function offerTrade(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -344,7 +345,7 @@ export async function acceptTrade(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -410,7 +411,7 @@ export async function rejectTrade(
         });
     }
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -455,7 +456,7 @@ export async function cancelTrade(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

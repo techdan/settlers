@@ -30,7 +30,10 @@ vi.mock('@/components/board/BoardControls', () => ({
 
 vi.mock('@/themes/tabletop', () => ({
     HexTile: () => <g data-testid="preview-tile" />,
-    Port: () => <g data-testid="preview-port" />
+    Port: () => <g data-testid="preview-port" />,
+    SeaFrame: () => <g data-testid="preview-sea-frame" />,
+    BOARD_VIEWBOX: '-580 -560 1160 1120',
+    TT: { sea: '#2f6472' },
 }));
 
 const generatedBoard: HexTileData[] = [{
@@ -51,6 +54,7 @@ describe('BoardPreview', () => {
         }).not.toThrow();
         expect(screen.getByText('Preview Mode')).toBeInTheDocument();
         expect(screen.getByTestId('preview-tile')).toBeInTheDocument();
+        expect(screen.getByTestId('preview-sea-frame')).toBeInTheDocument();
 
         expect(() => {
             rerender(<BoardPreview board={[]} />);

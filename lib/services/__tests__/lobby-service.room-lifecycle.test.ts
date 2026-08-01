@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LobbyService } from '@/lib/services/lobby-service';
+import * as lobbyRepository from '@/lib/repositories/lobby-repository';
 import * as roomRepository from '@/lib/repositories/room-repository';
 import * as playerRepository from '@/lib/repositories/player-repository';
 import type { LobbyState } from '@/lib/types/lobby';
@@ -13,6 +14,15 @@ vi.mock('@/lib/repositories/player-repository', () => ({
     createPlayer: vi.fn(),
     findPlayersByRoomId: vi.fn(),
     findPlayerByName: vi.fn(),
+}));
+
+vi.mock('@/lib/repositories/lobby-repository', () => ({
+    getRoomById: vi.fn(),
+    getPlayersByRoomIdOrdered: vi.fn(),
+    updatePlayerColors: vi.fn(),
+    updatePlayerHostFlags: vi.fn(),
+    updateRoomMetadata: vi.fn(),
+    setPlayerColor: vi.fn(),
 }));
 
 describe('LobbyService room lifecycle', () => {
@@ -87,5 +97,48 @@ describe('LobbyService room lifecycle', () => {
         vi.mocked(roomRepository.findRoomById).mockResolvedValue(undefined);
 
         await expect(LobbyService.joinRoom('none', 'Pa')).rejects.toThrow('Room not found');
+    });
+
+    it('persists the host-selected player order and returns players in that order', async () => {
+        const players: Array<{
+            id: string;
+            name: string;
+            color: LobbyState['players'][number]['color'];
+            isHost: boolean;
+            joinedAt: Date;
+        }> = [
+            { id: 'p1', name: 'Pa', color: '#ff0000', isHost: true, joinedAt: new Date('2026-01-01T00:00:00Z') },
+            { id: 'p2', name: 'Pb', color: '#0000ff', isHost: false, joinedAt: new Date('2026-01-01T00:01:00Z') },
+            { id: 'p3', name: 'Pc', color: '#ff7a00', isHost: false, joinedAt: new Date('2026-01-01T00:02:00Z') },
+        ];
+        const state: LobbyState = {
+            roomId: 'ROOM',
+            hostId: 'p1',
+            players: players.map(player => ({
+                ...player,
+                isReady: false,
+            })),
+            playerOrder: ['p1', 'p2', 'p3'],
+            boardPreview: null,
+            fairMode: false,
+            gameMode: 'base',
+            pendingRequests: [],
+        };
+
+        vi.mocked(lobbyRepository.getRoomById).mockResolvedValue({
+            id: 'ROOM',
+            metadata: JSON.stringify(state),
+        } as never);
+        vi.mocked(lobbyRepository.getPlayersByRoomIdOrdered).mockResolvedValue(players as never);
+        vi.mocked(lobbyRepository.updateRoomMetadata).mockResolvedValue(undefined);
+
+        const result = await LobbyService.setPlayerOrder('ROOM', 'p1', ['p3', 'p1', 'p2']);
+
+        expect(result.playerOrder).toEqual(['p3', 'p1', 'p2']);
+        expect(result.players.map(player => player.id)).toEqual(['p3', 'p1', 'p2']);
+        expect(lobbyRepository.updateRoomMetadata).toHaveBeenCalledWith(
+            'ROOM',
+            expect.stringContaining('"playerOrder":["p3","p1","p2"]')
+        );
     });
 });

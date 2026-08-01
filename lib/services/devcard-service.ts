@@ -1,7 +1,8 @@
 import type { DevCardPlayOptions, DevCardType, GameState } from '@/lib/types';
 import type { ResourceType } from '@/core/rules/board-constants';
 import { isRoadBuildingEffect, type RoadBuildingEffect } from '@/lib/types/effects';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { canAfford, deductCost } from '@/core/rules/building-costs';
 import { updateLongestRoadIncremental } from '@/core/engine/scoring/longest-road';
 import { updateLargestArmy } from '@/core/engine/scoring/largest-army';
@@ -85,7 +86,7 @@ export async function buyDevCard(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -229,7 +230,7 @@ export async function playDevCard(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -339,7 +340,7 @@ export async function placeBonusRoad(
     }
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

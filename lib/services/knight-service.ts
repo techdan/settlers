@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { placeKnight, activateKnight, moveKnight, upgradeKnight, relocateKnight, chaseAwayRobber } from '@/core/engine/knights/knight-manager';
 import {
     isValidKnightPlacement,
@@ -74,7 +75,7 @@ export async function buildKnightAction(
     placeKnight(gameState, playerId, vertexId);
 
     // 9. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -132,7 +133,7 @@ export async function activateKnightAction(
     activateKnight(gameState, knightId);
 
     // 9. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -180,7 +181,7 @@ export async function moveKnightAction(
     moveKnight(gameState, knightId, targetVertexId);
 
     // 6. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -239,7 +240,7 @@ export async function upgradeKnightAction(
     upgradeKnight(gameState, knightId);
 
     // 9. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -273,7 +274,7 @@ export async function relocateKnightAction(
     relocateKnight(gameState, playerId, knightId, targetVertexId);
 
     // 4. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -320,7 +321,7 @@ export async function chaseAwayRobberAction(
     chaseAwayRobber(gameState, knightId);
 
     // 6. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

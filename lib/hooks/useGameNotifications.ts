@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { GameState, TheftEvent } from '@/lib/types';
 import {
+    useInventorSwapNotificationEffect,
     useTheftNotificationEffect,
     useTradeCompletionEffect,
     useVPCardModalEffect,
@@ -30,6 +31,9 @@ export function useGameNotifications(
     const seenTheftIdsRef = useRef(new Set<string>());
     const [showTradeCompletion, setShowTradeCompletion] = useState(false);
     const lastTradeSeenRef = useRef(0);
+    const [inventorSwapNotification, setInventorSwapNotification] =
+        useState<NonNullable<GameState['lastInventorSwap']> | null>(null);
+    const lastInventorSwapSeenRef = useRef<string | null>(null);
 
     useVPCardModalEffect(
         gameState,
@@ -48,6 +52,11 @@ export function useGameNotifications(
         playerId,
         lastTradeSeenRef,
         setShowTradeCompletion
+    );
+    useInventorSwapNotificationEffect(
+        gameState,
+        lastInventorSwapSeenRef,
+        setInventorSwapNotification
     );
 
     const acknowledgeVPCard = useCallback(() => {
@@ -68,6 +77,10 @@ export function useGameNotifications(
         setShowTradeCompletion(false);
     }, []);
 
+    const dismissInventorSwapNotification = useCallback(() => {
+        setInventorSwapNotification(null);
+    }, []);
+
     return {
         vpCardModalType,
         acknowledgeVPCard,
@@ -75,5 +88,7 @@ export function useGameNotifications(
         dismissTheftNotification,
         showTradeCompletion,
         dismissTradeCompletion,
+        inventorSwapNotification,
+        dismissInventorSwapNotification,
     };
 }

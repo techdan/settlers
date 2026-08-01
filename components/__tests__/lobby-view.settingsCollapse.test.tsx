@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,14 +12,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 const mockPush = vi.fn();
+const mockRouter = { push: mockPush };
+const { setLobbyPlayerOrderMock } = vi.hoisted(() => ({
+    setLobbyPlayerOrderMock: vi.fn().mockResolvedValue({}),
+}));
 
 vi.mock('next/navigation', () => ({
-    useRouter: () => ({ push: mockPush }),
+    useRouter: () => mockRouter,
 }));
 
 vi.mock('@/app/actions', () => ({
     setLobbyPlayerColor: vi.fn(),
     setLobbyGameMode: vi.fn(),
+    setLobbyPlayerOrder: setLobbyPlayerOrderMock,
     startGame: vi.fn(),
     setLobbyTimerConfig: vi.fn(),
     kickPlayerFromLobby: vi.fn(),
@@ -145,6 +150,20 @@ describe('LobbyView game settings panel', () => {
             await user.click(settingsToggle());
 
             expect(settingsPanel()).not.toBeVisible();
+        });
+
+        it('lets the host move a player and updates the visible order', async () => {
+            const user = userEvent.setup();
+            renderLobby();
+
+            await user.click(screen.getByRole('button', { name: 'Move Grace up' }));
+            expect(setLobbyPlayerOrderMock).toHaveBeenCalledWith('ROOM1', HOST_ID, ['p2', HOST_ID]);
+
+            await waitFor(() => {
+                const playerCards = screen.getAllByRole('listitem');
+                expect(playerCards[0]).toHaveTextContent('Grace');
+                expect(playerCards[1]).toHaveTextContent('Ada');
+            });
         });
     });
 });

@@ -1,6 +1,7 @@
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import {
     isValidMainPhaseRoad,
     isValidMainPhaseSettlement,
@@ -90,7 +91,7 @@ export async function buildRoad(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -163,7 +164,7 @@ export async function buildSettlement(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -236,7 +237,7 @@ export async function buildCity(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -356,7 +357,7 @@ export async function placeInitialSettlement(
     }
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -445,7 +446,7 @@ export async function placeInitialRoad(
     gameState.lastPlacedSettlementId = null;
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

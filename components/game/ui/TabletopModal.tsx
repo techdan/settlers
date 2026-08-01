@@ -36,6 +36,9 @@ interface TabletopModalProps {
     className?: string;
     bodyClassName?: string;
     closeLabel?: string;
+    headerAction?: React.ReactNode;
+    collapsed?: boolean;
+    expanded?: boolean;
 }
 
 export const TabletopModal: React.FC<TabletopModalProps> = ({
@@ -50,6 +53,9 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
     className = '',
     bodyClassName = '',
     closeLabel = 'Close',
+    headerAction,
+    collapsed = false,
+    expanded = false,
 }) => {
     const isBoardVisible = surface === 'board-visible';
 
@@ -63,9 +69,13 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
 
     // Board-visible panels stay short so they cover as few hexes as possible.
     const panelClass = isBoardVisible
-        ? 'pointer-events-auto max-h-[60dvh] shadow-xl'
+        ? `${expanded ? 'pointer-events-auto max-h-[calc(100dvh-2rem)]' : 'pointer-events-auto max-h-[60dvh]'} shadow-xl`
         : 'max-h-[92dvh] shadow-2xl';
-    const bodyMaxHeight = isBoardVisible ? 'max-h-[38dvh]' : 'max-h-[68dvh]';
+    const bodyMaxHeight = isBoardVisible
+        ? expanded
+            ? 'max-h-[calc(100dvh-9rem)]'
+            : 'max-h-[38dvh]'
+        : 'max-h-[68dvh]';
 
     // Tighter chrome when floating over the board; full padding when blocking.
     const headerPad = isBoardVisible ? 'px-4 py-3' : 'px-6 py-5';
@@ -89,19 +99,28 @@ export const TabletopModal: React.FC<TabletopModalProps> = ({
                         <h2 className={`font-serif font-bold text-[var(--ui-text)] ${isBoardVisible ? 'text-base' : 'text-xl'}`}>{title}</h2>
                         {description ? <div className={`mt-1 text-[var(--ui-muted)] ${isBoardVisible ? 'text-xs' : 'text-sm'}`}>{description}</div> : null}
                     </div>
-                    {onClose ? (
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex h-11 w-11 flex-shrink-0 cursor-pointer items-center justify-center rounded-full border border-transparent text-[var(--ui-muted)] transition-colors hover:border-[var(--ui-border)] hover:bg-[var(--ui-panel-raised)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
-                            aria-label={closeLabel}
-                        >
-                            <TabletopStatusIcon type="cancel" size={17} />
-                        </button>
+                    {headerAction || onClose ? (
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                            {headerAction}
+                            {onClose ? (
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-transparent text-[var(--ui-muted)] transition-colors hover:border-[var(--ui-border)] hover:bg-[var(--ui-panel-raised)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
+                                    aria-label={closeLabel}
+                                >
+                                    <TabletopStatusIcon type="cancel" size={17} />
+                                </button>
+                            ) : null}
+                        </div>
                     ) : null}
                 </header>
-                <div className={`${bodyMaxHeight} overflow-y-auto overscroll-contain ${bodyPad} ${bodyClassName}`}>{children}</div>
-                {footer ? <footer className={`flex flex-wrap justify-end gap-3 border-t border-[var(--ui-border)] ${footerPad}`}>{footer}</footer> : null}
+                {!collapsed ? (
+                    <>
+                        <div className={`${bodyMaxHeight} overflow-y-auto overscroll-contain ${bodyPad} ${bodyClassName}`}>{children}</div>
+                        {footer ? <footer className={`flex flex-wrap justify-end gap-3 border-t border-[var(--ui-border)] ${footerPad}`}>{footer}</footer> : null}
+                    </>
+                ) : null}
             </section>
         </div>
     );

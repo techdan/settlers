@@ -18,6 +18,7 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
   const isMyTurn = gameState.currentTurn === currentPlayerId;
   const currentPlayer = gameState.players.find(p => p.id === gameState.currentTurn);
   const playerName = currentPlayer?.name || 'Player';
+  const turnLabel = isMyTurn ? 'Your Turn' : `${playerName}'s Turn`;
 
   // Get base time limit (without extensions) for progress bar calculation
   const baseTimeLimit = gameState.timerConfig?.turnTimeLimit || 180;
@@ -44,7 +45,7 @@ export function TurnTimerBar({ gameState, currentPlayerId }: TurnTimerBarProps) 
         {/* Timer text overlay */}
         <div className="absolute inset-0 flex items-center justify-between px-4">
           <span className="font-semibold text-sm text-[var(--ui-text)] drop-shadow-md">
-            {isMyTurn ? 'Your Turn' : `${playerName}'s Turn`}
+            {timerStatus.isPaused ? `${turnLabel} · Paused` : turnLabel}
           </span>
           <span className="font-bold text-lg tabular-nums text-[var(--ui-text)] drop-shadow-md">
             {formatTime(timerStatus.timeRemaining)}

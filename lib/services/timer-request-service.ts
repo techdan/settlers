@@ -1,4 +1,5 @@
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { requestExtension } from '@/lib/services/timer-service';
 import type { ExtensionRequestResult } from '@/lib/types/timer';
 
@@ -15,7 +16,7 @@ export async function requestTimeExtensionForGame(
     }
 
     if (result.newState) {
-        await updateGameState(result.newState);
+        await persistGameState(result.newState);
     }
 
     return result;

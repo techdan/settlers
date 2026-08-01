@@ -2,7 +2,12 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ProgressCardModal } from '../ProgressCardModal';
-import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-helpers';
+import {
+    createTestBoard,
+    createTestGameState,
+    createTestPlayer,
+    createTestVertex,
+} from '@/lib/test-utils/test-helpers';
 
 /**
  * Cards whose decision is about the board (Alchemy's dice, the monopolies)
@@ -12,9 +17,15 @@ import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-hel
  */
 function renderCard(
     cardType: Parameters<typeof ProgressCardModal>[0]['cardType'],
-    gameOverrides: Parameters<typeof createTestGameState>[0] = {}
+    gameOverrides: Parameters<typeof createTestGameState>[0] = {},
+    playerOverrides: Parameters<typeof createTestPlayer>[0] = {}
 ) {
-    const player = createTestPlayer({ id: 'p1', name: 'Pa', victoryPoints: 3 });
+    const player = createTestPlayer({
+        id: 'p1',
+        name: 'Pa',
+        victoryPoints: 3,
+        ...playerOverrides,
+    });
     const opponent = createTestPlayer({ id: 'p2', name: 'Wu', victoryPoints: 5 });
     const gameState = createTestGameState({
         players: [player, opponent],
@@ -77,11 +88,31 @@ describe('ProgressCardModal surfaces', () => {
         expect(onPlay).toHaveBeenCalledWith('alchemist', { revealEventDie: true });
     });
 
-    it('shows the locked event result before Alchemy dice and removes cancel', async () => {
+    it('collapses to the header without losing the board-visible Alchemy controls', async () => {
         const user = userEvent.setup();
         renderCard('alchemist', {
             pendingAlchemy: { playerId: 'p1', eventDieFace: 'science', revealedAt: 123 },
             eventDieRoll: { face: 'science', timestamp: 123 },
+        });
+
+        expect(screen.getAllByRole('radio')).toHaveLength(12);
+        await user.click(screen.getByRole('button', { name: 'Collapse Alchemy controls' }));
+
+        expect(screen.queryAllByRole('radio')).toHaveLength(0);
+        expect(screen.getByRole('button', { name: 'Expand Alchemy controls' })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Expand Alchemy controls' }));
+
+        expect(screen.getAllByRole('radio')).toHaveLength(12);
+    });
+
+    it('shows the locked event result before Alchemy dice and removes cancel', async () => {
+        const user = userEvent.setup();
+        const { onPlay } = renderCard('alchemist', {
+            pendingAlchemy: { playerId: 'p1', eventDieFace: 'science', revealedAt: 123 },
+            eventDieRoll: { face: 'science', timestamp: 123 },
+        }, {
+            improvements: { science: 2, trade: 0, politics: 0 },
         });
 
         // Six faces per die, two dice.
@@ -89,7 +120,7 @@ describe('ProgressCardModal surfaces', () => {
         expect(screen.getByText('science')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Resolve Alchemy' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Confirm Selection' })).toBeDisabled();
         expect(screen.queryByText(/Production roll/)).not.toBeInTheDocument();
 
         await user.click(screen.getByRole('radio', { name: 'Red Die 3' }));
@@ -98,7 +129,57 @@ describe('ProgressCardModal surfaces', () => {
         expect(screen.getByRole('radio', { name: 'Red Die 3' })).toHaveAttribute('aria-checked', 'true');
         expect(screen.getByText('7')).toBeInTheDocument();
         expect(screen.getByText(/moves the robber/)).toBeInTheDocument();
+        expect(screen.getByText(/you will receive a Science progress card/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Confirm Selection' })).toBeEnabled();
+
+        await user.click(screen.getByRole('button', { name: 'Confirm Selection' }));
+
+        expect(screen.getByText(/Confirm Alchemy selection: red 3 \+ yellow 4 = 7/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+        expect(screen.getByRole('dialog', { name: 'Alchemy' }).className).toMatch(/max-h-\[calc\(100dvh-2rem\)\]/);
+        expect(onPlay).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole('button', { name: 'Change' }));
+
+        expect(screen.getByRole('button', { name: 'Confirm Selection' })).toBeEnabled();
+        expect(screen.queryByText(/Confirm Alchemy selection/)).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Confirm Selection' }));
         expect(screen.getByRole('button', { name: 'Resolve Alchemy' })).toBeEnabled();
+
+        await user.click(screen.getByRole('button', { name: 'Resolve Alchemy' }));
+
+        expect(onPlay).toHaveBeenCalledWith('alchemist', {
+            chosenDice1: 3,
+            chosenDice2: 4,
+        });
+    });
+
+    it('shows the resources and progress card the confirmed roll will produce', async () => {
+        const user = userEvent.setup();
+        renderCard('alchemist', {
+            pendingAlchemy: { playerId: 'p1', eventDieFace: 'science', revealedAt: 123 },
+            eventDieRoll: { face: 'science', timestamp: 123 },
+            board: createTestBoard({
+                hexes: [{
+                    id: '0,0',
+                    hex: { q: 0, r: 0, s: 0 },
+                    terrain: 'forest',
+                    numberToken: 6,
+                }],
+                vertices: [createTestVertex({ q: 0, r: 0, d: 0, owner: 'p1', structure: 'settlement' })],
+            }),
+        }, {
+            improvements: { science: 2, trade: 0, politics: 0 },
+        });
+
+        await user.click(screen.getByRole('radio', { name: 'Red Die 3' }));
+        await user.click(screen.getByRole('radio', { name: 'Yellow Die 3' }));
+        await user.click(screen.getByRole('button', { name: 'Confirm Selection' }));
+
+        expect(screen.getByText('1 wood')).toBeInTheDocument();
+        expect(screen.getByText('none')).toBeInTheDocument();
+        expect(screen.getByText('1 Science card')).toBeInTheDocument();
     });
 });
 

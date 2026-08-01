@@ -24,6 +24,7 @@ import { GameLayoutPanels } from './ui/GameLayoutPanels';
 import { GameTray } from './ui/GameTray';
 import { GameOverOverlay } from './overlays/GameOverOverlay';
 import { WaitingOverlay } from './modals/WaitingOverlay';
+import { InventorSwapNotification } from './overlays/InventorSwapNotification';
 import { useGameControllerModel } from '@/lib/hooks/useGameControllerModel';
 
 interface GameControllerProps {
@@ -50,6 +51,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
     const {
         vpCardModalType, acknowledgeVPCard, theftNotification,
         dismissTheftNotification, showTradeCompletion, dismissTradeCompletion,
+        inventorSwapNotification, dismissInventorSwapNotification,
     } = notifications;
     const {
         robberVictimSelectionOpen, robberPotentialVictims,
@@ -223,6 +225,14 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 <VPCardModal
                     type={vpCardModalType}
                     onAcknowledge={acknowledgeVPCard}
+                />
+            )}
+
+            {inventorSwapNotification && (
+                <InventorSwapNotification
+                    event={inventorSwapNotification}
+                    playerName={gameState.players.find(player => player.id === inventorSwapNotification.playerId)?.name ?? 'Another player'}
+                    onDismiss={dismissInventorSwapNotification}
                 />
             )}
 

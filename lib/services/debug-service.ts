@@ -2,7 +2,8 @@ import { randomUUID } from 'crypto';
 import type { ResourceType } from '@/core/rules/board-constants';
 import type { CommodityType } from '@/core/rules/commodity-constants';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import type { GameState } from '@/lib/types/game';
 import type { DevCardType, PlayerState, ProgressCardType } from '@/lib/types/player';
 
@@ -51,7 +52,7 @@ export async function giveResource(roomId: string, playerId: string, resource: R
     player.resources[resource]++;
     addDebugLog(gameState, playerId, `DEBUG: ${player.name} gave themselves 1 ${resource}.`);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 }
 
 export async function giveCommodity(roomId: string, playerId: string, commodity: CommodityType): Promise<void> {
@@ -63,7 +64,7 @@ export async function giveCommodity(roomId: string, playerId: string, commodity:
     player.commodities[commodity]++;
     addDebugLog(gameState, playerId, `DEBUG: ${player.name} gave themselves 1 ${commodity}.`);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 }
 
 export async function giveProgressCard(
@@ -96,7 +97,7 @@ export async function giveProgressCard(
         addDebugLog(gameState, playerId, `DEBUG: ${player.name} gave themselves a ${cardType} progress card.`);
     }
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 }
 
 export async function giveDevCard(roomId: string, playerId: string, cardType: DevCardType): Promise<void> {
@@ -118,5 +119,5 @@ export async function giveDevCard(roomId: string, playerId: string, cardType: De
         `DEBUG: ${player.name} gave themselves 1 ${cardType.replace(/_/g, ' ')} development card.`
     );
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 }

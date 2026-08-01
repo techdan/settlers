@@ -97,6 +97,10 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       }),
     [tiles]
   );
+  const inventorSwapHexIds = useMemo(
+    () => new Set(gameState.lastInventorSwap?.hexes.map(hex => hex.id) ?? []),
+    [gameState.lastInventorSwap?.hexes]
+  );
 
   // Extract selection state for rendering
   const {
@@ -187,6 +191,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         isSelectable={validation.validHexes.has(tile.id)}
                         selectionVariant={selectionVariant}
                         selectionState={selectionState}
+                        isInventorAffected={inventorSwapHexIds.has(tile.id)}
                         isPendingRobberPlacement={
                           pendingPlacement?.type === 'robber' && pendingPlacement.id === tile.id
                         }

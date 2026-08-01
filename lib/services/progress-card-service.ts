@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { updateLongestRoad } from '@/core/engine/scoring/longest-road';
 import { updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { checkAndUpdateVictory } from '@/lib/services/game-service';
@@ -63,7 +64,7 @@ export async function revealAlchemyEventDie(roomId: string, playerId: string): P
     // resolved only after the red production die has been selected.
     gameState.eventDieRoll = { face: eventDieFace, timestamp: revealedAt };
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -130,7 +131,7 @@ export async function cancelRoadBuildingProgress(roomId: string, playerId: strin
 
     checkAndUpdateVictory(gameState);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -171,7 +172,7 @@ export async function finalizeRoadBuildingProgress(roomId: string, playerId: str
         playerId
     });
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -233,7 +234,7 @@ export async function selectTreasonKnight(roomId: string, playerId: string, knig
         playerId: targetPlayer.id
     });
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -279,7 +280,7 @@ export async function placeTreasonKnight(roomId: string, playerId: string, verte
             playerId
         });
         removeTreasonEffect(gameState);
-        await updateGameState(gameState);
+        await persistGameState(gameState);
         return gameState;
     }
 
@@ -300,7 +301,7 @@ export async function placeTreasonKnight(roomId: string, playerId: string, verte
             playerId
         });
         removeTreasonEffect(gameState);
-        await updateGameState(gameState);
+        await persistGameState(gameState);
         return gameState;
     }
 
@@ -340,7 +341,7 @@ export async function placeTreasonKnight(roomId: string, playerId: string, verte
         playerId
     });
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -382,7 +383,7 @@ export async function cancelTreason(roomId: string, playerId: string): Promise<G
 
     removeTreasonEffect(gameState);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -402,7 +403,7 @@ export async function submitWeddingGifts(
 
     respondToWedding(gameState, playerId, selections);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -447,7 +448,7 @@ export async function playProgressCardAction(
 
     playProgressCard(gameState, playerId, cardType, options);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -501,7 +502,7 @@ export async function discardProgressCardsAction(
         playerId
     });
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -526,7 +527,7 @@ export async function makeCommercialHarborOffersAction(
 
     makeCommercialHarborOffers(gameState, playerId, offers);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -551,7 +552,7 @@ export async function respondToCommercialHarborAction(
 
     respondToCommercialHarbor(gameState, playerId, commodity);
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }
 
@@ -582,6 +583,6 @@ export async function cancelCommercialHarborAction(roomId: string, playerId: str
     });
     gameState.pendingCommercialHarbor = undefined;
 
-    await updateGameState(gameState);
+    await persistGameState(gameState);
     return gameState;
 }

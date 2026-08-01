@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { GameState, ProgressCardType, TheftEvent } from '@/lib/types';
+import type { GameState, InventorSwapEvent, ProgressCardType, TheftEvent } from '@/lib/types';
 import { resolveBarbarianAttack } from '@/app/actions';
 import { synchronizeTimerClock } from '@/lib/services/timer-clock';
 import type { SelectionState } from './useSelectionManager';
@@ -163,6 +163,26 @@ export function useTradeCompletionEffect(
     lastTradeSeenRef.current = trade.timestamp;
     setShowTradeCompletion(true);
   }, [baseGameState?.lastTrade, lastTradeSeenRef, playerId, setShowTradeCompletion]);
+}
+
+export function useInventorSwapNotificationEffect(
+  baseGameState: GameState | null,
+  lastInventorSwapSeenRef: React.MutableRefObject<string | null>,
+  setInventorSwapNotification: (event: InventorSwapEvent | null) => void
+) {
+  useEffect(() => {
+    const swap = baseGameState?.lastInventorSwap;
+    if (!swap || swap.id === lastInventorSwapSeenRef.current) return;
+
+    lastInventorSwapSeenRef.current = swap.id;
+    if (!swap.timestamp || Date.now() - swap.timestamp >= 15000) return;
+
+    setInventorSwapNotification(swap);
+  }, [
+    baseGameState?.lastInventorSwap,
+    lastInventorSwapSeenRef,
+    setInventorSwapNotification,
+  ]);
 }
 
 export function useProgressDiscardEnforcement(

@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import { requestExtension, formatTime } from '@/lib/services/timer-service';
+import { describe, expect, it, vi } from 'vitest';
+import {
+    formatTime,
+    getTimerStatus,
+    requestExtension,
+    stopTurnTimer,
+    syncTurnTimerPause,
+} from '@/lib/services/timer-service';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-helpers';
 import type { GameState } from '@/lib/types/game';
 
@@ -116,5 +122,84 @@ describe('formatTime', () => {
 
     it('adds an hours segment past 3600 seconds', () => {
         expect(formatTime(3725)).toBe('1:02:05');
+    });
+});
+
+describe('turn timer pauses for other players\' obligations', () => {
+    it('freezes elapsed time while another player discards', () => {
+        const p2 = createTestPlayer({
+            id: 'p2',
+            resources: { wood: 8, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+        });
+        const state = stateWithTimer({
+            players: [createTestPlayer({ id: 'p1' }), p2],
+            phase: 'discarding',
+            turnStartTime: 1_000,
+        });
+
+        syncTurnTimerPause(state, 5_000);
+
+        expect(state.turnPausedAt).toBe(5_000);
+        expect(getTimerStatus(state, 15_000)).toMatchObject({
+            isActive: true,
+            isPaused: true,
+            timeElapsed: 4,
+            timeRemaining: 116,
+        });
+    });
+
+    it('resumes from the frozen value after the other obligation resolves', () => {
+        const state = stateWithTimer({
+            pendingAqueduct: ['p2'],
+            turnStartTime: 1_000,
+        });
+
+        syncTurnTimerPause(state, 5_000);
+        state.pendingAqueduct = [];
+        syncTurnTimerPause(state, 20_000);
+
+        expect(state.turnPausedAt).toBeUndefined();
+        expect(state.turnPausedDurationMs).toBe(15_000);
+        expect(getTimerStatus(state, 30_000)).toMatchObject({
+            isActive: true,
+            isPaused: false,
+            timeElapsed: 14,
+            timeRemaining: 106,
+        });
+    });
+
+    it('does not pause for an obligation owned by the active player', () => {
+        const state = stateWithTimer({
+            pendingAqueduct: ['p1'],
+            turnStartTime: 1_000,
+        });
+
+        syncTurnTimerPause(state, 5_000);
+
+        expect(state.turnPausedAt).toBeUndefined();
+        expect(getTimerStatus(state, 15_000).timeElapsed).toBe(14);
+    });
+
+    it('excludes an open pause from total time and borrowed-time refunds', () => {
+        vi.useFakeTimers();
+        try {
+            vi.setSystemTime(15_000);
+            const state = stateWithTimer({
+                turnStartTime: 1_000,
+                turnPausedAt: 5_000,
+                turnPausedDurationMs: 0,
+                currentTurnExtensions: { count: 1, totalBorrowed: 60 },
+                playerTimeBanks: { p1: 240 },
+                playerTotalTime: { p1: 0 },
+            });
+
+            const stopped = stopTurnTimer(state, 'p1');
+
+            expect(stopped.playerTotalTime?.p1).toBe(4);
+            expect(stopped.playerTimeBanks?.p1).toBe(300);
+            expect(stopped.turnPausedAt).toBeUndefined();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

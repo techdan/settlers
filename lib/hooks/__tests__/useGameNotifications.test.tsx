@@ -29,6 +29,41 @@ describe('useGameNotifications', () => {
         expect(result.current.vpCardModalType).toBeNull();
     });
 
+    it('shows and dismisses a recent Inventor swap for every player', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(10_000);
+        const gameState = createTestGameState({
+            lastInventorSwap: {
+                id: 'inventor-1',
+                playerId: 'player-1',
+                hexes: [
+                    {
+                        id: 'forest-5',
+                        resource: 'wood',
+                        before: 5,
+                        after: 9,
+                    },
+                    {
+                        id: 'field-9',
+                        resource: 'wheat',
+                        before: 9,
+                        after: 5,
+                    },
+                ],
+                timestamp: 9_000,
+            },
+        });
+
+        const { result } = renderHook(() =>
+            useGameNotifications(gameState, 'another-player')
+        );
+
+        expect(result.current.inventorSwapNotification?.id).toBe('inventor-1');
+
+        act(() => result.current.dismissInventorSwapNotification());
+        expect(result.current.inventorSwapNotification).toBeNull();
+    });
+
     it('queues and dismisses theft and trade notifications', () => {
         vi.useFakeTimers();
         vi.setSystemTime(20_000);

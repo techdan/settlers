@@ -2,7 +2,8 @@ import { DiceTotal, GameState, PlayerState, EMPTY_DICE_STATS, EMPTY_EVENT_DIE_ST
 import { ResourceType } from '@/core/rules/board-constants';
 import { Edge, Vertex } from '@/lib/types/board';
 import { isMerchantFleetEffect } from '@/lib/types/effects';
-import { getGameStateByRoomId, updateGameState, createGame } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId, createGame } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources, logDistribution } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
@@ -55,12 +56,12 @@ export async function startGame(roomId: string, gameMode: 'base' | 'cities_and_k
 
     if (roomPlayers.length < 1) throw new Error('Not enough players');
 
-    // 2. Shuffle players
-    const shuffledPlayers = [...roomPlayers].sort(() => Math.random() - 0.5);
-    const turnOrder = shuffledPlayers.map(p => p.id);
+    // 2. Use the host-selected lobby order for the initial turn order.
+    const orderedPlayers = roomPlayers;
+    const turnOrder = orderedPlayers.map(p => p.id);
 
     // 3. Initialize Player States
-    const playerStates: PlayerState[] = shuffledPlayers.map(p => {
+    const playerStates: PlayerState[] = orderedPlayers.map(p => {
         const basePlayer = {
             id: p.id,
             name: p.name,
@@ -396,7 +397,7 @@ export async function rollDice(
     }
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -457,7 +458,7 @@ export async function endTurn(
 
     // If someone won, don't proceed to next turn
     if (gameState.winner) {
-        await updateGameState(gameState);
+        await persistGameState(gameState);
         return gameState;
     }
 
@@ -503,7 +504,7 @@ export async function endTurn(
     });
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -592,7 +593,7 @@ export async function claimAqueductResource(
     }
 
     // Save
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

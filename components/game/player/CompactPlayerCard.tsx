@@ -38,8 +38,7 @@ interface CompactPlayerCardProps {
 
 /* Card stocks for the hand-size chips. Derived from the tabletop palette so a
  * chip reads as the same physical deck the tray renders full-size. */
-const STOCK_RESOURCE = TT.token.face;
-const STOCK_COMMODITY = mix(TT.token.face, TT.category.science, 0.5);
+const STOCK_HAND = TT.token.face;
 const STOCK_DECK = mix(TT.token.face, TT.port.generic, 0.55);
 
 const CHIP_ICON = 16;
@@ -170,11 +169,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
 
     // Tooltips
     const overLimitNote = isDanger ? '\nOver limit - vulnerable to robber!' : '';
-    const resourceTooltip = isCK
-        ? `Resources: ${resourceCount}\nHand total (with commodities): ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`
-        : `Resource cards: ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`;
-
-    const commodityTooltip = `Commodities: ${commodityCount}\nHand total (with resources): ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`;
+    const handTooltip = `Cards in hand: ${totalCards}\nSafe limit: ${safeLimit}${overLimitNote}`;
 
     const roadTooltip = `Road length: ${longestRoad}${hasLongestRoad ? '\nHolds Longest Road (+2 VP)' : `\nLongest Road requires ${GAME_CONSTANTS.MIN_LONGEST_ROAD_LENGTH}+`}`;
 
@@ -266,21 +261,12 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
                 {/* Row 2: Hand size, road, military */}
                 <div className="flex items-center gap-2.5">
                     <StatChip
-                        testId="chip-resources"
-                        tooltip={resourceTooltip}
-                        icon={<TabletopCardBackIcon stock={STOCK_RESOURCE} size={CHIP_ICON} />}
-                        value={resourceCount}
+                        testId="chip-hand"
+                        tooltip={handTooltip}
+                        icon={<TabletopCardBackIcon stock={STOCK_HAND} size={CHIP_ICON} />}
+                        value={totalCards}
                         danger={isDanger}
                     />
-
-                    {isCK && (
-                        <StatChip
-                            testId="chip-commodities"
-                            tooltip={commodityTooltip}
-                            icon={<TabletopCardBackIcon stock={STOCK_COMMODITY} size={CHIP_ICON} />}
-                            value={commodityCount}
-                        />
-                    )}
 
                     <StatChip
                         testId="chip-deck"

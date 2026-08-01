@@ -1,7 +1,8 @@
 import { GameState } from '@/lib/types';
 import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { stealRandomResource, getTotalResources } from '@/core/engine/resources/resource-manager';
 import { getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
@@ -111,7 +112,7 @@ export async function moveRobber(
     gameState = setPhase(gameState, 'main_phase');
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -235,7 +236,7 @@ export async function discardCards(
     }
 
     // Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

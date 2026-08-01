@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
-import { setLobbyPlayerColor, setLobbyGameMode, startGame, setLobbyTimerConfig, kickPlayerFromLobby } from '@/app/actions';
+import { ArrowDown, ArrowUp, ChevronDown, GripVertical } from 'lucide-react';
+import { setLobbyPlayerColor, setLobbyGameMode, setLobbyPlayerOrder, startGame, setLobbyTimerConfig, kickPlayerFromLobby } from '@/app/actions';
 import { useConnectionStatus, useFetchWithRetry } from '@/lib/hooks/useConnectionStatus';
 import { ConnectionStatusIndicator } from '@/components/game/ui/ConnectionStatus';
 import { useLobbySubscription } from '@/lib/hooks/useLobbySubscription';
@@ -27,6 +27,44 @@ import { formatTime } from '@/lib/services/timer-service';
  * leaves nothing for the player list on a 720p/768p screen.
  */
 const SHORT_VIEWPORT_HEIGHT = 800;
+
+function getPlayerOrderFromMetadata(metadata: string | null): string[] | undefined {
+    if (!metadata) return undefined;
+
+    try {
+        const parsed = JSON.parse(metadata) as LobbyState;
+        return Array.isArray(parsed.playerOrder) ? parsed.playerOrder : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function movePlayerBefore(players: Player[], playerId: string, targetPlayerId: string): Player[] {
+    const sourceIndex = players.findIndex(player => player.id === playerId);
+    const targetIndex = players.findIndex(player => player.id === targetPlayerId);
+
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+        return players;
+    }
+
+    const nextPlayers = [...players];
+    const [movedPlayer] = nextPlayers.splice(sourceIndex, 1);
+    const adjustedTargetIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    nextPlayers.splice(adjustedTargetIndex, 0, movedPlayer);
+    return nextPlayers;
+}
+
+function movePlayerToIndex(players: Player[], playerId: string, targetIndex: number): Player[] {
+    const sourceIndex = players.findIndex(player => player.id === playerId);
+    if (sourceIndex < 0 || sourceIndex === targetIndex || targetIndex < 0 || targetIndex >= players.length) {
+        return players;
+    }
+
+    const nextPlayers = [...players];
+    const [movedPlayer] = nextPlayers.splice(sourceIndex, 1);
+    nextPlayers.splice(targetIndex, 0, movedPlayer);
+    return nextPlayers;
+}
 
 type Player = {
     id: string;
@@ -58,32 +96,39 @@ export function LobbyView({
         return PLAYER_COLOR_NORMALIZATION_MAP[colorKey] ?? DEFAULT_PLAYER_COLOR;
     }, []);
 
-    const normalizePlayers = useCallback((list: Player[]) => {
+    const normalizePlayers = useCallback((list: Player[], playerOrder?: string[]) => {
         const mapped = list.map(p => ({
             ...p,
             color: p.color ? normalizePlayerColor(p.color) : null
         }));
 
-        // Enforce stable ordering by join time, then id (prevents UI shuffling on updates)
-        return mapped.sort((a, b) => {
-            const aJoin = a.joinedAt ?? '';
-            const bJoin = b.joinedAt ?? '';
-            if (aJoin && bJoin && aJoin !== bJoin) {
-                return aJoin < bJoin ? -1 : 1;
-            }
-            if (aJoin && !bJoin) return -1;
-            if (!aJoin && bJoin) return 1;
-            return a.id.localeCompare(b.id);
-        });
+        if (!playerOrder?.length) return mapped;
+
+        const playersById = new Map(mapped.map(player => [player.id, player]));
+        const orderedPlayers = playerOrder
+            .map(playerId => playersById.get(playerId))
+            .filter((player): player is Player => Boolean(player));
+        const orderedIds = new Set(orderedPlayers.map(player => player.id));
+
+        return [
+            ...orderedPlayers,
+            ...mapped.filter(player => !orderedIds.has(player.id)),
+        ];
     }, [normalizePlayerColor]);
 
-    const [players, setPlayers] = useState<Player[]>(normalizePlayers(initialPlayers));
+    const [players, setPlayers] = useState<Player[]>(() => normalizePlayers(
+        initialPlayers,
+        getPlayerOrderFromMetadata(initialRoom.metadata)
+    ));
     const [room, setRoom] = useState<Room>(initialRoom);
     const [gameMode, setGameMode] = useState<'base' | 'cities_and_knights'>('base');
     const [colorError, setColorError] = useState<string | null>(null);
     const [isColorPending, startColorTransition] = useTransition();
     const [kickConfirmation, setKickConfirmation] = useState<{ playerId: string; playerName: string } | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+    const [draggedPlayerId, setDraggedPlayerId] = useState<string | null>(null);
+    const [isOrderPending, setIsOrderPending] = useState(false);
+    const [orderError, setOrderError] = useState<string | null>(null);
     const router = useRouter();
     const connectionStatus = useConnectionStatus();
     const { fetchWithRetry } = useFetchWithRetry(connectionStatus);
@@ -158,14 +203,12 @@ export function LobbyView({
 
     const playersEqual = useCallback((a: Player[], b: Player[]) => {
         if (a.length !== b.length) return false;
-        const sortById = (x: Player, y: Player) => x.id.localeCompare(y.id);
-        const sortedA = [...a].sort(sortById);
-        const sortedB = [...b].sort(sortById);
-        return sortedA.every((p, idx) =>
-            p.id === sortedB[idx].id &&
-            p.name === sortedB[idx].name &&
-            p.isHost === sortedB[idx].isHost &&
-            p.color === sortedB[idx].color
+        return a.every((p, idx) =>
+            p.id === b[idx].id &&
+            p.name === b[idx].name &&
+            p.isHost === b[idx].isHost &&
+            p.color === b[idx].color &&
+            p.joinedAt === b[idx].joinedAt
         );
     }, []);
 
@@ -176,7 +219,10 @@ export function LobbyView({
     useEffect(() => {
         if (!isRealtime) return;
 
-        const normalizedRealtimePlayers = normalizePlayers(realtimePlayers);
+        const normalizedRealtimePlayers = normalizePlayers(
+            realtimePlayers,
+            getPlayerOrderFromMetadata(realtimeRoom.metadata)
+        );
 
         setPlayers(prev => playersEqual(prev, normalizedRealtimePlayers) ? prev : normalizedRealtimePlayers);
         setRoom(prev => roomsEqual(prev, realtimeRoom) ? prev : realtimeRoom);
@@ -205,7 +251,10 @@ export function LobbyView({
 
                 if (!data || cancelled) return;
 
-                const normalizedPlayers = normalizePlayers(data.players);
+                const normalizedPlayers = normalizePlayers(
+                    data.players,
+                    getPlayerOrderFromMetadata(data.room.metadata)
+                );
                 setPlayers(prev => playersEqual(prev, normalizedPlayers) ? prev : normalizedPlayers);
                 setRoom(prev => roomsEqual(prev, data.room) ? prev : data.room);
 
@@ -264,6 +313,40 @@ export function LobbyView({
         }
     };
 
+    const persistPlayerOrder = useCallback(async (nextPlayers: Player[], previousPlayers: Player[]) => {
+        setPlayers(nextPlayers);
+        setOrderError(null);
+        setIsOrderPending(true);
+
+        try {
+            await setLobbyPlayerOrder(roomId, currentPlayerId, nextPlayers.map(player => player.id));
+        } catch (err) {
+            console.error('Failed to update player order:', err);
+            setPlayers(previousPlayers);
+            setOrderError(err instanceof Error ? err.message : 'Failed to update player order');
+        } finally {
+            setIsOrderPending(false);
+        }
+    }, [currentPlayerId, roomId]);
+
+    const handlePlayerMove = useCallback((playerId: string, targetIndex: number) => {
+        if (!isHost || isOrderPending) return;
+
+        const nextPlayers = movePlayerToIndex(players, playerId, targetIndex);
+        if (nextPlayers === players) return;
+
+        void persistPlayerOrder(nextPlayers, players);
+    }, [isHost, isOrderPending, persistPlayerOrder, players]);
+
+    const handlePlayerDrop = useCallback((playerId: string, targetPlayerId: string) => {
+        if (!isHost || isOrderPending || playerId === targetPlayerId) return;
+
+        const nextPlayers = movePlayerBefore(players, playerId, targetPlayerId);
+        if (nextPlayers === players) return;
+
+        void persistPlayerOrder(nextPlayers, players);
+    }, [isHost, isOrderPending, persistPlayerOrder, players]);
+
     return (
         <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
             {/* Connection Status Indicator */}
@@ -289,8 +372,13 @@ export function LobbyView({
                         <span>Players</span>
                         <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full text-xs">{players.length}/4</span>
                     </h2>
+                    {isHost && (
+                        <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                            Drag players to set the turn order.
+                        </p>
+                    )}
                     <ul className="space-y-3">
-                        {players.map(player => {
+                        {players.map((player, playerIndex) => {
                             const isSelf = player.id === currentPlayerId;
                             const takenColors = new Set(
                                 players
@@ -299,8 +387,66 @@ export function LobbyView({
                             );
 
                             return (
-                                <li key={player.id} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                                <li
+                                    key={player.id}
+                                    onDragOver={(event) => {
+                                        if (!isHost || isOrderPending) return;
+                                        event.preventDefault();
+                                        if (event.dataTransfer) {
+                                            event.dataTransfer.dropEffect = 'move';
+                                        }
+                                    }}
+                                    onDrop={(event) => {
+                                        event.preventDefault();
+                                        const sourcePlayerId = event.dataTransfer?.getData('text/plain') || draggedPlayerId;
+                                        if (sourcePlayerId) handlePlayerDrop(sourcePlayerId, player.id);
+                                        setDraggedPlayerId(null);
+                                    }}
+                                    className={`p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 transition-opacity ${draggedPlayerId === player.id ? 'opacity-50' : ''}`}
+                                >
                                     <div className="flex items-center gap-3">
+                                        {isHost && (
+                                            <div className="flex flex-col items-center gap-0.5">
+                                                <button
+                                                    type="button"
+                                                    draggable={!isOrderPending}
+                                                    disabled={isOrderPending}
+                                                    onDragStart={(event) => {
+                                                        event.dataTransfer.effectAllowed = 'move';
+                                                        event.dataTransfer.setData('text/plain', player.id);
+                                                        setDraggedPlayerId(player.id);
+                                                    }}
+                                                    onDragEnd={() => setDraggedPlayerId(null)}
+                                                    className="cursor-grab touch-none rounded p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 active:cursor-grabbing dark:hover:bg-slate-700 dark:hover:text-slate-200 disabled:cursor-not-allowed"
+                                                    aria-label={`Drag ${player.name} to reorder`}
+                                                    title={`Drag ${player.name} to reorder`}
+                                                >
+                                                    <GripVertical className="h-5 w-5" aria-hidden="true" />
+                                                </button>
+                                                <div className="flex gap-0.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePlayerMove(player.id, playerIndex - 1)}
+                                                        disabled={isOrderPending || playerIndex === 0}
+                                                        className="cursor-pointer rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                                                        aria-label={`Move ${player.name} up`}
+                                                        title={`Move ${player.name} up`}
+                                                    >
+                                                        <ArrowUp className="h-3 w-3" aria-hidden="true" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePlayerMove(player.id, playerIndex + 1)}
+                                                        disabled={isOrderPending || playerIndex === players.length - 1}
+                                                        className="cursor-pointer rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                                                        aria-label={`Move ${player.name} down`}
+                                                        title={`Move ${player.name} down`}
+                                                    >
+                                                        <ArrowDown className="h-3 w-3" aria-hidden="true" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${player.isHost ? 'bg-amber-500' : 'bg-slate-400'}`}>
                                             {player.name.charAt(0).toUpperCase()}
                                         </div>
@@ -374,6 +520,11 @@ export function LobbyView({
                             );
                         })}
                     </ul>
+                    {orderError && (
+                        <p className="mt-3 text-xs text-red-600 dark:text-red-400" role="alert">
+                            {orderError}
+                        </p>
+                    )}
                 </div>
 
                 <div className="flex-shrink-0 border-t bg-slate-50 dark:bg-slate-950">

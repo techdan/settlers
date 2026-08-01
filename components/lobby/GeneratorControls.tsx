@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useTransition } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { generateLobbyBoard, requestNewLobbyBoard, toggleLobbyFairMode } from '@/app/actions';
 import { Loader2, RefreshCw, ShieldCheck, ShieldAlert, Users } from 'lucide-react';
 
@@ -29,8 +29,13 @@ export function GeneratorControls({
     players
 }: GeneratorControlsProps) {
     const [isPending, startTransition] = useTransition();
+    const [optimisticFairMode, setOptimisticFairMode] = useState(fairMode);
 
-    // Derive state from props instead of local state
+    useEffect(() => {
+        setOptimisticFairMode(fairMode);
+    }, [fairMode]);
+
+    // Derive request state from props
     const hasRequested = pendingRequests.includes(currentPlayerId);
 
     // Get names of players who requested
@@ -40,13 +45,21 @@ export function GeneratorControls({
 
     const handleGenerate = () => {
         startTransition(async () => {
-            await generateLobbyBoard(roomId, hostId, fairMode);
+            await generateLobbyBoard(roomId, hostId, optimisticFairMode);
         });
     };
 
     const handleToggleFairness = () => {
+        const nextFairMode = !optimisticFairMode;
+        setOptimisticFairMode(nextFairMode);
+
         startTransition(async () => {
-            await toggleLobbyFairMode(roomId, hostId, !fairMode);
+            try {
+                await toggleLobbyFairMode(roomId, hostId, nextFairMode);
+            } catch (error) {
+                setOptimisticFairMode(optimisticFairMode);
+                console.error('Failed to toggle fairness mode', error);
+            }
         });
     };
 
@@ -96,7 +109,7 @@ export function GeneratorControls({
                         <label className={`flex-1 flex items-center justify-center gap-2 group p-2 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 ${isPending ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                             <input
                                 type="checkbox"
-                                checked={fairMode}
+                                checked={optimisticFairMode}
                                 onChange={handleToggleFairness}
                                 disabled={isPending}
                                 className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed"
@@ -105,7 +118,7 @@ export function GeneratorControls({
                         </label>
                     </div>
 
-                    {fairMode && (
+                    {optimisticFairMode && (
                         <div className="text-[14px] text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700 leading-tight">
                             <span className="font-semibold">Fairness Rules:</span> No 3+ terrain clusters. No {'>'}11 pip intersections.
                         </div>

@@ -12,7 +12,7 @@ export interface TimerConfig {
   enabled: boolean;              // Is timer feature turned on?
   turnTimeLimit: number;         // Seconds per turn (default: 180)
   timeBank: number;              // Per-player bank in seconds (default: 300)
-  extensionIncrement: number;    // Seconds per extension request (default: 60)
+  extensionIncrement: number;    // Seconds per extension request (default: 30)
   maxExtensionsPerTurn: number;  // Max extensions per turn (default: 2)
   maxExtraSecondsPerTurn: number; // Max total extension per turn (default: 180)
 }
@@ -24,7 +24,7 @@ export const DEFAULT_TIMER_CONFIG: TimerConfig = {
   enabled: false,  // Opt-in
   turnTimeLimit: 120,
   timeBank: 300,
-  extensionIncrement: 60,
+  extensionIncrement: 30,
   maxExtensionsPerTurn: 2,
   maxExtraSecondsPerTurn: 180,
 };
@@ -46,6 +46,7 @@ export const TIMER_PRESETS = [
  */
 export interface TimerStatus {
   isActive: boolean;           // Is timer currently running?
+  isPaused: boolean;           // Is the timer paused while another player resolves an obligation?
   startTime: number;           // When timer started (ms)
   timeLimit: number;           // Total time allowed (seconds)
   timeElapsed: number;         // Seconds elapsed

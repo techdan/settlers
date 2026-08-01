@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { upgradeImprovement, canAffordImprovement } from '@/core/engine/improvements/improvement-manager';
 import { ImprovementType, MetropolisType } from '@/core/rules/commodity-constants';
 import { buildMetropolis, canBuildMetropolis } from '@/core/engine/metropolis/metropolis-manager';
@@ -68,7 +69,7 @@ export async function upgradePlayerImprovement(
     });
 
     // 8. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -132,7 +133,7 @@ export async function selectMetropolisCity(
     }
 
     // 9. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

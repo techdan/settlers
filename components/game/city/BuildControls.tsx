@@ -129,7 +129,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'road'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordRoad && (player?.roadsRemaining ?? 0) > 0
-                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            ? 'bg-[color-mix(in_oklab,var(--ui-accent)_20%,var(--ui-panel-raised))] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                         }`}
                 >
@@ -156,7 +156,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'settlement'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordSettlement && (player?.settlementsRemaining ?? 0) > 0
-                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            ? 'bg-[color-mix(in_oklab,var(--ui-accent)_20%,var(--ui-panel-raised))] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                         }`}
                 >
@@ -185,7 +185,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                     className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'city'
                         ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                         : canAffordCity && (player?.citiesRemaining ?? 0) > 0
-                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            ? 'bg-[color-mix(in_oklab,var(--ui-accent)_20%,var(--ui-panel-raised))] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                         }`}
                 >
@@ -211,7 +211,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         onClick={() => canInteract && handleBuyDevCard()}
                         disabled={!canInteract || !canAffordDevCard || deckSize === 0 || isPending}
                         className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${canAffordDevCard && deckSize > 0
-                            ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                            ? 'bg-[color-mix(in_oklab,var(--ui-accent)_20%,var(--ui-panel-raised))] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                             : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
                     >
@@ -241,7 +241,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'knight'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildKnight
-                                ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                                ? 'bg-[color-mix(in_oklab,var(--ui-accent)_20%,var(--ui-panel-raised))] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                                 : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
                     >
@@ -270,7 +270,7 @@ export const BuildControls: React.FC<BuildControlsProps> = ({
                         className={`flex cursor-pointer flex-col items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:cursor-not-allowed ${buildMode === 'city_wall'
                             ? 'bg-blue-600 text-white ring-2 ring-blue-400'
                             : canBuildCityWall
-                                ? 'bg-[var(--ui-panel-raised)] text-[var(--ui-text)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
+                                ? 'bg-[color-mix(in_oklab,var(--ui-accent)_20%,var(--ui-panel-raised))] text-[var(--ui-text)] ring-1 ring-[var(--ui-accent)] hover:brightness-110' + (!canInteract ? ' cursor-not-allowed' : '')
                                 : 'bg-[var(--ui-panel-solid)] text-[var(--ui-muted)] cursor-not-allowed'
                             }`}
                     >

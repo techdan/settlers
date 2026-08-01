@@ -1,11 +1,13 @@
 import { GameState, GamePhase } from '@/lib/types/game';
 import { TimerStatus, ExtensionRequestResult } from '@/lib/types/timer';
+import { getAllPendingObligations } from '@/lib/services/obligation-tracker';
 
 /**
  * Timer Service
  *
- * Handles all turn timer logic. All functions are pure (no side effects).
- * State mutations are returned, not applied.
+ * Handles all turn timer logic. Calculations are pure; timer transition
+ * helpers mutate and return the game state to match the existing service
+ * mutation pattern.
  */
 
 /**
@@ -29,6 +31,78 @@ export function formatTime(seconds: number): string {
 }
 
 /**
+ * Return the amount of time that has elapsed while the active player was
+ * actually able to act. The current open pause is included so this helper is
+ * also safe to use before the next state write closes the pause.
+ */
+function getActiveElapsedMs(gameState: GameState, now: number): number {
+  if (!gameState.turnStartTime) return 0;
+
+  const pausedDurationMs =
+    (gameState.turnPausedDurationMs ?? 0) +
+    (gameState.turnPausedAt === undefined
+      ? 0
+      : Math.max(0, now - gameState.turnPausedAt));
+
+  return Math.max(0, now - gameState.turnStartTime - pausedDurationMs);
+}
+
+/**
+ * Another player's unresolved obligation pauses the active player's timer.
+ * Obligations belonging to the active player do not pause their clock: they
+ * still have a required action they can complete themselves.
+ */
+export function isWaitingForOtherPlayers(gameState: GameState): boolean {
+  return getAllPendingObligations(gameState).some(
+    obligation => obligation.isBlocking && obligation.playerId !== gameState.currentTurn
+  );
+}
+
+/** Mark the active turn timer as paused, preserving the already elapsed time. */
+export function pauseTurnTimer(gameState: GameState, now: number = Date.now()): GameState {
+  if (!gameState.timerConfig?.enabled || !gameState.turnStartTime) {
+    return gameState;
+  }
+
+  if (gameState.turnPausedAt === undefined) {
+    gameState.turnPausedAt = now;
+  }
+  gameState.turnPausedDurationMs ??= 0;
+
+  return gameState;
+}
+
+/** Resume a paused timer and add the completed pause to its active-time total. */
+export function resumeTurnTimer(gameState: GameState, now: number = Date.now()): GameState {
+  if (gameState.turnPausedAt === undefined) {
+    return gameState;
+  }
+
+  gameState.turnPausedDurationMs =
+    (gameState.turnPausedDurationMs ?? 0) + Math.max(0, now - gameState.turnPausedAt);
+  gameState.turnPausedAt = undefined;
+
+  return gameState;
+}
+
+/**
+ * Reconcile the timer with the current game's obligations before persisting a
+ * state update. This keeps pause accounting authoritative and covers actions
+ * that resolve obligations without going through a phase helper.
+ */
+export function syncTurnTimerPause(gameState: GameState, now: number = Date.now()): GameState {
+  if (!gameState.timerConfig?.enabled || !gameState.turnStartTime) {
+    return gameState;
+  }
+
+  if (isWaitingForOtherPlayers(gameState)) {
+    return pauseTurnTimer(gameState, now);
+  }
+
+  return resumeTurnTimer(gameState, now);
+}
+
+/**
  * Centralized phase transition helper.
  * Automatically starts the timer when entering main_phase.
  *
@@ -47,6 +121,11 @@ export function setPhase(gameState: GameState, newPhase: GamePhase): GameState {
   if (newPhase === 'main_phase') {
     gameState = startTurnTimer(gameState);
   }
+
+  // Phase changes can resolve a pending obligation immediately. Reconcile
+  // here as well as at the persistence boundary for callers that use this
+  // helper directly.
+  gameState = syncTurnTimerPause(gameState);
 
   return gameState;
 }
@@ -72,6 +151,8 @@ export function startTurnTimer(gameState: GameState): GameState {
 
   // Mutate in place for consistency with codebase patterns
   gameState.turnStartTime = now;
+  gameState.turnPausedAt = undefined;
+  gameState.turnPausedDurationMs = 0;
   gameState.turnTimeLimit = gameState.timerConfig.turnTimeLimit;
   gameState.timerLocked = false; // Reset locked state for new turn
   gameState.currentTurnExtensions = {
@@ -100,7 +181,7 @@ export function stopTurnTimer(
   }
 
   const now = Date.now();
-  const elapsedMs = now - gameState.turnStartTime;
+  const elapsedMs = getActiveElapsedMs(gameState, now);
   const elapsedSeconds = Math.floor(elapsedMs / 1000);
 
   // Calculate refund
@@ -125,6 +206,8 @@ export function stopTurnTimer(
   return {
     ...gameState,
     turnStartTime: undefined,
+    turnPausedAt: undefined,
+    turnPausedDurationMs: undefined,
     turnTimeLimit: undefined,
     timerLocked: false,
     currentTurnExtensions: undefined,
@@ -162,6 +245,7 @@ export function getTimerStatus(
   if (!gameState.timerConfig?.enabled || !gameState.turnStartTime) {
     return {
       isActive: false,
+      isPaused: false,
       startTime: 0,
       timeLimit: 0,
       timeElapsed: 0,
@@ -171,7 +255,7 @@ export function getTimerStatus(
     };
   }
 
-  const elapsedMs = now - gameState.turnStartTime;
+  const elapsedMs = getActiveElapsedMs(gameState, now);
   const elapsedSeconds = Math.floor(elapsedMs / 1000);
 
   const baseLimit = gameState.timerConfig.turnTimeLimit;
@@ -183,6 +267,7 @@ export function getTimerStatus(
 
   return {
     isActive: true,
+    isPaused: gameState.turnPausedAt !== undefined,
     startTime: gameState.turnStartTime,
     timeLimit: effectiveLimit,
     timeElapsed: elapsedSeconds,
@@ -255,7 +340,7 @@ export function requestExtension(
   // after the timer expires eat into the extension. We do this by adjusting the turn
   // start time backward to ensure the player gets the full extension amount.
   const now = Date.now();
-  const currentElapsed = Math.floor((now - (gameState.turnStartTime || now)) / 1000);
+  const currentElapsed = getTimerStatus(gameState, now).timeElapsed;
   const currentLimit = config.turnTimeLimit + extensions.totalBorrowed;
 
   // If the timer has expired, calculate how much overtime has passed

@@ -32,6 +32,7 @@ interface HexTileProps {
     selectionVariant?: 'glow' | 'cursor';
     selectionState?: 'primary' | 'secondary' | null;
     isPendingRobberPlacement?: boolean;
+    isInventorAffected?: boolean;
     onConfirmPlacement?: () => void;
     onCancelPlacement?: () => void;
 }
@@ -229,6 +230,7 @@ export const HexTile: React.FC<HexTileProps> = ({
     selectionVariant = 'glow',
     selectionState = null,
     isPendingRobberPlacement = false,
+    isInventorAffected = false,
     onConfirmPlacement,
     onCancelPlacement,
 }) => {
@@ -273,6 +275,19 @@ export const HexTile: React.FC<HexTileProps> = ({
                 strokeWidth={2}
                 pointerEvents="none"
             />
+
+            {isInventorAffected && (
+                <polygon
+                    points={hexPointsStr(size - 0.5)}
+                    fill="none"
+                    stroke={TT.highlight.primary}
+                    strokeWidth={5}
+                    strokeDasharray="10 5"
+                    pointerEvents="none"
+                >
+                    <title>Hex affected by the last Inventor swap</title>
+                </polygon>
+            )}
 
             {/* valid-placement glow: cream ring, fits the art instead of neon green */}
             {shouldGlow && (

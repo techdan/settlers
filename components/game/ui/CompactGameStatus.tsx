@@ -80,7 +80,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
                     {isTimerEnabled && (
                         <div className="flex flex-col items-end gap-1">
                             <div className={`text-sm font-bold tabular-nums ${displayColor || 'text-[var(--ui-muted)]'}`}>
-                                {displayTime}
+                                {displayTime}{timerStatus.isPaused ? ' · Paused' : ''}
                             </div>
                         </div>
                     )}

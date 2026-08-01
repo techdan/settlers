@@ -12,7 +12,7 @@ export function useTimerState(gameState: GameState): TimerStatus {
 
   // Recalculate every second
   useEffect(() => {
-    if (!gameState.timerConfig?.enabled || !gameState.turnStartTime) {
+    if (!gameState.timerConfig?.enabled || !gameState.turnStartTime || gameState.turnPausedAt !== undefined) {
       return;
     }
 
@@ -23,6 +23,7 @@ export function useTimerState(gameState: GameState): TimerStatus {
     return () => clearInterval(interval);
   }, [
     gameState.turnStartTime,
+    gameState.turnPausedAt,
     gameState.timerConfig?.enabled
   ]);
 

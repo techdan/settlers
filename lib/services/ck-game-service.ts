@@ -1,5 +1,6 @@
 import { GameState } from '@/lib/types';
-import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
+import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
+import { persistGameState } from '@/lib/services/game-persistence-service';
 import { loseCityToBarbarians, resolveBarbbarianAttack } from '@/core/engine/barbarian/barbarian-manager';
 import { drawProgressCard } from '@/core/engine/progress/progress-card-manager';
 import { ProgressCardCategory } from '@/core/rules/commodity-constants';
@@ -46,7 +47,7 @@ export async function resolveBarbarianAttackAction(roomId: string): Promise<Game
     checkAndUpdateVictory(gameState);
 
     // 7. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -87,7 +88,7 @@ export async function drawProgressCardAction(
     }
 
     // 5. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }
@@ -137,7 +138,7 @@ export async function loseCityToBarbarianAction(
     }
 
     // 5. Save to database
-    await updateGameState(gameState);
+    await persistGameState(gameState);
 
     return gameState;
 }

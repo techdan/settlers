@@ -27,7 +27,7 @@ Timer settings are configured in the lobby before `Start Game` when the timer fe
 ### Extension / Time Bank Defaults
 
 - Per-player time bank (per game): `300s` (5 minutes).
-- Extension increment button: `+60s`.
+- Extension increment button: `+30s`.
 - Maximum extensions per turn: `2`.
 - Maximum extra time per turn: `180s`.
 
@@ -42,6 +42,10 @@ Timer settings are configured in the lobby before `Start Game` when the timer fe
 
 - Turn timer **starts** when the active player clicks `Roll Dice`.
 - Turn timer **stops** when the active player successfully clicks `End Turn`.
+- Turn timer **pauses** while the active player is waiting on another player
+  to resolve a blocking obligation (for example, a discard, resource choice,
+  trade response, or other required prompt), and resumes when that obligation
+  is resolved. Obligations owned by the active player do not pause their clock.
 - The game is treated as **paused between turns**:
   - From `End Turn` → next player’s `Roll Dice`.
   - This time is excluded from all timing totals.
@@ -98,7 +102,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Handling:
   - This obligation is a **dependency** for robber placement + stealing.
   - The current player **cannot place the robber or steal** until all required discards are completed.
-  - Discarding itself is not treated as a “pause”; it should not stop the current player’s timer.
+  - While another player is discarding, the current player’s timer is paused.
   - After discards resolve, the current player continues to robber placement/steal as normal.
 - Global gate: blocks any `Roll Dice` until complete.
 - UX: notify discarding players that “everyone is waiting”, since it blocks progress.
@@ -108,7 +112,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: effects that force one or more target players to discard/select cards, where the outcome does not change the current player’s immediate decision tree.
 - Who must act: the targeted player(s).
 - Handling:
-  - Fully **async**: does not pause or disrupt the current player’s turn.
+  - Fully **async** for game flow, but pauses the current player’s timer while a targeted player is resolving the obligation.
   - The current player may continue taking normal turn actions.
   - The obligation must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
@@ -118,7 +122,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: prompts that require a player to choose a resource/commodity/card gain, where it does not affect the current player’s immediate decisions.
 - Who must act: each eligible player.
 - Handling:
-  - Fully **async**: does not pause or disrupt the current player’s turn.
+  - Fully **async** for game flow, but pauses the current player’s timer while an eligible player resolves the prompt.
   - Must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
 
@@ -127,7 +131,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: players must respond with a commodity choice / no-trade response.
 - Who must act: each receiving player with an outstanding response.
 - Handling:
-  - **Async** for current turn flow.
+  - **Async** for current turn flow; the active player’s timer pauses while responses are pending.
   - Must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
 
@@ -136,7 +140,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: players must provide required gifts/selections.
 - Who must act: the requested players.
 - Handling:
-  - **Async** for current turn flow.
+  - **Async** for current turn flow; the active player’s timer pauses while gifts are pending.
   - Must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
 
@@ -145,7 +149,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: barbarian attack causes one or more players to lose a city and requires them to choose which city.
 - Who must act: each victim player.
 - Handling:
-  - Explicitly **async**: another player’s city choice has no meaningful impact on the current player’s decisions.
+  - Explicitly **async**: another player’s city choice has no meaningful impact on the current player’s decisions, and the current player’s timer pauses while the choice is pending.
   - Must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
 
@@ -154,7 +158,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: a displaced player must move/remove a knight due to displacement rules.
 - Who must act: the displaced player.
 - Handling:
-  - Default **async**: does not pause or disrupt the current player’s turn unless the displacement rules create a direct dependency (rare).
+  - Default **async**: the current player’s timer pauses while the displaced player resolves the choice.
   - Must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
 
@@ -163,7 +167,7 @@ Each item below also specifies whether it is a dependency on the current player�
 - Trigger: multiple players must draw/resolve defender progress card draws.
 - Who must act: listed players.
 - Handling:
-  - **Async**.
+  - **Async**; the current player’s timer pauses while the draws are pending.
   - Must be resolved before the next `Roll Dice` globally.
 - Global gate: blocks any `Roll Dice` until complete.
 
@@ -195,7 +199,7 @@ No discards, choices, steals, or other decisions are auto-executed by the system
 
 ### Requesting More Time
 
-- The active player can request `+60s` (consuming from their time bank), subject to lobby caps.
+- The active player can request `+30s` by default (consuming from their time bank), subject to lobby caps.
 
 ### Refund Rule
 
@@ -203,9 +207,9 @@ Borrowed time is only “spent” if it is actually used.
 
 Example:
 - Turn timer is 180s.
-- Player requests `+60s` (bank −60).
-- Player ends their turn with 50s still remaining past the original 180s baseline.
-- Refund 50s to the bank (net cost = 10s).
+- Player requests `+30s` (bank −30).
+- Player ends their turn with 20s still remaining past the original 180s baseline.
+- Refund 20s to the bank (net cost = 10s).
 
 ### Constraints
 

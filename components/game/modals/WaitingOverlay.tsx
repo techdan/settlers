@@ -27,6 +27,13 @@ export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayPro
     return null;
   }
 
+  // Alchemy has its own mandatory selector. The generic waiting dialog must
+  // not cover that selector for the player who revealed the event die; other
+  // players still get the normal waiting state through their own UI.
+  if (gameState.pendingAlchemy?.playerId === currentPlayerId) {
+    return null;
+  }
+
   // Group obligations by player
   const obligationsByPlayer = blockingObligations.reduce((acc, obligation) => {
     if (!acc[obligation.playerId]) {

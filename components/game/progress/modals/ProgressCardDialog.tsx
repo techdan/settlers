@@ -16,6 +16,12 @@ interface ProgressCardDialogProps {
     closeEnabled?: boolean;
     showCancel?: boolean;
     error?: string;
+    collapsed?: boolean;
+    onToggleCollapse?: () => void;
+    collapseLabel?: string;
+    secondaryLabel?: string;
+    onSecondary?: () => void;
+    expanded?: boolean;
 }
 
 export function ProgressCardDialog({
@@ -29,6 +35,12 @@ export function ProgressCardDialog({
     closeEnabled = true,
     showCancel = true,
     error,
+    collapsed = false,
+    onToggleCollapse,
+    collapseLabel,
+    secondaryLabel,
+    onSecondary,
+    expanded = false,
 }: ProgressCardDialogProps) {
     const metadata = PROGRESS_CARD_DEFINITIONS[cardType];
     const interaction = getProgressCardInteraction(cardType);
@@ -51,6 +63,9 @@ export function ProgressCardDialog({
                     Cancel
                 </TabletopButton>
             ) : null}
+            {secondaryLabel && onSecondary ? (
+                <TabletopButton onClick={onSecondary}>{secondaryLabel}</TabletopButton>
+            ) : null}
             {primaryTooltip ? (
                 <Tooltip
                     content={primaryTooltip}
@@ -64,6 +79,17 @@ export function ProgressCardDialog({
             )}
         </>
     );
+    const collapseButton = onToggleCollapse ? (
+        <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-expanded={!collapsed}
+            aria-label={collapseLabel ?? (collapsed ? `Expand ${metadata.name} controls` : `Collapse ${metadata.name} controls`)}
+            className="cursor-pointer rounded-md border border-[var(--ui-border)] px-2.5 py-1.5 text-xs font-semibold text-[var(--ui-muted)] transition hover:bg-[var(--ui-panel-raised)] hover:text-[var(--ui-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)]"
+        >
+            {collapsed ? 'Expand' : 'Collapse'}
+        </button>
+    ) : null;
 
     return (
         <TabletopModal
@@ -72,14 +98,19 @@ export function ProgressCardDialog({
             surface={surface}
             width={surface === 'board-visible' ? 'sm' : 'md'}
             onClose={closeEnabled ? onCancel : undefined}
-            footer={footer}
+            footer={collapsed ? undefined : footer}
+            headerAction={collapseButton}
+            collapsed={collapsed}
+            expanded={expanded}
         >
-            {children}
-            {error ? (
-                <div className="mt-4 rounded border border-red-500 bg-red-900/30 p-3 text-sm text-red-200">
-                    {error}
-                </div>
-            ) : null}
+            <>
+                {children}
+                {error ? (
+                    <div className="mt-4 rounded border border-red-500 bg-red-900/30 p-3 text-sm text-red-200">
+                        {error}
+                    </div>
+                ) : null}
+            </>
         </TabletopModal>
     );
 }

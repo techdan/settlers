@@ -44,7 +44,7 @@ describe('useTimerState server clock synchronization', () => {
     expect(result.current.timeRemaining).toBe(120);
   });
 
-  it('continues counting down from server time after synchronization', () => {
+    it('continues counting down from server time after synchronization', () => {
     vi.useFakeTimers();
     vi.setSystemTime(CLIENT_NOW);
     const state = synchronizeTimerClock(createTimedState());
@@ -53,6 +53,22 @@ describe('useTimerState server clock synchronization', () => {
     const { result } = renderHook(() => useTimerState(state));
 
     expect(result.current.timeElapsed).toBe(5);
-    expect(result.current.timeRemaining).toBe(115);
-  });
+        expect(result.current.timeRemaining).toBe(115);
+    });
+
+    it('keeps the countdown frozen while the server marks the turn as paused', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(CLIENT_NOW);
+        const state = synchronizeTimerClock({
+            ...createTimedState(),
+            turnPausedAt: SERVER_NOW + 5_000,
+        });
+        vi.setSystemTime(CLIENT_NOW + 20_000);
+
+        const { result } = renderHook(() => useTimerState(state));
+
+        expect(result.current.isPaused).toBe(true);
+        expect(result.current.timeElapsed).toBe(5);
+        expect(result.current.timeRemaining).toBe(115);
+    });
 });

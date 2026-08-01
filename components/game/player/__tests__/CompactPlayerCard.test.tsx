@@ -79,7 +79,7 @@ describe('CompactPlayerCard', () => {
     });
 
     describe('hand-size chips', () => {
-        it('splits resources and commodities in Cities & Knights', () => {
+        it('shows one combined hand count in Cities & Knights', () => {
             renderCard({
                 player: {
                     resources: { wood: 3, brick: 1, sheep: 0, wheat: 0, ore: 0 },
@@ -87,13 +87,15 @@ describe('CompactPlayerCard', () => {
                 },
             });
 
-            expect(chipValue('chip-resources')).toBe('4');
-            expect(chipValue('chip-commodities')).toBe('3');
+            expect(chipValue('chip-hand')).toBe('7');
+            expect(screen.queryByTestId('chip-resources')).not.toBeInTheDocument();
+            expect(screen.queryByTestId('chip-commodities')).not.toBeInTheDocument();
         });
 
-        it('omits the commodity chip in the base game', () => {
+        it('uses the same combined hand count in the base game', () => {
             renderCard({ gameMode: 'base' });
 
+            expect(screen.getByTestId('chip-hand')).toBeInTheDocument();
             expect(screen.queryByTestId('chip-commodities')).not.toBeInTheDocument();
         });
 
@@ -106,7 +108,7 @@ describe('CompactPlayerCard', () => {
             });
 
             // 8 cards against the wall-less safe limit of 7.
-            expect(screen.getByTestId('chip-resources')).toHaveAttribute('data-danger', 'true');
+            expect(screen.getByTestId('chip-hand')).toHaveAttribute('data-danger', 'true');
         });
 
         it('does not flag a hand raised above 7 by city walls', () => {
@@ -124,13 +126,13 @@ describe('CompactPlayerCard', () => {
             });
 
             // Safe limit is 7 + 2 = 9, so 8 cards is fine.
-            expect(screen.getByTestId('chip-resources')).toHaveAttribute('data-danger', 'false');
+            expect(screen.getByTestId('chip-hand')).toHaveAttribute('data-danger', 'false');
         });
 
         it('dims a chip that is at zero', () => {
             renderCard();
 
-            expect(screen.getByTestId('chip-resources').className).toContain('opacity-40');
+            expect(screen.getByTestId('chip-hand').className).toContain('opacity-40');
         });
 
         it('counts progress cards on the deck chip in C&K', () => {

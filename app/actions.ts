@@ -334,6 +334,12 @@ export async function setLobbyGameMode(roomId: string, hostId: string, gameMode:
     return result;
 }
 
+export async function setLobbyPlayerOrder(roomId: string, hostId: string, playerOrder: string[]) {
+    const result = await LobbyService.setPlayerOrder(roomId, hostId, playerOrder);
+    revalidatePath(`/room/${roomId}`);
+    return result;
+}
+
 export async function setLobbyPlayerColor(roomId: string, playerId: string, color: PlayerColor) {
     const result = await LobbyService.setPlayerColor(roomId, playerId, color);
     revalidatePath(`/room/${roomId}`);

@@ -142,6 +142,30 @@ export class LobbyService {
     }
 
     /**
+     * Reconcile a saved lobby order with the current database players.
+     * Existing players keep their saved positions, while new players append
+     * in join order. Removed players are dropped automatically.
+     */
+    private static reconcilePlayerOrder(savedOrder: string[] | undefined, playerIds: string[]) {
+        const currentIds = new Set(playerIds);
+        const orderedIds: string[] = [];
+
+        for (const playerId of savedOrder ?? []) {
+            if (currentIds.has(playerId) && !orderedIds.includes(playerId)) {
+                orderedIds.push(playerId);
+            }
+        }
+
+        for (const playerId of playerIds) {
+            if (!orderedIds.includes(playerId)) {
+                orderedIds.push(playerId);
+            }
+        }
+
+        return orderedIds;
+    }
+
+    /**
      * Normalize lobby players by ensuring exactly one host is present.
      * If preferredHostId exists in the room, it becomes the host; otherwise pick the first player.
      */
@@ -225,6 +249,7 @@ export class LobbyService {
             state = {
                 roomId,
                 hostId: effectiveHostId,
+                playerOrder: dbPlayers.map(p => p.id),
                 players: dbPlayers.map(p => ({
                     id: p.id,
                     name: p.name,
@@ -244,8 +269,14 @@ export class LobbyService {
             return state;
         }
 
+        const playerOrder = this.reconcilePlayerOrder(
+            state.playerOrder ?? state.players.map(player => player.id),
+            dbPlayers.map(player => player.id)
+        );
+        const playersById = new Map(dbPlayers.map(player => [player.id, player]));
+
         // Keep lobby players in sync with DB (including new joins and color corrections)
-        const lobbyPlayers = dbPlayers.map(p => ({
+        const lobbyPlayers = playerOrder.map(playerId => playersById.get(playerId)!).map(p => ({
             id: p.id,
             name: p.name,
             color: normalizeColor(p.color as string | null),
@@ -263,7 +294,9 @@ export class LobbyService {
                 p.id !== lobbyPlayers[idx]?.id ||
                 p.color !== lobbyPlayers[idx]?.color ||
                 p.name !== lobbyPlayers[idx]?.name
-            );
+            ) ||
+            state.playerOrder?.length !== playerOrder.length ||
+            state.playerOrder?.some((playerId, idx) => playerId !== playerOrder[idx]);
 
         const needsUpdate = hasPlayerDifferences || state.hostId !== effectiveHostId || filteredPendingRequests.length !== state.pendingRequests.length;
 
@@ -272,6 +305,7 @@ export class LobbyService {
                 ...state,
                 gameMode: state.gameMode ?? 'base',
                 hostId: effectiveHostId,
+                playerOrder,
                 players: lobbyPlayers,
                 pendingRequests: filteredPendingRequests
             };
@@ -422,6 +456,35 @@ export class LobbyService {
         await this.updateLobbyState(roomId, fullState);
 
         return fullState;
+    }
+
+    /**
+     * Persist the host-selected player order for the lobby and initial turn
+     * order. The request must contain every current player exactly once.
+     */
+    static async setPlayerOrder(roomId: string, hostId: string, playerOrder: string[]): Promise<LobbyState> {
+        const state = await this.getOrInitLobbyState(roomId);
+
+        if (state.hostId !== hostId) {
+            throw new Error('Only host can change player order');
+        }
+
+        const currentPlayerIds = state.players.map(player => player.id);
+        const hasValidOrder =
+            playerOrder.length === currentPlayerIds.length &&
+            new Set(playerOrder).size === currentPlayerIds.length &&
+            playerOrder.every(playerId => currentPlayerIds.includes(playerId));
+
+        if (!hasValidOrder) {
+            throw new Error('Player order must include every player exactly once');
+        }
+
+        const playersById = new Map(state.players.map(player => [player.id, player]));
+        state.playerOrder = [...playerOrder];
+        state.players = playerOrder.map(playerId => playersById.get(playerId)!);
+
+        await this.updateLobbyState(roomId, state);
+        return state;
     }
 
     /**
