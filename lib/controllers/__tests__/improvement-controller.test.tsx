@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { placeMetropolis } from '@/app/actions';
+import { placeMetropolis, upgradeImprovement } from '@/app/actions';
 import {
   createImprovementController,
   type ImprovementControllerDeps,
@@ -21,6 +21,7 @@ vi.mock('@/app/actions', () => ({
 }));
 
 const placeMetropolisMock = vi.mocked(placeMetropolis);
+const upgradeImprovementMock = vi.mocked(upgradeImprovement);
 
 function createPrompt() {
   return {
@@ -125,6 +126,61 @@ describe('improvement controller', () => {
     expect(consoleError).toHaveBeenCalledWith(
       'Failed to upgrade to metropolis',
       error,
+    );
+  });
+
+  it('keeps the metropolis target selectable and submits the chosen city', async () => {
+    const gameState = createTestGameState({
+      currentTurn: 'p1',
+      phase: 'main_phase',
+      players: [
+        createTestPlayer({
+          id: 'p1',
+          improvements: { science: 3, trade: 0, politics: 0 },
+          commodities: { paper: 3, cloth: 0, coin: 0 },
+        }),
+      ],
+      board: {
+        ...createTestGameState().board,
+        vertices: {
+          'city-a': {
+            id: 'city-a', q: 0, r: 0, d: 0,
+            owner: 'p1', structure: 'city', hasCityWall: false,
+          },
+          'walled-city': {
+            id: 'walled-city', q: 0, r: 0, d: 1,
+            owner: 'p1', structure: 'city', hasCityWall: true,
+          },
+        },
+      },
+    });
+    const updatedGameState = structuredClone(gameState);
+    updatedGameState.players[0].improvements!.science = 4;
+    const harness = createControllerHarness(gameState);
+    upgradeImprovementMock.mockResolvedValue(updatedGameState);
+    placeMetropolisMock.mockResolvedValue(updatedGameState);
+
+    await act(async () => {
+      await harness.controller().handleUpgradeImprovement('science');
+    });
+
+    expect(harness.selection.result.current.selectingCityForMetropolis).toBe('science');
+    expect(harness.metropolisPrompt.begin).toHaveBeenCalledWith(
+      'Select a city to upgrade to Science Metropolis',
+    );
+
+    act(() => {
+      harness.controller().handleMetropolisCitySelected('walled-city');
+    });
+
+    expect(harness.selection.result.current.selectedMetropolisCityId).toBe('walled-city');
+
+    await act(async () => {
+      await harness.controller().handleConfirmMetropolisBuild();
+    });
+
+    expect(placeMetropolisMock).toHaveBeenCalledWith(
+      'room-1', 'p1', 'walled-city', 'science',
     );
   });
 });

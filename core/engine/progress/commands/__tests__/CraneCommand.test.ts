@@ -29,7 +29,7 @@ describe('CraneCommand', () => {
         );
     });
 
-    it('awards the metropolis when the discounted upgrade reaches level four', () => {
+    it('leaves metropolis placement pending when the discounted upgrade reaches level four', () => {
         const player = createTestPlayer({
             id: 'p1',
             name: 'Builder',
@@ -55,11 +55,11 @@ describe('CraneCommand', () => {
 
         expect(player.improvements?.science).toBe(4);
         expect(player.commodities?.paper).toBe(0);
-        expect(player.metropolisOwned).toContain('science');
-        expect(gameState.board.vertices['city-1'].structure).toBe('metropolis');
+        expect(player.metropolisOwned).not.toContain('science');
+        expect(gameState.board.vertices['city-1'].structure).toBe('city');
         expect(gameState.metropolises?.science).toMatchObject({
-            owner: 'p1',
-            vertexId: 'city-1',
+            owner: null,
+            vertexId: null,
         });
     });
 

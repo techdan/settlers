@@ -257,6 +257,19 @@ export async function placeBonusRoad(
         throw new Error('Not your turn');
     }
 
+    // Get player
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) throw new Error('Player not found');
+
+    // A dropped response or a double-click can retry a placement after the
+    // server has already committed it. The action is scoped to Road Building,
+    // so treating an already-owned road as a successful no-op keeps retries
+    // from surfacing a false placement error.
+    const edge = gameState.board.edges[edgeId];
+    if (edge?.owner === playerId && edge.structure === 'road') {
+        return gameState;
+    }
+
     // Validate phase
     if (gameState.phase !== 'road_building_1' && gameState.phase !== 'road_building_2') {
         throw new Error('Not in road building phase');
@@ -273,10 +286,6 @@ export async function placeBonusRoad(
             isRoadBuildingEffect(effect) && effect.playerId === playerId
     );
 
-    // Get player
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) throw new Error('Player not found');
-
     // Check roads remaining
     if (player.roadsRemaining <= 0) {
         throw new Error('No roads remaining');
@@ -284,8 +293,8 @@ export async function placeBonusRoad(
 
     // Place road
     player.roadsRemaining--;
-    gameState.board.edges[edgeId].owner = playerId;
-    gameState.board.edges[edgeId].structure = 'road';
+    edge.owner = playerId;
+    edge.structure = 'road';
 
     if (roadBuildingEffect) {
         if (!Array.isArray(roadBuildingEffect.placedEdges)) {

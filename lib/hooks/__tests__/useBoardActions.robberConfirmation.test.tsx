@@ -10,11 +10,13 @@ const actionMocks = vi.hoisted(() => ({
   moveRobber: vi.fn(),
   moveKnight: vi.fn(),
   placeMetropolis: vi.fn(),
+  placeBonusRoad: vi.fn(),
 }));
 
 const validatorMocks = vi.hoisted(() => ({
   isValidKnightMovement: vi.fn(),
   isValidMetropolisPlacement: vi.fn(),
+  isValidMainPhaseRoad: vi.fn(),
 }));
 
 vi.mock('@/app/actions', () => ({
@@ -24,7 +26,7 @@ vi.mock('@/app/actions', () => ({
   buildRoad: vi.fn(),
   buildSettlement: vi.fn(),
   buildCity: vi.fn(),
-  placeBonusRoad: vi.fn(),
+  placeBonusRoad: actionMocks.placeBonusRoad,
   buildKnight: vi.fn(),
   buildCityWall: vi.fn(),
   relocateKnight: vi.fn(),
@@ -41,9 +43,57 @@ vi.mock('@/core/validation/metropolis-validator', () => ({
   isValidMetropolisPlacement: validatorMocks.isValidMetropolisPlacement,
 }));
 
+vi.mock('@/core/validation/building-validator', () => ({
+  isValidMainPhaseRoad: validatorMocks.isValidMainPhaseRoad,
+  isValidMainPhaseSettlement: vi.fn(),
+  isValidMainPhaseCity: vi.fn(),
+}));
+
 describe('useBoardActions robber confirmation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('reconciles local state after a bonus road is placed', async () => {
+    const player = createTestPlayer({ id: 'p1' });
+    const gameState = createTestGameState({
+      roomId: 'room-1',
+      players: [player],
+      currentTurn: player.id,
+      phase: 'road_building_1',
+      board: createTestBoard({ edges: [{ id: 'road-edge' }] }),
+    });
+    const updatedGameState = {
+      ...gameState,
+      phase: 'road_building_2' as const,
+    };
+    const edgeId = 'road-edge';
+    actionMocks.placeBonusRoad.mockResolvedValue(updatedGameState);
+    validatorMocks.isValidMainPhaseRoad.mockReturnValue(true);
+    const onGameStateUpdated = vi.fn();
+
+    const { result } = renderHook(() =>
+      useBoardActions(
+        gameState,
+        player.id,
+        {
+          buildMode: null,
+          progressPrompt: { cardType: 'road_building_progress', visible: true, ready: true },
+        },
+        { onCancelBuild: vi.fn(), onGameStateUpdated },
+        { validVertices: new Set(), validEdges: new Set([edgeId]), validHexes: new Set() },
+        new Map(),
+        null,
+        vi.fn(),
+      ),
+    );
+
+    act(() => result.current.handleEdgeClick(edgeId));
+
+    await waitFor(() => {
+      expect(actionMocks.placeBonusRoad).toHaveBeenCalledWith('room-1', player.id, edgeId);
+      expect(onGameStateUpdated).toHaveBeenCalledWith(updatedGameState);
+    });
   });
 
   it('previews a robber move, cancels without leaving placement, and commits only after confirmation', async () => {

@@ -192,12 +192,10 @@ export function useBoardValidation(
 
     // Metropolis selection - player's cities
     if (citySelection?.type === 'metropolis') {
-      // If a city is already selected, don't show red circles on other cities
-      if (citySelection.selectedCityId) {
-        return valid;
-      }
-      // Otherwise, show all valid cities
-      vertices.forEach(v => {
+      // Keep every city selectable until confirmation. The rendered `vertices`
+      // collection may preview the selected city as a metropolis, so validate
+      // against authoritative game state instead of hiding the other choices.
+      Object.values(gameState.board.vertices).forEach(v => {
         if (v.owner === playerId && v.structure === 'city') {
           valid.add(v.id);
         }

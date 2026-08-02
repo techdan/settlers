@@ -3,8 +3,6 @@ import type { ProgressCardCommand } from '../types/CardConfig';
 import { addLog } from '../utilities/StateManagement';
 import type { ImprovementType } from '@/core/rules/commodity-constants';
 import {
-  tryAwardMetropolis,
-  tryStealMetropolis,
   upgradeImprovement,
 } from '../../improvements/improvement-manager';
 
@@ -47,13 +45,6 @@ export class CraneCommand implements ProgressCardCommand {
 
     if (newLevel === -1) {
       throw new Error('Failed to upgrade improvement with Crane');
-    }
-
-    // Check for metropolis award/steal
-    if (newLevel === 4) {
-      tryAwardMetropolis(state, player, improvement);
-    } else if (newLevel === 5) {
-      tryStealMetropolis(state, player, improvement);
     }
 
     addLog(

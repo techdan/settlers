@@ -85,7 +85,8 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
         const metropolisOwner = metropolis?.owner ? gameState.players.find(p => p.id === metropolis.owner) : null;
         const metropolisOwnerLevel = metropolisOwner?.improvements?.[improvement] || 0;
 
-        const willBuildMetropolis = level === 3 && !metropolis?.owner;
+        const willBuildMetropolis =
+            level === 3 || (level === 4 && !metropolis?.owner);
         const willStealMetropolis = level === 4 && metropolis?.owner && metropolis?.owner !== playerId && metropolisOwnerLevel < 5;
         const requiresMetropolisPlacement = willBuildMetropolis || willStealMetropolis;
 
@@ -169,7 +170,8 @@ export const CityManagementDialog: React.FC<CityManagementDialogProps> = ({
                         const metropolisOwnerLevel = metropolisOwner?.improvements?.[type] || 0;
 
                         // Conditions for when upgrade will trigger metropolis placement
-                        const willBuildMetropolis = level === 3 && !metropolis?.owner; // Level 3→4 and unclaimed - REQUIRES SELECTION
+                        const willBuildMetropolis =
+                            level === 3 || (level === 4 && !metropolis?.owner); // Level 3→4 (or a delayed level 4→5 claim) and unclaimed - REQUIRES SELECTION
                         const willSecureMetropolis = level === 4 && metropolis?.owner === playerId; // Level 4→5 and own it - NO SELECTION, just secures in place
                         const willStealMetropolis = level === 4 && metropolis?.owner && metropolis?.owner !== playerId && metropolisOwnerLevel < 5; // Level 4→5 and can steal - REQUIRES SELECTION
                         const metropolisSecured = metropolis?.owner && metropolisOwnerLevel >= 5;

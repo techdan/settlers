@@ -339,7 +339,8 @@ export function useBoardActions(
         setIsPlacingBonusRoad(true);
         (async () => {
           try {
-            await placeBonusRoad(gameState.roomId, playerId, edgeId);
+            const updatedGameState = await placeBonusRoad(gameState.roomId, playerId, edgeId);
+            callbacks.onGameStateUpdated?.(updatedGameState);
           } catch (e) {
             console.error('Failed to place bonus road', e);
           } finally {

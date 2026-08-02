@@ -208,6 +208,33 @@ describe('useBoardValidation', () => {
         expect(isValidMainPhaseRoad).not.toHaveBeenCalled();
     });
 
+    it('keeps every city selectable after a metropolis preview is selected', () => {
+        const gameState = createTestGameState({
+            players,
+            currentTurn: 'p1',
+            phase: 'main_phase',
+            board: createTestBoard({
+                vertices: [
+                    createTestVertex({ id: 'city-a', owner: 'p1', structure: 'city' }),
+                    createTestVertex({ id: 'walled-city', owner: 'p1', structure: 'city', hasCityWall: true }),
+                ],
+            }),
+        });
+
+        const { result } = renderValidation({
+            gameState,
+            selectionState: {
+                buildMode: null,
+                citySelection: {
+                    type: 'metropolis',
+                    selectedCityId: 'city-a',
+                },
+            },
+        });
+
+        expect([...result.current.validVertices]).toEqual(['city-a', 'walled-city']);
+    });
+
     it('validates Diplomat rebuild locations against a derived state without mutating the game', () => {
         const removedRoad = createTestEdge({
             id: 'removed-road',

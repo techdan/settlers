@@ -121,6 +121,19 @@ describe('Metropolis Manager', () => {
             expect(calculateMetropolisVP(gameState.players[0])).toBe(2);
         });
 
+        it('preserves the selected city wall when upgrading to a metropolis', () => {
+            gameState.players[0].improvements!.science = 4;
+            gameState.board.vertices['0,0,0'].hasCityWall = true;
+
+            const success = buildMetropolis(gameState, 'p1', '0,0,0', 'science');
+
+            expect(success).toBe(true);
+            expect(gameState.board.vertices['0,0,0']).toMatchObject({
+                structure: 'metropolis',
+                hasCityWall: true,
+            });
+        });
+
         it('steals metropolis from another player', () => {
             // Setup p2 owning it
             gameState.players[1].improvements!.science = 4;

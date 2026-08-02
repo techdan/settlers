@@ -95,6 +95,40 @@ export function canBuildMetropolis(
 }
 
 /**
+ * Check whether a player must choose one of their cities for a metropolis.
+ *
+ * Reaching the required improvement level does not identify a board vertex.
+ * The caller must keep the choice pending until the player submits a city.
+ * `improvementLevelOverride` is used by UI flows that have just applied an
+ * upgrade locally but have not yet received the persisted game state.
+ */
+export function canSelectMetropolisCity(
+    gameState: GameState,
+    playerId: string,
+    type: MetropolisType,
+    improvementLevelOverride?: number
+): boolean {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) return false;
+
+    const improvementLevel = improvementLevelOverride ?? player.improvements?.[type] ?? 0;
+    if (improvementLevel < CK_CONSTANTS.METROPOLIS_REQUIREMENT) return false;
+
+    const hasCity = Object.values(gameState.board.vertices).some(
+        vertex => vertex.owner === playerId && vertex.structure === 'city'
+    );
+    if (!hasCity) return false;
+
+    const metropolis = getMetropolis(gameState, type);
+    if (!metropolis || metropolis.owner === null) return true;
+    if (metropolis.owner === playerId) return false;
+
+    const currentOwner = gameState.players.find(p => p.id === metropolis.owner);
+    const ownerLevel = currentOwner?.improvements?.[type] ?? 0;
+    return improvementLevel > ownerLevel;
+}
+
+/**
  * Build/claim a metropolis
  * Upgrades a city to metropolis and transfers ownership if stealing
  *

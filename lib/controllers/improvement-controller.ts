@@ -1,6 +1,7 @@
 import type { GameState } from '@/lib/types';
 import type { SelectionState, ImprovementType } from '@/lib/hooks/useSelectionManager';
 import { buildCityWall, buildCity, placeMetropolis, upgradeImprovement } from '@/app/actions';
+import { canSelectMetropolisCity } from '@/core/engine/metropolis/metropolis-manager';
 import {
   controllerErrorMessage,
   type PlayProgressCard,
@@ -68,42 +69,19 @@ export function createImprovementController(deps: ImprovementControllerDeps): Im
    * Triggers metropolis selection if level 4/5 is reached
    */
   const handleUpgradeImprovement = async (improvement: ImprovementType) => {
-    await upgradeImprovement(roomId, playerId, improvement);
+    const updatedGameState = await upgradeImprovement(roomId, playerId, improvement);
 
-    // Check if player reached level 4 or 5 and is eligible for metropolis
-    if (gameState) {
-      const player = gameState.players.find(p => p.id === playerId);
-      const newLevel = (player?.improvements?.[improvement] || 0) + 1;
-      const metropolis = gameState.metropolises?.[improvement];
-      const metropolisOwner = metropolis?.owner;
-      const metropolisOwnerPlayer = metropolisOwner ? gameState.players.find(p => p.id === metropolisOwner) : null;
-      const metropolisOwnerLevel = metropolisOwnerPlayer?.improvements?.[improvement] || 0;
-
-      // Check if player has cities
-      const playerCities = Object.values(gameState.board.vertices).filter(v =>
-        v.owner === playerId && v.structure === 'city'
-      );
-
-      // Only show metropolis selection if:
-      // 1. Level 4 and metropolis is unclaimed (first build), OR
-      // 2. Level 5 and can steal from someone at level 4
-      // Note: Securing your own metropolis at level 5 does NOT require selection - it stays in place
-      const canClaimMetropolis = newLevel === 4 && !metropolisOwner;
-      const canStealMetropolis = newLevel === 5 && metropolisOwner && metropolisOwner !== playerId && metropolisOwnerLevel < 5;
-
-      if ((canClaimMetropolis || canStealMetropolis) && playerCities.length > 0) {
-        selectionManager.setSelectedCityId(null); // Close city management
-        handleStartMetropolisSelection(improvement);
-      }
+    // The server response is authoritative. Do not infer the target from the
+    // city that opened the management dialog or from object iteration order.
+    if (canSelectMetropolisCity(updatedGameState, playerId, improvement)) {
+      selectionManager.setSelectedCityId(null);
+      startMetropolisSelection(improvement, updatedGameState);
     }
   };
 
-  /**
-   * Starts metropolis city selection mode
-   */
-  const handleStartMetropolisSelection = (improvement: ImprovementType) => {
-    if (!gameState) return;
-    const playerCities = Object.values(gameState.board.vertices).filter(v =>
+  const startMetropolisSelection = (improvement: ImprovementType, state: GameState | null) => {
+    if (!state) return;
+    const playerCities = Object.values(state.board.vertices).filter(v =>
       v.owner === playerId && v.structure === 'city'
     );
     if (playerCities.length === 0) return;
@@ -113,6 +91,13 @@ export function createImprovementController(deps: ImprovementControllerDeps): Im
     const improvementName = improvement === 'science' ? 'Science' : improvement === 'trade' ? 'Trade' : 'Politics';
     metropolisPrompt.begin(`Select a city to upgrade to ${improvementName} Metropolis`);
     selectionManager.setSelectingCityForMetropolis(improvement);
+  };
+
+  /**
+   * Starts metropolis city selection mode
+   */
+  const handleStartMetropolisSelection = (improvement: ImprovementType) => {
+    startMetropolisSelection(improvement, gameState);
   };
 
   /**
@@ -194,8 +179,17 @@ export function createImprovementController(deps: ImprovementControllerDeps): Im
    * Uses crane card to upgrade an improvement for free
    */
   const handleCraneUpgrade = async (improvement: ImprovementType) => {
+    const player = gameState?.players.find(p => p.id === playerId);
+    const nextLevel = (player?.improvements?.[improvement] || 0) + 1;
+
     await handlePlayProgressCard('crane', { improvement });
     selectionManager.setIsCraneDialogOpen(false);
+
+    // Crane can also reach a metropolis threshold. The card command only
+    // applies the improvement; the player still chooses the city afterward.
+    if (gameState && canSelectMetropolisCity(gameState, playerId, improvement, nextLevel)) {
+      startMetropolisSelection(improvement, gameState);
+    }
   };
 
   return {
