@@ -24,8 +24,7 @@ import {
 } from '@/core/validation/knight-validator';
 import { isValidMetropolisPlacement } from '@/core/validation/metropolis-validator';
 import { canBuildCityWall } from '@/core/validation/city-wall-validator';
-import { getTotalResources } from '@/core/engine/resources/resource-manager';
-import { getCanonicalVertexId } from '@/lib/hex';
+import { getRobberVictims } from '@/core/engine/resources/robber-cards';
 
 /**
  * useBoardActions hook
@@ -397,21 +396,7 @@ export function useBoardActions(
     if (type === 'robber') {
       onRobberMoveStarted?.();
 
-      const [q, r] = id.split(',').map(Number);
-      const potentialVictims = new Set<string>();
-
-      for (let d = 0; d < 6; d++) {
-        const vertexId = getCanonicalVertexId(q, r, d);
-        const vertex = gameState.board.vertices[vertexId];
-        if (vertex?.owner && vertex.owner !== playerId) {
-          const victim = gameState.players.find(player => player.id === vertex.owner);
-          if (victim && getTotalResources(victim) > 0) {
-            potentialVictims.add(vertex.owner);
-          }
-        }
-      }
-
-      const victims = Array.from(potentialVictims);
+      const victims = getRobberVictims(gameState, playerId, id);
       if (victims.length > 1 && onRobberVictimRequest) {
         onRobberVictimRequest(id, victims);
         return;

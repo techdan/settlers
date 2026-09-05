@@ -3,7 +3,8 @@ import { ResourceType } from '@/core/rules/board-constants';
 import { CommodityType } from '@/core/rules/commodity-constants';
 import { getGameStateByRoomId } from '@/lib/repositories/game-repository';
 import { persistGameState } from '@/lib/services/game-persistence-service';
-import { stealRandomResource, getTotalResources } from '@/core/engine/resources/resource-manager';
+import { getTotalResources } from '@/core/engine/resources/resource-manager';
+import { getRobberVictims, stealRobberCard } from '@/core/engine/resources/robber-cards';
 import { getTotalCommodities } from '@/core/engine/resources/commodity-manager';
 import { getRobberDiscardThreshold } from '@/core/utils/city-wall-utils';
 import { setPhase } from './timer-service';
@@ -65,6 +66,11 @@ export async function moveRobber(
         throw new Error('Robber must be moved to a new hex');
     }
 
+    if (!gameState.board.hexes.some(hex => hex.id === hexId)) throw new Error('Invalid robber hex');
+    if (victimId && !getRobberVictims(gameState, playerId, hexId).includes(victimId)) {
+        throw new Error('Choose an adjacent opponent with a resource or commodity to steal');
+    }
+
     // Update robber location
     gameState.robberHexId = hexId;
 
@@ -78,9 +84,8 @@ export async function moveRobber(
         const thief = gameState.players.find(p => p.id === playerId);
 
         if (victim && thief) {
-            const stolenResource = stealRandomResource(victim);
-            if (stolenResource) {
-                thief.resources[stolenResource]++;
+            const stolenCard = stealRobberCard(victim, thief, gameState.gameMode === 'cities_and_knights');
+            if (stolenCard) {
                 stealLog = ` and stole a card from ${victim.name}`;
 
                 // Record theft for UI highlighting
@@ -88,8 +93,8 @@ export async function moveRobber(
                     source: 'robber',
                     victimId: victim.id,
                     thiefId: thief.id,
-                    items: [{ type: 'resource', value: stolenResource, count: 1 }],
-                    victims: [{ victimId: victim.id, items: [{ type: 'resource', value: stolenResource, count: 1 }] }],
+                    items: [stolenCard],
+                    victims: [{ victimId: victim.id, items: [stolenCard] }],
                 });
             } else {
                 stealLog = ` but ${victim.name} had no cards to steal`;

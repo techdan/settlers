@@ -5,6 +5,7 @@ import { generateStandardBoard } from '@/core/engine/board/board-generator';
 import { useBoardActions } from '@/lib/hooks/useBoardActions';
 import { createTestBoard, createTestGameState, createTestPlayer } from '@/lib/test-utils';
 import type { BoardCallbacks, PendingBoardPlacement } from '@/lib/types/board-selection-state';
+import { getCanonicalVertexId } from '@/lib/hex';
 
 const actionMocks = vi.hoisted(() => ({
   moveRobber: vi.fn(),
@@ -50,6 +51,27 @@ vi.mock('@/core/validation/building-validator', () => ({
 }));
 
 describe('useBoardActions robber confirmation', () => {
+  it('offers a choice between a city with resources and a settlement with only commodities', () => {
+    const hexes = generateStandardBoard();
+    const hex = hexes[0];
+    const [q, r] = hex.id.split(',').map(Number);
+    const cityId = getCanonicalVertexId(q, r, 0);
+    const settlementId = getCanonicalVertexId(q, r, 2);
+    const state = createTestGameState({
+      players: [createTestPlayer({ id: 'dash' }), createTestPlayer({ id: 'kaius', resources: { wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 } }), createTestPlayer({ id: 'pa', commodities: { paper: 1, cloth: 0, coin: 0 } })],
+      currentTurn: 'dash', phase: 'robber_placement',
+      board: { ...createTestBoard({ vertices: [{ id: cityId, owner: 'kaius', structure: 'city' }, { id: settlementId, owner: 'pa', structure: 'settlement' }] }), hexes },
+    });
+    const onRobberVictimRequest = vi.fn();
+    const { result } = renderHook(() => useBoardActions(state, 'dash', { buildMode: null },
+      { onCancelBuild: vi.fn(), onRobberVictimRequest },
+      { validVertices: new Set(), validEdges: new Set(), validHexes: new Set([hex.id]) },
+      new Map(), { type: 'robber', id: hex.id, phase: 'robber' }, vi.fn()));
+    act(() => result.current.handleConfirmPlacement());
+    expect(onRobberVictimRequest).toHaveBeenCalledWith(hex.id, ['kaius', 'pa']);
+    expect(actionMocks.moveRobber).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });

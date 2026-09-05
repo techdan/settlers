@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
 import { getGameStateByRoomId, updateGameState } from '@/lib/repositories/game-repository';
-import { discardCards } from '../robber-service';
+import { discardCards, moveRobber } from '../robber-service';
+import { generateStandardBoard } from '@/core/engine/board/board-generator';
+import { getCanonicalVertexId } from '@/lib/hex';
 
 vi.mock('@/lib/repositories/game-repository', () => ({
     getGameStateByRoomId: vi.fn(),
@@ -9,6 +11,24 @@ vi.mock('@/lib/repositories/game-repository', () => ({
 }));
 
 describe('Robber Service', () => {
+    it('steals a commodity from the selected settlement owner and records its type', async () => {
+        const hexes = generateStandardBoard();
+        const hex = hexes[0];
+        const [q, r] = hex.id.split(',').map(Number);
+        const vertexId = getCanonicalVertexId(q, r, 0);
+        const victim = createTestPlayer({ id: 'pa', commodities: { paper: 1, cloth: 0, coin: 0 } });
+        const thief = createTestPlayer({ id: 'dash' });
+        const state = createTestGameState({ players: [thief, victim], currentTurn: 'dash', phase: 'robber_placement',
+            board: { hexes, edges: {}, vertices: { [vertexId]: { id: vertexId, q, r, d: 0, owner: 'pa', structure: 'settlement' } } } });
+        vi.mocked(getGameStateByRoomId).mockResolvedValue(state);
+        const result = await moveRobber('VZJP', 'dash', hex.id, 'pa');
+        expect(victim.commodities?.paper).toBe(0);
+        expect(thief.commodities?.paper).toBe(1);
+        expect(result.lastTheft?.items).toEqual([{ type: 'commodity', value: 'paper', count: 1 }]);
+        expect(result.phase).toBe('main_phase');
+        expect(updateGameState).toHaveBeenCalledWith(result);
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
     });

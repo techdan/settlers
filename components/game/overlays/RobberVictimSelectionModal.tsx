@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { GameState } from '@/lib/types';
-import { getTotalResources } from '@/core/engine/resources/resource-manager';
+import { getRobberCardCount } from '@/core/engine/resources/robber-cards';
 import { TabletopButton, TabletopModal, tabletopOptionClass } from '../ui/TabletopModal';
 
 interface RobberVictimSelectionModalProps {
@@ -29,7 +29,7 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
     return (
         <TabletopModal
             title="Choose a Player to Rob"
-            description="Select which player you want to steal a resource card from."
+            description="Select which player you want to steal a card from. Resources and commodities can be stolen."
             onClose={onCancel}
             footer={<TabletopButton onClick={onCancel}>Cancel</TabletopButton>}
         >
@@ -37,7 +37,7 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
                 <div className="space-y-3 mb-6">
                     {victims.map(victim => {
                         if (!victim) return null;
-                        const totalResources = getTotalResources(victim);
+                        const totalResources = getRobberCardCount(victim, gameState.gameMode === 'cities_and_knights');
                         const hasResources = totalResources > 0;
 
                         return (
@@ -73,7 +73,7 @@ export const RobberVictimSelectionModal: React.FC<RobberVictimSelectionModalProp
                     })}
                 </div>
 
-                {victims.every(v => v && getTotalResources(v) === 0) && (
+                {victims.every(v => v && getRobberCardCount(v, gameState.gameMode === 'cities_and_knights') === 0) && (
                     <div className="mb-4">
                         <TabletopButton
                             onClick={() => onSelectVictim(null)}
