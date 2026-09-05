@@ -138,6 +138,11 @@ export const TradeModal: React.FC<TradeModalProps> = ({ gameState, playerId, onC
     const offerReady = (totalOf(offerGive) > 0 || totalOf(offerGet) > 0) && !isPending;
 
     const handleOfferTrade = () => {
+        if (isPending) return;
+        if (totalOf(offerGive) === 0 || totalOf(offerGet) === 0) {
+            setError('Trades can’t be gifts. Add at least one resource or commodity to both sides.');
+            return;
+        }
         setError(null);
         const give = splitByKind(offerGive);
         const get = splitByKind(offerGet);

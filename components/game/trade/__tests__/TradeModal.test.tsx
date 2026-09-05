@@ -206,6 +206,36 @@ describe('TradeModal — players', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
+    it.each(['give', 'get'] as const)('explains a %s-only offer inline and preserves it for correction', async (side) => {
+        const user = userEvent.setup();
+        const { tradeController, onClose } = renderModal({ resources: { wood: 2 } });
+        await openPlayersTab(user);
+        if (side === 'give') {
+            await user.click(within(offerRow()).getByRole('button', { name: /Offer one more Wood/ }));
+        } else {
+            await user.click(within(requestRow()).getByRole('button', { name: /Request one more Coin/ }));
+        }
+        await user.click(screen.getByRole('button', { name: /Offer Trade/ }));
+        expect(screen.getByRole('alert')).toHaveTextContent('Trades can’t be gifts. Add at least one resource or commodity to both sides.');
+        expect(tradeController.handleOfferTrade).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+
+        if (side === 'give') {
+            await user.click(within(requestRow()).getByRole('button', { name: /Request one more Coin/ }));
+        } else {
+            await user.click(within(offerRow()).getByRole('button', { name: /Offer one more Wood/ }));
+        }
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: /Offer Trade/ }));
+        expect(tradeController.handleOfferTrade).toHaveBeenCalledWith(
+            { wood: 1, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+            { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 },
+            { paper: 0, cloth: 0, coin: 0 },
+            { paper: 0, cloth: 0, coin: 1 }
+        );
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it('clears a composed offer', async () => {
         const user = userEvent.setup();
         renderModal({ resources: { wheat: 2 } });
