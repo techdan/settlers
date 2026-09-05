@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { GameState } from '@/lib/types/game';
-import { formatTime } from '@/lib/hooks/useTimerState';
+import { formatTime, useTimerState } from '@/lib/hooks/useTimerState';
 import { Tooltip } from '@/components/ui/tooltip';
 import { TabletopStatusIcon } from '@/themes/tabletop/glyphs';
 
@@ -37,6 +37,7 @@ export function ExtensionRequestButton({
 }: ExtensionRequestButtonProps) {
   const [isRequesting, setIsRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const timerStatus = useTimerState(gameState);
 
   // Don't show if timer not enabled or not player's turn
   if (!gameState.timerConfig?.enabled || gameState.currentTurn !== playerId) {
@@ -59,6 +60,7 @@ export function ExtensionRequestButton({
 
   // Check if extension is allowed
   const canRequest =
+    timerStatus.isExpired &&
     extensions.count < config.maxExtensionsPerTurn &&
     extensions.totalBorrowed < config.maxExtraSecondsPerTurn &&
     timeBank > 0;
@@ -83,7 +85,9 @@ export function ExtensionRequestButton({
 
   const tooltipLines: string[] = [];
   if (!canRequest) {
-    if (extensions.count >= config.maxExtensionsPerTurn) {
+    if (!timerStatus.isExpired) {
+      tooltipLines.push('Available when your turn timer runs out');
+    } else if (extensions.count >= config.maxExtensionsPerTurn) {
       tooltipLines.push(`Maximum ${config.maxExtensionsPerTurn} extensions reached`);
     } else if (extensions.totalBorrowed >= config.maxExtraSecondsPerTurn) {
       tooltipLines.push(`Maximum ${formatTime(config.maxExtraSecondsPerTurn)} extra time reached`);

@@ -25,13 +25,21 @@ function createTimerState(overrides: Partial<GameState> = {}): GameState {
             currentTurn: 'p1',
         }),
         timerConfig: { ...TIMER_CONFIG },
-        turnStartTime: Date.now(),
+        turnStartTime: Date.now() - TIMER_CONFIG.turnTimeLimit * 1000,
         playerTimeBanks: { p1: 300 },
         ...overrides,
     };
 }
 
 describe('timer request service', () => {
+    it('rejects an early extension without spending or persisting time', async () => {
+        const state = createTimerState({ turnStartTime: Date.now() });
+        vi.mocked(getGameStateByRoomId).mockResolvedValue(state);
+        await expect(requestTimeExtensionForGame('ROOM', 'p1')).rejects.toThrow('after your turn timer runs out');
+        expect(state.playerTimeBanks?.p1).toBe(300);
+        expect(updateGameState).not.toHaveBeenCalled();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
     });

@@ -332,6 +332,10 @@ export function requestExtension(
     };
   }
 
+  if (!getTimerStatus(gameState, Date.now()).isExpired) {
+    return { success: false, error: 'You can only extend time after your turn timer runs out' };
+  }
+
   // Grant extension
   const newTotalBorrowed = extensions.totalBorrowed + actualExtension;
   const newBankBalance = bank - actualExtension;

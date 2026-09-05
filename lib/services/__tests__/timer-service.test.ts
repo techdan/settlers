@@ -35,9 +35,13 @@ function stateWithTimer(overrides: Partial<GameState> = {}): GameState {
     };
 }
 
+function expiredTimer(overrides: Partial<GameState> = {}): GameState {
+    return stateWithTimer({ turnStartTime: Date.now() - 120_000, ...overrides });
+}
+
 describe('requestExtension logging', () => {
     it('logs the extension with the amount taken and the resulting bank balance', () => {
-        const state = stateWithTimer();
+        const state = expiredTimer();
 
         const result = requestExtension(state, 'p1');
 
@@ -50,7 +54,7 @@ describe('requestExtension logging', () => {
     });
 
     it('does not mutate the logs of the state it was given', () => {
-        const state = stateWithTimer();
+        const state = expiredTimer();
         const originalLogs = state.logs;
 
         requestExtension(state, 'p1');
@@ -60,7 +64,7 @@ describe('requestExtension logging', () => {
     });
 
     it('reports the actual amount granted when the bank cannot cover a full increment', () => {
-        const state = stateWithTimer({ playerTimeBanks: { p1: 25 } });
+        const state = expiredTimer({ playerTimeBanks: { p1: 25 } });
 
         const result = requestExtension(state, 'p1');
 
@@ -72,7 +76,7 @@ describe('requestExtension logging', () => {
     });
 
     it('appends to existing logs rather than replacing them', () => {
-        const state = stateWithTimer({
+        const state = expiredTimer({
             logs: [{ id: 'seed', timestamp: 1, message: 'Pa rolled 8' }],
         });
 
@@ -85,16 +89,16 @@ describe('requestExtension logging', () => {
     });
 
     it('logs nothing when the request is rejected', () => {
-        const emptyBank = requestExtension(stateWithTimer({ playerTimeBanks: { p1: 0 } }), 'p1');
+        const emptyBank = requestExtension(expiredTimer({ playerTimeBanks: { p1: 0 } }), 'p1');
         expect(emptyBank.success).toBe(false);
         expect(emptyBank.newState).toBeUndefined();
 
-        const notYourTurn = requestExtension(stateWithTimer(), 'p2');
+        const notYourTurn = requestExtension(expiredTimer(), 'p2');
         expect(notYourTurn.success).toBe(false);
         expect(notYourTurn.newState).toBeUndefined();
 
         const disabled = requestExtension(
-            stateWithTimer({ timerConfig: { ...CONFIG, enabled: false } }),
+            expiredTimer({ timerConfig: { ...CONFIG, enabled: false } }),
             'p1'
         );
         expect(disabled.success).toBe(false);
@@ -102,7 +106,7 @@ describe('requestExtension logging', () => {
     });
 
     it('stops logging once the per-turn extra-time cap is reached', () => {
-        const state = stateWithTimer({
+        const state = expiredTimer({
             currentTurnExtensions: { count: 1, totalBorrowed: CONFIG.maxExtraSecondsPerTurn },
         });
 
