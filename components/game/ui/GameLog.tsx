@@ -5,6 +5,7 @@ import { GameLogEntry, PlayerState } from '@/lib/types';
 import { Tooltip } from '@/components/ui/tooltip';
 import { PLAYER_COLOR_VAR_MAP } from '@/lib/constants/player-colors';
 import type { PlayerColor } from '@/lib/types/player';
+import { getLogCardDescription } from '@/lib/utils/log-card-description';
 
 interface GameLogProps {
     logs: GameLogEntry[];
@@ -77,6 +78,13 @@ export const GameLog: React.FC<GameLogProps> = ({ logs, players }) => {
                     const playerColor = resolvePlayerColor(player?.color);
                     const isSystem = !player;
                     const timestamp = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const card = getLogCardDescription(log.message);
+                    const tooltipContent = (
+                        <div className="text-xs">
+                            {card && <><div className="mb-1 font-semibold">{card.name}</div><p className="mb-2">{card.description}</p></>}
+                            <span className="text-[var(--ui-muted)]">{timestamp}</span>
+                        </div>
+                    );
 
                     // Bold the acting player's name in their color when the
                     // message leads with it ("Pa placed a road").
@@ -85,8 +93,8 @@ export const GameLog: React.FC<GameLogProps> = ({ logs, players }) => {
 
                     if (isSystem) {
                         return (
-                            <Tooltip key={log.id} content={<span className="text-xs">{timestamp}</span>} placement="left" className="w-full">
-                                <div className="flex items-center gap-2 py-1 px-1 cursor-default w-full">
+                            <Tooltip key={log.id} content={tooltipContent} placement="left" className="w-full">
+                                <div tabIndex={card ? 0 : undefined} className={`flex items-center gap-2 py-1 px-1 w-full ${card ? 'cursor-help underline decoration-dotted underline-offset-2' : 'cursor-default'}`}>
                                     <div className="h-px flex-1 bg-[var(--ui-border)]" />
                                     <div className="text-[var(--ui-muted)] italic text-[11px] text-center max-w-[85%] leading-snug">
                                         {log.message}
@@ -98,8 +106,8 @@ export const GameLog: React.FC<GameLogProps> = ({ logs, players }) => {
                     }
 
                     return (
-                        <Tooltip key={log.id} content={<span className="text-xs">{timestamp}</span>} placement="left" className="w-full">
-                            <div className="group flex items-start py-[3px] px-1 hover:bg-white/5 rounded transition-colors cursor-default w-full">
+                        <Tooltip key={log.id} content={tooltipContent} placement="left" className="w-full">
+                            <div tabIndex={card ? 0 : undefined} className={`group flex items-start py-[3px] px-1 hover:bg-white/5 rounded transition-colors w-full ${card ? 'cursor-help underline decoration-dotted underline-offset-2' : 'cursor-default'}`}>
                                 {/* Player color bar */}
                                 <div
                                     className="w-[3px] self-stretch rounded-full mr-2 flex-shrink-0 opacity-80"
