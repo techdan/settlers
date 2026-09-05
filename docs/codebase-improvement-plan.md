@@ -6,6 +6,12 @@
 
 ## 5.14 Typed server-action results
 
+### Related bug fix: tied barbarian defender rewards (2026-09-05)
+
+- [x] Committed in `8b42012`: expose the saved defender reward queue through `components/game/progress/DefenderRewardModal.tsx`, `components/game/modals/GameEventModals.tsx`, and `app/actions.ts`; validate and consume claims in `lib/services/ck-game-service.ts`; keep `components/game/modals/WaitingOverlay.tsx` from covering the chooser. Queue new rewards in turn order in `core/engine/barbarian/barbarian-manager.ts`.
+- Acceptance: the three pending rewards in room VZJP can be claimed by choosing a deck; each claim consumes one reward; invalid/repeated/out-of-order claims fail; empty decks retain the reward; the waiting overlay does not hide the action; VP cards reveal immediately.
+- Include the new `claimDefenderProgressCard` action in this section's typed-result migration (the original 60-action audit predates this addition).
+
 ### Problem
 
 Most exports in `app/actions.ts` return service data on success and throw on expected
