@@ -2,6 +2,7 @@ import React from 'react';
 import { GameState } from '@/lib/types';
 import { TradeModal } from '../trade/TradeModal';
 import { AqueductModal } from '../progress/AqueductModal';
+import { DefenderRewardModal } from '../progress/DefenderRewardModal';
 import { CommercialHarborModal } from '../progress/CommercialHarborModal';
 import { WeddingGiftModal } from '../progress/WeddingGiftModal';
 import { TradeController } from '@/lib/controllers/trade-controller';
@@ -23,6 +24,10 @@ export const GameEventModals: React.FC<GameEventModalsProps> = ({
   onCloseTrade,
   tradeController,
 }) => {
+  if (gameState.phase !== 'game_over' && gameState.pendingDefenderCardDraws?.includes(playerId)) {
+    return <DefenderRewardModal key={gameState.pendingDefenderCardDraws.length} gameState={gameState} playerId={playerId} />;
+  }
+
   return (
     <>
       {showTrade && (

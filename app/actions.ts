@@ -11,6 +11,7 @@ import * as buildingService from '@/lib/services/building-service';
 import * as chatService from '@/lib/services/chat-service';
 import * as cityWallsService from '@/lib/services/city-walls-service';
 import * as ckGameService from '@/lib/services/ck-game-service';
+import type { ProgressCardCategory } from '@/core/rules/commodity-constants';
 import * as debugService from '@/lib/services/debug-service';
 import * as devCardService from '@/lib/services/devcard-service';
 import * as gameService from '@/lib/services/game-service';
@@ -81,6 +82,10 @@ export async function playDevCard(
     options?: DevCardPlayOptions
 ) {
     return devCardService.playDevCard(roomId, playerId, cardType, options);
+}
+
+export async function claimDefenderProgressCard(roomId: string, playerId: string, category: ProgressCardCategory) {
+    return ckGameService.drawProgressCardAction(roomId, playerId, category);
 }
 
 export async function discardCards(roomId: string, playerId: string, resources: Record<ResourceType, number>, commodities?: Record<CommodityType, number>) {

@@ -10,6 +10,9 @@ interface WaitingOverlayProps {
 }
 
 export function WaitingOverlay({ gameState, currentPlayerId }: WaitingOverlayProps) {
+  // The reward dialog provides the actual action (or explains the draw queue).
+  if (gameState.pendingDefenderCardDraws?.includes(currentPlayerId)) return null;
+
   const blockingObligations = getBlockingObligations(gameState);
 
   // Don't show if no blocking obligations

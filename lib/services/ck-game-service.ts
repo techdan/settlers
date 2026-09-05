@@ -53,10 +53,8 @@ export async function resolveBarbarianAttackAction(roomId: string): Promise<Game
 }
 
 /**
- * Draw a progress card for a player
- * Used when:
- * - Event die triggers card draw (improvement level ≥3)
- * - Defender of Catan wins barbarian attack
+ * Claim a pending tied-defender reward from the player's chosen deck.
+ * Event-die rewards are drawn directly by the dice engine.
  *
  * @param roomId - Room ID
  * @param playerId - Player ID
@@ -81,11 +79,24 @@ export async function drawProgressCardAction(
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
+    if (gameState.phase === 'game_over') throw new Error('Game is over');
+    if (!['science', 'trade', 'politics'].includes(category)) {
+        throw new Error('Invalid progress card category');
+    }
+    if (!gameState.pendingDefenderCardDraws?.includes(playerId)) {
+        throw new Error('No defender reward to claim');
+    }
+    if (gameState.pendingDefenderCardDraws[0] !== playerId) {
+        throw new Error('Wait for the preceding defender to choose a card');
+    }
+
     // 4. Draw card
     const card = drawProgressCard(gameState, playerId, category);
     if (!card) {
         throw new Error(`No cards remaining in ${category} deck`);
     }
+
+    gameState.pendingDefenderCardDraws = gameState.pendingDefenderCardDraws.slice(1);
 
     // 5. Save to database
     await persistGameState(gameState);

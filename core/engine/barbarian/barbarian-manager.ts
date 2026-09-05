@@ -13,7 +13,7 @@ import { getTotalCommodities } from '@/core/engine/resources/commodity-manager';
  * - Advances when event die shows ship (handled by event-die-manager)
  * - Attacks at position 7, then resets to 0
  * - If totalKnightStrength >= totalCities: defenders win
- *   - Strongest defender (most knight strength) draws a progress card
+ *   - Sole strongest defender earns a VP; tied strongest defenders choose progress cards
  * - If totalKnightStrength < totalCities: attackers win
  *   - Weakest player (fewest knight strength, tiebreaker: most cities) loses a city
  * - Metropolises are immune to destruction
@@ -106,13 +106,18 @@ function handleDefendersWin(gameState: GameState, totalCities: number, totalKnig
         gameState.logs.push({
             id: `${Date.now()}-${Math.random()}`,
             timestamp: Date.now(),
-            message: `${baseMessage} ${defenderNames} tied for highest contribution (${maxStrength} strength) - each may draw a progress card.`
+            message: `${baseMessage} ${defenderNames} tied for highest contribution (${maxStrength} strength) - each chooses one progress card deck as a defense reward (instead of a victory point).`
         });
 
-        // Note: Actual progress card draw will be handled by the service layer
-        // The service will need to let each tied player choose which category to draw from
-        // Store tied defenders in a temporary field for the service to process
-        gameState.pendingDefenderCardDraws = topDefenders.map(pd => pd.player.id);
+        // Resolve choices in seating order, starting with the active player.
+        const turnOrder = gameState.turnOrder.length ? gameState.turnOrder : gameState.players.map(p => p.id);
+        const currentIndex = Math.max(0, turnOrder.indexOf(gameState.currentTurn));
+        const seatingOrder = [...turnOrder.slice(currentIndex), ...turnOrder.slice(0, currentIndex)];
+        const defenderIds = new Set(topDefenders.map(pd => pd.player.id));
+        gameState.pendingDefenderCardDraws = [
+            ...(gameState.pendingDefenderCardDraws ?? []),
+            ...seatingOrder.filter(id => defenderIds.has(id)),
+        ];
     }
 }
 

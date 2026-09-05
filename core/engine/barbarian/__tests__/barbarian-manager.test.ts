@@ -68,6 +68,7 @@ describe('Barbarian Manager', () => {
         });
 
         it('awards progress cards on tie (no VP token)', () => {
+            gameState.currentTurn = 'p2';
             // Setup: 1 city total. Knights: p1=1, p2=1. Total 2 >= 1.
             gameState.board.vertices['0,0,0'] = { id: '0,0,0', owner: 'p1', structure: 'city', q: 0, r: 0, d: 0 };
 
@@ -89,7 +90,7 @@ describe('Barbarian Manager', () => {
             resolveBarbbarianAttack(gameState);
 
             expect(gameState.players[0].defenderVPTokens).toBe(0);
-            expect(gameState.pendingDefenderCardDraws).toEqual(expect.arrayContaining(['p1', 'p2']));
+            expect(gameState.pendingDefenderCardDraws).toEqual(['p2', 'p1']);
             expect(gameState.barbarianPosition).toBe(0);
         });
     });
