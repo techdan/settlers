@@ -23,7 +23,10 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
     onClose,
     turnContext
 }) => {
-    const [selectedCards, setSelectedCards] = useState<ProgressCardType[]>([]);
+    const handKey = JSON.stringify(cards);
+    const [selection, setSelection] = useState<{ handKey: string; indices: number[] }>({ handKey, indices: [] });
+    // A changed hand invalidates positions, but a realtime copy of the same hand does not.
+    const selectedIndices = selection.handKey === handKey ? selection.indices : [];
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string>('');
 
@@ -31,23 +34,23 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
     const isOtherTurn = turnContext === 'other_turn';
     const allowDeferral = !isOtherTurn;
 
-    const toggleCard = (card: ProgressCardType) => {
-        if (selectedCards.includes(card)) {
-            setSelectedCards(selectedCards.filter(c => c !== card));
-        } else {
-            if (selectedCards.length < cardsToDiscard) {
-                setSelectedCards([...selectedCards, card]);
-            }
-        }
+    const toggleCard = (index: number) => {
+        if (isSubmitting) return;
+        setSelection(previous => {
+            const indices = previous.handKey === handKey ? previous.indices : [];
+            return { handKey, indices: indices.includes(index)
+                ? indices.filter(i => i !== index)
+                : indices.length < cardsToDiscard ? [...indices, index] : indices };
+        });
     };
 
     const handleSubmit = async () => {
-        if (selectedCards.length !== cardsToDiscard) return;
+        if (isSubmitting || selectedIndices.length !== cardsToDiscard) return;
 
         setIsSubmitting(true);
         setError('');
         try {
-            await onDiscard(selectedCards);
+            await onDiscard(selectedIndices.map(index => cards[index]));
             onClose();
         } catch (error: unknown) {
             console.error('Failed to discard cards:', error);
@@ -70,8 +73,8 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
             footer={(
                 <>
                     {allowDeferral ? <TabletopButton onClick={onClose} disabled={isSubmitting}>Keep Playing</TabletopButton> : null}
-                    <TabletopButton variant="danger" onClick={handleSubmit} disabled={selectedCards.length !== cardsToDiscard || isSubmitting}>
-                        {isSubmitting ? 'Discarding...' : `Discard ${selectedCards.length}/${cardsToDiscard}`}
+                    <TabletopButton variant="danger" onClick={handleSubmit} disabled={selectedIndices.length !== cardsToDiscard || isSubmitting}>
+                        {isSubmitting ? 'Discarding...' : `Discard ${selectedIndices.length}/${cardsToDiscard}`}
                     </TabletopButton>
                 </>
             )}
@@ -91,7 +94,9 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                     {cards.map((card, index) => {
                         const metadata = getCardMetadata(card);
-                        const isSelected = selectedCards.includes(card);
+                        const isSelected = selectedIndices.includes(index);
+                        const copyCount = cards.filter(type => type === card).length;
+                        const copyNumber = cards.slice(0, index + 1).filter(type => type === card).length;
 
                         return (
                             <Tooltip
@@ -101,9 +106,10 @@ export const ProgressCardDiscardDialog: React.FC<ProgressCardDiscardDialogProps>
                                 tooltipClassName="whitespace-pre-line max-w-xs"
                             >
                                 <button
-                                    onClick={() => toggleCard(card)}
+                                    onClick={() => toggleCard(index)}
                                     disabled={isSubmitting}
                                     aria-pressed={isSelected}
+                                    aria-label={`${metadata.name}${copyCount > 1 ? `, copy ${copyNumber} of ${copyCount}` : ''}`}
                                     className={`flex w-full flex-col items-center rounded-lg border-2 p-3 transition-all ${tabletopOptionClass(isSelected, isSubmitting)} ${isSelected ? 'scale-95' : ''}`}
                                 >
                                     <ProgressCardFace type={card} width={82} />
