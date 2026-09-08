@@ -1,6 +1,6 @@
 # Codebase Improvement Plan
 
-**Status:** One production-readiness item remains after the v2.1 cleanup release
+**Status:** Typed-action production work remains; a separate validation defect is recorded in §5.15
 **Active item:** §5.14 — typed server-action results
 **Completed-plan archive:** [`docs/archive/codebase-improvement-plan-v2.1.md`](archive/codebase-improvement-plan-v2.1.md)
 
@@ -83,3 +83,13 @@ converting them into failure results.
 - Redirect-based room creation, joining, and resume flows still navigate correctly.
 - Success-only revalidation is covered.
 - `npm run lint`, `npm run typecheck`, `npm run test:run`, and `npm run build` pass.
+
+## 5.15 Alchemist integer validation (discovered 2026-09-08)
+
+- [ ] In `core/engine/progress/commands/AlchemistCommand.ts`, require both selected
+  production dice to be integers from 1 through 6; the current range comparisons
+  admit fractional values. This was discovered during the 3D dice audit and is
+  separate from the presentation migration.
+- Acceptance: unit tests in the adjacent `__tests__/AlchemistCommand.test.ts`
+  reject fractions, NaN, infinities, and out-of-range values without consuming the
+  card or changing the game; valid integer selections retain current behavior.

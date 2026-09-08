@@ -389,7 +389,7 @@ export function useBoardActions(
 
   // Handle placement confirmation
   const handleConfirmPlacement = () => {
-    if (!pendingPlacement) return;
+    if (!pendingPlacement || isPending) return;
 
     const { type, id, phase } = pendingPlacement;
 

@@ -246,6 +246,7 @@ export function useGameControllerModel({
 
     return {
         gameState,
+        baseGameState,
         currentPlayer,
         isCitiesAndKnights: Boolean(isCitiesAndKnights),
         isActiveTurn: Boolean(isActiveTurn),

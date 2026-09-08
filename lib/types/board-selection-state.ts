@@ -107,6 +107,7 @@ export interface BoardCallbacks {
  */
 export interface BoardProps {
   gameState: GameState;
+  authoritativeState?: GameState;
   playerId: string;
   selectionState: BoardSelectionState;
   callbacks: BoardCallbacks;

@@ -7,6 +7,10 @@ import { persistGameState } from '@/lib/services/game-persistence-service';
 import { updateRoomStatus } from '@/lib/repositories/room-repository';
 import { distributeResources, getTotalResources, logDistribution } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities, getTotalCommodities } from '@/core/engine/resources/commodity-manager';
+import type { ResourceDistribution } from '@/core/engine/resources/resource-manager';
+import type { CommodityDistribution } from '@/core/engine/resources/commodity-manager';
+import type { ProductionSource } from '@/lib/types/game';
+import { createProductionEvent } from '@/core/engine/resources/production-event';
 import { rollEventDie, processEventDieRoll, getCategoryFromColor, getEligiblePlayersForCardDraw } from '@/core/engine/dice/event-die-manager';
 import { checkVictoryCondition, updateAllVictoryPoints } from '@/core/rules/victory-conditions';
 import { generateStandardBoard, getDesertHexId } from '@/core/engine/board/board-generator';
@@ -301,6 +305,9 @@ export async function rollDice(
 
     // Handle robber (7)
     // IMPORTANT: If barbarian attack is pending city selection, defer robber handling
+    const productionSources: ProductionSource[] = [];
+    let resourceDistribution: ResourceDistribution = {};
+    let commodityDistribution: CommodityDistribution = {};
     // Note: processEventDieRoll may have changed phase to 'barbarian_city_selection'
     const currentPhase: GamePhase = gameState.phase;
     if (total === 7) {
@@ -358,10 +365,10 @@ export async function rollDice(
         });
 
         // Distribute resources
-        const resourceDistribution = distributeResources(gameState, total);
+        resourceDistribution = distributeResources(gameState, total, productionSources);
 
         // Distribute commodities (C&K expansion only)
-        const commodityDistribution = distributeCommodities(gameState, total);
+        commodityDistribution = distributeCommodities(gameState, total, productionSources);
 
         // Combine resource/commodity logs so each player gets a single entry
         logDistribution(gameState, resourceDistribution, commodityDistribution);
@@ -395,6 +402,8 @@ export async function rollDice(
             gameState = setPhase(gameState, 'main_phase');
         }
     }
+
+    gameState.lastProduction = createProductionEvent(gameState, total, resourceDistribution, commodityDistribution, productionSources);
 
     // Save to database
     await persistGameState(gameState);

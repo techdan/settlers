@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { startGame, rollDice, endTurn } from '../game-service';
-import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
+import { createTestGameState, createTestPlayer, createTestBoard, createTestVertex } from '@/lib/test-utils';
 import { GameState } from '@/lib/types';
+import { createHex } from '@/lib/hex';
+import { getDiceRollKey } from '@/lib/presentation/dice-events';
 
 // Mock Repositories
 vi.mock('@/lib/repositories/game-repository', () => ({
@@ -87,6 +89,27 @@ describe('Game Service', () => {
             // currentTurn is p1
             await expect(rollDice('room-1', 'p2'))
                 .rejects.toThrow('Not your turn');
+        });
+
+        it('persists exact accepted production and its source hex without deferred rewards', async () => {
+            mockGameState.board = createTestBoard({
+                hexes: [{ id: '0,0', hex: createHex(0, 0), terrain: 'forest', numberToken: 6 }],
+                vertices: [createTestVertex({ q: 0, r: 0, d: 0, owner: 'p1', structure: 'city' })],
+            });
+            mockGameState.players[1].improvements = { science: 3, politics: 0, trade: 0 };
+            const random = vi.spyOn(Math, 'random').mockReturnValue(0.4); // 3 + 3 and ship
+            try {
+                const result = await rollDice('room-1', 'p1');
+                expect(result.lastProduction?.id).toBe(getDiceRollKey(result));
+                expect(result.lastProduction?.gains).toEqual([{ playerId: 'p1', resources: { wood: 1 }, commodities: { paper: 1 } }]);
+                expect(result.lastProduction?.sources).toEqual([
+                    { hexId: '0,0', playerId: 'p1', kind: 'resource', type: 'wood', amount: 1 },
+                    { hexId: '0,0', playerId: 'p1', kind: 'commodity', type: 'paper', amount: 1 },
+                ]);
+                expect(result.pendingAqueduct).toContain('p2');
+            } finally {
+                random.mockRestore();
+            }
         });
     });
 

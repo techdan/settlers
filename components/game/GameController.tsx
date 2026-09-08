@@ -171,6 +171,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
             )}
 
             <GameBoardSection
+                authoritativeState={model.baseGameState ?? undefined}
                 gameState={gameState}
                 playerId={playerId}
                 selectionManager={selectionManager}
@@ -360,6 +361,7 @@ const GameControllerInner: React.FC<GameControllerProps> = ({ roomId, playerId }
                 onOpenPlayerCityManagement={handleOpenPlayerCityManagement}
                 tray={(
                     <GameTray
+                        authoritativeState={model.baseGameState ?? undefined}
                         gameState={gameState}
                         playerId={playerId}
                         isCitiesAndKnights={!!isCitiesAndKnights}

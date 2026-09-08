@@ -5,9 +5,8 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { boardTheme } from '@/themes/board-theme';
 import { generatePorts } from '@/core/engine/board/port-generator';
 import { getBarbarianForces } from '@/core/rules/barbarian-strength';
-import { Edge, GameState, Vertex } from '@/lib/types';
-import { Knight } from '@/lib/types/player';
-import { BoardSelectionState, PendingBoardPlacement } from '@/lib/types/board-selection-state';
+import { BoardSelectionState } from '@/lib/types/board-selection-state';
+import type { BoardRendererProps } from '@/lib/types/board-renderer';
 import { VertexRenderer } from './VertexRenderer';
 import { EdgeRenderer } from './EdgeRenderer';
 import { BoardControls } from './BoardControls';
@@ -41,30 +40,7 @@ const {
  * - Props-driven rendering only
  */
 
-interface BoardCanvasProps {
-  gameState: GameState;
-  playerId: string;
-  hexSize: number;
-  selectionState: BoardSelectionState;
-  validation: {
-    validVertices: Set<string>;
-    validEdges: Set<string>;
-    validHexes: Set<string>;
-  };
-  vertices: Vertex[];
-  renderEdges: Edge[];
-  knightsMap: Map<string, Knight>;
-  pendingPlacement: PendingBoardPlacement | null;
-  displayedRobberHexId: string | null;
-  onVertexClick: (vertexId: string) => void;
-  onEdgeClick: (edgeId: string) => void;
-  onHexClick: (hexId: string) => void;
-  onConfirmPlacement: () => void;
-  onCancelPlacement: () => void;
-  onCancelBuild: () => void;
-}
-
-export const BoardCanvas: React.FC<BoardCanvasProps> = ({
+export const BoardCanvas: React.FC<BoardRendererProps> = ({
   gameState,
   playerId,
   hexSize,

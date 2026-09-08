@@ -1,0 +1,231 @@
+{
+  "author": "Original procedural geometry authored for Settlers of Lanc",
+  "source": "scripts/art/generate_tabletop_models.py",
+  "palette": "themes/tabletop/palette.ts",
+  "generator": "5.2.1 LTS",
+  "coordinates": "glTF Y-up; ground y=0; terrain token clearance centered at x=0,z=0.27",
+  "assets": [
+    {
+      "name": "foundation-forest",
+      "meshes": 4,
+      "vertices": 48,
+      "bytes": 6904
+    },
+    {
+      "name": "terrain-forest-0",
+      "meshes": 8,
+      "vertices": 880,
+      "bytes": 65148
+    },
+    {
+      "name": "terrain-forest-1",
+      "meshes": 8,
+      "vertices": 904,
+      "bytes": 65952
+    },
+    {
+      "name": "foundation-hill",
+      "meshes": 4,
+      "vertices": 48,
+      "bytes": 6888
+    },
+    {
+      "name": "terrain-hill-0",
+      "meshes": 8,
+      "vertices": 434,
+      "bytes": 39004
+    },
+    {
+      "name": "terrain-hill-1",
+      "meshes": 8,
+      "vertices": 464,
+      "bytes": 42588
+    },
+    {
+      "name": "foundation-pasture",
+      "meshes": 4,
+      "vertices": 48,
+      "bytes": 6912
+    },
+    {
+      "name": "terrain-pasture-0",
+      "meshes": 7,
+      "vertices": 2680,
+      "bytes": 118592
+    },
+    {
+      "name": "terrain-pasture-1",
+      "meshes": 7,
+      "vertices": 2476,
+      "bytes": 108936
+    },
+    {
+      "name": "foundation-field",
+      "meshes": 4,
+      "vertices": 48,
+      "bytes": 6896
+    },
+    {
+      "name": "terrain-field-0",
+      "meshes": 4,
+      "vertices": 3968,
+      "bytes": 337732
+    },
+    {
+      "name": "terrain-field-1",
+      "meshes": 4,
+      "vertices": 3968,
+      "bytes": 337732
+    },
+    {
+      "name": "foundation-mountain",
+      "meshes": 4,
+      "vertices": 48,
+      "bytes": 6920
+    },
+    {
+      "name": "terrain-mountain-0",
+      "meshes": 10,
+      "vertices": 667,
+      "bytes": 57416
+    },
+    {
+      "name": "terrain-mountain-1",
+      "meshes": 10,
+      "vertices": 667,
+      "bytes": 55840
+    },
+    {
+      "name": "foundation-desert",
+      "meshes": 4,
+      "vertices": 48,
+      "bytes": 6904
+    },
+    {
+      "name": "terrain-desert-0",
+      "meshes": 5,
+      "vertices": 2220,
+      "bytes": 31064
+    },
+    {
+      "name": "terrain-desert-1",
+      "meshes": 6,
+      "vertices": 2310,
+      "bytes": 37752
+    },
+    {
+      "name": "building-settlement",
+      "meshes": 7,
+      "vertices": 150,
+      "bytes": 18412
+    },
+    {
+      "name": "building-city",
+      "meshes": 7,
+      "vertices": 268,
+      "bytes": 27816
+    },
+    {
+      "name": "building-metropolis",
+      "meshes": 8,
+      "vertices": 269,
+      "bytes": 29164
+    },
+    {
+      "name": "city-wall",
+      "meshes": 2,
+      "vertices": 160,
+      "bytes": 14084
+    },
+    {
+      "name": "knight-1-0",
+      "meshes": 5,
+      "vertices": 331,
+      "bytes": 21232
+    },
+    {
+      "name": "knight-1-1",
+      "meshes": 5,
+      "vertices": 331,
+      "bytes": 21252
+    },
+    {
+      "name": "knight-2-0",
+      "meshes": 5,
+      "vertices": 339,
+      "bytes": 21880
+    },
+    {
+      "name": "knight-2-1",
+      "meshes": 5,
+      "vertices": 339,
+      "bytes": 21900
+    },
+    {
+      "name": "knight-3-0",
+      "meshes": 5,
+      "vertices": 347,
+      "bytes": 22528
+    },
+    {
+      "name": "knight-3-1",
+      "meshes": 5,
+      "vertices": 347,
+      "bytes": 22548
+    },
+    {
+      "name": "traveler-robber",
+      "meshes": 6,
+      "vertices": 550,
+      "bytes": 31636
+    },
+    {
+      "name": "traveler-merchant",
+      "meshes": 6,
+      "vertices": 589,
+      "bytes": 35236
+    },
+    {
+      "name": "harbor-generic",
+      "meshes": 10,
+      "vertices": 1122,
+      "bytes": 77440
+    },
+    {
+      "name": "harbor-wood",
+      "meshes": 11,
+      "vertices": 1330,
+      "bytes": 85592
+    },
+    {
+      "name": "harbor-brick",
+      "meshes": 11,
+      "vertices": 1114,
+      "bytes": 77636
+    },
+    {
+      "name": "harbor-sheep",
+      "meshes": 12,
+      "vertices": 1210,
+      "bytes": 79624
+    },
+    {
+      "name": "harbor-wheat",
+      "meshes": 12,
+      "vertices": 1122,
+      "bytes": 79148
+    },
+    {
+      "name": "harbor-ore",
+      "meshes": 11,
+      "vertices": 1260,
+      "bytes": 90560
+    },
+    {
+      "name": "barbarian-boat",
+      "meshes": 8,
+      "vertices": 1001,
+      "bytes": 45912
+    }
+  ]
+}

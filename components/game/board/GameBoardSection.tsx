@@ -10,6 +10,7 @@ import { TabletopButton } from '@/components/game/ui/TabletopModal';
 
 interface GameBoardSectionProps {
   gameState: GameState;
+  authoritativeState?: GameState;
   playerId: string;
   selectionManager: SelectionState;
   smithEligibleVertexIds: string[];
@@ -28,6 +29,7 @@ interface GameBoardSectionProps {
 
 export const GameBoardSection: React.FC<GameBoardSectionProps> = ({
   gameState,
+  authoritativeState,
   playerId,
   selectionManager,
   smithEligibleVertexIds,
@@ -74,6 +76,7 @@ export const GameBoardSection: React.FC<GameBoardSectionProps> = ({
 
       <Board
         gameState={gameState}
+        authoritativeState={authoritativeState}
         playerId={playerId}
         selectionState={{
           buildMode: selectionManager.buildMode,

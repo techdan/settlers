@@ -91,6 +91,31 @@ export interface EventDieRoll {
     timestamp: number;
 }
 
+/** One actual award from a producing hex; never reconstructed from hand deltas. */
+export type ProductionSource = {
+    hexId: string;
+    playerId: string;
+    amount: number;
+} & (
+    | { kind: 'resource'; type: ResourceType }
+    | { kind: 'commodity'; type: CommodityType }
+);
+
+export interface ProductionPlayerGain {
+    playerId: string;
+    resources: Partial<Record<ResourceType, number>>;
+    commodities: Partial<Record<CommodityType, number>>;
+}
+
+/** Public, resolved roll production. Aqueduct and other deferred choices are excluded. */
+export interface ProductionEvent {
+    id: string;
+    timestamp: number;
+    diceTotal: number;
+    gains: ProductionPlayerGain[];
+    sources: ProductionSource[];
+}
+
 export interface PendingAlchemyState {
     playerId: string;
     eventDieFace: EventDieFace;
@@ -230,6 +255,7 @@ export interface GameState {
     lastPlacedSettlementId: string | null; // For setup phase road validation
     robberHexId: string | null; // ID of the hex where the robber is
     diceRoll?: DiceRoll;
+    lastProduction?: ProductionEvent; // Most recent resolved roll, including empty production on 7
     diceStats?: DiceStats;
     eventDieStats?: EventDieStats;
     devCardDeck: DevCardType[];

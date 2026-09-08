@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AlchemistCommand } from '../AlchemistCommand';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils';
 import { GameState } from '@/lib/types';
+import { EMPTY_EVENT_DIE_STATS } from '@/lib/types/game';
+import { getDiceRollKey } from '@/lib/presentation/dice-events';
 
 // Mock dependencies
 vi.mock('@/core/engine/progress/progress-card-definitions', () => ({
@@ -87,6 +89,28 @@ describe('AlchemistCommand', () => {
 
         expect(gameState.phase).toBe('discarding');
         expect(gameState.discardContext).toEqual({ type: 'robber' });
+        expect(gameState.lastProduction?.diceTotal).toBe(7);
+        expect(gameState.lastProduction?.gains).toEqual([]);
+        expect(gameState.lastProduction?.sources).toEqual([]);
+    });
+
+    it('captures selected-dice awards and exact sources from the distribution results', () => {
+        gameState.eventDieStats = { ...EMPTY_EVENT_DIE_STATS, ship: 2 };
+        vi.mocked(EventDieManager.processEventDieRoll).mockImplementationOnce(state => { state.eventDieStats!.ship++; });
+        vi.mocked(ResourceManager.getTotalResources).mockReturnValue(0);
+        vi.mocked(CommodityManager.getTotalCommodities).mockReturnValue(0);
+        vi.mocked(ResourceManager.distributeResources).mockImplementationOnce((_state, _total, sources) => {
+            sources?.push({ hexId: '0,0', playerId: 'p1', kind: 'resource', type: 'wood', amount: 1 });
+            return { p1: { wood: 1 } };
+        });
+        vi.mocked(CommodityManager.distributeCommodities).mockImplementationOnce((_state, _total, sources) => {
+            sources?.push({ hexId: '0,0', playerId: 'p1', kind: 'commodity', type: 'paper', amount: 1 });
+            return { p1: { paper: 1 } };
+        });
+        command.execute(gameState, 'p1', { chosenDice1: 3, chosenDice2: 3 });
+        expect(gameState.lastProduction?.id).toBe(getDiceRollKey(gameState));
+        expect(gameState.lastProduction?.gains).toEqual([{ playerId: 'p1', resources: { wood: 1 }, commodities: { paper: 1 } }]);
+        expect(gameState.lastProduction?.sources).toHaveLength(2);
     });
 
     it('throws if options missing', () => {

@@ -31,6 +31,7 @@ interface GameTrayProgressCardHandlers {
 
 export interface GameTrayProps {
   gameState: GameState;
+  authoritativeState?: GameState;
   playerId: string;
   isCitiesAndKnights: boolean;
   currentPlayer: PlayerState | undefined;
@@ -75,6 +76,7 @@ const Divider: React.FC = () => (
  */
 export const GameTray: React.FC<GameTrayProps> = ({
   gameState,
+  authoritativeState,
   playerId,
   isCitiesAndKnights,
   currentPlayer,
@@ -174,7 +176,7 @@ export const GameTray: React.FC<GameTrayProps> = ({
   if (showActionSlot) {
     slots.push(
       <div key="actions" data-tray-slot="actions" className={`flex items-end gap-6 max-xl:gap-4 ${gated}`}>
-        <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={visibleEventDieRoll} />
+        <DiceDisplay diceRoll={gameState.diceRoll} eventDieRoll={visibleEventDieRoll} authoritativeState={authoritativeState} />
         <ActionControls
           gameState={gameState}
           playerId={playerId}

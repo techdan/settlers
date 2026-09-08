@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { BoardCanvas } from './BoardCanvas';
+import { BoardPresentation } from './BoardPresentation';
 import { useBoardValidation } from '@/lib/hooks/useBoardValidation';
 import { useBoardActions } from '@/lib/hooks/useBoardActions';
 import { BoardProps, PendingBoardPlacement } from '@/lib/types/board-selection-state';
@@ -21,6 +21,7 @@ import { Knight } from '@/lib/types/player';
  */
 export const Board: React.FC<BoardProps> = ({
   gameState,
+  authoritativeState,
   playerId,
   selectionState,
   callbacks
@@ -197,8 +198,10 @@ export const Board: React.FC<BoardProps> = ({
 
   // Render canvas with all the wiring
   return (
-    <BoardCanvas
+    <BoardPresentation
       gameState={gameState}
+      authoritativeState={authoritativeState}
+      placementBusy={actions.isPending}
       playerId={playerId}
       hexSize={HEX_SIZE}
       selectionState={selectionState}

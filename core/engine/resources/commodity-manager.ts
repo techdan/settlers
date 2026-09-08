@@ -1,4 +1,5 @@
 import { GameState, PlayerState } from '@/lib/types';
+import type { ProductionSource } from '@/lib/types/game';
 import { getCanonicalVertexId } from '@/lib/hex';
 import { CommodityType, TERRAIN_TO_COMMODITY } from '@/core/rules/commodity-constants';
 import { TerrainType } from '@/core/rules/board-constants';
@@ -34,7 +35,7 @@ export function getCommodityFromTerrain(terrain: TerrainType): CommodityType | n
  * @param diceTotal - Total of dice roll
  * @returns Commodity distribution map
  */
-export function distributeCommodities(gameState: GameState, diceTotal: number): CommodityDistribution {
+export function distributeCommodities(gameState: GameState, diceTotal: number, sources?: ProductionSource[]): CommodityDistribution {
     // Skip if not C&K mode
     if (gameState.gameMode !== 'cities_and_knights') return {};
 
@@ -86,6 +87,7 @@ export function distributeCommodities(gameState: GameState, diceTotal: number): 
 
             player.commodities[commodity] = (player.commodities[commodity] || 0) + amount;
             distribution[player.id][commodity] = (distribution[player.id][commodity] || 0) + amount;
+            sources?.push({ hexId: hex.id, playerId: player.id, kind: 'commodity', type: commodity, amount });
         }
     }
 

@@ -1,4 +1,5 @@
 import { GameState, PlayerState } from '@/lib/types';
+import type { ProductionSource } from '@/lib/types/game';
 import { TerrainType } from '@/core/engine/board/board-generator';
 import { ResourceType } from '@/core/rules/board-constants';
 import { getCanonicalVertexId } from '@/lib/hex';
@@ -20,7 +21,7 @@ export type CommodityDistribution = Record<string, Partial<Record<CommodityType,
  * @param diceTotal - Total of dice roll
  * @returns Updated game state (mutated)
  */
-export function distributeResources(gameState: GameState, diceTotal: number): ResourceDistribution {
+export function distributeResources(gameState: GameState, diceTotal: number, sources?: ProductionSource[]): ResourceDistribution {
     // Skip if robber roll (7)
     if (diceTotal === 7) return {};
 
@@ -70,6 +71,7 @@ export function distributeResources(gameState: GameState, diceTotal: number): Re
             if (amount > 0) {
                 player.resources[resource] = (player.resources[resource] || 0) + amount;
                 distribution[player.id][resource] = (distribution[player.id][resource] || 0) + amount;
+                sources?.push({ hexId: hex.id, playerId: player.id, kind: 'resource', type: resource, amount });
             }
         }
     }

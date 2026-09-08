@@ -1,4 +1,10 @@
+'use client';
+
 import React from 'react';
+import dynamic from 'next/dynamic';
+import { useBoardPresentation } from '@/lib/hooks/useBoardPresentation';
+import { getDiceRollKey, getDiceRollTimestamp } from '@/lib/presentation/dice-events';
+import { PresentationBoundary } from '@/components/board/PresentationBoundary';
 import { GameState } from '@/lib/types';
 import { EventDieFace } from '@/core/rules/commodity-constants';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -7,7 +13,11 @@ import { PipDie, EventDie } from '@/themes/tabletop';
 interface DiceDisplayProps {
     diceRoll: GameState['diceRoll'];
     eventDieRoll?: GameState['eventDieRoll'];
+    authoritativeState?: GameState;
+    forceThree?: boolean;
 }
+
+const DiceTray = dynamic(() => import('../three/DiceTray'), { ssr: false });
 
 /** Tabletop die colors (art direction: warm red/gold, cream or ink pips) */
 const RED_DIE = { body: '#b3352c', pip: '#f3e9cf' };
@@ -20,7 +30,22 @@ const EVENT_DIE_TEXT: Record<EventDieFace, { title: string; description: string 
     politics: { title: 'Politics', description: 'Progress cards drawn from Politics' },
 };
 
-export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll }) => {
+export const DiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll, authoritativeState, forceThree }) => {
+    const { mode } = useBoardPresentation();
+    const fallback = <ClassicDiceDisplay diceRoll={diceRoll} eventDieRoll={eventDieRoll} />;
+    if (forceThree || mode === 'three') {
+        return <PresentationBoundary fallback={fallback}>
+            <DiceTray diceRoll={authoritativeState ? authoritativeState.diceRoll : diceRoll}
+                eventDieRoll={authoritativeState ? (authoritativeState.diceRoll || authoritativeState.pendingAlchemy ? authoritativeState.eventDieRoll : undefined) : eventDieRoll}
+                rollKey={authoritativeState ? getDiceRollKey(authoritativeState) : null}
+                rollTimestamp={authoritativeState ? getDiceRollTimestamp(authoritativeState) : null}
+                serverTime={authoritativeState?.timerServerTime} />
+        </PresentationBoundary>;
+    }
+    return fallback;
+};
+
+const ClassicDiceDisplay: React.FC<DiceDisplayProps> = ({ diceRoll, eventDieRoll }) => {
     if (!diceRoll && !eventDieRoll) return null;
 
     // One roll, one group: the event die is thrown with the production dice, so

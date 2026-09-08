@@ -12,6 +12,10 @@ import { distributeCommodities, getTotalCommodities } from '../../resources/comm
 import { getRobberDiscardThreshold } from '../../../utils/city-wall-utils';
 import { drawProgressCard } from '../progress-card-manager';
 import { setPhase } from '@/lib/services/timer-service';
+import type { ProductionSource } from '@/lib/types/game';
+import type { ResourceDistribution } from '../../resources/resource-manager';
+import type { CommodityDistribution } from '../../resources/commodity-manager';
+import { createProductionEvent } from '../../resources/production-event';
 
 /**
  * Alchemist Card Command
@@ -88,6 +92,9 @@ export class AlchemistCommand implements ProgressCardCommand {
     state.pendingAlchemy = undefined;
 
     // Handle robber (7)
+    const productionSources: ProductionSource[] = [];
+    let resourceDistribution: ResourceDistribution = {};
+    let commodityDistribution: CommodityDistribution = {};
     state.discardContext = undefined;
     if (total === 7) {
       const playersToDiscard = state.players.filter((p) => {
@@ -128,8 +135,8 @@ export class AlchemistCommand implements ProgressCardCommand {
       });
 
       // Distribute resources and commodities
-      const resourceDistribution = distributeResources(state, total);
-      const commodityDistribution = distributeCommodities(state, total);
+      resourceDistribution = distributeResources(state, total, productionSources);
+      commodityDistribution = distributeCommodities(state, total, productionSources);
       logDistribution(state, resourceDistribution, commodityDistribution);
 
       // Check for Aqueduct trigger
@@ -162,6 +169,7 @@ export class AlchemistCommand implements ProgressCardCommand {
       }
     }
 
+    state.lastProduction = createProductionEvent(state, total, resourceDistribution, commodityDistribution, productionSources);
     return state;
   }
 }
