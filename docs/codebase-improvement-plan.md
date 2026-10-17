@@ -96,6 +96,10 @@ converting them into failure results.
 
 ## 5.16 Cloudflare hosting and durable rooms (2026-10-17)
 
+Completed implementation and release-validation items below landed in `816849a`
+(`feat: migrate 3D game to Cloudflare durable rooms`), including 3D label/loading
+fixes. The dependency-audit follow-up remains open.
+
 User authorized migrating hosting and storage off Supabase to Cloudflare,
 including the latest 3D presentation. Baseline: `9163bc3`, clean checkout.
 User clarified: Durable Objects only, no D1; rooms must remain resumable the
