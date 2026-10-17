@@ -1,6 +1,6 @@
 # Graphics and Presentation Polish Plan
 
-**Status:** Foundational graphics overhaul complete in v2.1; optional polish and proposed parallel 3D UX migration below
+**Status:** Foundational graphics overhaul complete in v2.1; 3D primary rollout checkpoint `27c42de` (§4.15), building on `7f113f1`
 **Production blocker:** No
 **Historical execution plan:** [`docs/archive/graphics-overhaul-plan-v2.1.md`](archive/graphics-overhaul-plan-v2.1.md)
 
@@ -385,6 +385,49 @@ regressions; the earlier full-suite result in §4.8 belongs to that prior iterat
 Further design options discussed: quieter tile borders, less saturated scenery,
 subtle material-finish contrast, and an optional focus-pieces view; not implemented
 in this iteration so the simpler direction can be evaluated on its own.
+
+### 4.15 Primary 3D presentation — 2026-10-01 (committed 27c42de on 2026-10-17)
+
+User approved making the new 3D design primary in the lobby and main game. This
+supersedes the earlier opt-in/Classic-default rollout guidance above.
+
+- [x] Default `lib/hooks/useBoardPresentation.ts` to 3D on both server and client,
+  ignoring the retired stored Classic preference. The shared game HUD/player
+  cards and dice follow this default. Graphics failure fallback is session-only;
+  reloading retries 3D.
+- [x] Hide the appearance switch in `components/board/BoardPresentation.tsx`,
+  including the art preview. Preserve `BoardCanvas.tsx` and existing flat UI code
+  for recovery and possible reuse. Graphics failure still permits play through
+  the retained compatibility renderer without discarding pending placement.
+- [x] Use the shared lazy 3D scene in `components/lobby/BoardPreview.tsx`, with
+  the actual generated tiles, camera controls, and no legal gameplay targets.
+  Keep the old preview in `components/lobby/ClassicBoardPreview.tsx` as the
+  graphics failure fallback. Reserve layout space for generator controls in
+  `components/lobby-view.tsx` so they do not cover camera controls or the island.
+- [ ] **Deferred: retire retained non-3D presentation after the reuse decision.**
+  Paths: `components/lobby/ClassicBoardPreview.tsx`,
+  `components/board/BoardCanvas.tsx`, `components/board/BoardPresentation.tsx`,
+  `components/game/ui/DiceDisplay.tsx`, `GameLayoutPanels.tsx`,
+  `CompactGameStatus.tsx`, `components/game/player/CompactPlayerCard.tsx`,
+  `lib/hooks/useBoardPresentation.ts`, and legacy-only assets/tests in
+  `themes/tabletop/`. Acceptance: explicitly decide whether to archive or remove
+  the old design, establish behavior for unsupported WebGL devices, remove only
+  confirmed unused branches/assets, and keep shared game rules, IDs, interactions,
+  and production feedback intact. Leave this code in place until then.
+
+Validation: lint, standalone TypeScript, production build, and the final full
+suite passed (616 tests across 115 files). The sandboxed build could not fetch
+the existing Google fonts; the network-enabled build passed. The first full
+test run was disrupted by a host stall and worker/test timeouts; all three
+affected files passed focused reruns, followed by the clean full run above.
+Browser review of the shared lobby preview and live board/player-panel components
+at 1280×720 confirmed 3D rendering, visible camera controls, no appearance switch,
+and no browser errors. The temporary visual fixture and its generated route
+references were removed; TypeScript passed again after cleanup. No new animation
+was introduced; OS reduced-motion and multiplayer playthrough checks were not
+repeated for this default change. Validation covered the combined working tree;
+checkpoint `27c42de` contains only the primary-3D rollout. The preceding
+art, player-card, and Chronicle edits remain uncommitted.
 
 ## Acceptance gates
 
