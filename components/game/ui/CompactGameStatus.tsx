@@ -9,6 +9,7 @@ interface CompactGameStatusProps {
     gameState: GameState;
     currentPlayerId: string;
     onOpenCityManagement?: () => void;
+    presentation?: 'classic' | 'three';
 }
 
 /**
@@ -19,6 +20,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
     gameState,
     currentPlayerId,
     onOpenCityManagement,
+    presentation = 'classic',
 }) => {
     const timerStatus = useTimerState(gameState);
     const isTimerEnabled = gameState.timerConfig?.enabled;
@@ -48,7 +50,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
     const baseTimeLimit = gameState.timerConfig?.turnTimeLimit || 180;
     let activeTimer: PlayerCardTimer | null = null;
 
-    if (isTimerEnabled && timerStatus.isActive) {
+    if (isTimerEnabled && (timerStatus.isActive || presentation === 'three')) {
         let colorClass = 'bg-green-500';
         if (timerStatus.timeRemaining <= 0) {
             colorClass = 'bg-red-600';
@@ -61,23 +63,24 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
         }
 
         activeTimer = {
-            percentage: Math.min(100, (timerStatus.timeElapsed / baseTimeLimit) * 100),
+            percentage: Math.max(0, Math.min(100, (timerStatus.timeElapsed / baseTimeLimit) * 100)),
             colorClass,
+            remainingLabel: `${displayTime}${timerStatus.isPaused ? ' · Paused' : ''}`,
         };
     }
 
     return (
         // w-full/min-h-0 let this panel be squeezed by the right rail on truly
         // short viewports; the phase header stays pinned in that fallback.
-        <div className="w-full min-h-0 bg-[var(--ui-panel)] p-3 rounded-lg text-[var(--ui-text)] border border-[var(--ui-border)] shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible">
+        <div data-player-presentation={presentation} className={presentation === 'three' ? 'flex w-full min-h-0 flex-col gap-2 text-[#f3e9cf]' : 'w-full min-h-0 bg-[var(--ui-panel)] p-3 rounded-lg text-[var(--ui-text)] border border-[var(--ui-border)] shadow-xl backdrop-blur-sm flex flex-col gap-3 overflow-visible'}>
             {/* Phase Header with Timer */}
             <div className="flex-shrink-0">
-                <div className="text-[10px] text-[var(--ui-muted)] uppercase tracking-wider">Phase</div>
+                <div className="text-[10px] text-[var(--ui-muted)] uppercase tracking-wider">{presentation === 'three' ? 'Around the table' : 'Phase'}</div>
                 <div className="flex items-center justify-between gap-2">
-                    <div className="text-base font-bold capitalize text-blue-200">
+                    <div className={presentation === 'three' ? 'text-sm font-medium capitalize text-[#d8c99f]' : 'text-base font-bold capitalize text-blue-200'}>
                         {formatPhase(gameState.phase)}
                     </div>
-                    {isTimerEnabled && (
+                    {isTimerEnabled && presentation === 'classic' && (
                         <div className="flex flex-col items-end gap-1">
                             <div className={`text-sm font-bold tabular-nums ${displayColor || 'text-[var(--ui-muted)]'}`}>
                                 {displayTime}{timerStatus.isPaused ? ' · Paused' : ''}
@@ -102,6 +105,7 @@ export const CompactGameStatus: React.FC<CompactGameStatusProps> = ({
                         isTurn={gameState.currentTurn === player.id}
                         onOpenCityManagement={onOpenCityManagement}
                         timer={gameState.currentTurn === player.id ? activeTimer : null}
+                        presentation={presentation}
                     />
                 ))}
             </div>

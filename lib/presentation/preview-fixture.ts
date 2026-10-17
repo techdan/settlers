@@ -27,6 +27,17 @@ export function createIslandPreview() {
     createTestPlayer({ id: 'wren', name: 'Wren', color: '#ff7a00', victoryPoints: 3 }),
     createTestPlayer({ id: 'ellis', name: 'Ellis', color: '#d4b483', victoryPoints: 4 }),
   ];
+  // Varied public status exercises the shared player cards in the art preview.
+  players[0].improvements = { science: 3, trade: 2, politics: 1 };
+  players[0].progressCards = ['alchemist', 'crane'];
+  players[1].improvements = { science: 1, trade: 3, politics: 2 };
+  players[1].resources = { wood: 2, brick: 1, sheep: 1, wheat: 2, ore: 1 };
+  players[1].defenderVPTokens = 1;
+  players[2].improvements = { science: 2, trade: 1, politics: 0 };
+  players[2].resources = { wood: 1, brick: 0, sheep: 2, wheat: 1, ore: 0 };
+  players[3].improvements = { science: 4, trade: 2, politics: 2 };
+  players[3].metropolisOwned = ['science'];
+  players[3].resources = { wood: 1, brick: 1, sheep: 1, wheat: 1, ore: 2 };
   const vertices = Object.values(board.vertices);
   [6, 18, 29, 42, 48, 35].forEach((i, j) => {
     const vertex = vertices[i];
@@ -51,6 +62,11 @@ export function createIslandPreview() {
     gameMode: 'cities_and_knights', phase: 'main_phase', barbarianPosition: 2,
     robberHexId: board.hexes.find(hex => hex.terrain === 'desert')!.id,
     merchantHexId: board.hexes[1].id, activeMerchant: 'you',
+    metropolises: {
+      science: { type: 'science', owner: 'ellis', vertexId: vertices[42].id },
+      trade: { type: 'trade', owner: null, vertexId: null },
+      politics: { type: 'politics', owner: null, vertexId: null },
+    },
     diceRoll: { d1: 3, d2: 3, total: 6 }, eventDieRoll: { face: 'science', timestamp: 1 },
     logs: [{ id: 'arrival', timestamp: 1, message: 'A new island. A thousand possibilities.' }],
   });

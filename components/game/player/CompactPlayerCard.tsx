@@ -18,6 +18,7 @@ import {
     TabletopVictoryPointIcon,
 } from '@/themes/tabletop';
 import { TT, mix } from '@/themes/tabletop/palette';
+import { ThreePlayerCard, type PlayerCardAward } from './ThreePlayerCard';
 
 /** Live turn-clock state, supplied only for the player whose turn it is. */
 export interface PlayerCardTimer {
@@ -25,6 +26,8 @@ export interface PlayerCardTimer {
     percentage: number;
     /** Tailwind background class carrying the urgency tint. */
     colorClass: string;
+    /** Formatted remaining time from the shared game timer, including pause state. */
+    remainingLabel?: string;
 }
 
 interface CompactPlayerCardProps {
@@ -34,6 +37,7 @@ interface CompactPlayerCardProps {
     isTurn: boolean;           // Is it this player's turn?
     onOpenCityManagement?: () => void;
     timer?: PlayerCardTimer | null;
+    presentation?: 'classic' | 'three';
 }
 
 /* Card stocks for the hand-size chips. Derived from the tabletop palette so a
@@ -132,6 +136,7 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
     isTurn,
     onOpenCityManagement,
     timer,
+    presentation = 'classic',
 }) => {
     const isCK = gameState.gameMode === 'cities_and_knights';
     const canOpenCityManagement = isCK && isCurrentPlayer && !!onOpenCityManagement;
@@ -206,6 +211,24 @@ export const CompactPlayerCard: React.FC<CompactPlayerCardProps> = ({
         }
         return parts.join('\n');
     };
+
+    if (presentation === 'three') {
+        const awards: PlayerCardAward[] = [];
+        if (!isCK && hasLargestArmy) awards.push({ id: 'award-largest-army', label: 'Largest Army', detail: armyTooltip, icon: <TabletopCrossedSwordsIcon fill={TT.token.ringInner} size={13} label="Largest Army" /> });
+        if (isCK && defenderVP > 0) awards.push({ id: 'award-defender', label: 'Defender of Catan', detail: defenderTooltip, count: defenderVP, icon: <TabletopCrossedSwordsIcon fill={TT.token.ringInner} size={13} label="Defender of Catan" /> });
+        if (isCK && hasMerchant) awards.push({ id: 'award-merchant', label: 'Merchant', detail: merchantTooltip, icon: <MerchantBadgeIcon color={player.color} /> });
+        return <ThreePlayerCard id={player.id} name={player.name} color={player.color} isCurrentPlayer={isCurrentPlayer} isTurn={isTurn}
+            publicVictoryPoints={publicVictoryPoints} victoryBreakdown={getVPBreakdown()} timer={timer}
+            onOpenCityManagement={canOpenCityManagement ? onOpenCityManagement : undefined}
+            stats={[
+                { id: 'chip-hand', label: 'Hand', value: totalCards, limit: safeLimit, danger: isDanger, detail: handTooltip, icon: <TabletopCardBackIcon stock={STOCK_HAND} size={13} /> },
+                { id: 'chip-deck', label: isCK ? 'Progress' : 'Dev cards', value: isCK ? progressCardCount : devCardCount, detail: cardTooltip, icon: <TabletopCardBackIcon stock={STOCK_DECK} size={13} /> },
+                { id: 'chip-road', label: 'Road', value: longestRoad, held: hasLongestRoad, detail: roadTooltip, icon: <TabletopRoadIcon fill={hasLongestRoad ? TT.port.generic : TT.status.neutral} size={13} /> },
+                { id: 'chip-military', label: isCK ? 'Defense' : 'Army', value: isCK ? activeKnightStrength : player.knightsPlayed || 0, detail: isCK ? defenseTooltip : armyTooltip, icon: <TabletopShieldIcon size={13} /> },
+            ]}
+            improvements={isCK ? (['science', 'trade', 'politics'] as const).map(type => ({ type, level: player.improvements?.[type] || 0, hasMetropolis: player.metropolisOwned?.includes(type) ?? false, detail: IMPROVEMENT_TOOLTIPS[type] })) : []}
+            awards={awards} />;
+    }
 
     // The player's color washes the whole surface rather than sitting in a 12px
     // dot: across four stacked cards, hue is what maps a panel to its pieces on

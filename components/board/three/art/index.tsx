@@ -5,6 +5,7 @@ import { useGLTF } from '@react-three/drei';
 import { Mesh, MeshStandardMaterial, type Material } from 'three';
 import type { TerrainType } from '@/core/rules/board-constants';
 import type { PortType } from '@/lib/types/board';
+import { miniatureMaterialPaint } from '@/lib/presentation/miniature-palette';
 
 const MODEL_ROOT = '/models/tabletop/';
 // Keep the scenery below the pieces without changing its ground footprint.
@@ -22,8 +23,8 @@ function variantFor(seed: string): number {
 }
 
 /**
- * Geometry and unpainted materials belong to Drei's URL cache. Each mounted
- * miniature owns only its scene graph and optional player-paint material.
+ * Geometry and unchanged materials belong to Drei's URL cache. Each mounted
+ * miniature owns only its scene graph and the materials it recolors.
  * dispose=null prevents one tile unmount from disposing another tile's geometry.
  */
 const Miniature = memo(function Miniature({ name, color }: { name: string; color?: string }) {
@@ -32,17 +33,14 @@ const Miniature = memo(function Miniature({ name, color }: { name: string; color
         const object = scene.clone(true);
         const paint = new Map<Material, MeshStandardMaterial>();
         const recolor = (source: Material): Material => {
-            if (!color || !(source instanceof MeshStandardMaterial)) return source;
-            let painted = source.name.startsWith('owner-paint') ? color : undefined;
-            // The roof's checked-in material name lets owner paint read from above.
-            // Original timber, stone bases, and cached terrain materials stay intact.
-            if (name.startsWith('building-') && source.name === 'paint-6c4e31') painted = color;
+            if (!(source instanceof MeshStandardMaterial)) return source;
+            const painted = miniatureMaterialPaint(name, source.name, color);
             if (!painted) return source;
             let material = paint.get(source);
             if (!material) {
                 material = source.clone();
-                material.color.set(painted);
-                if (name.startsWith('building-') && source.name === 'paint-6c4e31') material.roughness = .72;
+                material.color.set(painted.color);
+                if (painted.roughness !== undefined) material.roughness = painted.roughness;
                 paint.set(source, material);
             }
             return material;

@@ -3,6 +3,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { GameLayoutPanels } from '../GameLayoutPanels';
 import { createTestGameState, createTestPlayer } from '@/lib/test-utils/test-helpers';
 
+const presentation = vi.hoisted(() => ({ mode: 'classic' as 'classic' | 'three' }));
+vi.mock('@/lib/hooks/useBoardPresentation', () => ({ useBoardPresentation: () => presentation }));
+
 /**
  * Low-resolution HUD regression guard.
  *
@@ -58,6 +61,7 @@ const renderPanels = () => {
 
 describe('GameLayoutPanels low-resolution layout', () => {
     beforeEach(() => {
+        presentation.mode = 'classic';
         vi.stubGlobal('ResizeObserver', StubResizeObserver);
         // jsdom does not implement Element.scrollTo at all (so it cannot be
         // spied on) and GameLog auto-scrolls on mount.
@@ -95,6 +99,22 @@ describe('GameLayoutPanels low-resolution layout', () => {
         expect(rail.style.height).toContain('var(--tray-h');
         expect(rail.style.height).toContain('var(--hud-scale');
         expect(rail.style.transform).toContain('var(--hud-scale');
+    });
+
+    it('keeps 3D player text unscaled while still reserving the measured tray', () => {
+        presentation.mode = 'three';
+        const { container, rerender } = renderPanels();
+        const rail = container.querySelector('[data-hud="rail"]') as HTMLElement;
+        expect(rail.style.height).toContain('var(--tray-h');
+        expect(rail.style.height).not.toContain('var(--hud-scale');
+        expect(rail.style.transform).toBe('');
+        expect(rail.querySelector('[data-player-presentation="three"]')).not.toBeNull();
+
+        presentation.mode = 'classic';
+        const gameState = createTestGameState({ players: [createTestPlayer({ id: 'p1' })] });
+        rerender(<GameLayoutPanels gameState={gameState} playerId="p1" isDebugMode={false} onOpenPlayerCityManagement={vi.fn()} tray={<div>Tray</div>} />);
+        expect(rail.style.transform).toContain('var(--hud-scale');
+        expect(rail.querySelector('[data-player-presentation="classic"]')).not.toBeNull();
     });
 
     it('scales the tray from its bottom edge so it stays anchored and centred', () => {

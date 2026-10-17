@@ -6,8 +6,9 @@ import { ArrowLeft, Hammer, RotateCcw, Dices, Anchor } from 'lucide-react';
 import { BoardPresentation } from '@/components/board/BoardPresentation';
 import { DiceDisplay } from '@/components/game/ui/DiceDisplay';
 import { PlayerHand } from '@/components/game/player/PlayerHand';
+import { CompactGameStatus } from '@/components/game/ui/CompactGameStatus';
+import { GameLog } from '@/components/game/ui/GameLog';
 import { createIslandPreview } from '@/lib/presentation/preview-fixture';
-import { playerPieceColor } from '@/lib/presentation/piece-style';
 import { distributeResources } from '@/core/engine/resources/resource-manager';
 import { distributeCommodities } from '@/core/engine/resources/commodity-manager';
 import { createProductionEvent } from '@/core/engine/resources/production-event';
@@ -43,7 +44,7 @@ export function IslandPlayground() {
       const next = structuredClone(current);
       if (pending.type === 'road') Object.assign(next.board.edges[pending.id], { owner: 'you', structure: 'road' });
       else Object.assign(next.board.vertices[pending.id], { owner: 'you', structure: pending.type });
-      next.logs.push({ id: `build-${next.logs.length}`, timestamp: next.logs.length, message: `You placed a ${pending.type}.` });
+      next.logs.push({ id: `build-${next.logs.length}`, timestamp: Date.now(), playerId: 'you', message: `You placed a ${pending.type}.` });
       return next;
     });
     cancel();
@@ -63,7 +64,7 @@ export function IslandPlayground() {
       const resources = distributeResources(next, total, sources);
       const commodities = distributeCommodities(next, total, sources);
       next.lastProduction = createProductionEvent(next, total, resources, commodities, sources);
-      next.logs.push({ id: `roll-${rollIndex}`, timestamp: next.logs.length, message: `The island provides. You rolled ${total}.` });
+      next.logs.push({ id: `roll-${rollIndex}`, timestamp: Date.now(), playerId: 'you', message: `You rolled ${total}.` });
       return next;
     });
   };
@@ -72,7 +73,7 @@ export function IslandPlayground() {
     <main className="flex h-dvh flex-col overflow-hidden bg-[#182e31] text-[#f3e9cf]">
       <header className="z-30 flex shrink-0 items-center justify-between border-b border-[#b69a62]/25 bg-[#202c2b] px-5 py-3">
         <div className="flex items-center gap-4"><Link href="/" aria-label="Return to lobby" className="cursor-pointer rounded-lg p-2 hover:bg-white/10"><ArrowLeft size={18} /></Link><div><h1 className="font-serif text-xl tracking-wide">Settlers of Lanc</h1><p className="text-[10px] uppercase tracking-[.25em] text-[#c4b891]">The harbor table</p></div></div>
-        <div className="flex items-center gap-3"><span className="hidden rounded-full border border-[#cbb57e]/30 px-3 py-1 text-xs text-[#d9c79d] sm:block">3D art playground · local only</span><button className={BUTTON} aria-expanded={showJournal} onClick={() => setJournalOverride(!showJournal)}>Chronicle</button></div>
+        <div className="flex items-center gap-3"><span className="hidden rounded-full border border-[#cbb57e]/30 px-3 py-1 text-xs text-[#d9c79d] sm:block">3D art playground · local only</span><button className={BUTTON} aria-expanded={showJournal} aria-controls="preview-player-rail" onClick={() => setJournalOverride(!showJournal)}>Players</button></div>
       </header>
       <div className="relative flex min-h-0 flex-1">
         <div className="relative min-w-0 flex-1">
@@ -85,12 +86,13 @@ export function IslandPlayground() {
             <p className="mt-1 text-xs leading-relaxed text-[#c5d0c6]">{mode ? 'Glowing sites are available. Confirm your choice to see your piece settle into place.' : 'Drag to orbit. Scroll to discover the little details. Try a building, then let the dice decide.'}</p>
           </div>
         </div>
-        {showJournal && <aside className="z-10 flex w-64 shrink-0 flex-col border-l border-[#b69a62]/20 bg-[#202c2b] p-5 max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:bg-[#202c2b]/95">
-          <p className="mb-5 text-[10px] uppercase tracking-[.25em] text-[#c4b891]">Around the table</p>
-          {game.players.map(player => <div key={player.id} className="mb-3 flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 font-serif" style={{ background: playerPieceColor(player.color), color: player.color === '#ff7a00' || player.color === '#d4b483' ? '#201e1b' : '#fff4df' }}>{player.name[0]}</span><div className="flex-1 text-sm">{player.name}<div className="text-[10px] text-[#aebbad]">{player.id === 'you' ? 'Your island to shape' : 'Preview player'}</div></div><span className="font-serif text-xl text-[#e0bc6b]">{player.victoryPoints}</span></div>)}
-          <div className="my-2 border-t border-[#b69a62]/20" /><h2 className="my-4 font-serif text-xl">Chronicle</h2>
-          <ol className="min-h-0 flex-1 space-y-4 overflow-y-auto text-sm leading-relaxed text-[#c5cbbb]">{game.logs.slice().reverse().map(log => <li key={log.id} className="border-l border-[#a98d55]/50 pl-3">{log.message}</li>)}</ol>
-          <p className="mt-4 text-[10px] leading-relaxed text-[#a8b3a5]">A visual sandbox. Placements are unrestricted; preview players are not AI opponents. Live games use the existing rules.</p>
+        {showJournal && <aside id="preview-player-rail" aria-label="Players and chronicle" className="z-40 flex w-80 max-w-[calc(100%-1rem)] shrink-0 flex-col gap-3 overflow-y-auto overscroll-contain border-l border-[#b69a62]/20 bg-[#202c2b] p-3 [scrollbar-width:thin] max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:bg-[#202c2b]/95">
+          <div className="shrink-0"><CompactGameStatus gameState={game} currentPlayerId="you" presentation="three" /></div>
+          <details open className="shrink-0 border-t border-[#b69a62]/20 pt-2">
+            <summary className="cursor-pointer text-xs font-semibold text-[#d8c99f] focus-visible:outline-2 focus-visible:outline-[#e0bc6b]">Chronicle</summary>
+            <div className="mt-1.5 h-[clamp(8rem,20vh,14rem)]"><GameLog logs={game.logs} players={game.players} /></div>
+          </details>
+          <p className="mt-auto pt-1 text-[10px] leading-relaxed text-[#a8b3a5]">A visual sandbox. Placements are unrestricted; preview players are not AI opponents. Live games use the existing rules.</p>
         </aside>}
       </div>
       <footer className="z-30 grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 overflow-x-auto border-t border-[#b69a62]/30 bg-[#202c2b] px-4 py-2 max-sm:grid-cols-[auto_1fr_auto] max-sm:gap-2">

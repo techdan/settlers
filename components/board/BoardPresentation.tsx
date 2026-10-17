@@ -26,7 +26,7 @@ export function BoardPresentation({ preview = false, ...props }: BoardRendererPr
     setMode('classic');
   }, [setMode]);
   return (
-    <div ref={viewportRef} className={`relative h-full w-full ${liveThree ? 'bg-[#397c81] [--board-inset-top:5.75rem] [--board-inset-bottom:15rem] [--board-inset-left:0px] [--board-inset-right:0px] xl:[--board-inset-top:0px] xl:[--board-inset-bottom:10rem] xl:[--board-inset-right:18rem]' : ''} ${liveThree && props.gameState.gameMode === 'cities_and_knights' ? 'xl:[--board-inset-left:10.5rem]' : ''}`} data-board-presentation={mode}>
+    <div ref={viewportRef} className={`relative h-full w-full ${liveThree ? 'bg-[#397c81] [--board-inset-top:5.75rem] [--board-inset-bottom:15rem] [--board-inset-left:0px] [--board-inset-right:0px] xl:[--board-inset-top:0px] xl:[--board-inset-bottom:10rem] xl:[--board-inset-right:22rem]' : ''} ${liveThree && props.gameState.gameMode === 'cities_and_knights' ? 'xl:[--board-inset-left:10.5rem]' : ''}`} data-board-presentation={mode}>
       {mode === 'three' ? (
         <div data-board-scene-viewport className="absolute min-h-0 min-w-0 overflow-hidden" style={liveThree ? { top: 'var(--board-inset-top)', right: 'var(--board-inset-right)', bottom: 'var(--board-inset-bottom)', left: 'var(--board-inset-left)' } : { inset: 0 }}>
         <PresentationBoundary fallback={<BoardCanvas {...props} />} onUnavailable={unavailable}>

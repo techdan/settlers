@@ -46,8 +46,8 @@ describe('3D selection parity', () => {
 
   it('exposes existing owned pieces for keyboard action even outside placement mode', () => {
     const board = fixture();
-    render(<BoardSceneHud board={board} cameraApi={{ current: null }} topDown={false} onTopDown={vi.fn()} lowQuality={false} onQuality={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Board targets (1)' }));
+    render(<BoardSceneHud board={board} cameraApi={{ current: null }} topDown={false} onTopDown={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /Board targets|High detail|Low detail/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'city · city' }));
     expect(board.onVertexClick).toHaveBeenCalledExactlyOnceWith('city');
   });
@@ -55,10 +55,10 @@ describe('3D selection parity', () => {
   it('uses the existing confirmation callbacks and blocks repeated submits while busy', () => {
     const board = fixture();
     board.pendingPlacement = { type: 'city_wall', id: 'city', phase: 'main' };
-    const { rerender } = render(<BoardSceneHud board={board} cameraApi={{ current: null }} topDown={false} onTopDown={vi.fn()} lowQuality={false} onQuality={vi.fn()} />);
+    const { rerender } = render(<BoardSceneHud board={board} cameraApi={{ current: null }} topDown={false} onTopDown={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Confirm city wall' }));
     expect(board.onConfirmPlacement).toHaveBeenCalledOnce();
-    rerender(<BoardSceneHud board={{ ...board, placementBusy: true }} cameraApi={{ current: null }} topDown={false} onTopDown={vi.fn()} lowQuality={false} onQuality={vi.fn()} />);
+    rerender(<BoardSceneHud board={{ ...board, placementBusy: true }} cameraApi={{ current: null }} topDown={false} onTopDown={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Placing…' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
   });

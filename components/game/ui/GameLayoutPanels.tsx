@@ -7,6 +7,7 @@ import { SidebarTabs } from './SidebarTabs';
 import { CompactGameStatus } from './CompactGameStatus';
 import { TurnTimerExpiredNotification } from './TurnTimerExpiredNotification';
 import { ProgressDecksPanel } from '../overlays/ProgressDecksPanel';
+import { useBoardPresentation } from '@/lib/hooks/useBoardPresentation';
 
 interface GameLayoutPanelsProps {
   gameState: GameState;
@@ -30,6 +31,8 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
   onOpenPlayerCityManagement,
   tray,
 }) => {
+  const { mode: presentation } = useBoardPresentation();
+  const three = presentation === 'three';
   const [tabletPanel, setTabletPanel] = useState<'status' | 'activity' | 'decks' | 'debug' | null>(null);
 
   // The bottom tray and the right rail are both absolutely positioned, so
@@ -109,10 +112,10 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
           shrink and scroll internally. */}
       <div
         data-hud="rail"
-        className="absolute top-4 right-4 hidden w-80 min-h-0 flex-col gap-3 overflow-x-visible pointer-events-auto xl:flex"
+        className={`absolute top-4 right-4 hidden w-80 min-h-0 flex-col gap-3 pointer-events-auto xl:flex ${three ? 'overflow-y-auto overscroll-contain [scrollbar-width:thin]' : 'overflow-x-visible'}`}
         style={{
-          height: 'calc((100% - 1.75rem - var(--tray-h, 0px)) / var(--hud-scale, 1))',
-          transform: 'scale(var(--hud-scale, 1))',
+          height: three ? 'calc(100% - 1.75rem - var(--tray-h, 0px))' : 'calc((100% - 1.75rem - var(--tray-h, 0px)) / var(--hud-scale, 1))',
+          transform: three ? undefined : 'scale(var(--hud-scale, 1))',
           transformOrigin: 'top right',
         }}
       >
@@ -120,10 +123,10 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
             desktop layouts. Below the HUD's minimum-density height there is no
             longer enough reliable vertical room, so this slot may shrink (with
             a floor) and CompactGameStatus becomes the fallback scroller. */}
-        <div className="flex min-h-[9rem] shrink-0 overflow-visible [@media(max-height:620px)]:shrink [@media(max-height:620px)]:overflow-hidden">
-          <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={onOpenPlayerCityManagement} />
+        <div className={three ? 'flex shrink-0' : 'flex min-h-[9rem] shrink-0 overflow-visible [@media(max-height:620px)]:shrink [@media(max-height:620px)]:overflow-hidden'}>
+          <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={onOpenPlayerCityManagement} presentation={presentation} />
         </div>
-        <div className="flex min-h-0 shrink flex-col">
+        <div className={`flex shrink flex-col ${three ? 'min-h-24' : 'min-h-0'}`}>
           <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />
         </div>
       </div>
@@ -187,7 +190,7 @@ export const GameLayoutPanels: React.FC<GameLayoutPanelsProps> = ({
           {tabletPanel ? (
             <div className="mt-2 max-h-[min(52dvh,32rem)] overflow-y-auto overscroll-contain rounded-lg" data-tablet-panel={tabletPanel}>
               {tabletPanel === 'status' ? (
-                <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={onOpenPlayerCityManagement} />
+                <CompactGameStatus gameState={gameState} currentPlayerId={playerId} onOpenCityManagement={onOpenPlayerCityManagement} presentation={presentation} />
               ) : null}
               {tabletPanel === 'activity' ? (
                 <SidebarTabs logs={gameState.logs || []} diceStats={gameState.diceStats} eventDieStats={gameState.eventDieStats} players={gameState.players} gameState={gameState} roomId={gameState.roomId} playerId={playerId} />

@@ -7,7 +7,7 @@ import { Color, Group, OrthographicCamera, PCFShadowMap, Vector3, type WebGLRend
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { boardBounds, boardPorts, barbarianRoutePoints, edgePosition, tilePosition, vertexPosition, type BoardBounds, type GroundPoint } from '@/lib/presentation/board-geometry';
 import type { BoardRendererProps } from '@/lib/types/board-renderer';
-import { TT } from '@/themes/tabletop/palette';
+import { shade, TT } from '@/themes/tabletop/palette';
 import { BoatArt, BuildingArt, HarborArt, HexFoundation, KnightArt, TerrainArt, TravelerArt } from './art';
 import { playerPieceColor } from '@/lib/presentation/piece-style';
 import { BoardSceneHud, type BoardCameraApi } from './BoardSceneHud';
@@ -249,8 +249,8 @@ function BarbarianRoute({ points, position }: { points: GroundPoint[]; position:
   </group>;
 }
 
-function SceneContents({ board, lowQuality, reducedMotion, topDown, cameraApi, drag }: {
-  board: BoardSceneProps; lowQuality: boolean; reducedMotion: boolean; topDown: boolean;
+function SceneContents({ board, reducedMotion, topDown, cameraApi, drag }: {
+  board: BoardSceneProps; reducedMotion: boolean; topDown: boolean;
   cameraApi: RefObject<BoardCameraApi | null>; drag: RefObject<{ x: number; y: number; moved: boolean }>;
 }) {
   const gl = useThree(state => state.gl);
@@ -281,7 +281,7 @@ function SceneContents({ board, lowQuality, reducedMotion, topDown, cameraApi, d
     <color attach="background" args={[SEA]} />
     <ambientLight intensity={.75} color="#fff3d1" />
     <hemisphereLight args={['#f2edcf', '#447a79', 1.5]} />
-    <directionalLight position={[-5, 10, 4]} intensity={2.4} color="#fff0cf" castShadow={!lowQuality}
+    <directionalLight position={[-5, 10, 4]} intensity={2.4} color="#fff0cf" castShadow
       shadow-mapSize-width={1024} shadow-mapSize-height={1024} shadow-camera-left={-8} shadow-camera-right={8}
       shadow-camera-top={8} shadow-camera-bottom={-8} shadow-camera-near={.5} shadow-camera-far={30} shadow-normalBias={.035} shadow-bias={-.0003} />
     <CameraRig bounds={bounds} topDown={topDown} apiRef={cameraApi} />
@@ -318,17 +318,28 @@ function SceneContents({ board, lowQuality, reducedMotion, topDown, cameraApi, d
           const valid = validation.validEdges.has(edge.id);
           const selected = edgeIsSelected(board, edge.id);
           const pending = pendingPlacement?.type === 'road' && pendingPlacement.id === edge.id;
+          const roadHovered = hovered === `e:${edge.id}`;
+          const guideEmphasis = selected || pending || roadHovered;
+          const roadColor = colors.get(edge.owner ?? '') ?? '#ac9876';
           const source = board.authoritativeState?.board.edges[edge.id];
           const accepted = source?.structure ? `${source.structure}:${source.owner}` : '';
           const displayed = edge.structure ? `${edge.structure}:${edge.owner}` : '';
           const preview = pending || (!!displayed && displayed !== (gameState.board.edges[edge.id]?.structure ? `${gameState.board.edges[edge.id].structure}:${gameState.board.edges[edge.id].owner}` : ''));
           return <group key={edge.id} position={groundTuple(edgePosition(edge))} rotation={[0, -edge.d * Math.PI / 3, 0]}>
             <Settle accepted={accepted} displayed={displayed} reducedMotion={reducedMotion}>
-              {edge.structure && <mesh position={[0, preview ? .16 : .09, 0]} castShadow receiveShadow>
-                <boxGeometry args={[.14, .15, .67]} /><meshStandardMaterial color={colors.get(edge.owner ?? '') ?? '#ac9876'} roughness={.6} transparent={preview} opacity={preview ? .65 : 1} />
-              </mesh>}
+              {edge.structure && <group position={[0, preview ? .115 : .045, 0]}>
+                <mesh castShadow receiveShadow>
+                  <boxGeometry args={[.09, .075, .79]} /><meshStandardMaterial color={roadColor} roughness={.6} transparent={preview} opacity={preview ? .65 : 1} />
+                </mesh>
+                {[-.22, .22].map(z => <mesh key={z} position={[0, .0385, z]}>
+                  <boxGeometry args={[.072, .002, .008]} /><meshStandardMaterial color={shade(roadColor, .78)} roughness={.9} transparent={preview} opacity={preview ? .65 : 1} />
+                </mesh>)}
+              </group>}
             </Settle>
-            {(valid || selected || pending || hovered === `e:${edge.id}`) && <mesh position={[0, .024, 0]}><boxGeometry args={[.23, .026, .79]} /><meshBasicMaterial color={pending || selected ? GOLD : VALID} transparent opacity={.8} /></mesh>}
+            {(valid || guideEmphasis) && <mesh position={[0, .012, 0]}>
+              <boxGeometry args={[guideEmphasis ? .15 : edge.structure ? .135 : .065, .01, guideEmphasis ? .85 : .76]} />
+              <meshBasicMaterial color={pending || selected ? GOLD : '#fffdf4'} transparent opacity={selected || pending ? .78 : roadHovered ? .82 : edge.structure ? .55 : .56} depthWrite={false} />
+            </mesh>}
             {(valid || selected) && <mesh position={[0, .18, 0]} {...handlers(`e:${edge.id}`, () => board.onEdgeClick(edge.id), true)}><boxGeometry args={[.25, .32, .78]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>}
           </group>;
         })}
@@ -367,7 +378,6 @@ function SceneContents({ board, lowQuality, reducedMotion, topDown, cameraApi, d
 
 export default function BoardScene(props: BoardSceneProps) {
   const [topDown, setTopDown] = useState(false);
-  const [lowQuality, setLowQuality] = useState(false);
   const cameraApi = useRef<BoardCameraApi | null>(null);
   const metrics = useRef<HTMLOutputElement | null>(null);
   const drag = useRef({ x: 0, y: 0, moved: false });
@@ -375,20 +385,20 @@ export default function BoardScene(props: BoardSceneProps) {
   const visible = useSyncExternalStore(subscribeVisibility, () => !document.hidden, serverTrue);
   const prepareRenderer = useCallback(({ gl }: { gl: WebGLRenderer }) => {
     gl.setClearColor(SEA);
-    gl.domElement.setAttribute('aria-label', 'Interactive three dimensional Catan board. Use Board targets for keyboard selection.');
+    gl.domElement.setAttribute('aria-label', 'Interactive three dimensional Catan board. Keyboard board actions follow the view controls.');
     gl.domElement.setAttribute('role', 'img');
   }, []);
 
   return <div data-testid="board-3d" className="relative h-full min-h-0 w-full overflow-hidden" style={{ background: SEA }}
     onPointerDownCapture={event => { drag.current = { x: event.clientX, y: event.clientY, moved: false }; }}
     onPointerMoveCapture={event => { if (Math.hypot(event.clientX - drag.current.x, event.clientY - drag.current.y) > 6) drag.current.moved = true; }}>
-    <WebGL2Gate><Canvas orthographic shadows={lowQuality ? false : SHADOW_OPTIONS} frameloop={visible ? 'demand' : 'never'} dpr={lowQuality ? 1 : FULL_DPR}
+    <WebGL2Gate><Canvas orthographic shadows={SHADOW_OPTIONS} frameloop={visible ? 'demand' : 'never'} dpr={FULL_DPR}
       camera={CAMERA_OPTIONS} gl={GL_OPTIONS} onCreated={prepareRenderer}
       fallback={<div className="flex h-full items-center justify-center p-8 text-center text-[#f5edda]">This device cannot display the 3D board.</div>}>
-      <SceneContents board={props} lowQuality={lowQuality} reducedMotion={reducedMotion} topDown={topDown} cameraApi={cameraApi} drag={drag} />
+      <SceneContents board={props} reducedMotion={reducedMotion} topDown={topDown} cameraApi={cameraApi} drag={drag} />
       {process.env.NODE_ENV !== 'production' && <RendererMetrics outputRef={metrics} />}
     </Canvas></WebGL2Gate>
-    <BoardSceneHud board={props} cameraApi={cameraApi} topDown={topDown} onTopDown={() => setTopDown(value => !value)} lowQuality={lowQuality} onQuality={() => setLowQuality(value => !value)} />
+    <BoardSceneHud board={props} cameraApi={cameraApi} topDown={topDown} onTopDown={() => setTopDown(value => !value)} />
     {process.env.NODE_ENV !== 'production' && <details className="absolute left-3 top-28 z-20 max-w-64 rounded-md bg-[#173c43]/85 px-2 py-1 text-[10px] text-[#d9e6d9] max-sm:top-40">
       <summary className="cursor-pointer">Renderer diagnostics</summary>
       <output ref={metrics} className="block pt-1" aria-live="off">Waiting for the scene…</output>
