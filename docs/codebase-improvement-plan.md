@@ -168,10 +168,10 @@ was imported.
 - [x] Follow-up dependency audit: `package.json`, `package-lock.json`.
   Reviewed the 17 npm audit findings (6 moderate, 11 high), applied compatible
   fixes and a tested mitigation for the unpatched upstream advisory below.
-  Validated and deployed; changes pending commit.
+  Validated and deployed; implementation commit `24cb8a8`.
   The release uses vinext/workerd; Next is retained for API types/tooling.
 
-### Dependency remediation (2026-10-17, deployed; pending commit)
+### Dependency remediation (2026-10-17, deployed; commit `24cb8a8`)
 
 - Compatible lockfile updates repair advisories in `@humanfs/node`, `ajv`,
   `brace-expansion`, `js-yaml`, and `minimatch`. A scoped override updates
@@ -202,3 +202,9 @@ setup and synchronized to the host without reload; new chat reached both
 clients. The 3D board and labels rendered, and both browser error logs were
 empty. This is a live multiplayer smoke test, not a complete game playthrough.
 Screenshot: `.wrangler/dependency-security-release.png` (ignored QA artifact).
+
+Post-commit local check: all eight dependency-security tests passed with the
+installed dependencies. `npm run dev` started on port 3003 (3000-3002 occupied),
+returned HTTP 200 with the game homepage, and the local Explorer confirmed
+`settlers-GameRoom` uses SQLite Durable Object storage. Local state stays in
+`.wrangler/state`, separate from production rooms.
