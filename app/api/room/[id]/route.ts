@@ -1,6 +1,4 @@
-import { db } from '@/lib/db';
-import { rooms } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { callRoom } from '@/lib/services/room-client';
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 
@@ -25,18 +23,13 @@ export async function GET(
         return NextResponse.json({ error: 'Room id is required' }, { status: 400 });
     }
 
-    const room = await db.query.rooms.findFirst({
-        where: eq(rooms.id, roomId),
-    });
+    const snapshot = await callRoom(roomId, 'reads', 'room', roomId);
 
-    if (!room) {
+    if (!snapshot) {
         return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
-    const { LobbyService } = await import('@/lib/services/lobby-service');
-    const roomPlayers = await LobbyService.getPlayersWithColors(roomId);
-
-    const responseData = { room, players: roomPlayers };
+    const responseData = snapshot;
     const etag = generateETag(JSON.stringify(responseData));
 
     // Check if client has cached version

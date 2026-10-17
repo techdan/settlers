@@ -47,3 +47,7 @@ next-env.d.ts
 # matches the directory at the repo root - a bare `db/` would also swallow
 # the tracked lib/db/ schema.
 /db/
+/dist/
+.vinext/
+.cloudflare/
+.wrangler/

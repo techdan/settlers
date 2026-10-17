@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "out/**",
     "build/**",
+    "dist/**",
+    ".wrangler/**",
+    "worker-configuration.d.ts",
     "next-env.d.ts",
   ]),
 ]);

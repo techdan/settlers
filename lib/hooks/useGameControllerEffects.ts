@@ -24,7 +24,7 @@ export function useInitialGameState(roomId: string, setBaseGameState: (state: Ga
       try {
         const res = await fetch(`/api/game/${roomId}`);
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json() as GameState;
           setBaseGameState(synchronizeTimerClock(data));
         }
       } catch (e) {

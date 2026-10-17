@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
-import * as chatService from '@/lib/services/chat-service';
+import { callRoom } from '@/lib/services/room-client';
 
 /**
  * Generate ETag from messages array
@@ -28,7 +28,7 @@ export async function GET(
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 100);
     const before = url.searchParams.get('before') || undefined;
 
-    const messages = await chatService.getRecentMessages(roomId, limit, before);
+    const messages = await callRoom(roomId, 'chat', 'getRecentMessages', roomId, limit, before);
 
     // Generate ETag from messages
     const etag = generateETag(messages);

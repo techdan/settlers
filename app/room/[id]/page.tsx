@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import { db } from '@/lib/db';
-import { rooms } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { callRoom } from '@/lib/services/room-client';
 import { notFound } from 'next/navigation';
 import { LobbyView } from '@/components/lobby-view';
 
@@ -39,29 +37,9 @@ export default async function RoomPage({
     }
     const { playerId } = (await searchParams) || {};
 
-    let room: Awaited<ReturnType<typeof db.query.rooms.findFirst>>;
-    try {
-        room = await db.query.rooms.findFirst({
-            where: eq(rooms.id, roomId),
-        });
-    } catch (error) {
-        console.error('Failed to load room', { roomId, error });
-        notFound();
-    }
-
-    if (!room) {
-        notFound();
-    }
-
-    const { LobbyService } = await import('@/lib/services/lobby-service');
-    let roomPlayers: Awaited<ReturnType<typeof LobbyService.getPlayersWithColors>>;
-    try {
-        roomPlayers = await LobbyService.getPlayersWithColors(roomId);
-    } catch (error) {
-        console.error('Failed to load room players', { roomId, error });
-        notFound();
-    }
-
+    const snapshot = await callRoom(roomId, 'reads', 'room', roomId);
+    if (!snapshot) notFound();
+    const { room, players: roomPlayers } = snapshot;
     // Serialize players for client component (convert Date to string)
     const serializedPlayers = roomPlayers.map(player => ({
         ...player,

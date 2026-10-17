@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useMemo } from 'react';
+import { memo, Suspense, useEffect, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { Mesh, MeshStandardMaterial, type Material } from 'three';
 import type { TerrainType } from '@/core/rules/board-constants';
@@ -27,7 +27,7 @@ function variantFor(seed: string): number {
  * miniature owns only its scene graph and the materials it recolors.
  * dispose=null prevents one tile unmount from disposing another tile's geometry.
  */
-const Miniature = memo(function Miniature({ name, color }: { name: string; color?: string }) {
+const LoadedMiniature = memo(function LoadedMiniature({ name, color }: { name: string; color?: string }) {
     const { scene } = useGLTF(`${MODEL_ROOT}${name}.glb`);
     const { object, paint } = useMemo(() => {
         const object = scene.clone(true);
@@ -62,6 +62,11 @@ const Miniature = memo(function Miniature({ name, color }: { name: string; color
 
     return <primitive object={object} dispose={null} />;
 });
+
+// Loading a new piece must not suspend the whole scene and tear down Html roots.
+function Miniature(props: { name: string; color?: string }) {
+    return <Suspense fallback={null}><LoadedMiniature {...props} /></Suspense>;
+}
 
 /** Radius .979, bottom y=-.25, top exactly y=0; pointy-top hex. */
 export const HexFoundation = memo(function HexFoundation({ terrain }: { terrain: TerrainType }) {

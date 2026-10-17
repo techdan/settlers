@@ -1,7 +1,7 @@
 # Codebase Improvement Plan
 
 **Status:** Typed-action production work remains; a separate validation defect is recorded in §5.15
-**Active item:** §5.14 — typed server-action results
+**Active item:** §5.16 — Cloudflare hosting and durable room migration
 **Completed-plan archive:** [`docs/archive/codebase-improvement-plan-v2.1.md`](archive/codebase-improvement-plan-v2.1.md)
 
 ## 5.14 Typed server-action results
@@ -93,3 +93,75 @@ converting them into failure results.
 - Acceptance: unit tests in the adjacent `__tests__/AlchemistCommand.test.ts`
   reject fractions, NaN, infinities, and out-of-range values without consuming the
   card or changing the game; valid integer selections retain current behavior.
+
+## 5.16 Cloudflare hosting and durable rooms (2026-10-17)
+
+User authorized migrating hosting and storage off Supabase to Cloudflare,
+including the latest 3D presentation. Baseline: `9163bc3`, clean checkout.
+User clarified: Durable Objects only, no D1; rooms must remain resumable the
+following week. No automatic room expiry. Local dev must run the same Workers
+code with persistent local SQLite, and restart recovery must be demonstrated.
+Timer clarification: preserve existing between-turn pauses; do not add automatic
+mid-turn pausing when clients disconnect.
+Commit and push authorized on 2026-10-17. Preserve existing production until replacement
+passes validation; do not delete Supabase data. Initial release may use fresh
+rooms; preserving active games requires an explicit cutover decision.
+
+- [x] Hosting compatibility: `package.json`, `vite.config.ts`, `cloudflare.config.ts`.
+  Run vinext compatibility check; prove server actions, routes, and 3D assets
+  in the Workers runtime before switching deployment commands.
+- [x] Durable room persistence: `workers/`, `lib/repositories/`, `lib/services/`.
+  One SQLite-backed Durable Object per room owns game, lobby, players and chat.
+  Serialize complete service operations, persist before broadcasting, and test
+  concurrent actions, failed operations, restart recovery and room isolation.
+  Keep validators/rules pure and actions thin.
+- [x] Replace Supabase sync: `lib/hooks/useGameSubscription.ts`,
+  `useLobbySubscription.ts`, `useChatSubscription.ts`, and shared transport.
+  Verify reconnect catch-up, serialized refresh ordering, cleanup and multiple tabs.
+- [x] Remove runtime PostgreSQL/Supabase dependencies and direct database reads
+  from `app/api/game/[roomId]/route.ts`, `app/api/room/[id]/route.ts`, and
+  `app/room/[id]/page.tsx`. Route reads through the service/repository boundaries.
+- [x] Release validation: lint, strict typecheck, existing suite, Workers runtime
+  tests, production build, two-browser base/C&K gameplay, chat, timers and 3D.
+  Deploy to the verified Cloudflare account, verify the public URL, and document
+  actual results here. Do not claim free-tier suitability without measurements.
+
+Discovery: game persistence replaces the full JSON state without a version guard.
+The per-room execution boundary must cover read/validate/write, not only writes.
+Some nominal lobby reads normalize and persist state, so they also require that
+boundary. Existing SQL uses PostgreSQL timestamps and a `count(*)::int` cast.
+
+Implementation evidence: 625 tests across
+118 files passed, including concurrent room operations, rollback, context
+isolation, reconnect/cleanup, and complete base/C&K setup followed by simulated
+week-later recovery. Local real SQLite survived stopping production preview and
+starting development, retaining room KZPG, both players, settlement and turn.
+Two browser clients verified join, start, settlement and road notifications.
+The runtime uses Node 24, vinext/Vite and workerd; local state is in
+`.wrangler/state`. `cloudflare.config.ts` is the source configuration; Vite emits
+`dist/server/wrangler.json` for deployment. No D1/KV/R2 bindings are configured.
+No room expiry or disconnect timer pause was added. Legacy SQL utility scripts
+and unused Supabase/Drizzle/Postgres modules and packages were removed.
+New 3D models suspend individually so loading a piece does not hide the scene.
+The retained Next compatibility package was updated to remove its critical
+audit advisories; remaining dependency audit findings require separate review.
+
+Deployed to `https://settlers.manheim.workers.dev`, version
+`e33735c8-4207-4bdc-a7e5-fe4744570a3c`. Binding output confirmed only ROOMS
+(GameRoom) and ASSETS. Live room CZJZ verified create/join from two clients,
+C&K settings with timer enabled, start, settlement/road placement, shared chat,
+and home-page Resume Game after redeploy. Saved players, phase, board and turn
+survived that deploy. This is a multiplayer smoke test, not a complete game
+playthrough. Base/C&K complete setup and week-later persistence are covered by
+the service/repository integration test. Existing timer tests pass unchanged.
+Final lint/typecheck/build passed; migration-focused tests passed again after
+dependency updates. Replaced Drei Html roots with BoardLabel's deferred cleanup;
+the updated live page shows all number/port labels and no new console errors
+in the resume/chat checks. Screenshot: `.wrangler/cloudflare-release.png`
+(local ignored QA artifact). Vercel/Supabase remain untouched; no old game data
+was imported.
+
+- [ ] Follow-up dependency audit: `package.json`, `package-lock.json`.
+  Review the remaining 17 npm audit findings (6 moderate, 11 high), distinguish
+  production exposure from tooling, apply compatible fixes, and rerun checks.
+  The release uses vinext/workerd; Next is retained for API types/tooling.

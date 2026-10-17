@@ -1,117 +1,40 @@
-import { db } from '@/lib/db';
-import { games } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { GameState } from '@/lib/types';
+import { roomData } from './room-context';
+import type { GameState } from '@/lib/types';
 
-/**
- * Game Repository
- * Handles all database operations for games
- */
-
-/**
- * Find a game by room ID
- * 
- * @param roomId - Room ID to search for
- * @returns Game record or null if not found
- */
 export async function findGameByRoomId(roomId: string) {
-    const game = await db.query.games.findFirst({
-        where: eq(games.roomId, roomId)
-    });
-
-    return game;
+    return roomData(roomId).game ?? undefined;
 }
-
-/**
- * Find a game by ID
- * 
- * @param gameId - Game ID to search for
- * @returns Game record or null if not found
- */
 export async function findGameById(gameId: string) {
-    const game = await db.query.games.findFirst({
-        where: eq(games.id, gameId)
-    });
-
-    return game;
+    const game = roomData().game;
+    return game?.id === gameId ? game : undefined;
 }
-
-/**
- * Parse game state from database record
- * 
- * @param game - Database game record
- * @returns Parsed game state
- */
 export function parseGameState(game: { state: string }): GameState {
     return JSON.parse(game.state) as GameState;
 }
-
-/**
- * Update game state in database
- * 
- * @param gameState - Updated game state
- * @returns Updated game record
- */
+function serializeGame(gameState: GameState) {
+    const state = { ...gameState, timerServerTime: Date.now() };
+    delete state.timerClockOffsetMs;
+    return JSON.stringify(state);
+}
 export async function updateGameState(gameState: GameState) {
-    const stateWithServerTime: GameState = {
-        ...gameState,
-        timerServerTime: Date.now(),
-    };
-    delete stateWithServerTime.timerClockOffsetMs;
-    const updated = await db.update(games)
-        .set({
-            state: JSON.stringify(stateWithServerTime),
-            updatedAt: new Date()
-        })
-        .where(eq(games.id, gameState.id))
-        .returning();
-
-    return updated[0];
+    const game = roomData().game;
+    if (!game || game.id !== gameState.id) throw new Error('Game not found');
+    game.state = serializeGame(gameState);
+    game.updatedAt = new Date();
+    return game;
 }
-
-/**
- * Create a new game
- * 
- * @param roomId - Room ID for the game
- * @param gameState - Initial game state
- * @returns Created game record
- */
 export async function createGame(roomId: string, gameState: GameState) {
-    const stateWithServerTime: GameState = {
-        ...gameState,
-        timerServerTime: Date.now(),
-    };
-    delete stateWithServerTime.timerClockOffsetMs;
-    const created = await db.insert(games)
-        .values({
-            id: gameState.id,
-            roomId,
-            state: JSON.stringify(stateWithServerTime),
-            createdAt: new Date(),
-            updatedAt: new Date()
-        })
-        .returning();
-
-    return created[0];
+    const data = roomData(roomId);
+    if (data.game) throw new Error('Game already exists');
+    const now = new Date();
+    data.game = { id: gameState.id, roomId, state: serializeGame(gameState), createdAt: now, updatedAt: now };
+    return data.game;
 }
-
-/**
- * Delete a game
- * 
- * @param gameId - Game ID to delete
- */
 export async function deleteGame(gameId: string) {
-    await db.delete(games).where(eq(games.id, gameId));
+    const data = roomData();
+    if (data.game?.id === gameId) data.game = null;
 }
-
-/**
- * Get game state by room ID (convenience method)
- * 
- * @param roomId - Room ID
- * @returns Game state or null
- */
 export async function getGameStateByRoomId(roomId: string): Promise<GameState | null> {
     const game = await findGameByRoomId(roomId);
-    if (!game) return null;
-    return parseGameState(game);
+    return game ? parseGameState(game) : null;
 }

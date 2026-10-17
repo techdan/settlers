@@ -1,71 +1,34 @@
-import { db } from '@/lib/db';
-import { rooms, players } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { PlayerColor } from '@/lib/types/player';
-
-/**
- * Lobby Repository
- * Handles data access for lobby/room operations
- */
+import { roomData } from './room-context';
+import type { PlayerColor } from '@/lib/types/player';
 
 export async function getRoomById(roomId: string) {
-    const room = await db.query.rooms.findFirst({
-        where: eq(rooms.id, roomId)
-    });
-    return room ?? null;
+    return roomData(roomId).room;
 }
-
 export async function getRoomWithPlayers(roomId: string) {
     const room = await getRoomById(roomId);
-    if (!room) return null;
-
-    const roomPlayers = await getPlayersByRoomIdOrdered(roomId);
-
-    return {
-        ...room,
-        players: roomPlayers
-    };
+    return room ? { ...room, players: await getPlayersByRoomIdOrdered(roomId) } : null;
 }
-
 export async function getPlayersByRoomIdOrdered(roomId: string) {
-    return db.query.players.findMany({
-        where: eq(players.roomId, roomId),
-        orderBy: (playersTable, { asc }) => asc(playersTable.joinedAt)
-    });
+    return [...roomData(roomId).players].sort((a, b) => a.joinedAt.getTime() - b.joinedAt.getTime());
 }
-
-export async function updatePlayerColors(
-    updates: Array<{ id: string; color: PlayerColor }>
-) {
-    await Promise.all(
-        updates.map(update =>
-            db.update(players)
-                .set({ color: update.color })
-                .where(eq(players.id, update.id))
-        )
-    );
+export async function updatePlayerColors(updates: Array<{ id: string; color: PlayerColor }>) {
+    for (const update of updates) {
+        const player = roomData().players.find(player => player.id === update.id);
+        if (player) player.color = update.color;
+    }
 }
-
-export async function updatePlayerHostFlags(
-    updates: Array<{ id: string; isHost: boolean }>
-) {
-    await Promise.all(
-        updates.map(update =>
-            db.update(players)
-                .set({ isHost: update.isHost })
-                .where(eq(players.id, update.id))
-        )
-    );
+export async function updatePlayerHostFlags(updates: Array<{ id: string; isHost: boolean }>) {
+    for (const update of updates) {
+        const player = roomData().players.find(player => player.id === update.id);
+        if (player) player.isHost = update.isHost;
+    }
 }
-
 export async function updateRoomMetadata(roomId: string, metadata: string) {
-    await db.update(rooms)
-        .set({ metadata })
-        .where(eq(rooms.id, roomId));
+    const room = roomData(roomId).room;
+    if (!room) throw new Error('Room not found');
+    room.metadata = metadata;
 }
-
 export async function setPlayerColor(playerId: string, color: PlayerColor) {
-    await db.update(players)
-        .set({ color })
-        .where(eq(players.id, playerId));
+    const player = roomData().players.find(player => player.id === playerId);
+    if (player) player.color = color;
 }

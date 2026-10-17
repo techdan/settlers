@@ -44,10 +44,10 @@ export class LobbyService {
         return result;
     }
 
-    static async createRoom(playerName: string): Promise<{ roomId: string; playerId: string }> {
+    static async createRoom(playerName: string, requestedRoomId?: string): Promise<{ roomId: string; playerId: string }> {
         if (!playerName) throw new Error('Player name is required');
 
-        const roomId = this.generateRoomCode();
+        const roomId = requestedRoomId ?? this.generateRoomCode();
         const playerId = randomUUID();
 
         await roomRepository.createRoom(roomId);

@@ -2,7 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { Html, Line, OrbitControls } from '@react-three/drei';
+import { Line, OrbitControls } from '@react-three/drei';
+import { BoardLabel } from './BoardLabel';
 import { Color, Group, OrthographicCamera, PCFShadowMap, Vector3, type WebGLRenderer } from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { boardBounds, boardPorts, barbarianRoutePoints, edgePosition, tilePosition, vertexPosition, type BoardBounds, type GroundPoint } from '@/lib/presentation/board-geometry';
@@ -208,12 +209,12 @@ function NumberToken({ value, rolled }: { value: number; rolled: boolean }) {
   return <group position={[0, .045, .27]}>
     <mesh receiveShadow castShadow><cylinderGeometry args={[.252, .27, .045, 36]} /><meshStandardMaterial color={rolled ? '#e7bb57' : '#ba9553'} roughness={.8} /></mesh>
     <mesh position={[0, .026, 0]} receiveShadow><cylinderGeometry args={[.23, .23, .012, 36]} /><meshStandardMaterial color={TT.token.face} roughness={1} /></mesh>
-    <Html center position={[0, .062, 0]} pointerEvents="none" zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
+    <BoardLabel position={[0, .062, 0]} zIndexRange={[8, 0]}>
       <div className="flex h-8 min-w-7 flex-col items-center justify-center rounded-full text-center" style={{ color: value === 6 || value === 8 ? '#a43329' : '#3e3526', textShadow: '0 1px 2px #fff7de' }}>
         <span className="text-[17px] font-extrabold leading-[18px]">{value}</span>
         <span className="text-[8px] font-black leading-[7px] tracking-[-1px]" aria-hidden="true">{'•'.repeat(pips)}</span>
       </div>
-    </Html>
+    </BoardLabel>
   </group>;
 }
 
@@ -231,9 +232,9 @@ function Harbor({ port }: { port: ReturnType<typeof boardPorts>[number] }) {
   return <group>
     {port.vertices.map((vertex, index) => <Line key={index} points={[groundTuple(vertex, -.015), groundTuple(midpoint, -.025), groundTuple(port.position, -.07)]} color="#dccb98" lineWidth={2} transparent opacity={.85} />)}
     <group position={groundTuple(port.position)} rotation={[0, outwardRotation, 0]}><HarborArt type={port.type} /></group>
-    <Html center position={groundTuple(port.position, .7)} pointerEvents="none" zIndexRange={[7, 0]} style={{ pointerEvents: 'none' }}>
+    <BoardLabel position={groundTuple(port.position, .7)} zIndexRange={[7, 0]}>
       <span className="whitespace-nowrap rounded-md border border-[#ebddb6]/70 bg-[#f3e8c9]/95 px-1.5 py-0.5 text-[10px] font-bold capitalize text-[#50442e] shadow-sm">{port.type === 'generic' ? 'Any' : port.type} {ratio}</span>
-    </Html>
+    </BoardLabel>
   </group>;
 }
 
@@ -243,7 +244,7 @@ function BarbarianRoute({ points, position }: { points: GroundPoint[]; position:
     <Line points={points.map(p => groundTuple(p, -.23))} color="#bfded6" lineWidth={1.5} dashed dashSize={.1} gapSize={.09} transparent opacity={.7} />
     {points.map((point, index) => <group key={index} position={groundTuple(point, -.225)}>
       <Ring radius={index === 7 ? .19 : .11} color={index <= step ? '#ebca83' : '#91bfbd'} y={0} />
-      {index === 7 && <Html center position={[0, .025, .35]} pointerEvents="none" zIndexRange={[4, 0]}><span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-wider text-[#f7dfb0]">Landfall</span></Html>}
+      {index === 7 && <BoardLabel position={[0, .025, .35]} zIndexRange={[4, 0]}><span className="whitespace-nowrap text-[9px] font-semibold uppercase tracking-wider text-[#f7dfb0]">Landfall</span></BoardLabel>}
     </group>)}
     <group position={groundTuple(points[step], -.26)} rotation={[0, .1, 0]} scale={.82}><BoatArt /></group>
   </group>;
@@ -289,7 +290,7 @@ function SceneContents({ board, reducedMotion, topDown, cameraApi, drag }: {
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.28, 0]} receiveShadow>
       <planeGeometry args={[200, 200]} /><shaderMaterial uniforms={WATER_UNIFORMS} vertexShader={WATER_VERTEX} fragmentShader={WATER_FRAGMENT} toneMapped={false} />
     </mesh>
-    <Suspense fallback={<Html center><div className="rounded-xl bg-[#f6eedb] px-5 py-3 text-sm text-[#3b4b3b]">Carving the island…</div></Html>}>
+    <Suspense fallback={null}>
       <Coast tiles={gameState.board.hexes} />
       {gameState.board.hexes.map(tile => {
         const p = tilePosition(tile);

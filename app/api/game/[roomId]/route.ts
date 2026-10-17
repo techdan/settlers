@@ -1,6 +1,4 @@
-import { db } from '@/lib/db';
-import { games } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { callRoom } from '@/lib/services/room-client';
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 
@@ -26,9 +24,7 @@ export async function GET(
         return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
     }
 
-    const game = await db.query.games.findFirst({
-        where: eq(games.roomId, roomId),
-    });
+    const game = await callRoom(roomId, 'reads', 'game', roomId);
 
     if (!game) {
         return NextResponse.json({ error: 'Game not found' }, { status: 404 });
