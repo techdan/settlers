@@ -384,7 +384,7 @@ export default function BoardScene(props: BoardSceneProps) {
     onPointerMoveCapture={event => { if (Math.hypot(event.clientX - drag.current.x, event.clientY - drag.current.y) > 6) drag.current.moved = true; }}>
     <WebGL2Gate><Canvas orthographic shadows={lowQuality ? false : SHADOW_OPTIONS} frameloop={visible ? 'demand' : 'never'} dpr={lowQuality ? 1 : FULL_DPR}
       camera={CAMERA_OPTIONS} gl={GL_OPTIONS} onCreated={prepareRenderer}
-      fallback={<div className="flex h-full items-center justify-center p-8 text-center text-[#f5edda]">This device cannot display the 3D board. Choose Classic to continue.</div>}>
+      fallback={<div className="flex h-full items-center justify-center p-8 text-center text-[#f5edda]">This device cannot display the 3D board.</div>}>
       <SceneContents board={props} lowQuality={lowQuality} reducedMotion={reducedMotion} topDown={topDown} cameraApi={cameraApi} drag={drag} />
       {process.env.NODE_ENV !== 'production' && <RendererMetrics outputRef={metrics} />}
     </Canvas></WebGL2Gate>

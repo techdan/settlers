@@ -3,39 +3,31 @@
 import { useSyncExternalStore } from 'react';
 
 export type BoardPresentation = 'classic' | 'three';
-const STORAGE_KEY = 'settlers.board-presentation.v1';
 const CHANGE_EVENT = 'settlers:presentation';
-let memoryPreference: BoardPresentation | undefined;
+let memoryPreference: BoardPresentation = 'three';
 
 function readPreference(): BoardPresentation {
-  if (memoryPreference) return memoryPreference;
-  try { return localStorage.getItem(STORAGE_KEY) === 'three' ? 'three' : 'classic'; }
-  catch { return 'classic'; }
+  return memoryPreference;
 }
 
 function subscribe(listener: () => void) {
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY || event.key === null) {
-      memoryPreference = undefined;
-      listener();
-    }
-  };
   window.addEventListener(CHANGE_EVENT, listener);
-  window.addEventListener('storage', onStorage);
   return () => {
     window.removeEventListener(CHANGE_EVENT, listener);
-    window.removeEventListener('storage', onStorage);
   };
 }
 
 export function setBoardPresentation(mode: BoardPresentation) {
   memoryPreference = mode;
-  try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* Private browsing still supports switching. */ }
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
-/** Browser-local preference, never synchronized through game state. */
+/**
+ * 3D is primary. Ignore retired persisted preferences, including saved Classic.
+ * Classic is retained as a session-only graphics failure fallback; reload retries 3D.
+ * Never synchronized through game state. See graphics-overhaul-plan.md §4.15.
+ */
 export function useBoardPresentation() {
-  const mode = useSyncExternalStore(subscribe, readPreference, () => 'classic' as const);
+  const mode = useSyncExternalStore(subscribe, readPreference, () => 'three' as const);
   return { mode, setMode: setBoardPresentation };
 }

@@ -94,29 +94,29 @@ function expectNoActions() {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    setBoardPresentation('classic');
+    setBoardPresentation('three');
 });
 
 afterEach(cleanup);
 
 describe('Board presentation boundary', { timeout: 15_000 }, () => {
-    it('keeps the lazy 3D renderer unmounted when Classic is selected', () => {
+    it('opens in 3D and hides the retired appearance switch', () => {
         fixture();
-        expect(screen.getByTestId('classic-renderer')).toBeInTheDocument();
-        expect(screen.queryByTestId('three-renderer')).not.toBeInTheDocument();
-        expect(rendered.three).not.toHaveBeenCalled();
-        fireEvent.click(screen.getByRole('button', { name: 'Classic' }));
-        expect(rendered.three).not.toHaveBeenCalled();
+        expect(screen.getByTestId('three-renderer')).toBeInTheDocument();
+        expect(rendered.classic).not.toHaveBeenCalled();
+        expect(screen.queryByRole('group', { name: 'Board appearance' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Classic' })).not.toBeInTheDocument();
         expectNoActions();
     });
 
     it('preserves pending placement and canonical board IDs through a renderer round trip', () => {
+        setBoardPresentation('classic');
         const { gameState, target, player, onCancelBuild } = fixture();
         fireEvent.click(screen.getByRole('button', { name: `Select vertex ${target.id}` }));
         const classic = latest('classic');
         expect(classic.pendingPlacement).toEqual({ type: 'settlement', id: target.id, phase: 'setup' });
 
-        fireEvent.click(screen.getByRole('button', { name: '3D Preview' }));
+        act(() => setBoardPresentation('three'));
         const three = latest('three');
         expect(screen.getByTestId('pending-target')).toHaveTextContent(target.id);
         expect(three.pendingPlacement).toBe(classic.pendingPlacement);
@@ -128,7 +128,7 @@ describe('Board presentation boundary', { timeout: 15_000 }, () => {
         expect(three.validation.validVertices).toEqual(classic.validation.validVertices);
         expect(three.vertices.find(vertex => vertex.id === target.id)).toMatchObject({ owner: player.id, structure: 'settlement' });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Classic' }));
+        act(() => setBoardPresentation('classic'));
         expect(screen.getByTestId('pending-target')).toHaveTextContent(target.id);
         expect(latest('classic').pendingPlacement).toBe(classic.pendingPlacement);
         expect(onCancelBuild).not.toHaveBeenCalled();
@@ -138,17 +138,18 @@ describe('Board presentation boundary', { timeout: 15_000 }, () => {
     it('falls back to Classic after context loss without discarding the selected placement', () => {
         const { target, onCancelBuild } = fixture();
         fireEvent.click(screen.getByRole('button', { name: `Select vertex ${target.id}` }));
-        fireEvent.click(screen.getByRole('button', { name: '3D Preview' }));
+        act(() => setBoardPresentation('three'));
         fireEvent.click(screen.getByRole('button', { name: 'Lose WebGL context' }));
 
         expect(screen.getByTestId('classic-renderer')).toBeInTheDocument();
         expect(screen.getByTestId('pending-target')).toHaveTextContent(target.id);
-        expect(screen.getByRole('status')).toHaveTextContent('Your game continues in Classic');
+        expect(screen.getByRole('status')).toHaveTextContent('Your game continues in compatibility mode');
         expect(onCancelBuild).not.toHaveBeenCalled();
         expectNoActions();
     });
 
     it('keeps confirmation busy across a renderer switch and submits the canonical target only once', async () => {
+        setBoardPresentation('classic');
         const { gameState, target, other, player } = fixture();
         let resolveAction!: (state: GameState) => void;
         vi.mocked(actions.placeSettlement).mockReturnValueOnce(new Promise<GameState>(resolve => {
@@ -158,7 +159,7 @@ describe('Board presentation boundary', { timeout: 15_000 }, () => {
         fireEvent.click(screen.getByRole('button', { name: 'Confirm placement' }));
         await waitFor(() => expect(screen.getByTestId('placement-busy')).toHaveTextContent('true'));
 
-        fireEvent.click(screen.getByRole('button', { name: '3D Preview' }));
+        act(() => setBoardPresentation('three'));
         expect(screen.getByTestId('placement-busy')).toHaveTextContent('true');
         fireEvent.click(screen.getByRole('button', { name: 'Confirm placement' }));
         fireEvent.click(screen.getByRole('button', { name: `Select vertex ${other.id}` }));

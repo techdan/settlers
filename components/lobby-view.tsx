@@ -640,14 +640,14 @@ export function LobbyView({
             </div>
 
             {/* Main Area: Board Preview & Controls */}
-            <div className="flex-1 flex flex-col relative bg-slate-100 dark:bg-slate-950">
+            <div className="flex-1 min-h-0 flex flex-col relative bg-[#397c81]">
                 {/* Board Preview - Fills available space */}
-                <div className="flex-1 relative overflow-hidden">
+                <div className="flex-1 min-h-0 relative overflow-hidden">
                     <BoardPreview board={board} />
                 </div>
 
                 {/* Bottom Controls Bar */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-20">
+                <div className="shrink-0 w-full max-w-2xl self-center px-6 pb-4 pt-2 z-20">
                     <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4">
                         <GeneratorControls
                             roomId={roomId}

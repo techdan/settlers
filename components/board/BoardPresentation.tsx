@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic';
 import { useCallback, useState } from 'react';
-import { Box, Layers } from 'lucide-react';
 import { useBoardPresentation } from '@/lib/hooks/useBoardPresentation';
 import { useBoardViewportInsets } from '@/lib/hooks/useBoardViewportInsets';
 import type { BoardRendererProps } from '@/lib/types/board-renderer';
@@ -35,19 +34,7 @@ export function BoardPresentation({ preview = false, ...props }: BoardRendererPr
         </PresentationBoundary>
         </div>
       ) : <BoardCanvas {...props} />}
-      <div className={`pointer-events-auto absolute left-1/2 z-20 -translate-x-1/2 ${preview ? 'top-4' : 'top-16 xl:top-4'}`} style={liveThree ? { left: 'calc((100% + var(--board-inset-left) - var(--board-inset-right)) / 2)', top: 'calc(var(--board-inset-top) + 1rem)' } : undefined}>
-        <div role="group" aria-label="Board appearance" className="flex w-max gap-1 whitespace-nowrap rounded-full border border-[#a98d55]/40 bg-[#252b27]/95 p-1 text-xs text-[#f3e9cf] shadow-lg backdrop-blur-md">
-          {(['classic', 'three'] as const).map(value => (
-            <button key={value} type="button" aria-pressed={mode === value}
-              onClick={() => { setNotice(false); setMode(value); }}
-              className={`flex min-h-9 cursor-pointer items-center gap-2 rounded-full px-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#e0b963] ${mode === value ? 'bg-[#e6ce95] text-[#302919]' : 'hover:bg-white/10'}`}>
-              {value === 'classic' ? <Layers size={14} /> : <Box size={14} />}
-              {value === 'classic' ? 'Classic' : '3D Preview'}
-            </button>
-          ))}
-        </div>
-        {notice && <p role="status" className="mt-2 w-64 rounded-lg bg-[#252b27] p-3 text-xs text-[#f3e9cf]">3D is unavailable on this device. Your game continues in Classic.</p>}
-      </div>
+      {notice && <p role="status" className={`pointer-events-none absolute left-1/2 z-20 w-64 -translate-x-1/2 rounded-lg bg-[#252b27] p-3 text-xs text-[#f3e9cf] ${preview ? 'top-4' : 'top-16 xl:top-4'}`}>3D is unavailable on this device. Your game continues in compatibility mode.</p>}
     </div>
   );
 }
