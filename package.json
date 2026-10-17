@@ -3,6 +3,7 @@
   "version": "2.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/patch-braces.mjs",
     "dev": "node scripts/cloudflare.mjs dev --port 3000",
     "build": "node scripts/cloudflare.mjs build",
     "start": "node scripts/cloudflare.mjs preview --port 3000",
@@ -65,5 +66,11 @@
     "vitest": "^5.0.5",
     "wrangler": "^4.151.1"
   },
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "braces": "3.0.3",
+    "satori": {
+      "fflate": "0.7.5"
+    }
+  }
 }

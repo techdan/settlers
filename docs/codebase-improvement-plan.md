@@ -165,7 +165,40 @@ in the resume/chat checks. Screenshot: `.wrangler/cloudflare-release.png`
 (local ignored QA artifact). Vercel/Supabase remain untouched; no old game data
 was imported.
 
-- [ ] Follow-up dependency audit: `package.json`, `package-lock.json`.
-  Review the remaining 17 npm audit findings (6 moderate, 11 high), distinguish
-  production exposure from tooling, apply compatible fixes, and rerun checks.
+- [x] Follow-up dependency audit: `package.json`, `package-lock.json`.
+  Reviewed the 17 npm audit findings (6 moderate, 11 high), applied compatible
+  fixes and a tested mitigation for the unpatched upstream advisory below.
+  Validated and deployed; changes pending commit.
   The release uses vinext/workerd; Next is retained for API types/tooling.
+
+### Dependency remediation (2026-10-17, deployed; pending commit)
+
+- Compatible lockfile updates repair advisories in `@humanfs/node`, `ajv`,
+  `brace-expansion`, `js-yaml`, and `minimatch`. A scoped override updates
+  Satori's pinned `fflate` from 0.7.3 to patched 0.7.5.
+- `braces` GHSA-vfj7-8cjw-p6xm has no published patched release as of this
+  review. `scripts/patch-braces.mjs` applies bounded parser/AST recursion in
+  postinstall, checks the exact version and expected source, and fails on drift.
+  `lib/__tests__/dependency-security.test.ts` exercises deeply nested complete
+  and incomplete patterns, direct AST inputs, and ordinary nested globs/ranges.
+- Preserve the real `braces@3.0.3` version and npm's advisory reporting. The
+  remaining nine high audit entries are this advisory and its dependent chains,
+  not nine separate unmitigated defects. Do not claim a zero-finding npm audit.
+- [ ] Replace the temporary patch and override when upstream publishes a fix;
+  run a clean install, security tests, full regression checks and Workers build,
+  then verify `npm audit` no longer reports the upstream advisory.
+
+Clean `npm ci`, postinstall, typecheck, lint and the production build passed.
+The full regression run passed 628 tests; five UI tests hit the default 5-second
+timeout under host load. All 22 tests in those three files passed when rerun
+serially with a 30-second timeout, covering all 633 tests across 119 files.
+The eight new dependency-security tests passed in the full run.
+
+Deployed Worker version `e69c6a39-bfb2-488d-93e1-dd46d395d617` to
+`https://settlers.manheim.workers.dev`; bindings remain ROOMS and ASSETS only.
+Reloaded both clients in saved room CZJZ after deployment: previous players,
+placements and chat persisted. New guest settlement/road placements advanced
+setup and synchronized to the host without reload; new chat reached both
+clients. The 3D board and labels rendered, and both browser error logs were
+empty. This is a live multiplayer smoke test, not a complete game playthrough.
+Screenshot: `.wrangler/dependency-security-release.png` (ignored QA artifact).
