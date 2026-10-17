@@ -48,7 +48,7 @@ material required by surviving artifacts.
 
 ## 4. Parallel 3D UX migration proposal — 2026-09-08
 
-**Status:** Opt-in 3D implementation is in the working tree; release acceptance
+**Status:** Opt-in 3D implementation checkpointed at `7f113f1`; release acceptance
 is in progress (see §4.7). This is a presentation migration, not a
 second game implementation. The existing application release is already v2.1;
 use **Classic / 3D Preview** in the UI to distinguish renderer choice from releases.
@@ -231,7 +231,7 @@ Paths marked **new** are proposed locations, not existing implementations.
    keyboard access, readable help, dialog state, log history, and existing actions.
 
 6. [ ] **Mixed-view playtest and rollout.** Paths: renderer/HUD tests above,
-   `components/board/three/` quality and fallback controls, and this plan.
+   `components/board/three/` rendering and fallback controls, and this plan.
    Acceptance: play complete base and C&K games with Classic and 3D clients sharing
    a room, including reconnect and mid-action switches. Pass the gates below and
    all mandatory-choice flows (discard, Aqueduct, defender rewards, progress-card
@@ -247,11 +247,12 @@ Paths marked **new** are proposed locations, not existing implementations.
   Identify the actual test hardware and measure before promising these targets.
 - Reuse geometry/materials and instance repeated terrain props. Bound pixel ratio,
   shadow quality, particles, and detail density. Avoid React state updates per
-  animation frame. Pause work in hidden tabs and provide a lower-quality mode.
+  animation frame. Pause work in hidden tabs. Per the user's §4.11 direction,
+  always render 3D at high detail; retain Classic as the lower-power option.
 - Use on-demand rendering when the scene is idle; continuous water/ambient motion
   must be explicitly budgeted and optional so it does not defeat the idle policy.
 - Verify WebGL failure/context loss, network/asset-load failure, GPU disposal on
-  repeated switches, Classic bundle isolation, and visual contrast at low quality.
+  repeated switches, Classic bundle isolation, and visual contrast at fitted zoom.
 - Run lint, typecheck, focused meaningful interaction/event tests, the full suite,
   and production build for implementation batches. Inspect the actual WebGL scene
   in a browser: DOM-only tests cannot establish rendering or raycast correctness.
@@ -259,7 +260,7 @@ Paths marked **new** are proposed locations, not existing implementations.
   checks before default rollout. The existing production-readiness work in
   `docs/codebase-improvement-plan.md` remains a separate release prerequisite.
 
-### 4.7 Implementation record — 2026-09-08 (uncommitted)
+### 4.7 Implementation record — 2026-09-08 (checkpoint `7f113f1`)
 
 Completed implementation slices:
 
@@ -353,7 +354,7 @@ typecheck, and the final production build all pass. Temporary browser preference
 and verification files were cleaned up; the updated preview remains open. No files
 were staged or committed.
 
-### 4.9 Cleaner relief and ownership paint — 2026-09-08 (uncommitted)
+### 4.9 Cleaner relief and ownership paint — 2026-09-08 (checkpoint `7f113f1`)
 
 User rejected §4.8's heavy black bevels and through-terrain footprint outlines.
 The outlines created an unwanted see-through appearance. That visual treatment
@@ -385,6 +386,165 @@ regressions; the earlier full-suite result in §4.8 belongs to that prior iterat
 Further design options discussed: quieter tile borders, less saturated scenery,
 subtle material-finish contrast, and an optional focus-pieces view; not implemented
 in this iteration so the simpler direction can be evaluated on its own.
+
+### 4.10 Quieter scenery and ivory vertex definition — 2026-09-08 (committed `29183b4` on 2026-10-17)
+
+The user approved §4.9 as a checkpoint. Commit
+`7f113f14a8f8fe8cff6e55ed4cc05f27dff182be` contains the opt-in 3D UX, original
+Blender assets, and cleaner relief. Working tree was verified clean before this
+new experiment. This iteration was checkpointed in `29183b4` on 2026-10-17.
+
+- [x] Quiet terrain pigments and bright tile borders while preserving resource
+  identity, relief, footprints, and token clearance. Paths:
+  `components/board/three/art/index.tsx` and
+  `lib/presentation/miniature-palette.ts` (with adjacent tests).
+  Acceptance: scenery recedes without washing toward ivory; shared GLTF cache
+  materials remain untouched and cloned materials are disposed correctly.
+- [x] Improve white buildings and knights at vertices through existing trim,
+  recess, and native base materials. Acceptance: recognizably ivory from fitted
+  angled and top-down views, with normal opaque occlusion; no new geometry,
+  black outlines, raised bases, or changes to the already-readable roads.
+
+Verification: 24 focused palette, owner-compatibility, and selection/geometry
+tests passed; full lint, standalone TypeScript, and production build passed.
+The full suite passed 598/599 tests; one unrelated DevCardModal test exceeded
+its five-second timeout under parallel load. Its entire eight-test file passed
+on isolated rerun (the timed-out test completed in 933 ms); no test code changed.
+The live angled preview was visually reviewed with no browser error logs;
+the user's camera and six-roll playground state were preserved. Top-down and
+reduced-motion visual review have not been repeated for this material-only pass.
+
+### 4.11 Slimmer roads and simpler view controls — 2026-09-08 (committed `29183b4` on 2026-10-17)
+
+- [x] Refine roads and placement guides in `components/board/three/BoardScene.tsx`.
+  Roads changed from .14 × .15 × .67 to .09 × .075 × .79 (width, height,
+  length), with two fine owner-shaded surface joints. Empty valid guides use
+  narrow, translucent strips; hovered and selected sites retain stronger feedback.
+  Acceptance: smaller road silhouette relative to knights, clear ownership,
+  unchanged canonical hitboxes and confirm/cancel behavior.
+- [x] Remove the detail toggle and Board targets toolbar button from
+  `components/board/three/BoardSceneHud.tsx`, with always-high-detail Canvas and
+  shadows in `BoardScene.tsx`. Keyboard actions remain in a focus-only region;
+  pointer use shows no target list. Updated `scene-selection.test.tsx` verifies
+  callbacks and absence of the removed buttons.
+
+Browser review covered angled/zoomed and top-down road views, selecting a road
+through its unchanged pointer hitbox, canceling, and Tab/Enter keyboard selection.
+The focus-only action region appeared on keyboard focus and hid after leaving it.
+No test roads were added to the playground. Full lint, standalone TypeScript,
+production build, and all 599 tests across 113 files passed (full suite capped at
+four workers to avoid the previous parallel-load timeout). Browser error logs
+were empty. Reduced-motion behavior was unchanged and not manually retested in
+this pass. These changes were checkpointed in `29183b4` on 2026-10-17.
+
+### 4.12 Clearer road guides and next HUD priorities — 2026-09-08
+
+- [x] Whiten road-site guides in `components/board/three/BoardScene.tsx` without
+  changing geometry or picking. Idle empty guides use warm white `#fffdf4` at
+  .56 opacity (previously .32); hover strengthens to .82. Selected/pending sites
+  retain gold. Browser review at normal board scale confirms greater visibility.
+  This was checkpointed with the preceding experiments in `29183b4`.
+  Validation: full lint, standalone TypeScript, and production build passed;
+  browser error logs were empty. Full suite: 598/599 passed, with the previously
+  observed five-second DevCardModal timeout; its full eight-test file passed
+  alone, with that test completing in 696 ms. No test behavior was changed.
+
+The user confirmed the Classic artwork is the expected previous board. Keep it
+as the fallback; no legacy replacement or deletion is needed. The playground's
+former minimal player rows were an art-review fixture; the shared rich cards
+below now bring its player information into line with live games.
+
+Next batches, in order:
+
+1. [x] **Player-card information parity with the new visual style.** Completed in
+   `29183b4`; see §4.13. Paths:
+   `components/game/player/CompactPlayerCard.tsx`, `CompactImprovementBar.tsx`,
+   `components/game/ui/CompactGameStatus.tsx`, `GameLayoutPanels.tsx`, and
+   `app/dev/board-3d/IslandPlayground.tsx`. Use the existing public-stat calculations
+   and actions in a shared presentation. Show identity/public VP/active turn and
+   timer first; hand count with discard risk, progress/dev count, road length,
+   and active knight strength (base-game army count) second; C&K improvements,
+   metropolis ownership, and held awards third. Keep details available on
+   keyboard focus and touch as well as hover. Acceptance: preserve the current
+   card's information and management affordances, public/private information
+   boundaries, and all players visible at laptop size; the log yields space
+   before player status does. Match owner accents to the 3D piece palette.
+   Show a numeric active-turn countdown and explicit wall-adjusted discard-risk
+   cue. Provide a player-details action and a separate local-player Manage
+   cities action; replace hover-only information and inert opponent buttons.
+   Prefer compact arrangements/drawers to shrinking already-small stat text.
+2. [ ] **Complete action dock and next-action guidance.** Paths:
+   `components/game/ui/GameTray.tsx`, `ActionControls.tsx`,
+   `components/game/city/BuildControls.tsx`, and board selection prompts.
+   Acceptance: keep hand, commodities, costs, build, and trade together; keep
+   Roll/End Turn in a fixed position; explain unavailable actions and mandatory
+   choices without hiding the board. Reuse current callbacks and busy guards,
+   including open progress-card-panel gating of Roll/End Turn.
+3. [ ] **Contextual board inspection and learning.** Paths:
+   `components/board/three/BoardScene.tsx`, `BoardSceneHud.tsx`, shared board
+   selectors, and existing tooltips/dialogs. Acceptance: explain terrain yields,
+   number likelihood, ports, settlement adjacency, and knight state using shared
+   game data; support click/tap/keyboard and leave scenery readable.
+4. [ ] **Chronicle and event feedback integration.** Paths:
+   `components/game/ui/SidebarTabs.tsx`, `GameLog.tsx`,
+   `components/board/three/ProductionFeedback.tsx`, and the player rail.
+   Acceptance: preserve Chat/Stats and rich log explanations, associate resource
+   gains with the receiving player card, and avoid unsolicited camera movement.
+
+Proceed with the player-card batch first, then validate it in the real shared
+game HUD before expanding the action dock. Keep the broader mixed-view playtest
+and rollout gates in §4.5–4.6.
+
+### 4.13 Shared rich player cards — 2026-09-08 (committed `29183b4` on 2026-10-17)
+
+- [x] Add `ThreePlayerCard.tsx` behind the optional presentation prop in
+  `components/game/player/CompactPlayerCard.tsx`. Reuse existing public score,
+  combined hand count, wall-adjusted safe limit, card count, longest road,
+  military, improvement, metropolis, and award calculations. Match owner accents
+  to the 3D piece palette; preserve Classic as the default presentation.
+- [x] Provide a public-information Details dialog with keyboard/touch access,
+  initial focus, native modal containment, scrollable content, Escape dismissal,
+  and focus restoration. Local C&K city management remains a separate action;
+  opponent tracks are read-only. No private hand contents enter the new view.
+- [x] Integrate the same cards into `CompactGameStatus.tsx`, both responsive
+  layouts in `GameLayoutPanels.tsx`, and `app/dev/board-3d/IslandPlayground.tsx`.
+  Keep a numeric countdown and pause label on the active card. The 3D rail keeps
+  full text size and scrolls before hiding players; update `BoardPresentation.tsx`
+  fallback camera inset to accommodate its width. Preview fixtures demonstrate
+  varied improvements, awards, and hand-limit risk. The preview Players drawer
+  stays above Canvas controls and Chronicle can collapse.
+
+Browser review covered 1366×768 laptop, 768×1024 tablet, 390×844 narrow view,
+and the normal desktop viewport. All four cards fit at laptop size; the narrow
+drawer and Details content scroll. Keyboard review confirmed content scrolling,
+modal containment, Escape dismissal, and return to the original Details button.
+Browser error logs were empty; temporary viewport overrides were reset. Timer
+transitions and urgency pulses honor reduced motion in CSS; manual OS-level
+reduced-motion and real multiplayer playthrough remain rollout checks.
+
+Validation: full lint, standalone TypeScript, production build, and all 611 tests
+across 114 files passed, including 28 card tests, shared timer/presentation tests,
+and responsive rail regressions. The initial sandboxed build could not fetch
+the existing Google fonts; the network-enabled retry passed. Diff whitespace
+checks passed and no temporary task files remain in the workspace.
+Checkpointed in `29183b4` on 2026-10-17. Action dock, contextual
+inspection, and Chronicle event integration remain the next batches in §4.12.
+
+### 4.14 Compact Chronicle — 2026-09-08 (committed `29183b4` on 2026-10-17)
+
+- [x] Replace the playground's spaced, reverse-order Chronicle list with the
+  existing `components/game/ui/GameLog.tsx` in `IslandPlayground.tsx`. Keep the
+  previous log's 12px text, compact rows, player colors, chronological ordering,
+  timestamp/card-rule tooltips, follow-latest scrolling, and new-events affordance.
+  Reduce the Chronicle heading and surrounding padding. Preview action entries
+  now carry the acting player ID and actual timestamp for the shared renderer.
+  Acceptance: several events are readable together without large inter-row gaps;
+  the existing live-game log remains the shared source of behavior.
+
+Visual review used three rolls in a separate preview, preserving the user's
+original preview state. Focused log tests, changed-file lint, and standalone
+TypeScript passed. This small reuse/spacing change adds no game rules or motion;
+the full-suite/build results in §4.13 apply to the preceding card batch.
 
 ### 4.15 Primary 3D presentation — 2026-10-01 (committed 27c42de on 2026-10-17)
 
@@ -427,7 +587,21 @@ references were removed; TypeScript passed again after cleanup. No new animation
 was introduced; OS reduced-motion and multiplayer playthrough checks were not
 repeated for this default change. Validation covered the combined working tree;
 checkpoint `27c42de` contains only the primary-3D rollout. The preceding
-art, player-card, and Chronicle edits remain uncommitted.
+art, player-card, and Chronicle edits were subsequently checkpointed in `29183b4`.
+
+### 4.16 Presentation polish checkpoint — 2026-10-17
+
+- [x] Commit the completed scenery/ivory palette, slimmer roads and clearer guides,
+  simplified view controls, shared rich player cards and responsive panels,
+  compact playground Chronicle, fixtures, and associated tests: `29183b4`.
+  This checkpoints the implementation in §4.10–4.14; the 3D-default rollout is
+  separately recorded in §4.15 (`27c42de`).
+- Validation: the complete combined implementation previously passed 616 tests
+  across 115 files, lint, standalone TypeScript, production build, and browser
+  checks. No implementation changed during checkpointing; diff whitespace checks
+  passed. Real multiplayer playthrough and manual OS reduced-motion review remain
+  broader release checks. The unchecked action-dock, contextual-inspection, and
+  event-feedback items in §4.12 remain future work.
 
 ## Acceptance gates
 
